@@ -2,7 +2,7 @@
 
 def add(name, function, model, inputs: str, location: str):
     if inputs == "text":
-        from unbox.templates.transformers.text.template import TransformersTextTemplateModel as TemplateModel
+        from bentowrapper.templates.transformers.text.template import TransformersTextTemplateModel as TemplateModel
 
     bento_service = TemplateModel()
     bento_service.pack('model', model)

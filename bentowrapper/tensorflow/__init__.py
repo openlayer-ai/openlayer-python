@@ -4,11 +4,11 @@ def add(name, function, model, inputs: str, location: str):
 
     model_name = ""
     if inputs == "text":
-        from unbox.templates.pytorch.text.template import PytorchTextTemplateModel as TemplateModel
-        model_name = "PytorchTextTemplateModel"
+        from bentowrapper.templates.tensorflow.text.template import TensorflowTextTemplateModel as TemplateModel
+        model_name = "TensorflowTextTemplateModel"
     elif inputs == "image":
-        from unbox.templates.pytorch.image.template import PytorchImageTemplateModel as TemplateModel
-        model_name = "PytorchImageTemplateModel"
+        from bentowrapper.templates.tensorflow.image.template import TensorflowImageTemplateModel as TemplateModel
+        model_name = "TensorflowImageTemplateModel"
 
     bento_service = TemplateModel()
     bento_service.pack('model', model)
