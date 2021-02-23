@@ -1,3 +1,4 @@
+import os
 import bentoml
 
 from .template import create_template_model
@@ -16,14 +17,8 @@ class UnboxClient(object):
 
     @staticmethod
     def upload(bento_service, user_id):
-        # TODO: Change this to use the user provided API key
-        import os
-        from firebase_admin import initialize_app, storage
-
+        # TODO: Authenticate with the user provided API key
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/Users/rishabramanathan/projects/unbox/serviceAccount.json'
-
-        app = initialize_app()
-        bucket = storage.bucket(name='unbox-ai.appspot.com')
 
         bentoml.save_to_dir(bento_service,
                             f'gs://unbox-ai.appspot.com/{user_id}/models')
