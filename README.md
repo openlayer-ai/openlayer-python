@@ -1,8 +1,16 @@
-# bento-wrapper
+# Unbox AI | Python SDK
 
-## Install
+## Installation
 
 ```console
-foo@bar:~$ cd bento-wrapper
-foo@bar:~$ pip install -e .
+$ pip install -e .
+```
+
+## Usage
+
+```python
+import unboxapi
+client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+
+client.add(function=predict_function, model=any_model)
 ```
