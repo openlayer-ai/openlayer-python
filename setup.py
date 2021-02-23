@@ -12,14 +12,14 @@ with pathlib.Path('requirements.txt').open() as requirements_txt:
     ]
 
 
-setup(name='bentowrapper',
+setup(name='unboxapi',
       version='0.0.1',
-      description='Wrapper for easy BentoML usage',
-      url='https://github.com/unboxai/bento-wrapper',
+      description='The official Python client library for Unbox AI, the Understanding and Sharing Platform for AI',
+      url='https://github.com/unboxai/unboxapi-python-client',
       author='Unbox AI',
       license='BSD',
       packages=find_packages(exclude=['js', 'node_modules', 'tests']),
-      python_requires='>=3.5',
+      python_requires='>=3.7',
       install_requires=install_requires,
       include_package_data=True,
       zip_safe=False)
