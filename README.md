@@ -1,8 +1,17 @@
-# bento-wrapper
+# Unbox AI | Python SDK
 
-## Install
+## Installation
 
 ```console
-foo@bar:~$ cd bento-wrapper
-foo@bar:~$ pip install -e .
+$ pip install -e .
+```
+
+## Usage
+
+```python
+import unboxapi
+client = unboxapi.UnboxClient()
+
+# Package as a bento service and upload to Firebase Storage
+client.add(function=predict_function, model=any_model)
 ```
