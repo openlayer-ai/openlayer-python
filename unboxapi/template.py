@@ -12,7 +12,8 @@ modelTypes = {
 def create_template_model(model_type, input_type):
     # return TemplateModel([modelTypes[model_type]('model'), PickleArtifact('function')])
     with open('template_model.py', 'w') as python_file:
-        file_contents = f"""from typing import List
+        file_contents = f"""\
+        from typing import List
         from bentoml import env, artifacts, api, BentoService
         from bentoml.frameworks.{model_type} import {modelTypes[model_type]}
         from bentoml.service.artifacts.common import PickleArtifact
