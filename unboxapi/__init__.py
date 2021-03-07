@@ -21,8 +21,8 @@ class UnboxClient(object):
         self.flask_api = FlaskAPI()
         self.firebase_api = FirebaseAPI(email=email, password=password)
 
-    def add_model(self, function, model):
-        bento_service = create_template_model('sklearn', 'text')
+    def add_model(self, function, model, name: str, model_type: str = 'sklearn'):
+        bento_service = create_template_model(model_type)
         bento_service.pack('model', model)
         bento_service.pack('function', function)
 
@@ -39,6 +39,14 @@ class UnboxClient(object):
                 user_id = self.firebase_api.user['localId']
                 remote_path = f'users/{user_id}/models/{model_id}'
                 self.firebase_api.upload(remote_path, tarfile_path)
+
+                # Now set the metadata via request to our Flask API
+                id_token = self.firebase_api.user['idToken']
+                response = self.flask_api.upload_model_metadata(user_id,
+                                                                model_id,
+                                                                name,
+                                                                id_token)
+        return response
 
     def add_dataset(self, file_path: str, name: str):
         # For now, let's upload straight to Firebase Storage from here

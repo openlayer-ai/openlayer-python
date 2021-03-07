@@ -1,4 +1,6 @@
-import pyrebase, requests
+import pyrebase
+import requests
+import getpass
 
 
 class FlaskAPI:
@@ -6,12 +8,10 @@ class FlaskAPI:
     def __init__(self):
         self.url = 'http://localhost:5000'
 
-
     def post(self, endpoint: str = '/', data: any = None, file: any = None):
         return requests.post(self.url + endpoint,
                              json=data,
                              files=file and {'file': file})
-
 
     def upload_dataset_metadata(self,
                                 user_id: str,
@@ -23,12 +23,24 @@ class FlaskAPI:
             'id_token': id_token,
             'name': name,
             'user_id': user_id
-            }
+        }
         return self.post(endpoint='/dataset', data=data)
 
+    def upload_model_metadata(self,
+                              user_id: str,
+                              model_id: str,
+                              name: str,
+                              id_token: str):
+        data = {
+            'model_id': model_id,
+            'id_token': id_token,
+            'name': name,
+            'user_id': user_id
+        }
+        return self.post(endpoint='/upload_model_metadata', data=data)
 
     def upload_dataset(self, file_path: str, name: str, id_token: str):
-        data = { 'name' : name, 'id_token' : id_token }
+        data = {'name': name, 'id_token': id_token}
         file = open(file_path, 'rb')
         return self.post(endpoint='/dataset', data=data, file=file)
 
@@ -55,7 +67,6 @@ class FirebaseAPI:
 
         # Login
         self.user = auth.sign_in_with_email_and_password(email, password)
-
 
     def upload(self, remote_path: str, file_path: str):
         storage = self.firebase.storage()

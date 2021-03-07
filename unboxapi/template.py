@@ -10,7 +10,7 @@ modelTypes = {
 
 
 # TODO: in dire need of cleanup
-def create_template_model(model_type: str, input_type: str):
+def create_template_model(model_type: str):
     with open('template_model.py', 'w') as python_file:
         file_contents = f'''\
         from typing import List
