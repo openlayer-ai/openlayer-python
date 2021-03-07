@@ -5,7 +5,7 @@ modelTypes = {
     "sklearn": "SklearnModelArtifact",
     "pytorch": "PytorchModelArtifact",
     "tensorflow": "TensorflowSavedModelArtifact",
-    "transformers": "TransformersModelArtifac"
+    "transformers": "TransformersModelArtifact"
 }
 
 

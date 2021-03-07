@@ -5,13 +5,19 @@ import pyrebase
 import bentoml
 from bentoml.saved_bundle.bundler import _write_bento_content_to_dir
 from bentoml.utils.tempdir import TempDirectory
+import pandas as pd
+import uuid
+from .lib.network import FlaskAPIRequest
 
 from .template import create_template_model
 
 
 class UnboxClient(object):
-    def __init__(self):
-        self.authenticate()
+    def __init__(self, email=None, password=None):
+        self.firebase = None
+        self.user = None
+        self.flask_api_request = FlaskAPIRequest()
+        self.authenticate(email, password)
 
     def add(self, function, model):
         bento_service = create_template_model("sklearn", "text")
@@ -32,7 +38,12 @@ class UnboxClient(object):
         storage = self.firebase.storage()
         storage.child(remote_path).put(file_path, self.user['idToken'])
 
-    def authenticate(self):
+    def authenticate(self, email, password):
+
+        if not email or not password:
+            email = input("What is your Unbox email?")
+            password = getpass.getpass("What is your Unbox password?")
+
         config = {
             "apiKey": "AIzaSyAKlGQOmXTjPQhL1Uvj-Jr-_jUtNWmpOgs",
             "authDomain": "unbox-ai.firebaseapp.com",
@@ -46,6 +57,21 @@ class UnboxClient(object):
         auth = self.firebase.auth()
 
         # Log the user in
-        email = input("What is your Unbox email?")
-        password = getpass.getpass("What is your Unbox password?")
         self.user = auth.sign_in_with_email_and_password(email, password)
+
+    def add_dataset(self, file_path: str):
+        self.flask_api_request.upload_dataset(file_path)
+
+    def add_dataframe(self, df: pd.DataFrame, file_path: str):
+        df.to_csv(file_path, index=False)
+        self.add_dataset(file_path)
+
+
+    # def add_dataset(self, file_name: str):
+    #     self.upload(
+    #         f"users/{self.user['localId']}/datasets/{file_name}", file_name)
+    #
+    # def add_dataframe(self, df: pd.DataFrame, file_name: str):
+    #     df.to_csv(file_name, index=False)
+    #     self.upload(
+    #         f"users/{self.user['localId']}/datasets/{file_name}", file_name)
