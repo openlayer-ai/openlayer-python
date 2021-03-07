@@ -2,17 +2,17 @@ import textwrap
 
 
 modelTypes = {
-    "sklearn": "SklearnModelArtifact",
-    "pytorch": "PytorchModelArtifact",
-    "tensorflow": "TensorflowSavedModelArtifact",
-    "transformers": "TransformersModelArtifac"
+    'sklearn': 'SklearnModelArtifact',
+    'pytorch': 'PytorchModelArtifact',
+    'tensorflow': 'TensorflowSavedModelArtifact',
+    'transformers': 'TransformersModelArtifact'
 }
 
 
-def create_template_model(model_type, input_type):
-    # return TemplateModel([modelTypes[model_type]('model'), PickleArtifact('function')])
+# TODO: in dire need of cleanup
+def create_template_model(model_type: str, input_type: str):
     with open('template_model.py', 'w') as python_file:
-        file_contents = f"""\
+        file_contents = f'''\
         from typing import List
         from bentoml import env, artifacts, api, BentoService
         from bentoml.frameworks.{model_type} import {modelTypes[model_type]}
@@ -25,9 +25,9 @@ def create_template_model(model_type, input_type):
         class TemplateModel(BentoService):
 
             @api(input=DataframeInput(
-                orient="records",
-                columns=["text"],
-                dtype={{"text": "str"}},
+                orient='records',
+                columns=['text'],
+                dtype={{'text': 'str'}},
             ), batch=True)
             def batch(self, df):
                 text = df['text'].tolist()
@@ -40,17 +40,18 @@ def create_template_model(model_type, input_type):
             def predict(self, parsed_json_list: List[JsonSerializable], tasks: List[InferenceTask]):
                 text = []
                 for json, task in zip(parsed_json_list, tasks):
-                    if "text" in json:
+                    if 'text' in json:
                         text.append(json['text'])
                     else:
                         task.discard(http_status=400,
-                                    err_msg="input json must contain `text` field")
+                                    err_msg='input json must contain `text` field')
 
                 return self.artifacts.function(
                     self.artifacts.model,
                     text
                 )
-        """
+        '''
         python_file.write(textwrap.dedent(file_contents))
+
     from template_model import TemplateModel
     return TemplateModel()
