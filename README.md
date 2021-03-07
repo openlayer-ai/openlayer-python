@@ -10,8 +10,14 @@ $ pip install -e .
 
 ```python
 import unboxapi
-client = unboxapi.UnboxClient()
+client = unboxapi.UnboxClient(email='you@domain.com', password='your_password')
 
-# Package as a bento service and upload to Firebase Storage
-client.add(function=predict_function, model=any_model)
+# Package a model as a bento service and upload to Firebase
+client.add_model(function=predict_function, model=any_model)
+
+# Upload a dataset to Firebase
+client.add_dataset(file_path='path/to/dataset.csv', name='dataset_name')
+
+# Upload a pandas data frame to Firebase
+client.add_dataframe(df='dataframe_object', name='dataset_name')
 ```
