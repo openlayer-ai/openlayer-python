@@ -56,7 +56,7 @@ class UnboxClient(object):
                                                                 id_token)
         return response
 
-    def add_dataset(self, file_path: str, name: str, description: str):
+    def add_dataset(self, file_path: str, name: str, description: str, label_column_name: str, text_column_name: str):
         # For now, let's upload straight to Firebase Storage from here
         user_id = self.firebase_api.user['localId']
         dataset_id = str(uuid.uuid1())
@@ -69,11 +69,13 @@ class UnboxClient(object):
                                                           dataset_id,
                                                           name,
                                                           description,
+                                                          label_column_name,
+                                                          text_column_name,
                                                           id_token)
         return response.json()
 
-    def add_dataframe(self, df: pd.DataFrame, name: str, description: str):
+    def add_dataframe(self, df: pd.DataFrame, name: str, description: str, label_column_name: str, text_column_name: str):
         with tempfile.TemporaryDirectory() as tmp_dir:
             dataset_file_path = os.path.join(tmp_dir, str(uuid.uuid1()))
             df.to_csv(dataset_file_path, index=False)
-            return self.add_dataset(dataset_file_path, name, description)
+            return self.add_dataset(dataset_file_path, name, description, label_column_name, text_column_name)

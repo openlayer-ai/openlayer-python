@@ -18,12 +18,16 @@ class FlaskAPI:
                                 dataset_id: str,
                                 name: str,
                                 description: str,
+                                label_column_name: str,
+                                text_column_name: str,
                                 id_token: str):
         data = {
             'dataset_id': dataset_id,
             'id_token': id_token,
             'name': name,
             'description': description,
+            'label_column_name': label_column_name,
+            'text_column_name': text_column_name,
             'user_id': user_id
         }
         return self.post(endpoint='/dataset', data=data)
