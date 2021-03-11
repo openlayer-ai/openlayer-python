@@ -17,39 +17,40 @@ def create_template_model(model_type: str):
         from bentoml import env, artifacts, api, BentoService
         from bentoml.frameworks.{model_type} import {modelTypes[model_type]}
         from bentoml.service.artifacts.common import PickleArtifact
-        from bentoml.adapters import JsonInput, DataframeInput
+        from bentoml.adapters import JsonInput, StringInput
         from bentoml.types import JsonSerializable, InferenceTask
 
         @env(infer_pip_packages=True)
         @artifacts([{modelTypes[model_type]}('model'), PickleArtifact('function')])
         class TemplateModel(BentoService):
 
-            @api(input=DataframeInput(
-                orient='records',
-                columns=['text'],
-                dtype={{'text': 'str'}},
-            ), batch=True)
-            def batch(self, df):
-                text = df['text'].tolist()
+            @api(input=StringInput(), batch=True)
+            def predict_str(self, text):
                 return self.artifacts.function(
                     self.artifacts.model,
                     text
                 )
 
             @api(input=JsonInput(), batch=True)
-            def predict(self, parsed_json_list: List[JsonSerializable], tasks: List[InferenceTask]):
+            def predict(self, parsed_json_list: List[JsonSerializable]):
                 text = []
-                for json, task in zip(parsed_json_list, tasks):
+                for json in parsed_json_list:
                     if 'text' in json:
                         text.append(json['text'])
                     else:
                         task.discard(http_status=400,
                                     err_msg='input json must contain `text` field')
 
-                return self.artifacts.function(
+                prediction_probs, class_names, _ = self.artifacts.function(
                     self.artifacts.model,
                     text
                 )
+
+                return [
+                    {{class_names[i]: prob for i,
+                        prob in enumerate(probs)}}
+                    for probs in prediction_probs
+                ]
         '''
         python_file.write(textwrap.dedent(file_contents))
 

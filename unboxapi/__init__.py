@@ -21,7 +21,14 @@ class UnboxClient(object):
         self.flask_api = FlaskAPI()
         self.firebase_api = FirebaseAPI(email=email, password=password)
 
-    def add_model(self, function, model, name: str, model_type: str = 'sklearn'):
+    def _test_associate(self, model_id: str, dataset_id: str):
+        ''' This is just for testing.'''
+        print(self.flask_api._test_associate_model_dataset(
+            id_token=self.firebase_api.user['idToken'],
+            model_id=model_id,
+            dataset_id=dataset_id))
+
+    def add_model(self, function, model, name: str, description: str, model_type: str = 'sklearn'):
         bento_service = create_template_model(model_type)
         bento_service.pack('model', model)
         bento_service.pack('function', function)
@@ -45,10 +52,11 @@ class UnboxClient(object):
                 response = self.flask_api.upload_model_metadata(user_id,
                                                                 model_id,
                                                                 name,
+                                                                description,
                                                                 id_token)
         return response
 
-    def add_dataset(self, file_path: str, name: str):
+    def add_dataset(self, file_path: str, name: str, description: str, label_column_name: str, text_column_name: str):
         # For now, let's upload straight to Firebase Storage from here
         user_id = self.firebase_api.user['localId']
         dataset_id = str(uuid.uuid1())
@@ -60,11 +68,14 @@ class UnboxClient(object):
         response = self.flask_api.upload_dataset_metadata(user_id,
                                                           dataset_id,
                                                           name,
+                                                          description,
+                                                          label_column_name,
+                                                          text_column_name,
                                                           id_token)
         return response.json()
 
-    def add_dataframe(self, df: pd.DataFrame, name: str):
+    def add_dataframe(self, df: pd.DataFrame, name: str, description: str, label_column_name: str, text_column_name: str):
         with tempfile.TemporaryDirectory() as tmp_dir:
             dataset_file_path = os.path.join(tmp_dir, str(uuid.uuid1()))
             df.to_csv(dataset_file_path, index=False)
-            return self.add_dataset(dataset_file_path, name)
+            return self.add_dataset(dataset_file_path, name, description, label_column_name, text_column_name)
