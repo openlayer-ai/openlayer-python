@@ -56,16 +56,12 @@ class FlaskAPI:
                                       id_token: str,
                                       model_id: str,
                                       dataset_id: str,
-                                      user_id='ytGD2XvoGPSaippqWhAmi5V8mHT2',
-                                      text_col='text',
-                                      label_col='polarity'):
+                                      user_id: str):
         data = {
             'id_token': id_token,
             'user_id': user_id,
             'model_id': model_id,
-            'dataset_id': dataset_id,
-            'text_column_name': text_col,
-            'label_column_name': label_col
+            'dataset_id': dataset_id
         }
         return self.post(endpoint='/api/run/create_run', data=data)
 
