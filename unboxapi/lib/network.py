@@ -30,7 +30,7 @@ class FlaskAPI:
             'text_column_name': text_column_name,
             'user_id': user_id
         }
-        return self.post(endpoint='/dataset', data=data)
+        return self.post(endpoint='/api/dataset/upload_metadata', data=data)
 
     def upload_model_metadata(self,
                               user_id: str,
@@ -45,12 +45,12 @@ class FlaskAPI:
             'description': description,
             'user_id': user_id
         }
-        return self.post(endpoint='/upload_model_metadata', data=data)
+        return self.post(endpoint='/api/model/upload_metadata', data=data)
 
-    def upload_dataset(self, file_path: str, name: str, id_token: str):
-        data = {'name': name, 'id_token': id_token}
-        file = open(file_path, 'rb')
-        return self.post(endpoint='/dataset', data=data, file=file)
+    # def upload_dataset(self, file_path: str, name: str, id_token: str):
+    #     data = {'name': name, 'id_token': id_token}
+    #     file = open(file_path, 'rb')
+    #     return self.post(endpoint='/api/dataset/upload_dataset', data=data, file=file)
 
     def _test_associate_model_dataset(self,
                                       id_token: str,
@@ -64,10 +64,10 @@ class FlaskAPI:
             'user_id': user_id,
             'model_id': model_id,
             'dataset_id': dataset_id,
-            'text_col': text_col,
-            'label_col': label_col
+            'text_column_name': text_col,
+            'label_column_name': label_col
         }
-        return self.post(endpoint='/associate', data=data)
+        return self.post(endpoint='/api/run/create_run', data=data)
 
 
 class FirebaseAPI:
