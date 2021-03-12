@@ -1,6 +1,7 @@
 import pyrebase
 import requests
 import getpass
+from typing import List
 
 
 class FlaskAPI:
@@ -31,6 +32,35 @@ class FlaskAPI:
             'user_id': user_id
         }
         return self.post(endpoint='/dataset', data=data)
+
+    def upload_slice_metadata(self,
+                              user_id: str,
+                              dataset_id: str,
+                              slice_id: str,
+                              name: str,
+                              indices: List[int],
+                              id_token: str):
+        data = {
+            'dataset_id': dataset_id,
+            'slice_id': slice_id,
+            'id_token': id_token,
+            'slice_name': name,
+            'user_id': user_id,
+            'indices': indices
+        }
+        return self.post(endpoint='/slice', data=data)
+
+    def upload_slice_new_indices(self,
+                              user_id: str,
+                              slice_id: str,
+                              indices: List[int],
+                              id_token: str):
+        data = {
+            'slice_id': slice_id,
+            'id_token': id_token,
+            'indices': indices
+        }
+        return self.post(endpoint='/indices', data=data)
 
     def upload_model_metadata(self,
                               user_id: str,

@@ -5,6 +5,7 @@ import pandas as pd
 import tarfile
 import tempfile
 import uuid
+from typing import List
 
 from bentoml.saved_bundle.bundler import _write_bento_content_to_dir
 from bentoml.utils.tempdir import TempDirectory
@@ -79,3 +80,29 @@ class UnboxClient(object):
             dataset_file_path = os.path.join(tmp_dir, str(uuid.uuid1()))
             df.to_csv(dataset_file_path, index=False)
             return self.add_dataset(dataset_file_path, name, description, label_column_name, text_column_name)
+
+    def add_slice(self, dataset_id: str, slice_name: str, indices: List[int], slice_id: str = uuid.uuid1()):
+        # For now, let's upload straight to Firebase Storage from here
+        user_id = self.firebase_api.user['localId']
+
+        # And then set the metadata via request to our Flask API
+        id_token = self.firebase_api.user['idToken']
+        response = self.flask_api.upload_slice_metadata(user_id,
+                                                        dataset_id,
+                                                        slice_id,
+                                                        slice_name,
+                                                        indices,
+                                                        id_token)
+        return response.json()
+
+    def update_slice_indices(self, indices: List[int], slice_id: str):
+        # For now, let's upload straight to Firebase Storage from here
+        user_id = self.firebase_api.user['localId']
+
+        # And then set the metadata via request to our Flask API
+        id_token = self.firebase_api.user['idToken']
+        response = self.flask_api.upload_slice_new_indices(user_id,
+                                                        slice_id,
+                                                        indices,
+                                                        id_token)
+        return response.json()
