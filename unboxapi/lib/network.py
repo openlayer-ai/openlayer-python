@@ -22,13 +22,13 @@ class FlaskAPI:
                                 text_column_name: str,
                                 id_token: str):
         data = {
-            'dataset_id': dataset_id,
-            'id_token': id_token,
+            'datasetId': dataset_id,
+            'idToken': id_token,
             'name': name,
             'description': description,
-            'label_column_name': label_column_name,
-            'text_column_name': text_column_name,
-            'user_id': user_id
+            'labelColumnName': label_column_name,
+            'textColumnName': text_column_name,
+            'userId': user_id
         }
         return self.post(endpoint='/api/dataset/upload_metadata', data=data)
 
@@ -39,16 +39,16 @@ class FlaskAPI:
                               description: str,
                               id_token: str):
         data = {
-            'model_id': model_id,
-            'id_token': id_token,
+            'modelId': model_id,
+            'idToken': id_token,
             'name': name,
             'description': description,
-            'user_id': user_id
+            'userId': user_id
         }
         return self.post(endpoint='/api/model/upload_metadata', data=data)
 
     # def upload_dataset(self, file_path: str, name: str, id_token: str):
-    #     data = {'name': name, 'id_token': id_token}
+    #     data = {'name': name, 'idToken': id_token}
     #     file = open(file_path, 'rb')
     #     return self.post(endpoint='/api/dataset/upload_dataset', data=data, file=file)
 
@@ -58,10 +58,10 @@ class FlaskAPI:
                                       dataset_id: str,
                                       user_id: str):
         data = {
-            'id_token': id_token,
-            'user_id': user_id,
-            'model_id': model_id,
-            'dataset_id': dataset_id
+            'idToken': id_token,
+            'userId': user_id,
+            'modelId': model_id,
+            'datasetId': dataset_id
         }
         return self.post(endpoint='/api/run/create_run', data=data)
 
