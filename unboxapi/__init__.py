@@ -23,11 +23,11 @@ class UnboxClient(object):
 
     def _test_associate(self, model_id: str, dataset_id: str, user_id: str):
         ''' This is just for testing.'''
-        print(self.flask_api._test_associate_model_dataset(
+        return self.flask_api._test_associate_model_dataset(
             id_token=self.firebase_api.user['idToken'],
             model_id=model_id,
             dataset_id=dataset_id,
-            user_id=user_id))
+            user_id=user_id)
 
     def add_model(self, function, model, name: str, description: str, model_type: str = 'sklearn'):
         bento_service = create_template_model(model_type)
