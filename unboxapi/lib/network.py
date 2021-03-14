@@ -65,6 +65,19 @@ class FlaskAPI:
         }
         return self.post(endpoint='/api/run/create_run', data=data)
 
+    def _test_add_test_suite(self,
+                             id_token: str,
+                             run_id: str,
+                             user_id: str,
+                             test_config: any):
+        data = {
+            'idToken': id_token,
+            'userId': user_id,
+            'runId': run_id,
+            'testConfig': test_config
+        }
+        return self.post(endpoint='/api/run/add_test_suite', data=data)
+
 
 class FirebaseAPI:
 

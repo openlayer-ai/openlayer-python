@@ -29,6 +29,14 @@ class UnboxClient(object):
             dataset_id=dataset_id,
             user_id=user_id)
 
+    def _test_add_test_suite(self, run_id: str, user_id: str, test_config: any):
+        ''' This is just for testing.'''
+        return self.flask_api._test_add_test_suite(
+            id_token=self.firebase_api.user['idToken'],
+            run_id=run_id,
+            user_id=user_id,
+            test_config=test_config)
+
     def add_model(self, function, model, name: str, description: str, model_type: str = 'sklearn'):
         bento_service = create_template_model(model_type)
         bento_service.pack('model', model)
