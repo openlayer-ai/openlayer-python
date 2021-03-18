@@ -7,11 +7,22 @@ class FlaskAPI:
     def __init__(self):
         self.url = "http://0.0.0.0:8080"
 
-    def post(self, endpoint: str = "/", data: any = None):
-        return requests.post(self.url + endpoint, json=data)
+    def post(self, id_token: str, endpoint: str = "/", data: any = None):
+        return requests.post(
+            self.url + endpoint,
+            json=data,
+            headers={"Authorization": id_token},
+        )
 
-    def post_file(self, endpoint: str = "/", data: any = None, files: any = None):
-        return requests.post(self.url + endpoint, data=data, files=files)
+    def post_file(
+        self, id_token: str, endpoint: str = "/", data: any = None, files: any = None
+    ):
+        return requests.post(
+            self.url + endpoint,
+            data=data,
+            files=files,
+            headers={"Authorization": id_token},
+        )
 
     def upload_dataset(
         self,
@@ -26,7 +37,6 @@ class FlaskAPI:
     ):
         data = {
             "datasetId": dataset_id,
-            "idToken": id_token,
             "name": name,
             "description": description,
             "labelColumnName": label_column_name,
@@ -34,41 +44,38 @@ class FlaskAPI:
             "userId": user_id,
         }
         files = {"file": open(file_path, "rb")}
-        return self.post_file(endpoint="/api/dataset/upload", data=data, files=files)
+        return self.post_file(id_token, "/api/dataset/upload", data, files)
 
     def upload_model_metadata(
         self, user_id: str, model_id: str, name: str, description: str, id_token: str
     ):
         data = {
             "modelId": model_id,
-            "idToken": id_token,
             "name": name,
             "description": description,
             "userId": user_id,
         }
-        return self.post(endpoint="/api/model/upload_metadata", data=data)
+        return self.post(id_token, "/api/model/upload_metadata", data)
 
     def _test_associate_model_dataset(
         self, id_token: str, model_id: str, dataset_id: str, user_id: str
     ):
         data = {
-            "idToken": id_token,
             "userId": user_id,
             "modelId": model_id,
             "datasetId": dataset_id,
         }
-        return self.post(endpoint="/api/run/create_run", data=data)
+        return self.post(id_token, "/api/run/create_run", data)
 
     def _test_add_test_suite(
         self, id_token: str, run_id: str, user_id: str, test_config: any
     ):
         data = {
-            "idToken": id_token,
             "userId": user_id,
             "runId": run_id,
             "testConfig": test_config,
         }
-        return self.post(endpoint="/api/run/add_test_suite", data=data)
+        return self.post(id_token, "/api/run/add_test_suite", data)
 
 
 class FirebaseAPI:
