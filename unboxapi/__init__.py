@@ -75,21 +75,19 @@ class UnboxClient(object):
         label_column_name: str,
         text_column_name: str,
     ):
-        # For now, let's upload straight to Firebase Storage from here
         user_id = self.firebase_api.user["localId"]
         dataset_id = str(uuid.uuid1())
-        remote_path = f"users/{user_id}/datasets/{dataset_id}"
-        self.firebase_api.upload(remote_path, file_path)
 
-        # And then set the metadata via request to our Flask API
+        # Upload dataset and metadata to our Flask API
         id_token = self.firebase_api.user["idToken"]
-        response = self.flask_api.upload_dataset_metadata(
+        response = self.flask_api.upload_dataset(
             user_id,
             dataset_id,
             name,
             description,
             label_column_name,
             text_column_name,
+            file_path,
             id_token,
         )
         return response.json()

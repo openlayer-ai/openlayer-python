@@ -7,12 +7,13 @@ class FlaskAPI:
     def __init__(self):
         self.url = "http://0.0.0.0:8080"
 
-    def post(self, endpoint: str = "/", data: any = None, file: any = None):
-        return requests.post(
-            self.url + endpoint, json=data, files=file and {"file": file}
-        )
+    def post(self, endpoint: str = "/", data: any = None):
+        return requests.post(self.url + endpoint, json=data)
 
-    def upload_dataset_metadata(
+    def post_file(self, endpoint: str = "/", data: any = None, files: any = None):
+        return requests.post(self.url + endpoint, data=data, files=files)
+
+    def upload_dataset(
         self,
         user_id: str,
         dataset_id: str,
@@ -20,6 +21,7 @@ class FlaskAPI:
         description: str,
         label_column_name: str,
         text_column_name: str,
+        file_path: str,
         id_token: str,
     ):
         data = {
@@ -31,7 +33,8 @@ class FlaskAPI:
             "textColumnName": text_column_name,
             "userId": user_id,
         }
-        return self.post(endpoint="/api/dataset/upload_metadata", data=data)
+        files = {"file": open(file_path, "rb")}
+        return self.post_file(endpoint="/api/dataset/upload", data=data, files=files)
 
     def upload_model_metadata(
         self, user_id: str, model_id: str, name: str, description: str, id_token: str
@@ -44,11 +47,6 @@ class FlaskAPI:
             "userId": user_id,
         }
         return self.post(endpoint="/api/model/upload_metadata", data=data)
-
-    # def upload_dataset(self, file_path: str, name: str, id_token: str):
-    #     data = {'name': name, 'idToken': id_token}
-    #     file = open(file_path, 'rb')
-    #     return self.post(endpoint='/api/dataset/upload_dataset', data=data, file=file)
 
     def _test_associate_model_dataset(
         self, id_token: str, model_id: str, dataset_id: str, user_id: str
