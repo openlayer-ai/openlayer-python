@@ -21,24 +21,6 @@ class UnboxClient(object):
         self.flask_api = FlaskAPI()
         self.firebase_api = FirebaseAPI(email=email, password=password)
 
-    def _test_associate(self, model_id: str, dataset_id: str, user_id: str):
-        """ This is just for testing."""
-        return self.flask_api._test_associate_model_dataset(
-            id_token=self.firebase_api.user["idToken"],
-            model_id=model_id,
-            dataset_id=dataset_id,
-            user_id=user_id,
-        )
-
-    def _test_add_test_suite(self, run_id: str, user_id: str, test_config: any):
-        """ This is just for testing."""
-        return self.flask_api._test_add_test_suite(
-            id_token=self.firebase_api.user["idToken"],
-            run_id=run_id,
-            user_id=user_id,
-            test_config=test_config,
-        )
-
     def add_model(
         self, function, model, name: str, description: str, model_type: str = "sklearn"
     ):
@@ -56,14 +38,14 @@ class UnboxClient(object):
                 with tarfile.open(tarfile_path, mode="w:gz") as tar:
                     tar.add(temp_dir, arcname=bento_service.name)
 
-                user_id = self.firebase_api.user["localId"]
-                remote_path = f"users/{user_id}/models/{model_id}"
-                self.firebase_api.upload(remote_path, tarfile_path)
-
-                # Now set the metadata via request to our Flask API
-                id_token = self.firebase_api.user["idToken"]
-                response = self.flask_api.upload_model_metadata(
-                    user_id, model_id, name, description, id_token
+                # Upload the model and metadata to our Flask API
+                response = self.flask_api.upload_model(
+                    self.firebase_api.user["localId"],
+                    model_id,
+                    name,
+                    description,
+                    tarfile_path,
+                    self.firebase_api.user["idToken"],
                 )
         return response
 
