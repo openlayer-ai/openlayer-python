@@ -15,7 +15,7 @@ class UnboxClient(object):
 
     # Public functions
     def __init__(self, email: str = None, password: str = None):
-        self.flask_api = UnboxAPI(email=email, password=password)
+        self.unbox_api = UnboxAPI(email=email, password=password)
 
     def add_model(
         self, function, model, name: str, description: str, model_type: str = "sklearn"
@@ -26,17 +26,20 @@ class UnboxClient(object):
 
         with TempDirectory() as temp_dir:
             _write_bento_content_to_dir(bento_service, temp_dir)
+            print("Packaged bento content")
 
             with TempDirectory() as tarfile_dir:
+                tarfile_path = f"{tarfile_dir}/model"
 
-                with tarfile.open(tarfile_dir, mode="w:gz") as tar:
+                with tarfile.open(tarfile_path, mode="w:gz") as tar:
                     tar.add(temp_dir, arcname=bento_service.name)
 
-                # Upload the model to our Flask API
-                response = self.flask_api.upload_model(
+                print("Connecting to Unbox server")
+                # Upload the model and metadata to our Flask API
+                response = self.unbox_api.upload_model(
                     name,
                     description,
-                    tarfile_dir,
+                    tarfile_path,
                 )
         return response
 
@@ -49,7 +52,7 @@ class UnboxClient(object):
         text_column_name: str,
     ):
         # Upload dataset to our Flask API
-        response = self.flask_api.upload_dataset(
+        response = self.unbox_api.upload_dataset(
             name,
             description,
             label_column_name,
