@@ -1,5 +1,3 @@
-import bentoml
-import getpass
 import os
 import pandas as pd
 import tarfile
@@ -9,17 +7,15 @@ import uuid
 from bentoml.saved_bundle.bundler import _write_bento_content_to_dir
 from bentoml.utils.tempdir import TempDirectory
 
-from .lib.network import FlaskAPI, FirebaseAPI
+from .lib.network import UnboxAPI
 from .template import create_template_model
 
 
 class UnboxClient(object):
 
     # Public functions
-
     def __init__(self, email: str = None, password: str = None):
-        self.flask_api = FlaskAPI()
-        self.firebase_api = FirebaseAPI(email=email, password=password)
+        self.flask_api = UnboxAPI(email=email, password=password)
 
     def add_model(
         self, function, model, name: str, description: str, model_type: str = "sklearn"
@@ -32,20 +28,15 @@ class UnboxClient(object):
             _write_bento_content_to_dir(bento_service, temp_dir)
 
             with TempDirectory() as tarfile_dir:
-                model_id = str(uuid.uuid1())
-                tarfile_path = f"{tarfile_dir}/{model_id}"
 
-                with tarfile.open(tarfile_path, mode="w:gz") as tar:
+                with tarfile.open(tarfile_dir, mode="w:gz") as tar:
                     tar.add(temp_dir, arcname=bento_service.name)
 
-                # Upload the model and metadata to our Flask API
+                # Upload the model to our Flask API
                 response = self.flask_api.upload_model(
-                    self.firebase_api.user["localId"],
-                    model_id,
                     name,
                     description,
-                    tarfile_path,
-                    self.firebase_api.user["idToken"],
+                    tarfile_dir,
                 )
         return response
 
@@ -57,20 +48,13 @@ class UnboxClient(object):
         label_column_name: str,
         text_column_name: str,
     ):
-        user_id = self.firebase_api.user["localId"]
-        dataset_id = str(uuid.uuid1())
-
-        # Upload dataset and metadata to our Flask API
-        id_token = self.firebase_api.user["idToken"]
+        # Upload dataset to our Flask API
         response = self.flask_api.upload_dataset(
-            user_id,
-            dataset_id,
             name,
             description,
             label_column_name,
             text_column_name,
             file_path,
-            id_token,
         )
         return response.json()
 

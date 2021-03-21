@@ -1,27 +1,23 @@
-import pyrebase
 import requests
-import getpass
+from typing import Dict
 
 
-class FlaskAPI:
-    def __init__(self):
+class UnboxAPI:
+    def __init__(self, id_token: str = None, email: str = None, password: str = None):
         self.url = "http://0.0.0.0:8080"
+        if id_token:
+            self.id_token = id_token
+        else:
+            self.id_token = requests.get(
+                self.url + "/tokens", auth=(email, password)
+            ).json()["token"]
 
-    def post(self, id_token: str, endpoint: str = "/", data: any = None):
-        return requests.post(
-            self.url + endpoint,
-            json=data,
-            headers={"Authorization": id_token},
-        )
-
-    def post_file(
-        self, id_token: str, endpoint: str = "/", data: any = None, files: any = None
-    ):
+    def post(self, endpoint: str, data: Dict[str, str], files):
         return requests.post(
             self.url + endpoint,
             data=data,
             files=files,
-            headers={"Authorization": id_token},
+            headers={"Authorization": f"Token {self.id_token}"},
         )
 
     def upload_dataset(
@@ -44,7 +40,7 @@ class FlaskAPI:
             "userId": user_id,
         }
         files = {"file": open(file_path, "rb")}
-        return self.post_file(id_token, "/api/dataset/upload", data, files)
+        return self.post("/api/datasets", data, files)
 
     def upload_model(
         self,
@@ -62,25 +58,4 @@ class FlaskAPI:
             "userId": user_id,
         }
         files = {"file": open(file_path, "rb")}
-        return self.post_file(id_token, "/api/model/upload", data, files)
-
-
-class FirebaseAPI:
-    def __init__(self, email: str = None, password: str = None):
-        if not email or not password:
-            email = input("What is your Unbox email?")
-            password = getpass.getpass("What is your Unbox password?")
-
-        config = {
-            "apiKey": "AIzaSyAKlGQOmXTjPQhL1Uvj-Jr-_jUtNWmpOgs",
-            "authDomain": "unbox-ai.firebaseapp.com",
-            "databaseURL": "https://unbox-ai.firebaseio.com",
-            "storageBucket": "unbox-ai.appspot.com",
-        }
-
-        # Initialize Pyrebase instance
-        self.firebase = pyrebase.initialize_app(config)
-        # Get a reference to the auth service
-        auth = self.firebase.auth()
-        # Login
-        self.user = auth.sign_in_with_email_and_password(email, password)
+        return self.post("/api/models", data, files)
