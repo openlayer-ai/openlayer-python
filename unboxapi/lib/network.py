@@ -19,7 +19,7 @@ class UnboxAPI:
             self.url + endpoint,
             data=data,
             files=files,
-            headers={"Authorization": f"Token {self.id_token}"},
+            headers={"Authorization": f"Bearer {self.id_token}"},
         )
 
     def upload_dataset(

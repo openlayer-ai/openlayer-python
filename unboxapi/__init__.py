@@ -59,7 +59,7 @@ class UnboxClient(object):
             text_column_name,
             file_path,
         )
-        return response.json()
+        return response
 
     def add_dataframe(
         self,
