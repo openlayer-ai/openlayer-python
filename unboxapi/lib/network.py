@@ -1,86 +1,59 @@
-import pyrebase
 import requests
-import getpass
+from typing import Dict
 
 
-class FlaskAPI:
-    def __init__(self):
+class UnboxAPI:
+    def __init__(self, id_token: str = None, email: str = None, password: str = None):
         self.url = "http://0.0.0.0:8080"
+        # self.url = "https://unbox-flask-server-qpvun7qfdq-uw.a.run.app"
+        if id_token:
+            self.id_token = id_token
+        else:
+            response = requests.get(self.url + "/api/tokens", auth=(email, password))
+            if response.ok:
+                self.id_token = response.json()["token"]
+            else:
+                print("Failed to retrieve a token for the email / password provided.")
 
-    def post(self, id_token: str, endpoint: str = "/", data: any = None):
-        return requests.post(
-            self.url + endpoint,
-            json=data,
-            headers={"Authorization": id_token},
+    def upload(self, endpoint: str, data: Dict[str, str], file_path):
+        response = requests.get(
+            self.url + endpoint, headers={"Authorization": f"Bearer {self.id_token}"}
         )
-
-    def post_file(
-        self, id_token: str, endpoint: str = "/", data: any = None, files: any = None
-    ):
-        return requests.post(
-            self.url + endpoint,
-            data=data,
-            files=files,
-            headers={"Authorization": id_token},
-        )
+        if response.ok and "url" in response.json():
+            storage_url = response.json()["url"]
+            object_id = response.json()["id"]
+            response = requests.put(
+                storage_url,
+                data=open(file_path, "rb"),
+                headers={"Content-Type": "application/x-gzip"},
+            )
+            if response.ok:
+                return requests.post(
+                    f"{self.url}{endpoint}/{object_id}",
+                    json=data,
+                    headers={"Authorization": f"Bearer {self.id_token}"},
+                )
+            else:
+                print("Failed to upload object.")
+        else:
+            print("Failed to upload object.")
 
     def upload_dataset(
         self,
-        user_id: str,
-        dataset_id: str,
         name: str,
         description: str,
         label_column_name: str,
         text_column_name: str,
         file_path: str,
-        id_token: str,
     ):
         data = {
-            "datasetId": dataset_id,
             "name": name,
             "description": description,
             "labelColumnName": label_column_name,
             "textColumnName": text_column_name,
-            "userId": user_id,
         }
-        files = {"file": open(file_path, "rb")}
-        return self.post_file(id_token, "/api/dataset/upload", data, files)
+        return self.upload("/api/datasets", data, file_path)
 
-    def upload_model(
-        self,
-        user_id: str,
-        model_id: str,
-        name: str,
-        description: str,
-        file_path: str,
-        id_token: str,
-    ):
-        data = {
-            "modelId": model_id,
-            "name": name,
-            "description": description,
-            "userId": user_id,
-        }
-        files = {"file": open(file_path, "rb")}
-        return self.post_file(id_token, "/api/model/upload", data, files)
-
-
-class FirebaseAPI:
-    def __init__(self, email: str = None, password: str = None):
-        if not email or not password:
-            email = input("What is your Unbox email?")
-            password = getpass.getpass("What is your Unbox password?")
-
-        config = {
-            "apiKey": "AIzaSyAKlGQOmXTjPQhL1Uvj-Jr-_jUtNWmpOgs",
-            "authDomain": "unbox-ai.firebaseapp.com",
-            "databaseURL": "https://unbox-ai.firebaseio.com",
-            "storageBucket": "unbox-ai.appspot.com",
-        }
-
-        # Initialize Pyrebase instance
-        self.firebase = pyrebase.initialize_app(config)
-        # Get a reference to the auth service
-        auth = self.firebase.auth()
-        # Login
-        self.user = auth.sign_in_with_email_and_password(email, password)
+    def upload_model(self, name: str, description: str, file_path: str):
+        data = {"name": name, "description": description}
+        return self.upload("/api/models", data, file_path)
