@@ -5,6 +5,7 @@ from typing import Dict
 class UnboxAPI:
     def __init__(self, id_token: str = None, email: str = None, password: str = None):
         self.url = "http://0.0.0.0:8080"
+        # self.url = "https://unbox-flask-server-qpvun7qfdq-uw.a.run.app"
         if id_token:
             self.id_token = id_token
         else:
@@ -14,13 +15,28 @@ class UnboxAPI:
             else:
                 print("Failed to retrieve a token for the email / password provided.")
 
-    def post(self, endpoint: str, data: Dict[str, str], files):
-        return requests.post(
-            self.url + endpoint,
-            data=data,
-            files=files,
-            headers={"Authorization": f"Bearer {self.id_token}"},
+    def upload(self, endpoint: str, data: Dict[str, str], file_path):
+        response = requests.get(
+            self.url + endpoint, headers={"Authorization": f"Bearer {self.id_token}"}
         )
+        if response.ok and "url" in response.json():
+            storage_url = response.json()["url"]
+            object_id = response.json()["id"]
+            response = requests.put(
+                storage_url,
+                data=open(file_path, "rb"),
+                headers={"Content-Type": "application/x-gzip"},
+            )
+            if response.ok:
+                return requests.post(
+                    f"{self.url}{endpoint}/{object_id}",
+                    json=data,
+                    headers={"Authorization": f"Bearer {self.id_token}"},
+                )
+            else:
+                print("Failed to upload object.")
+        else:
+            print("Failed to upload object.")
 
     def upload_dataset(
         self,
@@ -36,10 +52,8 @@ class UnboxAPI:
             "labelColumnName": label_column_name,
             "textColumnName": text_column_name,
         }
-        files = {"file": open(file_path, "rb")}
-        return self.post("/api/datasets", data, files)
+        return self.upload("/api/datasets", data, file_path)
 
     def upload_model(self, name: str, description: str, file_path: str):
         data = {"name": name, "description": description}
-        files = {"file": open(file_path, "rb")}
-        return self.post("/api/models", data, files)
+        return self.upload("/api/models", data, file_path)
