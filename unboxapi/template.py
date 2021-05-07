@@ -1,16 +1,27 @@
 import textwrap
-
+from unboxapi.model_strings import only_model_string, transformers_string, tokenizer_string
 
 modelTypes = {
     'sklearn': 'SklearnModelArtifact',
     'pytorch': 'PytorchModelArtifact',
     'tensorflow': 'TensorflowSavedModelArtifact',
-    'transformers': 'TransformersModelArtifact'
+    'transformers': 'TransformersModelArtifact',
+    'fasttext': 'FasttextModelArtifact'
 }
 
 
 # TODO: in dire need of cleanup
-def create_template_model(model_type: str):
+def create_template_model(model_type: str, local_imports: str, has_tokenizer: bool):
+
+    artifact_name = modelTypes[model_type]
+
+    if model_type == 'transformers':
+        bento_specs = transformers_string.format(artifact_name)
+    elif has_tokenizer:
+        bento_specs = tokenizer_string.format(artifact_name)
+    else:
+        bento_specs = only_model_string.format(artifact_name)
+
     with open('template_model.py', 'w') as python_file:
         file_contents = f'''\
         from typing import List
@@ -20,37 +31,10 @@ def create_template_model(model_type: str):
         from bentoml.adapters import JsonInput, StringInput
         from bentoml.types import JsonSerializable, InferenceTask
 
+        {local_imports}
+
         @env(infer_pip_packages=True)
-        @artifacts([{modelTypes[model_type]}('model'), PickleArtifact('function')])
-        class TemplateModel(BentoService):
-
-            @api(input=StringInput(), batch=True)
-            def predict_str(self, text):
-                return self.artifacts.function(
-                    self.artifacts.model,
-                    text
-                )
-
-            @api(input=JsonInput(), batch=True)
-            def predict(self, parsed_json_list: List[JsonSerializable]):
-                text = []
-                for json in parsed_json_list:
-                    if 'text' in json:
-                        text.append(json['text'])
-                    else:
-                        task.discard(http_status=400,
-                                    err_msg='input json must contain `text` field')
-
-                prediction_probs, class_names, _ = self.artifacts.function(
-                    self.artifacts.model,
-                    text
-                )
-
-                return [
-                    {{class_names[i]: prob for i,
-                        prob in enumerate(probs)}}
-                    for probs in prediction_probs
-                ]
+        {bento_specs}
         '''
         python_file.write(textwrap.dedent(file_contents))
 
