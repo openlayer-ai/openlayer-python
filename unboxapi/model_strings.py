@@ -1,6 +1,6 @@
 only_model_string = '''
         @artifacts([{0}('model'), PickleArtifact('function'), PickleArtifact('active_learning_function')])
-        class TemplateModel(BentoService):
+        class {1}(BentoService):
 
             @api(input=JsonInput(), batch=True)
             def predict(self, parsed_json_list: List[JsonSerializable]):
@@ -69,14 +69,14 @@ only_model_string = '''
         '''
 
 transformers_string = '''
-        @artifacts([{0}('tokenizer_model'), PickleArtifact('function'), PickleArtifact('active_learning_function')])
-        class TemplateModel(BentoService):
+        @artifacts([{0}('model'), PickleArtifact('function'), PickleArtifact('active_learning_function')])
+        class {1}(BentoService):
 
             @api(input=JsonInput(), batch=True)
             def predict(self, parsed_json_list: List[JsonSerializable]):
             
-                model = self.artifacts.tokenizer_model.get("model")
-                tokenizer = self.artifacts.tokenizer_model.get("tokenizer")
+                model = self.artifacts.model.get("model")
+                tokenizer = self.artifacts.model.get("tokenizer")
                 
                 text = []
                 for json in parsed_json_list:
@@ -101,8 +101,8 @@ transformers_string = '''
             @api(input=JsonInput(), batch=True)
             def predictbatch(self, parsed_json_list: List[JsonSerializable]):
             
-                model = self.artifacts.tokenizer_model.get("model")
-                tokenizer = self.artifacts.tokenizer_model.get("tokenizer")
+                model = self.artifacts.model.get("model")
+                tokenizer = self.artifacts.model.get("tokenizer")
                 
                 text = []
                 for json in parsed_json_list:
@@ -126,8 +126,8 @@ transformers_string = '''
             @api(input=JsonInput(), batch=True)
             def predictactive(self, parsed_json_list: List[JsonSerializable]):
             
-                model = self.artifacts.tokenizer_model.get("model")
-                tokenizer = self.artifacts.tokenizer_model.get("tokenizer")
+                model = self.artifacts.model.get("model")
+                tokenizer = self.artifacts.model.get("tokenizer")
                 
                 text = []
                 n_instances = 1
@@ -151,15 +151,16 @@ transformers_string = '''
                 return [(np_indices.tolist(), res_text_list)]
         '''
 
-tokenizer_string = '''
-        @artifacts([{0}('model'), PickleArtifact('tokenizer'), PickleArtifact('function'), PickleArtifact('active_learning_function')])
-        class TemplateModel(BentoService):
+tokenizer_and_vocab_string = '''
+        @artifacts([{0}('model'), PickleArtifact('tokenizer'), PickleArtifact('vocab'), PickleArtifact('function'), PickleArtifact('active_learning_function')])
+        class {1}(BentoService):
 
             @api(input=JsonInput(), batch=True)
             def predict(self, parsed_json_list: List[JsonSerializable]):
 
                 model = self.artifacts.model
                 tokenizer = self.artifacts.tokenizer
+                vocab = self.artifacts.vocab
 
                 text = []
                 for json in parsed_json_list:
@@ -172,6 +173,7 @@ tokenizer_string = '''
                 prediction_probs, class_names, _ = self.artifacts.function(
                     model,
                     tokenizer,
+                    vocab,
                     text
                 )
 
@@ -186,6 +188,7 @@ tokenizer_string = '''
                 
                 model = self.artifacts.model
                 tokenizer = self.artifacts.tokenizer
+                vocab = self.artifacts.vocab
                 
                 text = []
                 for json in parsed_json_list:
@@ -197,6 +200,7 @@ tokenizer_string = '''
                 prediction_probs, class_names, _ = self.artifacts.function(
                     model,
                     tokenizer,
+                    vocab,
                     text
                 )
 
@@ -211,6 +215,7 @@ tokenizer_string = '''
             
                 model = self.artifacts.model
                 tokenizer = self.artifacts.tokenizer
+                vocab = self.artifacts.vocab
                 
                 text = []
                 n_instances = 1
@@ -229,6 +234,7 @@ tokenizer_string = '''
                     self.artifacts.function,
                     model,
                     tokenizer,
+                    vocab
                 )
 
                 return [(np_indices.tolist(), res_text_list)]

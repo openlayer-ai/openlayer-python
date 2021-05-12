@@ -15,21 +15,25 @@ from .template import create_template_model
 
 class EstimatorHelper:
 
-    def __init__(self, callback, model, tokenizer=None):
+    def __init__(self, callback, model, tokenizer=None, vocab=None):
         self.model = model
         self.tokenizer = tokenizer
+        self.vocab = vocab
         self.callback = callback
 
     def predict_proba(self, text_list):
 
         if self.tokenizer:
-            return self.callback(self.model, self.tokenizer, text_list)[0]
+            if not self.vocab:
+                return self.callback(self.model, self.tokenizer, text_list)[0]
+            else:
+                return self.callback(self.model, self.tokenizer, self.vocab, text_list)[0]
         else:
             return self.callback(self.model, text_list)[0]
 
 
-def active_learning_function(text_list, n_instances, callback, model, tokenizer=None):
-    est = EstimatorHelper(callback, model, tokenizer)
+def active_learning_function(text_list, n_instances, callback, model, tokenizer=None, vocab=None):
+    est = EstimatorHelper(callback, model, tokenizer, vocab)
 
     learner = ActiveLearner(
         estimator=est
@@ -39,20 +43,28 @@ def active_learning_function(text_list, n_instances, callback, model, tokenizer=
 
 
 class UnboxClient(object):
-    Public
-    functions
 
     def __init__(self, email: str = None, password: str = None):
-        self.unbox_api = UnboxAPI(email=email, password=password)
+        if email and password:
+            self.unbox_api = UnboxAPI(email=email, password=password)
+        else:
+            print("User is not logged in.")
 
     def add_model(
-            self, function, model, tokenizer=None, name: str = "", description: str = "", model_type: str = "sklearn",
-            local_imports: List[str] = [""]
+            self, function, model, tokenizer=None, vocab=None, name: str = "TemplateModel", description: str = "", model_type: str = "sklearn",
+            local_imports: List[str] = []
     ):
         local_imports = "\n".join([" ".join(["import", s.strip()]) for s in local_imports])
-        bento_service = create_template_model(model_type, local_imports, bool(tokenizer))
-        bento_service.pack("model", model)
+        bento_service = create_template_model(model_type, name, local_imports, bool(tokenizer))
+
+        if model_type == "transformers":
+            bento_service.pack("model", {"model": model, "tokenizer": tokenizer})
+        else:
+            bento_service.pack("model", model)
         bento_service.pack("function", function)
+        if tokenizer and model_type != "transformers":
+            bento_service.pack("tokenizer", tokenizer)
+            bento_service.pack("vocab", vocab)
         bento_service.pack("active_learning_function", active_learning_function)
 
         with TempDirectory() as temp_dir:
@@ -73,6 +85,28 @@ class UnboxClient(object):
                     tarfile_path,
                 )
         return response
+
+    @staticmethod
+    def pack_model(
+            function, model, tokenizer=None, vocab=None, model_name: str = "TemplateModel", model_type: str = "sklearn",
+            local_imports: List[str] = []
+    ):
+        local_imports = "\n".join([" ".join(["import", s.strip()]) for s in local_imports])
+        bento_service = create_template_model(model_type, model_name, local_imports, bool(tokenizer))
+
+        if model_type == "transformers":
+            bento_service.pack("model", {"model": model, "tokenizer": tokenizer})
+        else:
+            bento_service.pack("model", model)
+        bento_service.pack("function", function)
+        if tokenizer and model_type != "transformers":
+            bento_service.pack("tokenizer", tokenizer)
+            bento_service.pack("vocab", vocab)
+        bento_service.pack("active_learning_function", active_learning_function)
+
+        saved_path = bento_service.save()
+
+        return saved_path
 
     def add_dataset(
             self,
