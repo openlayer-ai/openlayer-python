@@ -8,7 +8,7 @@ from typing import Dict
 class UnboxAPI:
     def __init__(self, id_token: str = None, email: str = None, password: str = None):
         self.url = "http://0.0.0.0:8080"
-        # self.url = "https://unbox-flask-server-qpvun7qfdq-uw.a.run.app"
+        # self.url = "https://unbox-flask-server-qpvun7qfdq-wn.a.run.app"
         if id_token:
             self.id_token = id_token
         else:
