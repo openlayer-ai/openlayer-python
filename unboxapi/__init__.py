@@ -1,3 +1,4 @@
+import csv
 import os
 import pandas as pd
 import tarfile
@@ -51,15 +52,25 @@ class UnboxClient(object):
         label_column_name: str,
         text_column_name: str,
     ):
-        # Upload dataset to our Flask API
-        response = self.unbox_api.upload_dataset(
-            name,
-            description,
-            label_column_name,
-            text_column_name,
-            file_path,
-        )
-        return response
+        with open(file_path, "rt") as f:
+            reader = csv.reader(f)
+            headers = next(reader)
+        try:
+            label_column_index = headers.index(label_column_name)
+            text_column_index = headers.index(text_column_name)
+            # Upload dataset to our Flask API
+            response = self.unbox_api.upload_dataset(
+                name,
+                description,
+                label_column_name,
+                text_column_name,
+                label_column_index,
+                text_column_index,
+                file_path,
+            )
+            return response
+        except ValueError:
+            raise ValueError(f"Label column and/or text column names not in dataset.")
 
     def add_dataframe(
         self,

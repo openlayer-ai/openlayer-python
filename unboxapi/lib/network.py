@@ -53,6 +53,8 @@ class UnboxAPI:
         description: str,
         label_column_name: str,
         text_column_name: str,
+        label_column_index: str,
+        text_column_index: str,
         file_path: str,
     ):
         data = {
@@ -60,6 +62,8 @@ class UnboxAPI:
             "description": description,
             "labelColumnName": label_column_name,
             "textColumnName": text_column_name,
+            "labelColumnIndex": label_column_index,
+            "textColumnIndex": text_column_index,
         }
         return self.upload("/api/datasets", data, file_path)
 
