@@ -2,7 +2,7 @@ import requests
 import os
 from tqdm import tqdm
 from tqdm.utils import CallbackIOWrapper
-from typing import Dict
+from typing import Dict, List
 
 
 class UnboxAPI:
@@ -51,6 +51,7 @@ class UnboxAPI:
         self,
         name: str,
         description: str,
+        class_names: List[str],
         label_column_name: str,
         text_column_name: str,
         label_column_index: str,
@@ -60,6 +61,7 @@ class UnboxAPI:
         data = {
             "name": name,
             "description": description,
+            "classNames": class_names,
             "labelColumnName": label_column_name,
             "textColumnName": text_column_name,
             "labelColumnIndex": label_column_index,
@@ -67,6 +69,8 @@ class UnboxAPI:
         }
         return self.upload("/api/datasets", data, file_path)
 
-    def upload_model(self, name: str, description: str, file_path: str):
-        data = {"name": name, "description": description}
+    def upload_model(
+        self, name: str, description: str, class_names: List[str], file_path: str
+    ):
+        data = {"name": name, "description": description, "classNames": class_names}
         return self.upload("/api/models", data, file_path)

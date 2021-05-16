@@ -4,6 +4,7 @@ import pandas as pd
 import tarfile
 import tempfile
 import uuid
+from typing import List
 
 from bentoml.saved_bundle.bundler import _write_bento_content_to_dir
 from bentoml.utils.tempdir import TempDirectory
@@ -19,7 +20,13 @@ class UnboxClient(object):
         self.unbox_api = UnboxAPI(email=email, password=password)
 
     def add_model(
-        self, function, model, name: str, description: str, model_type: str = "sklearn"
+        self,
+        function,
+        model,
+        class_names: List[str],
+        name: str,
+        description: str,
+        model_type: str = "sklearn",
     ):
         bento_service = create_template_model(model_type)
         bento_service.pack("model", model)
@@ -40,6 +47,7 @@ class UnboxClient(object):
                 response = self.unbox_api.upload_model(
                     name,
                     description,
+                    class_names,
                     tarfile_path,
                 )
         return response
@@ -49,6 +57,7 @@ class UnboxClient(object):
         file_path: str,
         name: str,
         description: str,
+        class_names: List[str],
         label_column_name: str,
         text_column_name: str,
     ):
@@ -62,6 +71,7 @@ class UnboxClient(object):
             response = self.unbox_api.upload_dataset(
                 name,
                 description,
+                class_names,
                 label_column_name,
                 text_column_name,
                 label_column_index,
@@ -77,6 +87,7 @@ class UnboxClient(object):
         df: pd.DataFrame,
         name: str,
         description: str,
+        class_names: List[str],
         label_column_name: str,
         text_column_name: str,
     ):
@@ -87,6 +98,7 @@ class UnboxClient(object):
                 dataset_file_path,
                 name,
                 description,
+                class_names,
                 label_column_name,
                 text_column_name,
             )
