@@ -24,7 +24,7 @@ def create_template_model(model_type: str):
         @artifacts([{modelTypes[model_type]}('model'), PickleArtifact('function')])
         class TemplateModel(BentoService):
             @api(input=JsonInput())
-            def predict_raw(self, parsed_json: JsonSerializable):
+            def predict(self, parsed_json: JsonSerializable):
                 text = []
                 if 'text' in parsed_json:
                     text = parsed_json['text']
@@ -33,23 +33,6 @@ def create_template_model(model_type: str):
                     self.artifacts.model,
                     text
                 )
-
-
-            @api(input=JsonInput())
-            def predict(self, parsed_json: JsonSerializable):
-                text = []
-                if 'text' in parsed_json:
-                    text = parsed_json['text']
-
-                prediction_probs, class_names, _ = self.artifacts.function(
-                    self.artifacts.model,
-                    text
-                )
-                return [
-                    {{class_names[i]: prob for i,
-                        prob in enumerate(probs)}}
-                    for probs in prediction_probs
-                ]
         """
         python_file.write(textwrap.dedent(file_contents))
 
