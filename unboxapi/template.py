@@ -23,12 +23,18 @@ def create_template_model(model_type: str):
         @env(infer_pip_packages=True)
         @artifacts([{modelTypes[model_type]}('model'), PickleArtifact('function')])
         class TemplateModel(BentoService):
-            @api(input=JsonInput(), batch=False)
+            @api(input=JsonInput())
             def predict(self, parsed_json: JsonSerializable):
                 text = []
                 if 'text' in parsed_json:
                     text = parsed_json['text']
 
+                return self.artifacts.function(
+                    self.artifacts.model,
+                    text
+                )
+            
+            def predict_raw(self, text: List[str]):
                 return self.artifacts.function(
                     self.artifacts.model,
                     text
