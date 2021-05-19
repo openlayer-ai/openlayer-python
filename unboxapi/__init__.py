@@ -1,3 +1,4 @@
+import csv
 import os
 import pandas as pd
 import tarfile
@@ -53,10 +54,17 @@ class UnboxClient(object):
             print("User is not logged in.")
 
     def add_model(
-            self, function, model, tokenizer=None, vocab=None, name: str = "Template",
-            model_name: str = "TemplateModel", description: str = "",
-            model_type: str = "sklearn",
-            local_imports: List[str] = []
+        self,
+        function,
+        model,
+        class_names: List[str],
+        name: str,
+        description: str,
+        tokenizer=None,
+        vocab=None,
+        model_name: str = "TemplateModel",
+        model_type: str = "sklearn",
+        local_imports: List[str] = []
     ):
         local_imports = "\n".join([" ".join(["import", s.strip()]) for s in local_imports])
         bento_service = create_template_model(model_type, model_name, local_imports, bool(tokenizer))
@@ -86,6 +94,7 @@ class UnboxClient(object):
                 response = self.unbox_api.upload_model(
                     name,
                     description,
+                    class_names,
                     tarfile_path,
                 )
         return response
@@ -119,6 +128,7 @@ class UnboxClient(object):
             description: str,
             label_column_name: str,
             text_column_name: str,
+            class_names: List[str],
             validation_csv: str = None,
             validation_percentage: float = 0.2
     ):
@@ -146,52 +156,62 @@ class UnboxClient(object):
             return probabilities, label_names, label_indices
 
         self.add_dataset(
-            validation_csv,
-            name,
-            description,
-            label_column_name,
-            text_column_name
+            file_path=validation_csv,
+            name=name,
+            description=description,
+            class_names=class_names,
+            label_column_name=label_column_name,
+            text_column_name=text_column_name
         )
 
         self.add_model(
             predict_proba,
             model,
+            class_names=class_names,
+            name="BaselineModel: "+name,
+            description="BaselineModel: " + description,
             model_name="BaselineModel",
             model_type="fasttext"
         )
 
-        # return self.pack_model(
-        #     predict_proba,
-        #     model,
-        #     model_name="BaselineModel",
-        #     model_type="fasttext"
-        # )
-
     def add_dataset(
-            self,
-            file_path: str,
-            name: str,
-            description: str,
-            label_column_name: str,
-            text_column_name: str,
+        self,
+        file_path: str,
+        name: str,
+        description: str,
+        class_names: List[str],
+        label_column_name: str,
+        text_column_name: str,
     ):
-        # Upload dataset to our Flask API
-        response = self.unbox_api.upload_dataset(
-            name,
-            description,
-            label_column_name,
-            text_column_name,
-            file_path,
-        )
-        return response
+        with open(file_path, "rt") as f:
+            reader = csv.reader(f)
+            headers = next(reader)
+        try:
+            label_column_index = headers.index(label_column_name)
+            text_column_index = headers.index(text_column_name)
+            # Upload dataset to our Flask API
+            response = self.unbox_api.upload_dataset(
+                name,
+                description,
+                class_names,
+                label_column_name,
+                text_column_name,
+                label_column_index,
+                text_column_index,
+                file_path,
+            )
+            return response
+        except ValueError:
+            raise ValueError(f"Label column and/or text column names not in dataset.")
 
     def add_dataframe(
-            self,
-            df: pd.DataFrame,
-            name: str,
-            description: str,
-            label_column_name: str,
-            text_column_name: str,
+        self,
+        df: pd.DataFrame,
+        name: str,
+        description: str,
+        class_names: List[str],
+        label_column_name: str,
+        text_column_name: str,
     ):
         with tempfile.TemporaryDirectory() as tmp_dir:
             dataset_file_path = os.path.join(tmp_dir, str(uuid.uuid1()))
@@ -200,6 +220,7 @@ class UnboxClient(object):
                 dataset_file_path,
                 name,
                 description,
+                class_names,
                 label_column_name,
                 text_column_name,
             )

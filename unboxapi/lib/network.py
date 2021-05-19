@@ -2,13 +2,13 @@ import requests
 import os
 from tqdm import tqdm
 from tqdm.utils import CallbackIOWrapper
-from typing import Dict
+from typing import Dict, List
 
 
 class UnboxAPI:
     def __init__(self, id_token: str = None, email: str = None, password: str = None):
         self.url = "http://0.0.0.0:8080"
-        # self.url = "https://unbox-flask-server-qpvun7qfdq-uw.a.run.app"
+        # self.url = "https://unbox-flask-server-qpvun7qfdq-wn.a.run.app"
         if id_token:
             self.id_token = id_token
         else:
@@ -51,18 +51,26 @@ class UnboxAPI:
         self,
         name: str,
         description: str,
+        class_names: List[str],
         label_column_name: str,
         text_column_name: str,
+        label_column_index: str,
+        text_column_index: str,
         file_path: str,
     ):
         data = {
             "name": name,
             "description": description,
+            "classNames": class_names,
             "labelColumnName": label_column_name,
             "textColumnName": text_column_name,
+            "labelColumnIndex": label_column_index,
+            "textColumnIndex": text_column_index,
         }
         return self.upload("/api/datasets", data, file_path)
 
-    def upload_model(self, name: str, description: str, file_path: str):
-        data = {"name": name, "description": description}
+    def upload_model(
+        self, name: str, description: str, class_names: List[str], file_path: str
+    ):
+        data = {"name": name, "description": description, "classNames": class_names}
         return self.upload("/api/models", data, file_path)

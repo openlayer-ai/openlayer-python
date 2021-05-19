@@ -35,7 +35,7 @@ def create_template_model(model_type: str, class_name: str, local_imports: str, 
         from bentoml.frameworks.{model_type} import {modelTypes[model_type]}
         from bentoml.service.artifacts.common import PickleArtifact
         from bentoml.adapters import JsonInput, StringInput
-        from bentoml.types import JsonSerializable, InferenceTask
+        from bentoml.types import JsonSerializable
 
         {local_imports}
 
