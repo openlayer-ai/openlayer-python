@@ -11,6 +11,8 @@ from bentoml.utils.tempdir import TempDirectory
 
 from .lib.network import UnboxAPI
 from .template import create_template_model
+from .model_baseline import build_model
+from sklearn.preprocessing import normalize
 
 
 class EstimatorHelper:
@@ -51,11 +53,13 @@ class UnboxClient(object):
             print("User is not logged in.")
 
     def add_model(
-            self, function, model, tokenizer=None, vocab=None, name: str = "TemplateModel", description: str = "", model_type: str = "sklearn",
+            self, function, model, tokenizer=None, vocab=None, name: str = "Template",
+            model_name: str = "TemplateModel", description: str = "",
+            model_type: str = "sklearn",
             local_imports: List[str] = []
     ):
         local_imports = "\n".join([" ".join(["import", s.strip()]) for s in local_imports])
-        bento_service = create_template_model(model_type, name, local_imports, bool(tokenizer))
+        bento_service = create_template_model(model_type, model_name, local_imports, bool(tokenizer))
 
         if model_type == "transformers":
             bento_service.pack("model", {"model": model, "tokenizer": tokenizer})
@@ -107,6 +111,61 @@ class UnboxClient(object):
         saved_path = bento_service.save()
 
         return saved_path
+
+    def create_baseline(
+            self,
+            training_csv: str,
+            name: str,
+            description: str,
+            label_column_name: str,
+            text_column_name: str,
+            validation_csv: str = None,
+            validation_percentage: float = 0.2
+    ):
+        if not validation_csv:
+            all_df = pd.read_csv(training_csv)
+            size = len(all_df)
+            chunk = int(size * (1 - validation_percentage))
+            training_df = all_df[:chunk]
+            validation_df = all_df[chunk:]
+            training_df.to_csv("training.csv", index=False)
+            training_csv = "training.csv"
+            validation_df.to_csv("validation_csv", index=False)
+            validation_csv = "validation.csv"
+
+        model, k, label_names, label_indices = build_model(training_csv, text_column_name, label_column_name)
+
+        def predict_proba(fast_model, text_list):
+            labels, predictions = fast_model.predict(text_list, k=k)
+            probabilities = []
+
+            for labels, probs in zip(labels, predictions):
+                labels = [int(label.replace("__label__", "")) for label in labels]
+                probabilities.append(normalize([probs[labels]])[0].tolist())
+
+            return probabilities, label_names, label_indices
+
+        self.add_dataset(
+            validation_csv,
+            name,
+            description,
+            label_column_name,
+            text_column_name
+        )
+
+        self.add_model(
+            predict_proba,
+            model,
+            model_name="BaselineModel",
+            model_type="fasttext"
+        )
+
+        # return self.pack_model(
+        #     predict_proba,
+        #     model,
+        #     model_name="BaselineModel",
+        #     model_type="fasttext"
+        # )
 
     def add_dataset(
             self,
