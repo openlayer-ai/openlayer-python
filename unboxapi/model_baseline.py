@@ -13,6 +13,8 @@ def build_model(csv_file: str, text_col: str, label_col: str):
     for i, lbl in enumerate(label_names):
         label_dict[lbl] = i
 
+    print(label_dict)
+
     label_list_indices = [label_dict[lbl] for lbl in label_list]
     output_file = save_fasttext_file(text_list, label_list_indices)
     return train_model(output_file), k, label_names, label_indices

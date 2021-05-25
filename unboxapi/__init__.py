@@ -140,9 +140,10 @@ class UnboxClient(object):
             validation_df = all_df[chunk:]
             training_df.to_csv("training.csv", index=False)
             training_csv = "training.csv"
-            validation_df.to_csv("validation_csv", index=False)
+            validation_df.to_csv("validation.csv", index=False)
             validation_csv = "validation.csv"
 
+        print("Training baseline model...")
         model, k, label_names, label_indices = build_model(training_csv, text_column_name, label_column_name)
 
         def predict_proba(fast_model, text_list):
@@ -155,6 +156,8 @@ class UnboxClient(object):
 
             return probabilities, label_names, label_indices
 
+        print("Model trained.")
+        print("Uploading dataset...")
         self.add_dataset(
             file_path=validation_csv,
             name=name,
