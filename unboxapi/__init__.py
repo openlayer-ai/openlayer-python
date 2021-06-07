@@ -34,7 +34,6 @@ class UnboxClient(object):
 
         with TempDirectory() as temp_dir:
             _write_bento_content_to_dir(bento_service, temp_dir)
-            print("Packaged bento content")
 
             with TempDirectory() as tarfile_dir:
                 tarfile_path = f"{tarfile_dir}/model"

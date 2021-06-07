@@ -8,7 +8,7 @@ from typing import Dict, List
 class UnboxAPI:
     def __init__(self, id_token: str = None, email: str = None, password: str = None):
         self.url = "http://0.0.0.0:8080"
-        # self.url = "https://unbox-flask-server-qpvun7qfdq-wn.a.run.app"
+        # self.url = "https://dev.tryunbox.ai"
         if id_token:
             self.id_token = id_token
         else:
@@ -23,18 +23,21 @@ class UnboxAPI:
             self.url + endpoint, headers={"Authorization": f"Bearer {self.id_token}"}
         )
         if response.ok and "url" in response.json():
-            storage_url = response.json()["url"]
-            object_id = response.json()["id"]
+            response_data = response.json()
+            storage_url = response_data["url"]
+            object_id = response_data["id"]
+            fields = response_data["fields"]
             file_size = os.stat(file_path).st_size
             with open(file_path, "rb") as f:
                 with tqdm(
                     total=file_size, unit="B", unit_scale=True, unit_divisor=1024
                 ) as t:
                     wrapped_file = CallbackIOWrapper(t.update, f, "read")
-                    response = requests.put(
+                    files = {"file": (object_id, wrapped_file)}
+                    response = requests.post(
                         storage_url,
-                        data=wrapped_file,
-                        headers={"Content-Type": "application/x-gzip"},
+                        data=fields,
+                        files=files,
                     )
             if response.ok:
                 return requests.post(
