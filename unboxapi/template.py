@@ -36,6 +36,33 @@ def create_template_model(model_type: str, class_name: str, local_imports: str, 
         from bentoml.service.artifacts.common import PickleArtifact
         from bentoml.adapters import JsonInput, StringInput
         from bentoml.types import JsonSerializable
+        from modAL.models import ActiveLearner
+        
+        class EstimatorHelper:
+            def __init__(self, callback, model, tokenizer=None, vocab=None):
+                self.model = model
+                self.tokenizer = tokenizer
+                self.vocab = vocab
+                self.callback = callback
+        
+            def predict_proba(self, text_list):
+        
+                if self.tokenizer:
+                    if not self.vocab:
+                        return self.callback(self.model, self.tokenizer, text_list)[0]
+                    else:
+                        return self.callback(self.model, self.tokenizer, self.vocab, text_list)[0]
+                else:
+                    return self.callback(self.model, text_list)[0]
+        
+        def active_learning_function(text_list, n_instances, callback, model, tokenizer=None, vocab=None):
+            est = EstimatorHelper(callback, model, tokenizer, vocab)
+        
+            learner = ActiveLearner(
+                estimator=est
+            )
+        
+            return learner.query(text_list, n_instances=n_instances)
 
         {local_imports}
 

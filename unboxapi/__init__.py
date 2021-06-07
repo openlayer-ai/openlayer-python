@@ -77,11 +77,10 @@ class UnboxClient(object):
         if tokenizer and model_type != "transformers":
             bento_service.pack("tokenizer", tokenizer)
             bento_service.pack("vocab", vocab)
-        bento_service.pack("active_learning_function", active_learning_function)
 
         with TempDirectory() as temp_dir:
             _write_bento_content_to_dir(bento_service, temp_dir)
-            print("Packaged bento content")
+            print("Packaged content")
 
             with TempDirectory() as tarfile_dir:
                 tarfile_path = f"{tarfile_dir}/model"
@@ -101,7 +100,15 @@ class UnboxClient(object):
 
     @staticmethod
     def pack_model(
-            function, model, tokenizer=None, vocab=None, model_name: str = "TemplateModel", model_type: str = "sklearn",
+            function,
+            model,
+            class_names: List[str],
+            name: str,
+            description: str,
+            tokenizer=None,
+            vocab=None,
+            model_name: str = "TemplateModel",
+            model_type: str = "sklearn",
             local_imports: List[str] = []
     ):
         local_imports = "\n".join([" ".join(["import", s.strip()]) for s in local_imports])
