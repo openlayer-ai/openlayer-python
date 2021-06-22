@@ -7,14 +7,14 @@ from typing import Dict, List
 
 class UnboxAPI:
     def __init__(self, id_token: str = None, email: str = None, password: str = None):
-        self.url = "http://0.0.0.0:8080"
-        # self.url = "https://dev.tryunbox.ai"
+        # self.url = "http://0.0.0.0:8080"
+        self.url = "https://dev.tryunbox.ai"
         if id_token:
             self.id_token = id_token
         else:
             response = requests.get(self.url + "/api/tokens", auth=(email, password))
             if response.ok:
-                self.id_token = response.json()["token"]
+                self.id_token = response.json()["accessToken"]
             else:
                 print("Failed to retrieve a token for the email / password provided.")
 
