@@ -7,8 +7,8 @@ from typing import Dict, List
 
 class UnboxAPI:
     def __init__(self, id_token: str = None, email: str = None, password: str = None):
-        # self.url = "http://0.0.0.0:8080"
-        self.url = "https://dev.tryunbox.ai"
+        # self.url = "https://dev.tryunbox.ai"
+        self.url = "http://0.0.0.0:8080"
         if id_token:
             self.id_token = id_token
         else:

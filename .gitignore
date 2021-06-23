@@ -5,3 +5,5 @@ data/
 .DS_Store
 
 template_model.py
+
+server-tests.ipynb
