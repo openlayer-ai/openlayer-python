@@ -5,7 +5,6 @@ import tarfile
 import tempfile
 import uuid
 from typing import List
-from modAL.models import ActiveLearner
 
 from bentoml.saved_bundle.bundler import _write_bento_content_to_dir
 from bentoml.utils.tempdir import TempDirectory
@@ -14,35 +13,6 @@ from .lib.network import UnboxAPI
 from .template import create_template_model
 from .model_baseline import build_model
 from sklearn.preprocessing import normalize
-
-
-class EstimatorHelper:
-
-    def __init__(self, callback, model, tokenizer=None, vocab=None):
-        self.model = model
-        self.tokenizer = tokenizer
-        self.vocab = vocab
-        self.callback = callback
-
-    def predict_proba(self, text_list):
-
-        if self.tokenizer:
-            if not self.vocab:
-                return self.callback(self.model, self.tokenizer, text_list)[0]
-            else:
-                return self.callback(self.model, self.tokenizer, self.vocab, text_list)[0]
-        else:
-            return self.callback(self.model, text_list)[0]
-
-
-def active_learning_function(text_list, n_instances, callback, model, tokenizer=None, vocab=None):
-    est = EstimatorHelper(callback, model, tokenizer, vocab)
-
-    learner = ActiveLearner(
-        estimator=est
-    )
-
-    return learner.query(text_list, n_instances=n_instances)
 
 
 class UnboxClient(object):
@@ -122,7 +92,6 @@ class UnboxClient(object):
         if tokenizer and model_type != "transformers":
             bento_service.pack("tokenizer", tokenizer)
             bento_service.pack("vocab", vocab)
-        bento_service.pack("active_learning_function", active_learning_function)
 
         saved_path = bento_service.save()
 
@@ -135,54 +104,70 @@ class UnboxClient(object):
             description: str,
             label_column_name: str,
             text_column_name: str,
-            class_names: List[str],
+            class_names: List[str] = None,
             validation_csv: str = None,
             validation_percentage: float = 0.2
     ):
-        if not validation_csv:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+
             all_df = pd.read_csv(training_csv)
-            size = len(all_df)
-            chunk = int(size * (1 - validation_percentage))
-            training_df = all_df[:chunk]
-            validation_df = all_df[chunk:]
-            training_df.to_csv("training.csv", index=False)
-            training_csv = "training.csv"
-            validation_df.to_csv("validation.csv", index=False)
-            validation_csv = "validation.csv"
 
-        print("Training baseline model...")
-        model, k, label_names, label_indices = build_model(training_csv, text_column_name, label_column_name)
+            if not class_names:
+                category_list = all_df[label_column_name].unique().tolist()
+                category_dict = {c: i for i, c in enumerate(category_list)}
+                class_names = [x[0] for x in sorted(
+                    [(c, i) for c, i in category_dict.items()],
+                    key=lambda x: x[1]
+                )]
+                all_df['label'] = all_df[label_column_name].replace(category_dict)
 
-        def predict_proba(fast_model, text_list):
-            labels, predictions = fast_model.predict(text_list, k=k)
-            probabilities = []
+            if not validation_csv:
+                size = len(all_df)
+                chunk = int(size * (1 - validation_percentage))
+                training_df = all_df[:chunk]
+                validation_df = all_df[chunk:]
 
-            for labels, probs in zip(labels, predictions):
-                labels = [int(label.replace("__label__", "")) for label in labels]
-                probabilities.append(normalize([probs[labels]])[0].tolist())
+                train_path = os.path.join(tmp_dir, "training.csv")
+                validation_path = os.path.join(tmp_dir, "validation.csv")
 
-            return probabilities, label_names, label_indices
+                training_df.to_csv(train_path, index=False)
+                training_csv = train_path
+                validation_df.to_csv(validation_path, index=False)
+                validation_csv = validation_path
 
-        print("Model trained.")
-        print("Uploading dataset...")
-        self.add_dataset(
-            file_path=validation_csv,
-            name=name,
-            description=description,
-            class_names=class_names,
-            label_column_name=label_column_name,
-            text_column_name=text_column_name
-        )
+            print("Training baseline model...")
+            model, k, label_names, label_indices = build_model(
+                training_csv, text_column_name, label_column_name, tmp_dir)
 
-        self.add_model(
-            predict_proba,
-            model,
-            class_names=class_names,
-            name="BaselineModel: "+name,
-            description="BaselineModel: " + description,
-            model_name="BaselineModel",
-            model_type="fasttext"
-        )
+            def predict_proba(fast_model, text_list):
+                labels, predictions = fast_model.predict(text_list, k=k)
+                probabilities = []
+
+                for labels, probs in zip(labels, predictions):
+                    labels = [int(label.replace("__label__", "")) for label in labels]
+                    probabilities.append(normalize([probs[labels]])[0].tolist())
+
+                return probabilities
+
+            print("Model trained.")
+            print("Uploading dataset...")
+            self.add_dataset(
+                file_path=validation_csv,
+                name=name,
+                description=description,
+                class_names=class_names,
+                label_column_name=label_column_name,
+                text_column_name=text_column_name
+            )
+
+            self.add_model(
+                predict_proba,
+                model,
+                class_names=class_names,
+                name="BaselineModel: "+name,
+                description="BaselineModel: " + description,
+                model_type="fasttext"
+            )
 
     def add_dataset(
         self,

@@ -1,8 +1,9 @@
+import os
 import csv
 import fasttext
 
 
-def build_model(csv_file: str, text_col: str, label_col: str):
+def build_model(csv_file: str, text_col: str, label_col: str, folder: str):
     text_list, label_list = process_csv(csv_file, text_col, label_col)
 
     label_names = list(set(label_list))
@@ -13,10 +14,8 @@ def build_model(csv_file: str, text_col: str, label_col: str):
     for i, lbl in enumerate(label_names):
         label_dict[lbl] = i
 
-    print(label_dict)
-
     label_list_indices = [label_dict[lbl] for lbl in label_list]
-    output_file = save_fasttext_file(text_list, label_list_indices)
+    output_file = save_fasttext_file(text_list, label_list_indices, folder)
     return train_model(output_file), k, label_names, label_indices
 
 
@@ -34,13 +33,13 @@ def process_csv(csv_file: str, text_col: str, label_col: str):
     return text_list, label_list
 
 
-def save_fasttext_file(text_list, label_list, output_file="train.data"):
+def save_fasttext_file(text_list, label_list, folder, output_file="train.data"):
     row_lines = []
     for text, label in zip(text_list, label_list):
         row_line = " ".join(["__label__{0}".format(label), text])
         row_lines.append(row_line)
 
-    with open(output_file, 'w') as f:
+    with open(os.path.join(folder, output_file), 'w') as f:
         for item in row_lines:
             f.write("%s\n" % item)
 
@@ -48,5 +47,10 @@ def save_fasttext_file(text_list, label_list, output_file="train.data"):
 
 
 def train_model(data_file: str):
-    model = fasttext.train_supervised(input=data_file)
+    model = fasttext.train_supervised(
+        input=data_file,
+        dim=300,
+        epoch=100,
+        maxn=10
+    )
     return model
