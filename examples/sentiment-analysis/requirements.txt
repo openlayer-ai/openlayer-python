@@ -1,0 +1,5 @@
+bentoml==0.12.1
+boto3==1.17.1
+pandas==1.2.2
+tqdm==4.59.0
+requests==2.25.1
