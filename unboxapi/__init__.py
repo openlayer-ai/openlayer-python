@@ -43,6 +43,7 @@ class UnboxClient(object):
         class_names: List[str],
         name: str,
         description: str = None,
+        **kwargs,
     ) -> Model:
         """Uploads a model.
 
@@ -65,9 +66,21 @@ class UnboxClient(object):
             Model:
                 Returns uploaded model
         """
-        bento_service = create_template_model(model_type)
-        bento_service.pack("model", model)
+        bento_service = create_template_model(model_type, **kwargs)
+        if model_type == ModelType.transformers:
+            if "tokenizer" not in kwargs:
+                raise UnboxException(
+                    "Must specify tokenizer in kwargs when using a transformers model"
+                )
+            bento_service.pack(
+                "model", {"model": model, "tokenizer": kwargs["tokenizer"]}
+            )
+            kwargs.pop("tokenizer")
+        else:
+            bento_service.pack("model", model)
+
         bento_service.pack("function", function)
+        bento_service.pack("kwargs", kwargs)
 
         with TempDirectory() as temp_dir:
             _write_bento_content_to_dir(bento_service, temp_dir)

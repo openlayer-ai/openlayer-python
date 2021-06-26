@@ -41,6 +41,13 @@ class Model:
         return self._json
 
 
+def _predict_function(model_type: ModelType):
+    if model_type == ModelType.transformers:
+        return "results = self.artifacts.function(self.artifacts.model.get('model'), text, tokenizer=self.artifacts.model.get('tokenizer'), **self.artifacts.kwargs)"
+    else:
+        return "results = self.artifacts.function(self.artifacts.model, text, **self.artifacts.kwargs)"
+
+
 def create_template_model(model_type: ModelType):
     with open("template_model.py", "w") as python_file:
         file_contents = f"""\
@@ -58,24 +65,20 @@ def create_template_model(model_type: ModelType):
 
 
         @env(infer_pip_packages=True)
-        @artifacts([{model_type.value}('model'), PickleArtifact('function')])
+        @artifacts([{model_type.value}('model'), PickleArtifact('function'), PickleArtifact('kwargs')])
         class TemplateModel(BentoService):
             @api(input=JsonInput())
             def predict(self, parsed_json: JsonSerializable):
-                return self.artifacts.function(
-                    self.artifacts.model,
-                    parsed_json['text']
-                )
+                text = parsed_json['text']
+                {_predict_function(model_type)}
+                return results
             
             @api(input=JsonInput())
             def predict_from_path(self, parsed_json: JsonSerializable):
                 input_path = parsed_json["input_path"]
                 output_path = parsed_json["output_path"]
-                df = pd.read_csv(input_path)
-                results = self.artifacts.function(
-                    self.artifacts.model,
-                    df['text'].tolist()
-                )
+                text = pd.read_csv(input_path)['text'].tolist()
+                {_predict_function(model_type)}
                 with open(output_path, 'w') as f:
                     json.dump(results.tolist(), f)
                 return "Success"
