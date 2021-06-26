@@ -1,19 +1,19 @@
 import csv
-from enum import Enum
 import os
-import pandas as pd
 import tarfile
 import tempfile
 import uuid
+from enum import Enum
 from typing import List
 
+import pandas as pd
 from bentoml.saved_bundle.bundler import _write_bento_content_to_dir
 from bentoml.utils.tempdir import TempDirectory
 
 from .api import Api
+from .datasets import Dataset
 from .exceptions import UnboxException
 from .models import Model, ModelType, create_template_model
-from .datasets import Dataset
 
 
 class DeploymentType(Enum):

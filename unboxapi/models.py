@@ -1,10 +1,11 @@
-from enum import Enum
 import textwrap
+from enum import Enum
 
 
 class ModelType(Enum):
     """Task Type List"""
 
+    fasttext = "FasttextModelArtifact"
     sklearn = "SklearnModelArtifact"
     pytorch = "PytorchModelArtifact"
     tensorflow = "TensorflowSavedModelArtifact"
