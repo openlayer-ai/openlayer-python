@@ -10,19 +10,50 @@ $ pip install -e .
 
 ```python
 import unboxapi
-client = unboxapi.UnboxClient(email='you@domain.com', password='your_password')
 
-# Package a model as a bento service and upload to Firebase
-client.add_model(function=predict_function, model=any_model)
-
-# Upload a dataset to Firebase
-client.add_dataset(file_path='path/to/dataset.csv', name='dataset_name')
-
-# Upload a pandas data frame to Firebase
-client.add_dataframe(df='dataframe_object', name='dataset_name')
+client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
 ```
 
-## NOTE
+## Models
 
-- `torch==1.16` is not supported by `python3.9`. `python3.8` or earlier works.
-- `brew install wget` required if not already installed.
+```python
+from unboxapi.models import ModelType
+
+# Predict function
+def predict(model, text_list):
+    return model.predict(text_list)
+
+# Package a model as a bento service and upload to Firebase
+client.add_model(
+    function=predict,
+    model=model,
+    model_type=ModelType.sklearn,
+    class_names=['negative', 'positive'],
+    name='My First Model',
+    description='Sentiment analyzer for tweets',
+)
+```
+
+## Datasets
+
+```python
+# Upload a dataset to Firebase
+client.add_dataset(
+    file_path='path/to/dataset.csv', 
+    class_names=['negative', 'positive'], # Notice it matches the model class names
+    label_column_name='polarity',
+    text_column_name='text',
+    name='My First Dataset',
+    description='My sentiment analysis validation dataset',
+)
+
+# Upload a pandas data frame to Firebase
+client.add_dataframe(
+    df=dataframe,
+    class_names=['negative', 'positive'], # Notice it matches the model class names
+    label_column_name='polarity',
+    text_column_name='text',
+    name='My Second Dataset',
+    description='My sentiment analysis validation pandas dataframe',
+)
+```

@@ -1,4 +1,5 @@
 import csv
+from enum import Enum
 import os
 import pandas as pd
 import tarfile
@@ -9,32 +10,67 @@ from typing import List
 from bentoml.saved_bundle.bundler import _write_bento_content_to_dir
 from bentoml.utils.tempdir import TempDirectory
 
-from .lib.network import UnboxAPI
-from .template import create_template_model
+from .api import Api
+from .exceptions import UnboxException
+from .models import Model, ModelType, create_template_model
+from .datasets import Dataset
+
+
+class DeploymentType(Enum):
+    ONPREM = 1
+    AWS = 2
+
+
+DEPLOYMENT = DeploymentType.AWS
 
 
 class UnboxClient(object):
+    """ Client class that interacts with the Unbox Platform. """
 
-    # Public functions
-    def __init__(self, email: str = None, password: str = None):
-        self.unbox_api = UnboxAPI(email=email, password=password)
+    def __init__(self, api_key: str):
+        self.api = Api(api_key)
+
+        if DEPLOYMENT == DeploymentType.AWS:
+            self.upload = self.api.upload_blob
+        else:
+            self.upload = self.api.transfer_blob
 
     def add_model(
         self,
         function,
         model,
+        model_type: ModelType,
         class_names: List[str],
         name: str,
-        description: str,
-        model_type: str = "sklearn",
-    ):
+        description: str = None,
+    ) -> Model:
+        """Uploads a model.
+
+        Args:
+            function:
+                Prediction function object in expected format
+            model:
+                Model object
+            model_type (ModelType):
+                Model framework type of model
+                ex. `ModelType.sklearn`
+            class_names (List[str]):
+                List of class names corresponding to outputs of predict function
+            name (str):
+                Name of model
+            description (str):
+                Description of model
+
+        Returns:
+            Model:
+                Returns uploaded model
+        """
         bento_service = create_template_model(model_type)
         bento_service.pack("model", model)
         bento_service.pack("function", function)
 
         with TempDirectory() as temp_dir:
             _write_bento_content_to_dir(bento_service, temp_dir)
-            print("Packaged bento content")
 
             with TempDirectory() as tarfile_dir:
                 tarfile_path = f"{tarfile_dir}/model"
@@ -43,62 +79,116 @@ class UnboxClient(object):
                     tar.add(temp_dir, arcname=bento_service.name)
 
                 print("Connecting to Unbox server")
-                # Upload the model and metadata to our Flask API
-                response = self.unbox_api.upload_model(
-                    name,
-                    description,
-                    class_names,
-                    tarfile_path,
+                endpoint = "models"
+                payload = dict(
+                    name=name, description=description, classNames=class_names
                 )
-        return response
+                modeldata = self.upload(endpoint, tarfile_path, payload)
+        return Model(modeldata)
 
     def add_dataset(
         self,
         file_path: str,
-        name: str,
-        description: str,
         class_names: List[str],
         label_column_name: str,
         text_column_name: str,
-    ):
+        name: str,
+        description: str = None,
+    ) -> Dataset:
+        """Uploads a dataset from a csv.
+
+        Args:
+            file_path (str):
+                Path to the dataset csv
+            class_names (List[str]):
+                List of class names indexed by label integer in the dataset
+                ex. `[negative, positive]` when `[0, 1]` are labels in the csv
+            label_column_name (str):
+                Column header in the csv containing the labels
+            text_column_name (str):
+                Column header in the csv containing the input text
+            name (str):
+                Name of dataset
+            description (str):
+                Description of dataset
+
+        Raises:
+            UnboxException:
+                If the file doesn't exist or the label or text column names
+                are not in the dataset
+
+        Returns:
+            Dataset:
+                Returns uploaded dataset
+        """
+        if not os.path.isfile(file_path):
+            raise UnboxException("File path does not exist.")
+
         with open(file_path, "rt") as f:
             reader = csv.reader(f)
             headers = next(reader)
         try:
             label_column_index = headers.index(label_column_name)
             text_column_index = headers.index(text_column_name)
-            # Upload dataset to our Flask API
-            response = self.unbox_api.upload_dataset(
-                name,
-                description,
-                class_names,
-                label_column_name,
-                text_column_name,
-                label_column_index,
-                text_column_index,
-                file_path,
-            )
-            return response
         except ValueError:
-            raise ValueError(f"Label column and/or text column names not in dataset.")
+            raise UnboxException(
+                "Label column and/or text column names not in dataset."
+            )
+        endpoint = "datasets"
+        payload = dict(
+            name=name,
+            description=description,
+            classNames=class_names,
+            labelColumnName=label_column_name,
+            textColumnName=text_column_name,
+            labelColumnIndex=label_column_index,
+            textColumnIndex=text_column_index,
+        )
+        return Dataset(self.upload(endpoint, file_path, payload))
 
     def add_dataframe(
         self,
         df: pd.DataFrame,
-        name: str,
-        description: str,
         class_names: List[str],
         label_column_name: str,
         text_column_name: str,
-    ):
+        name: str,
+        description: str,
+    ) -> Dataset:
+        """Uploads a dataset from a dataframe.
+
+        Args:
+            df (pd.DataFrame):
+                Dataframe object
+            class_names (List[str]):
+                List of class names indexed by label integer in the dataset
+                ex. `[negative, positive]` when `[0, 1]` are labels in the csv
+            label_column_name (str):
+                Column header in the csv containing the labels
+            text_column_name (str):
+                Column header in the csv containing the input text
+            name (str):
+                Name of dataset
+            description (str):
+                Description of dataset
+
+        Raises:
+            UnboxException:
+                If the file doesn't exist or the label or text column names
+                are not in the dataset
+
+        Returns:
+            Dataset:
+                Returns uploaded dataset
+        """
         with tempfile.TemporaryDirectory() as tmp_dir:
-            dataset_file_path = os.path.join(tmp_dir, str(uuid.uuid1()))
-            df.to_csv(dataset_file_path, index=False)
+            file_path = os.path.join(tmp_dir, str(uuid.uuid1()))
+            df.to_csv(file_path, index=False)
             return self.add_dataset(
-                dataset_file_path,
-                name,
-                description,
+                file_path,
                 class_names,
                 label_column_name,
                 text_column_name,
+                name,
+                description,
             )
