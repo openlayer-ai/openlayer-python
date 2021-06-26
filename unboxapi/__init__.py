@@ -84,6 +84,7 @@ class UnboxClient(object):
                     name=name, description=description, classNames=class_names
                 )
                 modeldata = self.upload(endpoint, tarfile_path, payload)
+        os.remove("template_model.py")
         return Model(modeldata)
 
     def add_dataset(
