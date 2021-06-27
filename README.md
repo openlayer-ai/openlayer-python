@@ -31,6 +31,8 @@ client.add_model(
     class_names=['negative', 'positive'],
     name='My First Model',
     description='Sentiment analyzer for tweets',
+    requirements_txt_file='./requirements.txt',
+    **kwargs # specify additional kwargs for your predict function
 )
 ```
 
