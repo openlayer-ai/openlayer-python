@@ -1,10 +1,11 @@
-import requests
-from requests.adapters import HTTPAdapter, Response, Retry
 import os
 import shutil
+import uuid
+
+import requests
+from requests.adapters import HTTPAdapter, Response, Retry
 from tqdm import tqdm
 from tqdm.utils import CallbackIOWrapper
-import uuid
 
 from .exceptions import ExceptionMap, UnboxException
 

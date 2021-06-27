@@ -1,10 +1,14 @@
-from enum import Enum
 import textwrap
+from enum import Enum
+from typing import Optional
+
+import shutil
 
 
 class ModelType(Enum):
     """Task Type List"""
 
+    fasttext = "FasttextModelArtifact"
     sklearn = "SklearnModelArtifact"
     pytorch = "PytorchModelArtifact"
     tensorflow = "TensorflowSavedModelArtifact"
@@ -40,8 +44,33 @@ class Model:
         return self._json
 
 
-def create_template_model(model_type: ModelType):
-    with open("template_model.py", "w") as python_file:
+def _predict_function(model_type: ModelType):
+    if model_type == ModelType.transformers:
+        return "results = self.artifacts.function(self.artifacts.model.get('model'), text, tokenizer=self.artifacts.model.get('tokenizer'), **self.artifacts.kwargs)"
+    else:
+        return "results = self.artifacts.function(self.artifacts.model, text, **self.artifacts.kwargs)"
+
+
+def _env_dependencies(tmp_dir: str, requirements_txt_file: Optional[str] = None):
+    unbox_req_file = f"{tmp_dir}/requirements.txt"
+    if not requirements_txt_file:
+        return "@env(infer_pip_packages=True)"
+    else:
+        shutil.copy(requirements_txt_file, unbox_req_file)
+        # Add required dependencies
+        deps = ["bentoml==0.12.1", "pandas"]
+        with open(unbox_req_file, "a") as f:
+            f.write("\n")
+            [f.write(f"{dep}\n") for dep in deps]
+        return f"@env(requirements_txt_file='{unbox_req_file}')"
+
+
+def create_template_model(
+    model_type: ModelType,
+    tmp_dir: str,
+    requirements_txt_file: Optional[str] = None,
+):
+    with open(f"template_model.py", "w") as python_file:
         file_contents = f"""\
         import json
         import os
@@ -56,27 +85,26 @@ def create_template_model(model_type: ModelType):
         from bentoml.utils.tempdir import TempDirectory
 
 
-        @env(infer_pip_packages=True)
-        @artifacts([{model_type.value}('model'), PickleArtifact('function')])
+        {_env_dependencies(tmp_dir, requirements_txt_file)}
+        @artifacts([{model_type.value}('model'), PickleArtifact('function'), PickleArtifact('kwargs')])
         class TemplateModel(BentoService):
             @api(input=JsonInput())
             def predict(self, parsed_json: JsonSerializable):
-                return self.artifacts.function(
-                    self.artifacts.model,
-                    parsed_json['text']
-                )
+                text = parsed_json['text']
+                {_predict_function(model_type)}
+                return results
             
             @api(input=JsonInput())
             def predict_from_path(self, parsed_json: JsonSerializable):
                 input_path = parsed_json["input_path"]
                 output_path = parsed_json["output_path"]
-                df = pd.read_csv(input_path)
-                results = self.artifacts.function(
-                    self.artifacts.model,
-                    df['text'].tolist()
-                )
+                text = pd.read_csv(input_path)['text'].tolist()
+                {_predict_function(model_type)}
                 with open(output_path, 'w') as f:
-                    json.dump(results.tolist(), f)
+                    if type(results) == list:
+                        json.dump(results, f)
+                    else:
+                        json.dump(results.tolist(), f)
                 return "Success"
         """
         python_file.write(textwrap.dedent(file_contents))
