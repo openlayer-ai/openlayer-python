@@ -4,7 +4,7 @@ import tarfile
 import tempfile
 import uuid
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 import pandas as pd
 from bentoml.saved_bundle.bundler import _write_bento_content_to_dir
@@ -43,6 +43,7 @@ class UnboxClient(object):
         class_names: List[str],
         name: str,
         description: str = None,
+        requirements_txt_file: Optional[str] = None,
         **kwargs,
     ) -> Model:
         """Uploads a model.
@@ -61,42 +62,47 @@ class UnboxClient(object):
                 Name of model
             description (str):
                 Description of model
+            requirements_txt_file (Optional[str]):
+                Path to a requirements file containing dependencies needed by the predict function
 
         Returns:
             Model:
                 Returns uploaded model
         """
-        bento_service = create_template_model(model_type, **kwargs)
-        if model_type == ModelType.transformers:
-            if "tokenizer" not in kwargs:
-                raise UnboxException(
-                    "Must specify tokenizer in kwargs when using a transformers model"
-                )
-            bento_service.pack(
-                "model", {"model": model, "tokenizer": kwargs["tokenizer"]}
+        with TempDirectory() as dir:
+            bento_service = create_template_model(
+                model_type, dir, requirements_txt_file
             )
-            kwargs.pop("tokenizer")
-        else:
-            bento_service.pack("model", model)
-
-        bento_service.pack("function", function)
-        bento_service.pack("kwargs", kwargs)
-
-        with TempDirectory() as temp_dir:
-            _write_bento_content_to_dir(bento_service, temp_dir)
-
-            with TempDirectory() as tarfile_dir:
-                tarfile_path = f"{tarfile_dir}/model"
-
-                with tarfile.open(tarfile_path, mode="w:gz") as tar:
-                    tar.add(temp_dir, arcname=bento_service.name)
-
-                print("Connecting to Unbox server")
-                endpoint = "models"
-                payload = dict(
-                    name=name, description=description, classNames=class_names
+            if model_type == ModelType.transformers:
+                if "tokenizer" not in kwargs:
+                    raise UnboxException(
+                        "Must specify tokenizer in kwargs when using a transformers model"
+                    )
+                bento_service.pack(
+                    "model", {"model": model, "tokenizer": kwargs["tokenizer"]}
                 )
-                modeldata = self.upload(endpoint, tarfile_path, payload)
+                kwargs.pop("tokenizer")
+            else:
+                bento_service.pack("model", model)
+
+            bento_service.pack("function", function)
+            bento_service.pack("kwargs", kwargs)
+
+            with TempDirectory() as temp_dir:
+                _write_bento_content_to_dir(bento_service, temp_dir)
+
+                with TempDirectory() as tarfile_dir:
+                    tarfile_path = f"{tarfile_dir}/model"
+
+                    with tarfile.open(tarfile_path, mode="w:gz") as tar:
+                        tar.add(temp_dir, arcname=bento_service.name)
+
+                    print("Connecting to Unbox server")
+                    endpoint = "models"
+                    payload = dict(
+                        name=name, description=description, classNames=class_names
+                    )
+                    modeldata = self.upload(endpoint, tarfile_path, payload)
         os.remove("template_model.py")
         return Model(modeldata)
 
