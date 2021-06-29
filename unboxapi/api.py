@@ -9,7 +9,7 @@ from tqdm.utils import CallbackIOWrapper
 
 from .exceptions import ExceptionMap, UnboxException
 
-UNBOX_ENDPOINT = "https://dev.unbox.ai/api"
+UNBOX_ENDPOINT = "https://api-staging.unbox.ai/api"
 UNBOX_STORAGE_PATH = os.path.expanduser("~/.unbox/storage")
 
 
@@ -59,7 +59,6 @@ class Api:
 
         try:
             params = params or {}
-            body = body or {}
 
             res = https.request(
                 method=method,
