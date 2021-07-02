@@ -154,10 +154,10 @@ class Api:
         """
         id = uuid.uuid4()
         try:
-            os.makedirs(f"{UNBOX_STORAGE_PATH}/{endpoint}", exist_ok=True)
+            os.makedirs(f"{UNBOX_STORAGE_PATH}/{endpoint}/{id}", exist_ok=True)
         except OSError as _:
             raise UnboxException(
-                f"Directory {UNBOX_STORAGE_PATH}/{endpoint} cannot be created"
+                f"Directory {UNBOX_STORAGE_PATH}/{endpoint}/{id} cannot be created"
             )
-        shutil.copyfile(file_path, f"{UNBOX_STORAGE_PATH}/{endpoint}/{id}")
+        shutil.copyfile(file_path, f"{UNBOX_STORAGE_PATH}/{endpoint}/{id}/{id}")
         return self.post_request(f"{endpoint}/{id}", body=body)
