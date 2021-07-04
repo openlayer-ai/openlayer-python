@@ -29,6 +29,7 @@ class UnboxClient(object):
 
     def __init__(self, api_key: str):
         self.api = Api(api_key)
+        self.subscription_plan = self.api.get_request("users/subscriptionPlan")
 
         if DEPLOYMENT == DeploymentType.AWS:
             self.upload = self.api.upload_blob
@@ -147,6 +148,12 @@ class UnboxClient(object):
         with open(file_path, "rt") as f:
             reader = csv.reader(f)
             headers = next(reader)
+            row_count = sum(1 for _ in reader)
+        if row_count > self.subscription_plan["datasetSize"]:
+            raise UnboxException(
+                f"Dataset contains {row_count} rows, which exceeds your plan's"
+                f" limit of {self.subscription_plan['datasetSize']}."
+            )
         try:
             label_column_index = headers.index(label_column_name)
             text_column_index = headers.index(text_column_name)
