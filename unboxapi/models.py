@@ -58,7 +58,7 @@ def _env_dependencies(tmp_dir: str, requirements_txt_file: Optional[str] = None)
     else:
         shutil.copy(requirements_txt_file, unbox_req_file)
         # Add required dependencies
-        deps = ["bentoml==0.12.1", "pandas"]
+        deps = ["bentoml==0.13.0", "pandas"]
         with open(unbox_req_file, "a") as f:
             f.write("\n")
             [f.write(f"{dep}\n") for dep in deps]
