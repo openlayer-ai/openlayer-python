@@ -13,6 +13,7 @@ class ModelType(Enum):
     pytorch = "PytorchModelArtifact"
     tensorflow = "TensorflowSavedModelArtifact"
     transformers = "TransformersModelArtifact"
+    rasa = ""
 
 
 class Model:
@@ -112,3 +113,56 @@ def create_template_model(
     from template_model import TemplateModel
 
     return TemplateModel()
+
+
+def create_rasa_model(
+        tmp_dir: str,
+        requirements_txt_file: Optional[str] = None,
+):
+    with open(f"template_model.py", "w") as python_file:
+        file_contents = f"""\
+        import json
+        import os
+        import pandas as pd
+        from typing import List
+
+        from bentoml import env, artifacts, api, BentoService
+        from bentoml.service.artifacts.common import PickleArtifact
+        from bentoml.adapters import JsonInput
+        from bentoml.types import JsonSerializable
+        from bentoml.utils.tempdir import TempDirectory
+        from rasa.nlu.model import Interpreter
+
+        model = Interpreter.load(f"{{os.path.dirname(os.path.abspath(__file__))}}/nlu")
+
+
+        {_env_dependencies(tmp_dir, requirements_txt_file)}
+        @artifacts([PickleArtifact('function'), PickleArtifact('kwargs')])
+        class TemplateModel(BentoService):
+            @api(input=JsonInput())
+            def predict(self, parsed_json: JsonSerializable):
+                print(parsed_json)
+                text = parsed_json['text']
+                results = self.artifacts.function(model, text, **self.artifacts.kwargs)
+                return results
+
+            @api(input=JsonInput())
+            def predict_from_path(self, parsed_json: JsonSerializable):
+                input_path = parsed_json["input_path"]
+                output_path = parsed_json["output_path"]
+                text = pd.read_csv(input_path)['text'].tolist()
+                results = self.artifacts.function(model, text, **self.artifacts.kwargs)
+                with open(output_path, 'w') as f:
+                    if type(results) == list:
+                        json.dump(results, f)
+                    else:
+                        json.dump(results.tolist(), f)
+                return "Success"
+        """
+        print(_env_dependencies(tmp_dir, requirements_txt_file))
+        python_file.write(textwrap.dedent(file_contents))
+
+    from template_model import TemplateModel
+
+    return TemplateModel()
+

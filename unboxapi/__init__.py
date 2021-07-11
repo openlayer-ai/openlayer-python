@@ -1,5 +1,6 @@
 import csv
 import os
+import shutil
 import tarfile
 import tempfile
 import uuid
@@ -13,7 +14,7 @@ from bentoml.utils.tempdir import TempDirectory
 from .api import Api
 from .datasets import Dataset
 from .exceptions import UnboxException
-from .models import Model, ModelType, create_template_model
+from .models import Model, ModelType, create_template_model, create_rasa_model
 
 
 class DeploymentType(Enum):
@@ -71,26 +72,34 @@ class UnboxClient(object):
                 Returns uploaded model
         """
         with TempDirectory() as dir:
-            bento_service = create_template_model(
-                model_type, dir, requirements_txt_file
-            )
-            if model_type == ModelType.transformers:
-                if "tokenizer" not in kwargs:
-                    raise UnboxException(
-                        "Must specify tokenizer in kwargs when using a transformers model"
-                    )
-                bento_service.pack(
-                    "model", {"model": model, "tokenizer": kwargs["tokenizer"]}
-                )
-                kwargs.pop("tokenizer")
+
+            if model_type == ModelType.rasa:
+                bento_service = create_rasa_model(dir, requirements_txt_file)
             else:
-                bento_service.pack("model", model)
+                bento_service = create_template_model(
+                    model_type, dir, requirements_txt_file
+                )
+                if model_type == ModelType.transformers:
+                    if "tokenizer" not in kwargs:
+                        raise UnboxException(
+                            "Must specify tokenizer in kwargs when using a transformers model"
+                        )
+                    bento_service.pack(
+                        "model", {"model": model, "tokenizer": kwargs["tokenizer"]}
+                    )
+                    kwargs.pop("tokenizer")
+                else:
+                    bento_service.pack("model", model)
 
             bento_service.pack("function", function)
             bento_service.pack("kwargs", kwargs)
 
             with TempDirectory() as temp_dir:
                 _write_bento_content_to_dir(bento_service, temp_dir)
+
+                if model_type == ModelType.rasa:
+                    destination_path = os.path.join(temp_dir, "TemplateModel/nlu")
+                    shutil.copytree(model.model_metadata.model_dir, destination_path)
 
                 with TempDirectory() as tarfile_dir:
                     tarfile_path = f"{tarfile_dir}/model"
