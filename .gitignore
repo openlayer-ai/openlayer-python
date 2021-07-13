@@ -3,7 +3,7 @@ unboxapi.egg-info/
 data/
 .ipynb_checkpoints/
 .DS_Store
-
+build
+dist
 template_model.py
-
 server-tests.ipynb

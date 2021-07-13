@@ -23,7 +23,7 @@ from unboxapi.models import ModelType
 def predict(model, text_list):
     return model.predict(text_list)
 
-# Package a model as a bento service and upload to Firebase
+# Package your model and upload it to Unbox
 client.add_model(
     function=predict,
     model=model,
@@ -39,7 +39,7 @@ client.add_model(
 ## Datasets
 
 ```python
-# Upload a dataset to Firebase
+# Upload your dataset csv to Unbox
 client.add_dataset(
     file_path='path/to/dataset.csv', 
     class_names=['negative', 'positive'], # Notice it matches the model class names
@@ -49,7 +49,7 @@ client.add_dataset(
     description='My sentiment analysis validation dataset',
 )
 
-# Upload a pandas data frame to Firebase
+# Alternatively, upload your pandas dataframe to Unbox
 client.add_dataframe(
     df=dataframe,
     class_names=['negative', 'positive'], # Notice it matches the model class names
