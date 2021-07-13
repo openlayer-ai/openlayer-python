@@ -9,8 +9,9 @@ from tqdm.utils import CallbackIOWrapper
 
 from .exceptions import ExceptionMap, UnboxException
 
-UNBOX_ENDPOINT = "https://api-staging.tryunbox.ai/api"
-UNBOX_STORAGE_PATH = os.path.expanduser("~/.unbox/storage")
+# UNBOX_ENDPOINT = "https://api-staging.tryunbox.ai/api"
+UNBOX_ENDPOINT = "http://localhost:8080/api"
+UNBOX_STORAGE_PATH = os.path.expanduser("~/unbox/unbox-onpremise/userStorage")
 
 
 # Parameters for HTTP retry

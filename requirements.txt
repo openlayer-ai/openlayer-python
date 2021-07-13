@@ -1,4 +1,5 @@
 bentoml==0.13.0
+jupyter==1.0.0
 pandas==1.2.2
-tqdm==4.59.0
 requests==2.25.1
+tqdm==4.59.0
