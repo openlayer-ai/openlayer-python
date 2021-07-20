@@ -52,10 +52,15 @@ def _predict_function(model_type: ModelType):
         return "results = self.artifacts.function(self.artifacts.model, text, **self.artifacts.kwargs)"
 
 
-def _env_dependencies(tmp_dir: str, requirements_txt_file: Optional[str] = None):
+def _env_dependencies(
+    tmp_dir: str,
+    requirements_txt_file: Optional[str] = None,
+    setup_script: Optional[str] = None,
+):
     unbox_req_file = f"{tmp_dir}/requirements.txt"
+    env_wrapper_str = ""
     if not requirements_txt_file:
-        return "@env(infer_pip_packages=True)"
+        env_wrapper_str += "@env(infer_pip_packages=True"
     else:
         shutil.copy(requirements_txt_file, unbox_req_file)
         # Add required dependencies
@@ -63,13 +68,21 @@ def _env_dependencies(tmp_dir: str, requirements_txt_file: Optional[str] = None)
         with open(unbox_req_file, "a") as f:
             f.write("\n")
             [f.write(f"{dep}\n") for dep in deps]
-        return f"@env(requirements_txt_file='{unbox_req_file}')"
+        env_wrapper_str += f"@env(requirements_txt_file='{unbox_req_file}'"
+
+    # Add a user defined setup script to execute on startup
+    if setup_script:
+        env_wrapper_str += f", setup_sh='{setup_script}')"
+    else:
+        env_wrapper_str += ")"
+    return env_wrapper_str
 
 
 def create_template_model(
     model_type: ModelType,
     tmp_dir: str,
     requirements_txt_file: Optional[str] = None,
+    setup_script: Optional[str] = None,
 ):
     with open(f"template_model.py", "w") as python_file:
         file_contents = f"""\
@@ -86,7 +99,7 @@ def create_template_model(
         from bentoml.utils.tempdir import TempDirectory
 
 
-        {_env_dependencies(tmp_dir, requirements_txt_file)}
+        {_env_dependencies(tmp_dir, requirements_txt_file, setup_script)}
         @artifacts([{model_type.value}('model'), PickleArtifact('function'), PickleArtifact('kwargs')])
         class TemplateModel(BentoService):
             @api(input=JsonInput())
@@ -116,8 +129,9 @@ def create_template_model(
 
 
 def create_rasa_model(
-        tmp_dir: str,
-        requirements_txt_file: Optional[str] = None,
+    tmp_dir: str,
+    requirements_txt_file: Optional[str] = None,
+    setup_script: Optional[str] = None,
 ):
     with open(f"template_model.py", "w") as python_file:
         file_contents = f"""\
@@ -136,7 +150,7 @@ def create_rasa_model(
         model = Interpreter.load(f"{{os.path.dirname(os.path.abspath(__file__))}}/nlu")
 
 
-        {_env_dependencies(tmp_dir, requirements_txt_file)}
+        {_env_dependencies(tmp_dir, requirements_txt_file, setup_script)}
         @artifacts([PickleArtifact('function'), PickleArtifact('kwargs')])
         class TemplateModel(BentoService):
             @api(input=JsonInput())
@@ -159,10 +173,8 @@ def create_rasa_model(
                         json.dump(results.tolist(), f)
                 return "Success"
         """
-        print(_env_dependencies(tmp_dir, requirements_txt_file))
         python_file.write(textwrap.dedent(file_contents))
 
     from template_model import TemplateModel
 
     return TemplateModel()
-

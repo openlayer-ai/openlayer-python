@@ -46,6 +46,7 @@ class UnboxClient(object):
         name: str,
         description: str = None,
         requirements_txt_file: Optional[str] = None,
+        setup_script: Optional[str] = None,
         **kwargs,
     ) -> Model:
         """Uploads a model.
@@ -66,6 +67,8 @@ class UnboxClient(object):
                 Description of model
             requirements_txt_file (Optional[str]):
                 Path to a requirements file containing dependencies needed by the predict function
+            setup_script (Optional[str]):
+                Path to a setup script executing any commands necessary to run before loading the model
 
         Returns:
             Model:
@@ -74,10 +77,12 @@ class UnboxClient(object):
         with TempDirectory() as dir:
 
             if model_type == ModelType.rasa:
-                bento_service = create_rasa_model(dir, requirements_txt_file)
+                bento_service = create_rasa_model(
+                    dir, requirements_txt_file, setup_script
+                )
             else:
                 bento_service = create_template_model(
-                    model_type, dir, requirements_txt_file
+                    model_type, dir, requirements_txt_file, setup_script
                 )
                 if model_type == ModelType.transformers:
                     if "tokenizer" not in kwargs:
