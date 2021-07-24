@@ -115,7 +115,10 @@ class UnboxClient(object):
                     print("Connecting to Unbox server")
                     endpoint = "models"
                     payload = dict(
-                        name=name, description=description, classNames=class_names
+                        name=name,
+                        description=description,
+                        classNames=class_names,
+                        type=model_type.name,
                     )
                     modeldata = self.upload(endpoint, tarfile_path, payload)
         os.remove("template_model.py")
