@@ -155,7 +155,6 @@ def create_rasa_model(
         class TemplateModel(BentoService):
             @api(input=JsonInput())
             def predict(self, parsed_json: JsonSerializable):
-                print(parsed_json)
                 text = parsed_json['text']
                 results = self.artifacts.function(model, text, **self.artifacts.kwargs)
                 return results
