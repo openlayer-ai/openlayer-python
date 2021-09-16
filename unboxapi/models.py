@@ -120,6 +120,28 @@ def create_template_model(
                     else:
                         json.dump(results.tolist(), f)
                 return "Success"
+
+            @api(input=JsonInput())
+            def tokenize(self, parsed_json: JsonSerializable):
+                text = parsed_json['text']
+                results = None
+                if "tokenizer" in self.artifacts.kwargs:
+                    results = self.artifacts.kwargs["tokenizer"](text)
+                return results
+
+            @api(input=JsonInput())
+            def tokenize_from_path(self, parsed_json: JsonSerializable):
+                input_path = parsed_json["input_path"]
+                output_path = parsed_json["output_path"]
+                text = pd.read_csv(input_path)['text'].tolist()
+                if "tokenizer" in self.artifacts.kwargs:
+                    results = self.artifacts.kwargs["tokenizer"](text)
+                with open(output_path, 'w') as f:
+                    if type(results) == list:
+                        json.dump(results, f)
+                    else:
+                        json.dump(results.tolist(), f)
+                return "Success"
         """
         python_file.write(textwrap.dedent(file_contents))
 
@@ -165,6 +187,28 @@ def create_rasa_model(
                 output_path = parsed_json["output_path"]
                 text = pd.read_csv(input_path)['text'].tolist()
                 results = self.artifacts.function(model, text, **self.artifacts.kwargs)
+                with open(output_path, 'w') as f:
+                    if type(results) == list:
+                        json.dump(results, f)
+                    else:
+                        json.dump(results.tolist(), f)
+                return "Success"
+
+            @api(input=JsonInput())
+            def tokenize(self, parsed_json: JsonSerializable):
+                text = parsed_json['text']
+                results = None
+                if "tokenizer" in self.artifacts.kwargs:
+                    results = self.artifacts.kwargs["tokenizer"](text)
+                return results
+
+            @api(input=JsonInput())
+            def tokenize_from_path(self, parsed_json: JsonSerializable):
+                input_path = parsed_json["input_path"]
+                output_path = parsed_json["output_path"]
+                text = pd.read_csv(input_path)['text'].tolist()
+                if "tokenizer" in self.artifacts.kwargs:
+                    results = self.artifacts.kwargs["tokenizer"](text)
                 with open(output_path, 'w') as f:
                     if type(results) == list:
                         json.dump(results, f)

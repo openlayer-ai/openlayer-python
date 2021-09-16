@@ -119,6 +119,7 @@ class UnboxClient(object):
                         description=description,
                         classNames=class_names,
                         type=model_type.name,
+                        meta=dict(kwargs=list(kwargs.keys())),
                     )
                     modeldata = self.upload(endpoint, tarfile_path, payload)
         os.remove("template_model.py")
