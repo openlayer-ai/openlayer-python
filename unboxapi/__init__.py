@@ -14,7 +14,7 @@ from bentoml.utils.tempdir import TempDirectory
 from .api import Api
 from .datasets import Dataset
 from .exceptions import UnboxException
-from .models import Model, ModelType, create_template_model, create_rasa_model
+from .models import Model, ModelType, create_template_model
 
 
 class DeploymentType(Enum):
@@ -47,6 +47,8 @@ class UnboxClient(object):
         description: str = None,
         requirements_txt_file: Optional[str] = None,
         setup_script: Optional[str] = None,
+        custom_model_code: Optional[str] = None,
+        dependent_dir: Optional[List[str]] = None,
         **kwargs,
     ) -> Model:
         """Uploads a model.
@@ -69,32 +71,38 @@ class UnboxClient(object):
                 Path to a requirements file containing dependencies needed by the predict function
             setup_script (Optional[str]):
                 Path to a setup script executing any commands necessary to run before loading the model
+            custom_model_code (Optional[str]):
+                Custom code needed to initialize the model. Model object must be none in this case.
+            dependent_dir (Optional[str]):
+                Path to a dir of file dependencies needed to load the model
 
         Returns:
             Model:
                 Returns uploaded model
         """
+        if custom_model_code:
+            assert (
+                model_type is ModelType.custom
+            ), "model_type must be ModelType.custom if specifying custom_model_code"
         with TempDirectory() as dir:
-
-            if model_type == ModelType.rasa:
-                bento_service = create_rasa_model(
-                    dir, requirements_txt_file, setup_script
-                )
-            else:
-                bento_service = create_template_model(
-                    model_type, dir, requirements_txt_file, setup_script
-                )
-                if model_type == ModelType.transformers:
-                    if "tokenizer" not in kwargs:
-                        raise UnboxException(
-                            "Must specify tokenizer in kwargs when using a transformers model"
-                        )
-                    bento_service.pack(
-                        "model", {"model": model, "tokenizer": kwargs["tokenizer"]}
+            bento_service = create_template_model(
+                model_type,
+                dir,
+                requirements_txt_file,
+                setup_script,
+                custom_model_code,
+            )
+            if model_type is ModelType.transformers:
+                if "tokenizer" not in kwargs:
+                    raise UnboxException(
+                        "Must specify tokenizer in kwargs when using a transformers model"
                     )
-                    kwargs.pop("tokenizer")
-                else:
-                    bento_service.pack("model", model)
+                bento_service.pack(
+                    "model", {"model": model, "tokenizer": kwargs["tokenizer"]}
+                )
+                kwargs.pop("tokenizer")
+            elif model_type not in [ModelType.custom, ModelType.rasa]:
+                bento_service.pack("model", model)
 
             bento_service.pack("function", function)
             bento_service.pack("kwargs", kwargs)
@@ -102,9 +110,17 @@ class UnboxClient(object):
             with TempDirectory() as temp_dir:
                 _write_bento_content_to_dir(bento_service, temp_dir)
 
-                if model_type == ModelType.rasa:
-                    destination_path = os.path.join(temp_dir, "TemplateModel/nlu")
-                    shutil.copytree(model.model_metadata.model_dir, destination_path)
+                if model_type is ModelType.rasa:
+                    dependent_dir = model.model_metadata.model_dir
+
+                if dependent_dir is not None:
+                    shutil.copytree(
+                        dependent_dir,
+                        os.path.join(
+                            temp_dir,
+                            f"TemplateModel/{os.path.basename(dependent_dir.rstrip('/'))}",
+                        ),
+                    )
 
                 with TempDirectory() as tarfile_dir:
                     tarfile_path = f"{tarfile_dir}/model"
@@ -112,7 +128,6 @@ class UnboxClient(object):
                     with tarfile.open(tarfile_path, mode="w:gz") as tar:
                         tar.add(temp_dir, arcname=bento_service.name)
 
-                    print("Connecting to Unbox server")
                     endpoint = "models"
                     payload = dict(
                         name=name,

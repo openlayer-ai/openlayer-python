@@ -8,12 +8,13 @@ import shutil
 class ModelType(Enum):
     """Task Type List"""
 
+    custom = "Custom"
     fasttext = "FasttextModelArtifact"
     sklearn = "SklearnModelArtifact"
     pytorch = "PytorchModelArtifact"
     tensorflow = "TensorflowSavedModelArtifact"
     transformers = "TransformersModelArtifact"
-    rasa = ""
+    rasa = "Rasa"
 
 
 class Model:
@@ -46,16 +47,36 @@ class Model:
 
 
 def _predict_function(model_type: ModelType):
-    if model_type == ModelType.transformers:
+    if model_type is ModelType.transformers:
         return "results = self.artifacts.function(self.artifacts.model.get('model'), text, tokenizer=self.artifacts.model.get('tokenizer'), **self.artifacts.kwargs)"
+    elif model_type in [ModelType.rasa, ModelType.custom]:
+        return "results = self.artifacts.function(model, text, **self.artifacts.kwargs)"
     else:
         return "results = self.artifacts.function(self.artifacts.model, text, **self.artifacts.kwargs)"
 
 
+def _model(model_type: ModelType):
+    if model_type is ModelType.custom or model_type is ModelType.rasa:
+        return ""
+    else:
+        return f"from bentoml.frameworks.{model_type.name} import {model_type.value}"
+
+
+def _artifacts(model_type: ModelType):
+    if model_type is ModelType.custom or model_type is ModelType.rasa:
+        return "@artifacts([PickleArtifact('function'), PickleArtifact('kwargs')])"
+    else:
+        return f"@artifacts([{model_type.value}('model'), PickleArtifact('function'), PickleArtifact('kwargs')])"
+
+
+def _format_custom_code(custom_model_code: Optional[str]):
+    if custom_model_code is None:
+        return ""
+    return textwrap.indent(textwrap.dedent("\n" + custom_model_code), prefix="        ")
+
+
 def _env_dependencies(
-    tmp_dir: str,
-    requirements_txt_file: Optional[str] = None,
-    setup_script: Optional[str] = None,
+    tmp_dir: str, requirements_txt_file: Optional[str], setup_script: Optional[str]
 ):
     unbox_req_file = f"{tmp_dir}/requirements.txt"
     env_wrapper_str = ""
@@ -81,26 +102,38 @@ def _env_dependencies(
 def create_template_model(
     model_type: ModelType,
     tmp_dir: str,
-    requirements_txt_file: Optional[str] = None,
-    setup_script: Optional[str] = None,
+    requirements_txt_file: Optional[str],
+    setup_script: Optional[str],
+    custom_model_code: Optional[str],
 ):
+    if model_type is ModelType.rasa:
+        custom_model_code = """
+        from rasa.nlu.model import Interpreter
+        model = Interpreter.load("nlu")
+        """
+    if custom_model_code:
+        assert (
+            "model = " in custom_model_code
+        ), "custom_model_code must intialize a `model` var"
     with open(f"template_model.py", "w") as python_file:
         file_contents = f"""\
         import json
         import os
         import pandas as pd
-        from typing import List
 
         from bentoml import env, artifacts, api, BentoService
-        from bentoml.frameworks.{model_type.name} import {model_type.value}
+        {_model(model_type)}
         from bentoml.service.artifacts.common import PickleArtifact
         from bentoml.adapters import JsonInput
         from bentoml.types import JsonSerializable
-        from bentoml.utils.tempdir import TempDirectory
-
+        
+        cwd = os.getcwd()
+        os.chdir(os.path.dirname(os.path.abspath(__file__)))
+        {_format_custom_code(custom_model_code)}
+        os.chdir(cwd)
 
         {_env_dependencies(tmp_dir, requirements_txt_file, setup_script)}
-        @artifacts([{model_type.value}('model'), PickleArtifact('function'), PickleArtifact('kwargs')])
+        {_artifacts(model_type)}
         class TemplateModel(BentoService):
             @api(input=JsonInput())
             def predict(self, parsed_json: JsonSerializable):
@@ -114,79 +147,6 @@ def create_template_model(
                 output_path = parsed_json["output_path"]
                 text = pd.read_csv(input_path)['text'].tolist()
                 {_predict_function(model_type)}
-                with open(output_path, 'w') as f:
-                    if type(results) == list:
-                        json.dump(results, f)
-                    else:
-                        json.dump(results.tolist(), f)
-                return "Success"
-
-            @api(input=JsonInput())
-            def tokenize(self, parsed_json: JsonSerializable):
-                text = parsed_json['text']
-                results = None
-                if "tokenizer" in self.artifacts.kwargs:
-                    results = self.artifacts.kwargs["tokenizer"](text)
-                return results
-
-            @api(input=JsonInput())
-            def tokenize_from_path(self, parsed_json: JsonSerializable):
-                input_path = parsed_json["input_path"]
-                output_path = parsed_json["output_path"]
-                text = pd.read_csv(input_path)['text'].tolist()
-                if "tokenizer" in self.artifacts.kwargs:
-                    results = self.artifacts.kwargs["tokenizer"](text)
-                with open(output_path, 'w') as f:
-                    if type(results) == list:
-                        json.dump(results, f)
-                    else:
-                        json.dump(results.tolist(), f)
-                return "Success"
-        """
-        python_file.write(textwrap.dedent(file_contents))
-
-    from template_model import TemplateModel
-
-    return TemplateModel()
-
-
-def create_rasa_model(
-    tmp_dir: str,
-    requirements_txt_file: Optional[str] = None,
-    setup_script: Optional[str] = None,
-):
-    with open(f"template_model.py", "w") as python_file:
-        file_contents = f"""\
-        import json
-        import os
-        import pandas as pd
-        from typing import List
-
-        from bentoml import env, artifacts, api, BentoService
-        from bentoml.service.artifacts.common import PickleArtifact
-        from bentoml.adapters import JsonInput
-        from bentoml.types import JsonSerializable
-        from bentoml.utils.tempdir import TempDirectory
-        from rasa.nlu.model import Interpreter
-
-        model = Interpreter.load(f"{{os.path.dirname(os.path.abspath(__file__))}}/nlu")
-
-
-        {_env_dependencies(tmp_dir, requirements_txt_file, setup_script)}
-        @artifacts([PickleArtifact('function'), PickleArtifact('kwargs')])
-        class TemplateModel(BentoService):
-            @api(input=JsonInput())
-            def predict(self, parsed_json: JsonSerializable):
-                text = parsed_json['text']
-                results = self.artifacts.function(model, text, **self.artifacts.kwargs)
-                return results
-
-            @api(input=JsonInput())
-            def predict_from_path(self, parsed_json: JsonSerializable):
-                input_path = parsed_json["input_path"]
-                output_path = parsed_json["output_path"]
-                text = pd.read_csv(input_path)['text'].tolist()
-                results = self.artifacts.function(model, text, **self.artifacts.kwargs)
                 with open(output_path, 'w') as f:
                     if type(results) == list:
                         json.dump(results, f)
