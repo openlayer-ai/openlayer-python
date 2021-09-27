@@ -114,11 +114,12 @@ class UnboxClient(object):
                     dependent_dir = model.model_metadata.model_dir
 
                 if dependent_dir is not None:
+                    dependent_dir = os.path.abspath(dependent_dir)
                     shutil.copytree(
                         dependent_dir,
                         os.path.join(
                             temp_dir,
-                            f"TemplateModel/{os.path.basename(dependent_dir.rstrip('/'))}",
+                            f"TemplateModel/{os.path.basename(dependent_dir)}",
                         ),
                     )
 
