@@ -2,6 +2,7 @@ import textwrap
 from enum import Enum
 from typing import Optional
 
+import bentoml
 import shutil
 
 
@@ -85,7 +86,7 @@ def _env_dependencies(
     else:
         shutil.copy(requirements_txt_file, unbox_req_file)
         # Add required dependencies
-        deps = ["bentoml==0.13.0", "pandas"]
+        deps = [f"bentoml=={bentoml.__version__}", "pandas"]
         with open(unbox_req_file, "a") as f:
             f.write("\n")
             [f.write(f"{dep}\n") for dep in deps]

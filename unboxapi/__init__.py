@@ -70,7 +70,7 @@ class UnboxClient(object):
             requirements_txt_file (Optional[str]):
                 Path to a requirements file containing dependencies needed by the predict function
             setup_script (Optional[str]):
-                Path to a setup script executing any commands necessary to run before loading the model
+                Path to a bash script executing any commands necessary to run before loading the model
             custom_model_code (Optional[str]):
                 Custom code needed to initialize the model. Model object must be none in this case.
             dependent_dir (Optional[str]):
@@ -114,11 +114,14 @@ class UnboxClient(object):
                     dependent_dir = model.model_metadata.model_dir
 
                 if dependent_dir is not None:
+                    dependent_dir = os.path.abspath(dependent_dir)
+                    if dependent_dir == os.getcwd():
+                        raise UnboxException("dependent_dir can't be working directory")
                     shutil.copytree(
                         dependent_dir,
                         os.path.join(
                             temp_dir,
-                            f"TemplateModel/{os.path.basename(dependent_dir.rstrip('/'))}",
+                            f"TemplateModel/{os.path.basename(dependent_dir)}",
                         ),
                     )
 
