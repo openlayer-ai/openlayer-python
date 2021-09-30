@@ -150,7 +150,8 @@ class UnboxClient(object):
         label_column_name: str,
         text_column_name: str,
         name: str,
-        description: str = None,
+        description: Optional[str] = None,
+        tag_column_name: Optional[str] = None,
     ) -> Dataset:
         """Uploads a dataset from a csv.
 
@@ -166,12 +167,14 @@ class UnboxClient(object):
                 Column header in the csv containing the input text
             name (str):
                 Name of dataset
-            description (str):
+            description (Optional[str]):
                 Description of dataset
+            tag_column_name (Optional[str]):
+                Column header in the csv containing any pre-computed tags
 
         Raises:
             UnboxException:
-                If the file doesn't exist or the label or text column names
+                If the file doesn't exist or the label / text / tag column names
                 are not in the dataset
 
         Returns:
@@ -193,19 +196,19 @@ class UnboxClient(object):
         try:
             label_column_index = headers.index(label_column_name)
             text_column_index = headers.index(text_column_name)
-        except ValueError:
-            raise UnboxException(
-                "Label column and/or text column names not in dataset."
+            tag_column_index = (
+                headers.index(tag_column_name) if tag_column_name else None
             )
+        except ValueError:
+            raise UnboxException("Label / text / tag column names not in dataset.")
         endpoint = "datasets"
         payload = dict(
             name=name,
             description=description,
             classNames=class_names,
-            labelColumnName=label_column_name,
-            textColumnName=text_column_name,
             labelColumnIndex=label_column_index,
             textColumnIndex=text_column_index,
+            tagColumnName=tag_column_name,
         )
         return Dataset(self.upload(endpoint, file_path, payload))
 
@@ -216,7 +219,8 @@ class UnboxClient(object):
         label_column_name: str,
         text_column_name: str,
         name: str,
-        description: str,
+        description: Optional[str] = None,
+        tag_column_name: Optional[str] = None,
     ) -> Dataset:
         """Uploads a dataset from a dataframe.
 
@@ -232,8 +236,10 @@ class UnboxClient(object):
                 Column header in the csv containing the input text
             name (str):
                 Name of dataset
-            description (str):
+            description (Optional[str]):
                 Description of dataset
+            tag_column_name (Optional[str]):
+                Column header in the csv containing any pre-computed tags
 
         Raises:
             UnboxException:
@@ -254,4 +260,5 @@ class UnboxClient(object):
                 text_column_name,
                 name,
                 description,
+                tag_column_name,
             )
