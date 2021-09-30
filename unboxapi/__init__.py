@@ -152,6 +152,7 @@ class UnboxClient(object):
         name: str,
         description: Optional[str] = None,
         tag_column_name: Optional[str] = None,
+        language: str = "en",
     ) -> Dataset:
         """Uploads a dataset from a csv.
 
@@ -171,6 +172,8 @@ class UnboxClient(object):
                 Description of dataset
             tag_column_name (Optional[str]):
                 Column header in the csv containing any pre-computed tags
+            language (str):
+                The language of the dataset in ISO 639-1 (alpha-2 code) format
 
         Raises:
             UnboxException:
@@ -209,6 +212,7 @@ class UnboxClient(object):
             labelColumnIndex=label_column_index,
             textColumnIndex=text_column_index,
             tagColumnName=tag_column_name,
+            language=language,
         )
         return Dataset(self.upload(endpoint, file_path, payload))
 
@@ -221,6 +225,7 @@ class UnboxClient(object):
         name: str,
         description: Optional[str] = None,
         tag_column_name: Optional[str] = None,
+        language: str = "en",
     ) -> Dataset:
         """Uploads a dataset from a dataframe.
 
@@ -240,6 +245,8 @@ class UnboxClient(object):
                 Description of dataset
             tag_column_name (Optional[str]):
                 Column header in the csv containing any pre-computed tags
+            language (str):
+                The language of the dataset in ISO 639-1 (alpha-2 code) format
 
         Raises:
             UnboxException:
@@ -261,4 +268,5 @@ class UnboxClient(object):
                 name,
                 description,
                 tag_column_name,
+                language,
             )
