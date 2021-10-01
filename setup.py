@@ -14,7 +14,7 @@ with pathlib.Path("requirements.txt").open() as requirements_txt:
 
 setup(
     name="unboxapi",
-    version="0.0.4",
+    version="0.0.5",
     description="The official Python client library for Unbox AI, the Testing and Debugging Platform for AI",
     url="https://github.com/unboxai/unboxapi-python-client",
     author="Unbox AI",
