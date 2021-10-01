@@ -153,6 +153,7 @@ class UnboxClient(object):
         description: Optional[str] = None,
         tag_column_name: Optional[str] = None,
         language: str = "en",
+        sep: str = ",",
     ) -> Dataset:
         """Uploads a dataset from a csv.
 
@@ -174,6 +175,8 @@ class UnboxClient(object):
                 Column header in the csv containing any pre-computed tags
             language (str):
                 The language of the dataset in ISO 639-1 (alpha-2 code) format
+            sep (str):
+                Delimiter to use
 
         Raises:
             UnboxException:
@@ -184,11 +187,12 @@ class UnboxClient(object):
             Dataset:
                 Returns uploaded dataset
         """
+        file_path = os.path.expanduser(file_path)
         if not os.path.isfile(file_path):
             raise UnboxException("File path does not exist.")
 
         with open(file_path, "rt") as f:
-            reader = csv.reader(f)
+            reader = csv.reader(f, delimiter=sep)
             headers = next(reader)
             row_count = sum(1 for _ in reader)
         if row_count > self.subscription_plan["datasetSize"]:
@@ -213,6 +217,7 @@ class UnboxClient(object):
             textColumnIndex=text_column_index,
             tagColumnName=tag_column_name,
             language=language,
+            sep=sep,
         )
         return Dataset(self.upload(endpoint, file_path, payload))
 
