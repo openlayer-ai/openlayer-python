@@ -2,6 +2,8 @@ import textwrap
 from enum import Enum
 from typing import Optional
 
+from .tasks import TaskType
+
 import bentoml
 import shutil
 
@@ -47,30 +49,43 @@ class Model:
         return self._json
 
 
-def _predict_function(model_type: ModelType):
+def _predict_function(model_type: ModelType) -> str:
     if model_type is ModelType.transformers:
-        return "results = self.artifacts.function(self.artifacts.model.get('model'), text, tokenizer=self.artifacts.model.get('tokenizer'), **self.artifacts.kwargs)"
+        return "results = self.artifacts.function(self.artifacts.model.get('model'), input, tokenizer=self.artifacts.model.get('tokenizer'), **self.artifacts.kwargs)"
     elif model_type in [ModelType.rasa, ModelType.custom]:
-        return "results = self.artifacts.function(model, text, **self.artifacts.kwargs)"
+        return (
+            "results = self.artifacts.function(model, input, **self.artifacts.kwargs)"
+        )
     else:
-        return "results = self.artifacts.function(self.artifacts.model, text, **self.artifacts.kwargs)"
+        return "results = self.artifacts.function(self.artifacts.model, input, **self.artifacts.kwargs)"
 
 
-def _model(model_type: ModelType):
+def _extract_input_from_json(task_type: TaskType, from_csv_path: bool = False) -> str:
+    if task_type is TaskType.TextClassification:
+        if from_csv_path:
+            return "input = pd.read_csv(input_path).iloc[:, 0].tolist()"
+        return "input = parsed_json['input']"
+    elif task_type is TaskType.TabularClassification:
+        if from_csv_path:
+            return "input = pd.read_csv(input_path).to_numpy()"
+        return "input = np.array(parsed_json['input'])"
+
+
+def _model(model_type: ModelType) -> str:
     if model_type is ModelType.custom or model_type is ModelType.rasa:
         return ""
     else:
         return f"from bentoml.frameworks.{model_type.name} import {model_type.value}"
 
 
-def _artifacts(model_type: ModelType):
+def _artifacts(model_type: ModelType) -> str:
     if model_type is ModelType.custom or model_type is ModelType.rasa:
         return "@artifacts([PickleArtifact('function'), PickleArtifact('kwargs')])"
     else:
         return f"@artifacts([{model_type.value}('model'), PickleArtifact('function'), PickleArtifact('kwargs')])"
 
 
-def _format_custom_code(custom_model_code: Optional[str]):
+def _format_custom_code(custom_model_code: Optional[str]) -> str:
     if custom_model_code is None:
         return ""
     return textwrap.indent(textwrap.dedent("\n" + custom_model_code), prefix="        ")
@@ -102,6 +117,7 @@ def _env_dependencies(
 
 def create_template_model(
     model_type: ModelType,
+    task_type: TaskType,
     tmp_dir: str,
     requirements_txt_file: Optional[str],
     setup_script: Optional[str],
@@ -120,6 +136,7 @@ def create_template_model(
         file_contents = f"""\
         import json
         import os
+        import numpy as np
         import pandas as pd
 
         from bentoml import env, artifacts, api, BentoService
@@ -138,7 +155,7 @@ def create_template_model(
         class TemplateModel(BentoService):
             @api(input=JsonInput())
             def predict(self, parsed_json: JsonSerializable):
-                text = parsed_json['text']
+                {_extract_input_from_json(task_type, from_csv_path=False)}
                 {_predict_function(model_type)}
                 return results
             
@@ -146,7 +163,7 @@ def create_template_model(
             def predict_from_path(self, parsed_json: JsonSerializable):
                 input_path = parsed_json["input_path"]
                 output_path = parsed_json["output_path"]
-                text = pd.read_csv(input_path)['text'].tolist()
+                {_extract_input_from_json(task_type, from_csv_path=True)}
                 {_predict_function(model_type)}
                 with open(output_path, 'w') as f:
                     if type(results) == list:
@@ -157,19 +174,19 @@ def create_template_model(
 
             @api(input=JsonInput())
             def tokenize(self, parsed_json: JsonSerializable):
-                text = parsed_json['text']
+                input = parsed_json['input']
                 results = None
                 if "tokenizer" in self.artifacts.kwargs:
-                    results = self.artifacts.kwargs["tokenizer"](text)
+                    results = self.artifacts.kwargs["tokenizer"](input)
                 return results
 
             @api(input=JsonInput())
             def tokenize_from_path(self, parsed_json: JsonSerializable):
                 input_path = parsed_json["input_path"]
                 output_path = parsed_json["output_path"]
-                text = pd.read_csv(input_path)['text'].tolist()
+                input = pd.read_csv(input_path)['input'].tolist()
                 if "tokenizer" in self.artifacts.kwargs:
-                    results = self.artifacts.kwargs["tokenizer"](text)
+                    results = self.artifacts.kwargs["tokenizer"](input)
                 with open(output_path, 'w') as f:
                     if type(results) == list:
                         json.dump(results, f)
