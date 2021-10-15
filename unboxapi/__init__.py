@@ -15,6 +15,7 @@ from .api import Api
 from .datasets import Dataset
 from .exceptions import UnboxException
 from .models import Model, ModelType, create_template_model
+from .tasks import Task, TaskType
 
 
 class DeploymentType(Enum):
@@ -42,13 +43,15 @@ class UnboxClient(object):
         function,
         model,
         model_type: ModelType,
+        task_type: TaskType,
         class_names: List[str],
         name: str,
         description: str = None,
         requirements_txt_file: Optional[str] = None,
         setup_script: Optional[str] = None,
         custom_model_code: Optional[str] = None,
-        dependent_dir: Optional[List[str]] = None,
+        dependent_dir: Optional[str] = None,
+        feature_names: List[str] = [],
         **kwargs,
     ) -> Model:
         """Uploads a model.
@@ -61,6 +64,9 @@ class UnboxClient(object):
             model_type (ModelType):
                 Model framework type of model
                 ex. `ModelType.sklearn`
+            task_type (TaskType):
+                Type of ML task
+                ex. `TaskType.TextClassification`
             class_names (List[str]):
                 List of class names corresponding to outputs of predict function
             name (str):
@@ -75,6 +81,8 @@ class UnboxClient(object):
                 Custom code needed to initialize the model. Model object must be none in this case.
             dependent_dir (Optional[str]):
                 Path to a dir of file dependencies needed to load the model
+            feature_names (List[str]):
+                List of input feature names. Required for tabular classification.
 
         Returns:
             Model:
@@ -84,9 +92,15 @@ class UnboxClient(object):
             assert (
                 model_type is ModelType.custom
             ), "model_type must be ModelType.custom if specifying custom_model_code"
+        if task_type is TaskType.TabularClassification:
+            if feature_names is None:
+                raise UnboxException(
+                    "Must specify feature_names for TabularClassification"
+                )
         with TempDirectory() as dir:
             bento_service = create_template_model(
                 model_type,
+                task_type,
                 dir,
                 requirements_txt_file,
                 setup_script,
@@ -108,6 +122,7 @@ class UnboxClient(object):
             bento_service.pack("kwargs", kwargs)
 
             with TempDirectory() as temp_dir:
+                print("Bundling model and artifacts...")
                 _write_bento_content_to_dir(bento_service, temp_dir)
 
                 if model_type is ModelType.rasa:
@@ -136,9 +151,12 @@ class UnboxClient(object):
                         name=name,
                         description=description,
                         classNames=class_names,
+                        taskType=task_type.value,
                         type=model_type.name,
-                        meta=dict(kwargs=list(kwargs.keys())),
+                        kwargs=list(kwargs.keys()),
+                        featureNames=feature_names,
                     )
+                    print("Uploading model to Unbox...")
                     modeldata = self.upload(endpoint, tarfile_path, payload)
         os.remove("template_model.py")
         return Model(modeldata)
@@ -146,29 +164,34 @@ class UnboxClient(object):
     def add_dataset(
         self,
         file_path: str,
+        task_type: TaskType,
         class_names: List[str],
-        label_column_name: str,
-        text_column_name: str,
         name: str,
+        label_column_name: str,
+        text_column_name: Optional[str] = None,
         description: Optional[str] = None,
         tag_column_name: Optional[str] = None,
         language: str = "en",
         sep: str = ",",
+        feature_names: List[str] = [],
     ) -> Dataset:
         """Uploads a dataset from a csv.
 
         Args:
             file_path (str):
                 Path to the dataset csv
+            task_type (TaskType):
+                Type of ML task
+                ex. `TaskType.TextClassification`
             class_names (List[str]):
                 List of class names indexed by label integer in the dataset
                 ex. `[negative, positive]` when `[0, 1]` are labels in the csv
-            label_column_name (str):
-                Column header in the csv containing the labels
-            text_column_name (str):
-                Column header in the csv containing the input text
             name (str):
                 Name of dataset
+            label_column_name (str):
+                Column header in the csv containing the labels
+            text_column_name (Optional[str]):
+                For TextClassification - Column header in the csv containing the input text
             description (Optional[str]):
                 Description of dataset
             tag_column_name (Optional[str]):
@@ -177,6 +200,8 @@ class UnboxClient(object):
                 The language of the dataset in ISO 639-1 (alpha-2 code) format
             sep (str):
                 Delimiter to use
+            feature_names (List[str]):
+                List of input feature names. Required for tabular classification.
 
         Raises:
             UnboxException:
@@ -190,6 +215,11 @@ class UnboxClient(object):
         file_path = os.path.expanduser(file_path)
         if not os.path.isfile(file_path):
             raise UnboxException("File path does not exist.")
+        if task_type is TaskType.TabularClassification:
+            if feature_names is None:
+                raise UnboxException(
+                    "Must specify feature_names for TabularClassification"
+                )
 
         with open(file_path, "rt") as f:
             reader = csv.reader(f, delimiter=sep)
@@ -202,56 +232,68 @@ class UnboxClient(object):
             )
         try:
             label_column_index = headers.index(label_column_name)
-            text_column_index = headers.index(text_column_name)
-            tag_column_index = (
-                headers.index(tag_column_name) if tag_column_name else None
+            text_column_index = (
+                headers.index(text_column_name) if text_column_name else None
             )
+            _ = headers.index(tag_column_name) if tag_column_name else None
+            [headers.index(name) for name in feature_names]
         except ValueError:
-            raise UnboxException("Label / text / tag column names not in dataset.")
+            raise UnboxException(
+                "Label / text / feature / tag column names not in dataset."
+            )
         endpoint = "datasets"
         payload = dict(
             name=name,
             description=description,
+            taskType=task_type.value,
             classNames=class_names,
             labelColumnIndex=label_column_index,
             textColumnIndex=text_column_index,
             tagColumnName=tag_column_name,
             language=language,
             sep=sep,
+            featureNames=feature_names,
         )
         return Dataset(self.upload(endpoint, file_path, payload))
 
     def add_dataframe(
         self,
         df: pd.DataFrame,
+        task_type: TaskType,
         class_names: List[str],
-        label_column_name: str,
-        text_column_name: str,
         name: str,
+        label_column_name: str,
+        text_column_name: Optional[str] = None,
         description: Optional[str] = None,
         tag_column_name: Optional[str] = None,
         language: str = "en",
+        feature_names: List[str] = [],
     ) -> Dataset:
         """Uploads a dataset from a dataframe.
 
         Args:
             df (pd.DataFrame):
                 Dataframe object
+            task_type (TaskType):
+                Type of ML task
+                ex. `TaskType.TextClassification`
             class_names (List[str]):
                 List of class names indexed by label integer in the dataset
                 ex. `[negative, positive]` when `[0, 1]` are labels in the csv
-            label_column_name (str):
-                Column header in the csv containing the labels
-            text_column_name (str):
-                Column header in the csv containing the input text
             name (str):
                 Name of dataset
+            label_column_name (str):
+                Column header in the csv containing the labels
+            text_column_name (Optional[str]):
+                Column header in the csv containing the input text
             description (Optional[str]):
                 Description of dataset
             tag_column_name (Optional[str]):
                 Column header in the csv containing any pre-computed tags
             language (str):
                 The language of the dataset in ISO 639-1 (alpha-2 code) format
+            feature_names (List[str]):
+                List of input feature names. Required for tabular classification.
 
         Raises:
             UnboxException:
@@ -266,12 +308,14 @@ class UnboxClient(object):
             file_path = os.path.join(tmp_dir, str(uuid.uuid1()))
             df.to_csv(file_path, index=False)
             return self.add_dataset(
-                file_path,
-                class_names,
-                label_column_name,
-                text_column_name,
-                name,
-                description,
-                tag_column_name,
-                language,
+                file_path=file_path,
+                task_type=task_type,
+                class_names=class_names,
+                label_column_name=label_column_name,
+                text_column_name=text_column_name,
+                name=name,
+                description=description,
+                tag_column_name=tag_column_name,
+                language=language,
+                feature_names=feature_names,
             )
