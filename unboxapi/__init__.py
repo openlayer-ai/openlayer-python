@@ -52,6 +52,7 @@ class UnboxClient(object):
         custom_model_code: Optional[str] = None,
         dependent_dir: Optional[str] = None,
         feature_names: List[str] = [],
+        preprocessed_train_sample_df: pd.DataFrame = None,
         **kwargs,
     ) -> Model:
         """Uploads a model.
@@ -83,6 +84,9 @@ class UnboxClient(object):
                 Path to a dir of file dependencies needed to load the model
             feature_names (List[str]):
                 List of input feature names. Required for tabular classification.
+            preprocessed_train_sample_df (pd.DataFrame):
+                A random sample of 100 rows from your training dataset. Required for tabular classification.
+                This is used to support explainability features.
 
         Returns:
             Model:
@@ -93,10 +97,22 @@ class UnboxClient(object):
                 model_type is ModelType.custom
             ), "model_type must be ModelType.custom if specifying custom_model_code"
         if task_type is TaskType.TabularClassification:
-            if feature_names is None:
+            required_fields = ["feature_names", "preprocessed_train_sample_df"]
+            for field in required_fields:
+                if field is None:
+                    raise UnboxException(
+                        f"Must specify {field} for TabularClassification"
+                    )
+            if len(preprocessed_train_sample_df.index) != 100:
+                raise UnboxException("preprocessed_train_sample_df must have 100 rows")
+            try:
+                headers = preprocessed_train_sample_df.columns.tolist()
+                [headers.index(name) for name in feature_names]
+            except ValueError:
                 raise UnboxException(
-                    "Must specify feature_names for TabularClassification"
+                    "Feature column names not in preprocessed_train_sample_df"
                 )
+
         with TempDirectory() as dir:
             bento_service = create_template_model(
                 model_type,
@@ -128,6 +144,7 @@ class UnboxClient(object):
                 if model_type is ModelType.rasa:
                     dependent_dir = model.model_metadata.model_dir
 
+                # Add dependent directory to bundle
                 if dependent_dir is not None:
                     dependent_dir = os.path.abspath(dependent_dir)
                     if dependent_dir == os.getcwd():
@@ -140,6 +157,14 @@ class UnboxClient(object):
                         ),
                     )
 
+                # Add sample of training data to bundle
+                if task_type is TaskType.TabularClassification:
+                    preprocessed_train_sample_df.to_csv(
+                        os.path.join(temp_dir, f"TemplateModel/train_sample.csv"),
+                        index=False,
+                    )
+
+                # Tar the model bundle with its artifacts and upload
                 with TempDirectory() as tarfile_dir:
                     tarfile_path = f"{tarfile_dir}/model"
 
