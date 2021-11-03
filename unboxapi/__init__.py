@@ -13,7 +13,7 @@ from bentoml.utils.tempdir import TempDirectory
 
 from .api import Api
 from .datasets import Dataset
-from .exceptions import UnboxException
+from .exceptions import UnboxException, UnboxInvalidRequest
 from .models import Model, ModelType, create_template_model
 from .tasks import Task, TaskType
 
@@ -52,7 +52,7 @@ class UnboxClient(object):
         custom_model_code: Optional[str] = None,
         dependent_dir: Optional[str] = None,
         feature_names: List[str] = [],
-        preprocessed_train_sample_df: pd.DataFrame = None,
+        train_sample_df: pd.DataFrame = None,
         categorical_features_map: Dict[str, List[str]] = {},
         **kwargs,
     ) -> Model:
@@ -85,10 +85,10 @@ class UnboxClient(object):
                 Path to a dir of file dependencies needed to load the model
             feature_names (List[str]):
                 List of input feature names. Required for tabular classification.
-            preprocessed_train_sample_df (pd.DataFrame):
-                A random sample of 100 rows from your training dataset. Required for tabular classification.
+            train_sample_df (pd.DataFrame):
+                A random sample of >= 100 rows from your training dataset. Required for tabular classification.
                 This is used to support explainability features.
-            categorical_features_map (pd.DataFrame):
+            categorical_features_map (Dict[str, List[str]]):
                 A dict containing a list of category names for each feature that is categorical.
                 ex. {'Weather': ['Hot', 'Cold']}
 
@@ -101,21 +101,23 @@ class UnboxClient(object):
                 model_type is ModelType.custom
             ), "model_type must be ModelType.custom if specifying custom_model_code"
         if task_type is TaskType.TabularClassification:
-            required_fields = ["feature_names", "preprocessed_train_sample_df"]
+            required_fields = ["feature_names", "train_sample_df"]
             for field in required_fields:
                 if field is None:
                     raise UnboxException(
                         f"Must specify {field} for TabularClassification"
                     )
-            if len(preprocessed_train_sample_df.index) != 100:
-                raise UnboxException("preprocessed_train_sample_df must have 100 rows")
+            if len(train_sample_df.index) < 100:
+                raise UnboxException("train_sample_df must have at least 100 rows")
+            train_sample_df = train_sample_df.sample(100)
             try:
-                headers = preprocessed_train_sample_df.columns.tolist()
+                headers = train_sample_df.columns.tolist()
                 [headers.index(name) for name in feature_names]
             except ValueError:
-                raise UnboxException(
-                    "Feature column names not in preprocessed_train_sample_df"
-                )
+                raise UnboxException("Feature column names not in train_sample_df")
+            self._validate_categorical_features(
+                train_sample_df, categorical_features_map
+            )
 
         with TempDirectory() as dir:
             bento_service = create_template_model(
@@ -163,7 +165,7 @@ class UnboxClient(object):
 
                 # Add sample of training data to bundle
                 if task_type is TaskType.TabularClassification:
-                    preprocessed_train_sample_df.to_csv(
+                    train_sample_df.to_csv(
                         os.path.join(temp_dir, f"TemplateModel/train_sample.csv"),
                         index=False,
                     )
@@ -233,7 +235,7 @@ class UnboxClient(object):
                 Delimiter to use
             feature_names (List[str]):
                 List of input feature names. Required for tabular classification.
-            categorical_features_map (pd.DataFrame):
+            categorical_features_map (Dict[str, List[str]]):
                 A dict containing a list of category names for each feature that is categorical.
                 ex. {'Weather': ['Hot', 'Cold']}
 
@@ -254,6 +256,9 @@ class UnboxClient(object):
                 raise UnboxException(
                     "Must specify feature_names for TabularClassification"
                 )
+            self._validate_categorical_features(
+                pd.read_csv(file_path, sep=sep), categorical_features_map
+            )
 
         with open(file_path, "rt") as f:
             reader = csv.reader(f, delimiter=sep)
@@ -330,7 +335,7 @@ class UnboxClient(object):
                 The language of the dataset in ISO 639-1 (alpha-2 code) format
             feature_names (List[str]):
                 List of input feature names. Required for tabular classification.
-            categorical_features_map (pd.DataFrame):
+            categorical_features_map (Dict[str, List[str]]):
                 A dict containing a list of category names for each feature that is categorical.
                 ex. {'Weather': ['Hot', 'Cold']}
 
@@ -359,3 +364,14 @@ class UnboxClient(object):
                 feature_names=feature_names,
                 categorical_features_map=categorical_features_map,
             )
+
+    @staticmethod
+    def _validate_categorical_features(
+        df: pd.DataFrame, categorical_features_map: Dict[str, List[str]]
+    ):
+        for feature, options in categorical_features_map.items():
+            if len(df[feature].unique()) > len(options):
+                raise UnboxInvalidRequest(
+                    f"Feature '{feature}' contains more options in the df than provided "
+                    "for it in `categorical_features_map`"
+                )
