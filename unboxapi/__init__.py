@@ -5,7 +5,7 @@ import tarfile
 import tempfile
 import uuid
 from enum import Enum
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import pandas as pd
 from bentoml.saved_bundle.bundler import _write_bento_content_to_dir
@@ -53,6 +53,7 @@ class UnboxClient(object):
         dependent_dir: Optional[str] = None,
         feature_names: List[str] = [],
         preprocessed_train_sample_df: pd.DataFrame = None,
+        categorical_features_map: Dict[str, List[str]] = {},
         **kwargs,
     ) -> Model:
         """Uploads a model.
@@ -87,6 +88,9 @@ class UnboxClient(object):
             preprocessed_train_sample_df (pd.DataFrame):
                 A random sample of 100 rows from your training dataset. Required for tabular classification.
                 This is used to support explainability features.
+            categorical_features_map (pd.DataFrame):
+                A dict containing a list of category names for each feature that is categorical.
+                ex. {'Weather': ['Hot', 'Cold']}
 
         Returns:
             Model:
@@ -180,6 +184,7 @@ class UnboxClient(object):
                         type=model_type.name,
                         kwargs=list(kwargs.keys()),
                         featureNames=feature_names,
+                        categoricalFeaturesMap=categorical_features_map,
                     )
                     print("Uploading model to Unbox...")
                     modeldata = self.upload(endpoint, tarfile_path, payload)
@@ -199,6 +204,7 @@ class UnboxClient(object):
         language: str = "en",
         sep: str = ",",
         feature_names: List[str] = [],
+        categorical_features_map: Dict[str, List[str]] = {},
     ) -> Dataset:
         """Uploads a dataset from a csv.
 
@@ -227,6 +233,9 @@ class UnboxClient(object):
                 Delimiter to use
             feature_names (List[str]):
                 List of input feature names. Required for tabular classification.
+            categorical_features_map (pd.DataFrame):
+                A dict containing a list of category names for each feature that is categorical.
+                ex. {'Weather': ['Hot', 'Cold']}
 
         Raises:
             UnboxException:
@@ -278,6 +287,7 @@ class UnboxClient(object):
             language=language,
             sep=sep,
             featureNames=feature_names,
+            categoricalFeaturesMap=categorical_features_map,
         )
         return Dataset(self.upload(endpoint, file_path, payload))
 
@@ -293,6 +303,7 @@ class UnboxClient(object):
         tag_column_name: Optional[str] = None,
         language: str = "en",
         feature_names: List[str] = [],
+        categorical_features_map: Dict[str, List[str]] = {},
     ) -> Dataset:
         """Uploads a dataset from a dataframe.
 
@@ -319,6 +330,9 @@ class UnboxClient(object):
                 The language of the dataset in ISO 639-1 (alpha-2 code) format
             feature_names (List[str]):
                 List of input feature names. Required for tabular classification.
+            categorical_features_map (pd.DataFrame):
+                A dict containing a list of category names for each feature that is categorical.
+                ex. {'Weather': ['Hot', 'Cold']}
 
         Raises:
             UnboxException:
@@ -343,4 +357,5 @@ class UnboxClient(object):
                 tag_column_name=tag_column_name,
                 language=language,
                 feature_names=feature_names,
+                categorical_features_map=categorical_features_map,
             )
