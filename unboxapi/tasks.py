@@ -6,6 +6,7 @@ class TaskType(Enum):
 
     TextClassification = "text-classification"
     TabularClassification = "tabular-classification"
+    TabularRegression = "tabular-regression"
 
 
 class Task:

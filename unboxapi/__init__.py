@@ -103,7 +103,7 @@ class UnboxClient(object):
             assert (
                 model_type is ModelType.custom
             ), "model_type must be ModelType.custom if specifying custom_model_code"
-        if task_type is TaskType.TabularClassification:
+        if task_type in [TaskType.TabularClassification, TaskType.TabularRegression]:
             required_fields = [
                 (feature_names, "feature_names"),
                 (train_sample_df, "train_sample_df"),
@@ -178,7 +178,10 @@ class UnboxClient(object):
                     )
 
                 # Add sample of training data to bundle
-                if task_type is TaskType.TabularClassification:
+                if task_type in [
+                    TaskType.TabularClassification,
+                    TaskType.TabularRegression,
+                ]:
                     train_sample_df.to_csv(
                         os.path.join(temp_dir, f"TemplateModel/train_sample.csv"),
                         index=False,
@@ -266,7 +269,7 @@ class UnboxClient(object):
         file_path = os.path.expanduser(file_path)
         if not os.path.isfile(file_path):
             raise UnboxException("File path does not exist.")
-        if task_type is TaskType.TabularClassification:
+        if task_type in [TaskType.TabularClassification, TaskType.TabularRegression]:
             if feature_names is None:
                 raise UnboxException(
                     "Must specify feature_names for TabularClassification"
