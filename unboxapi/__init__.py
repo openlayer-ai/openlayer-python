@@ -290,14 +290,14 @@ class UnboxClient(object):
                 f" limit of {self.subscription_plan['datasetSize']}."
             )
         try:
-            label_column_index = headers.index(label_column_name)
-            text_column_index = None
+            headers.index(label_column_name)
             if text_column_name:
-                text_column_index = headers.index(text_column_name)
+                headers.index(text_column_name)
+                feature_names.append(text_column_name)
             if tag_column_name:
                 headers.index(tag_column_name)
-            for feature_name in feature_names:
-                headers.index(feature_name)
+            for name in feature_names:
+                headers.index(name)
         except ValueError:
             raise UnboxException(
                 "Label / text / feature / tag column names not in dataset."
@@ -308,8 +308,7 @@ class UnboxClient(object):
             description=description,
             taskType=task_type.value,
             classNames=class_names,
-            labelColumnIndex=label_column_index,
-            textColumnIndex=text_column_index,
+            labelColumnName=label_column_name,
             tagColumnName=tag_column_name,
             language=language,
             sep=sep,
