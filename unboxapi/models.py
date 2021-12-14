@@ -66,7 +66,7 @@ def _extract_input_from_json(task_type: TaskType, from_csv_path: bool = False) -
         if from_csv_path:
             return "input = pd.read_csv(input_path).iloc[:, 0].tolist()"
         return "input = parsed_json['input']"
-    elif task_type is TaskType.TabularClassification:
+    elif task_type in [TaskType.TabularClassification, TaskType.TabularRegression]:
         if from_csv_path:
             return "input = pd.read_csv(input_path).to_numpy()"
         return "input = np.array(parsed_json['input'], dtype='O')"
