@@ -296,8 +296,8 @@ class UnboxClient(object):
                 feature_names.append(text_column_name)
             if tag_column_name:
                 headers.index(tag_column_name)
-            for name in feature_names:
-                headers.index(name)
+            for feature_name in feature_names:
+                headers.index(feature_name)
         except ValueError:
             raise UnboxException(
                 "Label / text / feature / tag column names not in dataset."
