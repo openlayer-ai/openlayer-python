@@ -259,6 +259,8 @@ class UnboxClient(object):
             self._validate_categorical_features(
                 pd.read_csv(file_path, sep=sep), categorical_features_map
             )
+        else:
+            feature_names = []
 
         with open(file_path, "rt") as f:
             reader = csv.reader(f, delimiter=sep)
@@ -271,11 +273,13 @@ class UnboxClient(object):
             )
         try:
             label_column_index = headers.index(label_column_name)
-            text_column_index = (
-                headers.index(text_column_name) if text_column_name else None
-            )
-            _ = headers.index(tag_column_name) if tag_column_name else None
-            [headers.index(name) for name in feature_names]
+            text_column_index = None
+            if text_column_name:
+                text_column_index = headers.index(text_column_name)
+            if tag_column_name:
+                headers.index(tag_column_name)
+            for feature_name in feature_names:
+                headers.index(feature_name)
         except ValueError:
             raise UnboxException(
                 "Label / text / feature / tag column names not in dataset."
