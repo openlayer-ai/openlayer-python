@@ -53,6 +53,7 @@ class UnboxClient(object):
         dependent_dir: Optional[str] = None,
         feature_names: List[str] = [],
         train_sample_df: pd.DataFrame = None,
+        train_sample_label_column_name: str = None,
         categorical_features_map: Dict[str, List[str]] = {},
         **kwargs,
     ) -> Model:
@@ -88,6 +89,8 @@ class UnboxClient(object):
             train_sample_df (pd.DataFrame):
                 A random sample of >= 100 rows from your training dataset. Required for tabular classification.
                 This is used to support explainability features.
+            train_sample_label_column_name (str):
+                Column header in train_sample_df containing the labels
             categorical_features_map (Dict[str, List[str]]):
                 A dict containing a list of category names for each feature that is categorical.
                 ex. {'Weather': ['Hot', 'Cold']}
@@ -101,7 +104,11 @@ class UnboxClient(object):
                 model_type is ModelType.custom
             ), "model_type must be ModelType.custom if specifying custom_model_code"
         if task_type is TaskType.TabularClassification:
-            required_fields = ["feature_names", "train_sample_df"]
+            required_fields = [
+                feature_names,
+                train_sample_df,
+                train_sample_label_column_name,
+            ]
             for field in required_fields:
                 if field is None:
                     raise UnboxException(
@@ -109,12 +116,17 @@ class UnboxClient(object):
                     )
             if len(train_sample_df.index) < 100:
                 raise UnboxException("train_sample_df must have at least 100 rows")
-            train_sample_df = train_sample_df.sample(100)
+            train_sample_df = train_sample_df.sample(3000)
             try:
                 headers = train_sample_df.columns.tolist()
-                [headers.index(name) for name in feature_names]
+                [
+                    headers.index(name)
+                    for name in feature_names + [train_sample_label_column_name]
+                ]
             except ValueError:
-                raise UnboxException("Feature column names not in train_sample_df")
+                raise UnboxException(
+                    "Feature / label column names not in train_sample_df"
+                )
             self._validate_categorical_features(
                 train_sample_df, categorical_features_map
             )
@@ -187,6 +199,7 @@ class UnboxClient(object):
                         kwargs=list(kwargs.keys()),
                         featureNames=feature_names,
                         categoricalFeaturesMap=categorical_features_map,
+                        trainSampleLabelColumnName=train_sample_label_column_name,
                     )
                     print("Uploading model to Unbox...")
                     modeldata = self.upload(endpoint, tarfile_path, payload)
