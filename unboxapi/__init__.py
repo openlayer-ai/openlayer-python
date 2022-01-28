@@ -116,7 +116,9 @@ class UnboxClient(object):
                     )
             if len(train_sample_df.index) < 100:
                 raise UnboxException("train_sample_df must have at least 100 rows")
-            train_sample_df = train_sample_df.sample(3000)
+            train_sample_df = train_sample_df.sample(
+                min(3000, len(train_sample_df.index))
+            )
             try:
                 headers = train_sample_df.columns.tolist()
                 [
