@@ -343,13 +343,13 @@ class UnboxClient(object):
             name (str):
                 Name of dataset
             label_column_name (str):
-                Column header in the csv containing the labels
+                Column header in the dataframe containing the labels
             text_column_name (Optional[str]):
-                Column header in the csv containing the input text
+                Column header in the datafrmae containing the input text
             description (Optional[str]):
                 Description of dataset
             tag_column_name (Optional[str]):
-                Column header in the csv containing any pre-computed tags
+                Column header in the dataframe containing any pre-computed tags
             language (str):
                 The language of the dataset in ISO 639-1 (alpha-2 code) format
             feature_names (List[str]):
