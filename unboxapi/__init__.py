@@ -105,12 +105,12 @@ class UnboxClient(object):
             ), "model_type must be ModelType.custom if specifying custom_model_code"
         if task_type is TaskType.TabularClassification:
             required_fields = [
-                feature_names,
-                train_sample_df,
-                train_sample_label_column_name,
+                (feature_names, "feature_names"),
+                (train_sample_df, "train_sample_df"),
+                (train_sample_label_column_name, "train_sample_label_column_name"),
             ]
-            for field in required_fields:
-                if field is None:
+            for value, field in required_fields:
+                if value is None:
                     raise UnboxException(
                         f"Must specify {field} for TabularClassification"
                     )
