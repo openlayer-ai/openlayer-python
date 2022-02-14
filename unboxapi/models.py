@@ -174,7 +174,7 @@ def create_template_model(
 
             @api(input=JsonInput())
             def tokenize(self, parsed_json: JsonSerializable):
-                input = parsed_json['input']
+                {_extract_input_from_json(task_type, from_csv_path=False)}
                 results = None
                 if "tokenizer" in self.artifacts.kwargs:
                     results = self.artifacts.kwargs["tokenizer"](input)
@@ -184,7 +184,7 @@ def create_template_model(
             def tokenize_from_path(self, parsed_json: JsonSerializable):
                 input_path = parsed_json["input_path"]
                 output_path = parsed_json["output_path"]
-                input = pd.read_csv(input_path)['input'].tolist()
+                {_extract_input_from_json(task_type, from_csv_path=True)}
                 if "tokenizer" in self.artifacts.kwargs:
                     results = self.artifacts.kwargs["tokenizer"](input)
                 with open(output_path, 'w') as f:
