@@ -1,3 +1,4 @@
+import os
 import textwrap
 from enum import Enum
 from typing import Optional
@@ -88,7 +89,9 @@ def _artifacts(model_type: ModelType) -> str:
 def _format_custom_code(custom_model_code: Optional[str]) -> str:
     if custom_model_code is None:
         return ""
-    return textwrap.indent(textwrap.dedent("\n" + custom_model_code), prefix="        ")
+    return textwrap.indent(
+        textwrap.dedent("\n" + custom_model_code), prefix="            "
+    )
 
 
 def _env_dependencies(
@@ -129,6 +132,8 @@ def create_template_model(
         model = Interpreter.load("nlu")
         """
     if custom_model_code:
+        # Set a flag to prevent wasted memory when importing the script
+        os.environ["UNBOX_DO_NOT_LOAD_MODEL"] = "True"
         assert (
             "model = " in custom_model_code
         ), "custom_model_code must intialize a `model` var"
@@ -145,10 +150,11 @@ def create_template_model(
         from bentoml.adapters import JsonInput
         from bentoml.types import JsonSerializable
         
-        cwd = os.getcwd()
-        os.chdir(os.path.dirname(os.path.abspath(__file__)))
-        {_format_custom_code(custom_model_code)}
-        os.chdir(cwd)
+        if not os.getenv("UNBOX_DO_NOT_LOAD_MODEL"):
+            cwd = os.getcwd()
+            os.chdir(os.path.dirname(os.path.abspath(__file__)))
+            {_format_custom_code(custom_model_code)}
+            os.chdir(cwd)
 
         {_env_dependencies(tmp_dir, requirements_txt_file, setup_script)}
         {_artifacts(model_type)}
