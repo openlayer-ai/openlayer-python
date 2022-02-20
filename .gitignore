@@ -7,3 +7,6 @@ build
 dist
 template_model.py
 server-tests.ipynb
+dependencies/
+*.bin
+*.csv
