@@ -292,7 +292,6 @@ class UnboxClient(object):
         try:
             headers.index(label_column_name)
             if text_column_name:
-                headers.index(text_column_name)
                 feature_names.append(text_column_name)
             if tag_column_name:
                 headers.index(tag_column_name)
