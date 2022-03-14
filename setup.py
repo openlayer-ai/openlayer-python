@@ -14,10 +14,10 @@ with pathlib.Path("requirements.txt").open() as requirements_txt:
 
 setup(
     name="unboxapi",
-    version="0.0.9",
-    description="The official Python client library for Unbox AI, the Testing and Debugging Platform for AI",
+    version="0.0.0",
+    description="The official Python client library for Unbox, the Testing and Debugging Platform for AI",
     url="https://github.com/unboxai/unboxapi-python-client",
-    author="Unbox AI",
+    author="Unbox",
     license="BSD",
     packages=find_packages(exclude=["js", "node_modules", "tests"]),
     python_requires=">=3.7",
