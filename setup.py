@@ -4,6 +4,7 @@ import pathlib
 
 import pkg_resources
 from setuptools import find_packages, setup
+from distutils.util import convert_path
 
 with pathlib.Path("requirements.txt").open() as requirements_txt:
     install_requires = [
@@ -11,10 +12,14 @@ with pathlib.Path("requirements.txt").open() as requirements_txt:
         for requirement in pkg_resources.parse_requirements(requirements_txt)
     ]
 
+main_ns = {}
+ver_path = convert_path('unboxapi/version.py')
+with open(ver_path) as ver_file:
+    exec(ver_file.read(), main_ns)
 
 setup(
     name="unboxapi",
-    version="0.0.0",
+    version=main_ns['__version__'],
     description="The official Python client library for Unbox, the Testing and Debugging Platform for AI",
     url="https://github.com/unboxai/unboxapi-python-client",
     author="Unbox",

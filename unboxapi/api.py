@@ -8,6 +8,7 @@ from tqdm import tqdm
 from tqdm.utils import CallbackIOWrapper
 
 from .exceptions import ExceptionMap, UnboxException
+from .version import __version__
 
 # UNBOX_ENDPOINT = "https://api-staging.unbox.ai/api"
 UNBOX_ENDPOINT = "http://localhost:8080/api"
@@ -19,6 +20,10 @@ HTTP_TOTAL_RETRIES = 3  # Number of total retries
 HTTP_RETRY_BACKOFF_FACTOR = 2  # Wait 1, 2, 4 seconds between retries
 HTTP_STATUS_FORCE_LIST = [408, 429] + list(range(500, 531))
 HTTP_RETRY_ALLOWED_METHODS = frozenset({"GET", "POST"})
+
+CLIENT_METADATA = {
+    "version": __version__
+}
 
 
 class Api:
@@ -60,7 +65,7 @@ class Api:
 
         try:
             params = params or {}
-
+            params.update(CLIENT_METADATA)
             res = https.request(
                 method=method,
                 url=url,
