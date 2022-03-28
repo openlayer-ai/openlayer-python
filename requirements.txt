@@ -1,4 +1,4 @@
-bentoml==0.13.0
+bentoml==0.13.1
 jupyter==1.0.0
 pandas==1.2.2
 requests==2.25.1
