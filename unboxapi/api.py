@@ -161,6 +161,7 @@ class Api:
                     presigned_json["url"], data=presigned_json["fields"], files=files
                 )
         if res.ok:
+            body["storagePath"] = f"s3://{presigned_json['storagePath']}"
             return self.post_request(f"{endpoint}/{presigned_json['id']}", body=body)
         else:
             self._raise_on_respose(res)
@@ -193,11 +194,11 @@ class Api:
         resource in the backend when using a local deployment.
         """
         id = uuid.uuid4()
+        blob_path = f"{UNBOX_STORAGE_PATH}/{endpoint}/{id}"
         try:
-            os.makedirs(f"{UNBOX_STORAGE_PATH}/{endpoint}/{id}", exist_ok=True)
+            os.makedirs(blob_path, exist_ok=True)
         except OSError as _:
-            raise UnboxException(
-                f"Directory {UNBOX_STORAGE_PATH}/{endpoint}/{id} cannot be created"
-            )
-        shutil.copyfile(file_path, f"{UNBOX_STORAGE_PATH}/{endpoint}/{id}/{id}")
+            raise UnboxException(f"Directory {blob_path} cannot be created")
+        shutil.copyfile(file_path, f"{blob_path}/{id}")
+        body["storagePath"] = f"local://{blob_path}/{id}"
         return self.post_request(f"{endpoint}/{id}", body=body)
