@@ -411,7 +411,12 @@ class UnboxClient(object):
                         trainSampleLabelColumnName=train_sample_label_column_name,
                     )
                     print("Uploading model to Unbox...")
-                    modeldata = self.upload(endpoint, tarfile_path, payload)
+                    modeldata = self.upload(
+                        endpoint=endpoint,
+                        file_path=tarfile_path,
+                        object_name="tarfile",
+                        body=payload,
+                    )
         os.remove("template_model.py")
         return Model(modeldata)
 
@@ -560,6 +565,7 @@ class UnboxClient(object):
         >>> dataset.to_dict()
         """
         file_path = os.path.expanduser(file_path)
+        object_name = "original.csv"
         if not os.path.isfile(file_path):
             raise UnboxException("File path does not exist.")
         if label_column_name in feature_names:
@@ -611,7 +617,14 @@ class UnboxClient(object):
             featureNames=feature_names,
             categoricalFeaturesMap=categorical_features_map,
         )
-        return Dataset(self.upload(endpoint, file_path, payload))
+        return Dataset(
+            self.upload(
+                endpoint=endpoint,
+                file_path=file_path,
+                object_name=object_name,
+                body=payload,
+            )
+        )
 
     def add_dataframe(
         self,

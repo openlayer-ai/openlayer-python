@@ -143,7 +143,9 @@ class Api:
             data=data,
         )
 
-    def upload_blob_s3(self, endpoint: str, file_path: str, body=None):
+    def upload_blob_s3(
+        self, endpoint: str, file_path: str, object_name: str, body=None
+    ):
         """Generic method to upload data to S3 storage and create the appropriate resource
         in the backend.
         """
@@ -189,7 +191,7 @@ class Api:
         else:
             self._raise_on_respose(res)
 
-    def transfer_blob(self, endpoint: str, file_path: str, body=None):
+    def transfer_blob(self, endpoint: str, file_path: str, object_name: str, body=None):
         """Generic method to transfer data to the unbox folder and create the appropriate
         resource in the backend when using a local deployment.
         """
@@ -199,6 +201,6 @@ class Api:
             os.makedirs(blob_path, exist_ok=True)
         except OSError as _:
             raise UnboxException(f"Directory {blob_path} cannot be created")
-        shutil.copyfile(file_path, f"{blob_path}/{id}")
-        body["storagePath"] = f"local://{blob_path}/{id}"
+        shutil.copyfile(file_path, f"{blob_path}/{object_name}")
+        body["storagePath"] = f"local://{blob_path}"
         return self.post_request(f"{endpoint}/{id}", body=body)
