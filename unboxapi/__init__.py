@@ -21,10 +21,12 @@ from .tasks import Task, TaskType
 class DeploymentType(Enum):
     ONPREM = 1
     AWS = 2
+    GCP = 3
 
 
 DEPLOYMENT = DeploymentType.ONPREM
 # DEPLOYMENT = DeploymentType.AWS
+# DEPLOYMENT = DeploymentType.GCP
 
 
 class UnboxClient(object):
@@ -35,7 +37,9 @@ class UnboxClient(object):
         self.subscription_plan = self.api.get_request("users/subscriptionPlan")
 
         if DEPLOYMENT == DeploymentType.AWS:
-            self.upload = self.api.upload_blob
+            self.upload = self.api.upload_blob_s3
+        elif DEPLOYMENT == DeploymentType.GCP:
+            self.upload = self.api.upload_blob_gcs
         else:
             self.upload = self.api.transfer_blob
 
