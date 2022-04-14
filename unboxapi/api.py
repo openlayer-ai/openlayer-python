@@ -130,7 +130,20 @@ class Api:
             data=data,
         )
 
-    def upload_blob(self, endpoint: str, file_path: str, body=None):
+    def put_request(self, endpoint: str, body=None, files=None, data=None):
+        """Generic PUT Request Wrapper. """
+        return self._api_request(
+            "PUT",
+            endpoint,
+            headers=self._headers
+            if files is None
+            else self._headers_multipart_form_data,
+            body=body,
+            files=files,
+            data=data,
+        )
+
+    def upload_blob_s3(self, endpoint: str, file_path: str, body=None):
         """Generic method to upload data to S3 storage and create the appropriate resource
         in the backend.
         """
@@ -146,6 +159,29 @@ class Api:
                 files = {"file": (presigned_json["id"], wrapped_file)}
                 res = requests.post(
                     presigned_json["url"], data=presigned_json["fields"], files=files
+                )
+        if res.ok:
+            return self.post_request(f"{endpoint}/{presigned_json['id']}", body=body)
+        else:
+            self._raise_on_respose(res)
+
+    def upload_blob_gcs(self, endpoint: str, file_path: str, body=None):
+        """Generic method to upload data to Google Cloud Storage and create the appropriate resource
+        in the backend.
+        """
+        presigned_json = self.get_request(endpoint)
+        with open(file_path, "rb") as f:
+            with tqdm(
+                total=os.stat(file_path).st_size,
+                unit="B",
+                unit_scale=True,
+                unit_divisor=1024,
+            ) as t:
+                wrapped_file = CallbackIOWrapper(t.update, f, "read")
+                res = requests.put(
+                    presigned_json["url"],
+                    data=wrapped_file,
+                    headers={"Content-Type": "application/x-gzip"},
                 )
         if res.ok:
             return self.post_request(f"{endpoint}/{presigned_json['id']}", body=body)
