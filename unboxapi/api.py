@@ -144,12 +144,13 @@ class Api:
         )
 
     def upload_blob_s3(
-        self, endpoint: str, file_path: str, object_name: str, body=None
+        self, endpoint: str, file_path: str, object_name: str = None, body=None
     ):
         """Generic method to upload data to S3 storage and create the appropriate resource
         in the backend.
         """
-        presigned_json = self.get_request(endpoint)
+        params = {"storageInterface": "s3", "objectName": object_name}
+        presigned_json = self.get_request(endpoint, params=params)
         with open(file_path, "rb") as f:
             with tqdm(
                 total=os.stat(file_path).st_size,
@@ -163,16 +164,19 @@ class Api:
                     presigned_json["url"], data=presigned_json["fields"], files=files
                 )
         if res.ok:
-            body["storagePath"] = f"s3://{presigned_json['storagePath']}"
+            body["storagePath"] = presigned_json["storagePath"]
             return self.post_request(f"{endpoint}/{presigned_json['id']}", body=body)
         else:
             self._raise_on_respose(res)
 
-    def upload_blob_gcs(self, endpoint: str, file_path: str, body=None):
+    def upload_blob_gcs(
+        self, endpoint: str, file_path: str, object_name: str = None, body=None
+    ):
         """Generic method to upload data to Google Cloud Storage and create the appropriate resource
         in the backend.
         """
-        presigned_json = self.get_request(endpoint)
+        params = {"storageInterface": "gcs", "objectName": object_name}
+        presigned_json = self.get_request(endpoint, params=params)
         with open(file_path, "rb") as f:
             with tqdm(
                 total=os.stat(file_path).st_size,
@@ -187,6 +191,7 @@ class Api:
                     headers={"Content-Type": "application/x-gzip"},
                 )
         if res.ok:
+            body["storagePath"] = presigned_json["storagePath"]
             return self.post_request(f"{endpoint}/{presigned_json['id']}", body=body)
         else:
             self._raise_on_respose(res)
