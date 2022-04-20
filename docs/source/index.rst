@@ -3,16 +3,16 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 Instantiating Unbox client 
-==========================
+**************************
 .. autoclass:: unboxapi.UnboxClient
 
 Model upload
-============
+************
 .. autofunction:: unboxapi.UnboxClient.add_model
 
 
 Dataset upload
-==============
+**************
 .. autofunction:: unboxapi.UnboxClient.add_dataframe
 
 .. autofunction:: unboxapi.UnboxClient.add_dataset
@@ -20,4 +20,3 @@ Dataset upload
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
-
