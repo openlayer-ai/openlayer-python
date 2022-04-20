@@ -31,7 +31,15 @@ DEPLOYMENT = DeploymentType.ONPREM
 
 
 class UnboxClient(object):
-    """ Client class that interacts with the Unbox Platform. """
+    """ Client class that interacts with the Unbox Platform.
+
+    See Also:
+        `Tabular tutorial <https://unbox.readme.io/docs>`_ and `NLP tutorial <https://unbox.readme.io/docs>`_ 
+
+    Example:
+        >>> import unboxapi
+        >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+    """
 
     def __init__(self, api_key: str):
         self.api = Api(api_key)
@@ -104,6 +112,34 @@ class UnboxClient(object):
         Returns:
             Model:
                 Returns uploaded model
+        See Also:
+            `Tabular tutorial <https://unbox.readme.io/docs>`_ and `NLP tutorial <https://unbox.readme.io/docs>`_ 
+
+        Example:
+            >>> import unboxapi
+            >>> from unboxapi.tasks import TaskType
+            >>> from unboxapi.models import ModelType
+            >>> 
+            >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+            >>>
+            >>> model = client.add_model(
+            >>>     function=predict_proba, 
+            >>>     model=sklearn_model,
+            >>>     model_type=ModelType.sklearn,
+            >>>     task_type=TaskType.TabularClassification,
+            >>>     class_names=class_names,
+            >>>     name='Churn Classifier',
+            >>>     description='this is my churn classification model',
+            >>>     feature_names=feature_names,
+            >>>     train_sample_df=x_train[:3000],
+            >>>     train_sample_label_column_name='churn',
+            >>>     categorical_features_map=categorical_map,
+            >>>     col_names=feature_names,
+            >>>     one_hot_encoder=data_encode_one_hot,
+            >>>     encoders=encoders,
+            >>>    )
+            >>> 
+            >>> model.to_dict()
         """
         if custom_model_code:
             assert (
@@ -271,6 +307,29 @@ class UnboxClient(object):
         Returns:
             Dataset:
                 Returns uploaded dataset
+
+        See Also:
+            `Tabular tutorial <https://unbox.readme.io/docs>`_ and `NLP tutorial <https://unbox.readme.io/docs>`_ 
+
+        Example:
+            >>> import unboxapi
+            >>> from unboxapi.tasks import TaskType
+            >>> from unboxapi.models import ModelType
+            >>> 
+            >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+            >>>
+            >>> dataset = client.add_dataframe(
+            >>>     df=x_val,
+            >>>     class_names=class_names,
+            >>>     label_column_name='churn',
+            >>>     name="Churn Validation",
+            >>>     description='this is my churn dataset',
+            >>>     task_type=TaskType.TabularClassification,
+            >>>     feature_names=feature_names,
+            >>>     categorical_features_map=categorical_map,
+            >>> )
+            >>> 
+            >>> dataset.to_dict()
         """
         file_path = os.path.expanduser(file_path)
         if not os.path.isfile(file_path):
@@ -377,6 +436,29 @@ class UnboxClient(object):
         Returns:
             Dataset:
                 Returns uploaded dataset
+        
+        See Also:
+            `Tabular tutorial <https://unbox.readme.io/docs>`_ and `NLP tutorial <https://unbox.readme.io/docs>`_ 
+
+        Example:
+            >>> import unboxapi
+            >>> from unboxapi.tasks import TaskType
+            >>> from unboxapi.models import ModelType
+            >>> 
+            >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+            >>>
+            >>> dataset = client.add_dataframe(
+            >>>     df=x_val,
+            >>>     class_names=class_names,
+            >>>     label_column_name='churn',
+            >>>     name="Churn Validation",
+            >>>     description='this is my churn dataset',
+            >>>     task_type=TaskType.TabularClassification,
+            >>>     feature_names=feature_names,
+            >>>     categorical_features_map=categorical_map,
+            >>> )
+            >>> 
+            >>> dataset.to_dict()
         """
         with tempfile.TemporaryDirectory() as tmp_dir:
             file_path = os.path.join(tmp_dir, str(uuid.uuid1()))
