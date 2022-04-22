@@ -1,3 +1,4 @@
+from cProfile import label
 import csv
 import os
 import shutil
@@ -274,6 +275,10 @@ class UnboxClient(object):
         file_path = os.path.expanduser(file_path)
         if not os.path.isfile(file_path):
             raise UnboxException("File path does not exist.")
+        if label_column_name in feature_names:
+            raise UnboxException(
+                f"label_column_name `{label_column_name}` must not be in feature_names."
+            )
         if task_type in [TaskType.TabularClassification, TaskType.TabularRegression]:
             if feature_names is None:
                 raise UnboxException(
