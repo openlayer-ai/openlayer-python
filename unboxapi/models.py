@@ -18,6 +18,7 @@ class ModelType(Enum):
     pytorch = "PytorchModelArtifact"
     tensorflow = "TensorflowSavedModelArtifact"
     transformers = "TransformersModelArtifact"
+    keras = "KerasModelArtifact"
     rasa = "Rasa"
 
 
