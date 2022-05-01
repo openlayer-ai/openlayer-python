@@ -10,3 +10,10 @@ server-tests.ipynb
 dependencies/
 *.bin
 *.csv
+
+
+# Documentation generated files #
+#################################
+docs/source/generated
+docs/source/reference/api
+docs/source/_static/*.html

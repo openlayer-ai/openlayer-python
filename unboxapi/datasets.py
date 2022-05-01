@@ -21,7 +21,9 @@ class Dataset:
 
     def to_dict(self):
         """Returns object properties as a dict
-        Returns:
-            Dict with object properties
+
+        Returns
+        -------
+        Dict with object properties
         """
         return self._json

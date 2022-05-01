@@ -1,4 +1,3 @@
-from cProfile import label
 import csv
 import os
 import shutil
@@ -16,29 +15,36 @@ from .api import Api
 from .datasets import Dataset
 from .exceptions import UnboxException, UnboxInvalidRequest
 from .models import Model, ModelType, create_template_model
-from .tasks import Task, TaskType
+from .tasks import TaskType
+
+from .version import __version__
 
 
 class DeploymentType(Enum):
+    """ Specify where your data should end up. """
+
     ONPREM = 1
     AWS = 2
     GCP = 3
 
 
 DEPLOYMENT = DeploymentType.ONPREM
-# DEPLOYMENT = DeploymentType.AWS
-# DEPLOYMENT = DeploymentType.GCP
 
 
 class UnboxClient(object):
-    """ Client class that interacts with the Unbox Platform.
+    """Client class that interacts with the Unbox Platform.
 
-    See Also:
-        `Tabular tutorial <https://unbox.readme.io/docs>`_ and `NLP tutorial <https://unbox.readme.io/docs>`_ 
+    Parameters
+    ----------
+    api_key : str
+        Your API key. Retrieve it from the web app.
 
-    Example:
-        >>> import unboxapi
-        >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+    Examples
+    --------
+    Instantiate a client with your api key
+
+    >>> import unboxapi
+    >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
     """
 
     def __init__(self, api_key: str):
@@ -73,73 +79,216 @@ class UnboxClient(object):
     ) -> Model:
         """Uploads a model.
 
-        Args:
-            function:
-                Prediction function object in expected format
-            model:
-                Model object
-            model_type (ModelType):
-                Model framework type of model
-                ex. `ModelType.sklearn`
-            task_type (TaskType):
-                Type of ML task
-                ex. `TaskType.TextClassification`
-            class_names (List[str]):
-                List of class names corresponding to outputs of predict function
-            name (str):
-                Name of model
-            description (str):
-                Description of model
-            requirements_txt_file (Optional[str]):
-                Path to a requirements file containing dependencies needed by the predict function
-            setup_script (Optional[str]):
-                Path to a bash script executing any commands necessary to run before loading the model
-            custom_model_code (Optional[str]):
-                Custom code needed to initialize the model. Model object must be none in this case.
-            dependent_dir (Optional[str]):
-                Path to a dir of file dependencies needed to load the model
-            feature_names (List[str]):
-                List of input feature names. Required for tabular classification.
-            train_sample_df (pd.DataFrame):
-                A random sample of >= 100 rows from your training dataset. Required for tabular classification.
-                This is used to support explainability features.
-            train_sample_label_column_name (str):
-                Column header in train_sample_df containing the labels
-            categorical_features_map (Dict[str, List[str]]):
-                A dict containing a list of category names for each feature that is categorical.
-                ex. {'Weather': ['Hot', 'Cold']}
+        Parameters
+        ----------
+        function :
+            Prediction function object in expected format
+        model :
+            Model object
+        model_type : ModelType
+            Model framework type of model
+            ex. `ModelType.sklearn`
+        task_type : TaskType
+            Type of ML task
+            ex. `TaskType.TextClassification`
+        class_names : List[str]
+            List of class names corresponding to outputs of predict function
+        name : str
+            Name of model
+        description : str
+            Description of model
+        requirements_txt_file : str
+            Path to a requirements file containing dependencies needed by the predict function
+        setup_script : Optional[str]
+            Path to a bash script executing any commands necessary to run before loading the model
+        custom_model_code : Optional[str]
+            Custom code needed to initialize the model. Model object must be none in this case.
+        dependent_dir : Optional[str]
+            Path to a dir of file dependencies needed to load the model
+        feature_names : List[str]
+            List of input feature names. Required for tabular classification.
+        train_sample_df : pd.DataFrame
+            A random sample of >= 100 rows from your training dataset. Required for tabular classification.
+            This is used to support explainability features.
+        train_sample_label_column_name : str
+            Column header in train_sample_df containing the labels
+        categorical_features_map : Dict[str
+            A dict containing a list of category names for each feature that is categorical.
+            ex. {'Weather': ['Hot', 'Cold']}
+        **kwargs
+            Any additional keyword args you would like to pass to your predict_proba function.
 
-        Returns:
-            Model:
-                Returns uploaded model
-        See Also:
-            `Tabular tutorial <https://unbox.readme.io/docs>`_ and `NLP tutorial <https://unbox.readme.io/docs>`_ 
+        Returns
+        -------
+        Model
+            Returns uploaded model
 
-        Example:
-            >>> import unboxapi
-            >>> from unboxapi.tasks import TaskType
-            >>> from unboxapi.models import ModelType
-            >>> 
-            >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
-            >>>
-            >>> model = client.add_model(
-            >>>     function=predict_proba, 
-            >>>     model=sklearn_model,
-            >>>     model_type=ModelType.sklearn,
-            >>>     task_type=TaskType.TabularClassification,
-            >>>     class_names=class_names,
-            >>>     name='Churn Classifier',
-            >>>     description='this is my churn classification model',
-            >>>     feature_names=feature_names,
-            >>>     train_sample_df=x_train[:3000],
-            >>>     train_sample_label_column_name='churn',
-            >>>     categorical_features_map=categorical_map,
-            >>>     col_names=feature_names,
-            >>>     one_hot_encoder=data_encode_one_hot,
-            >>>     encoders=encoders,
-            >>>    )
-            >>> 
-            >>> model.to_dict()
+        Examples
+        --------
+
+        .. seealso::
+            Our `sample notebooks <https://github.com/unboxai/unboxapi-python-client/tree/main/examples>`_ and
+            `tutorials <https://unbox.readme.io/docs/overview-of-tutorial-tracks>`_.
+
+        Instantiate the client
+
+        >>> import unboxapi
+        >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+
+        **If your task type is tabular classification...**
+
+        Let's say your dataset looks like the following:
+
+        >>> df
+            CreditScore  Geography    Balance  Churned
+        0           618     France     321.92        1
+        1           714    Germany  102001.22        0
+        2           604      Spain   12333.15        0
+        ..          ...        ...        ...      ...
+
+        The first set of variables needed by Unbox are:
+
+        >>> from unboxapi.tasks import TaskType
+        >>>
+        >>> task_type = TaskType.TabularClassification
+        >>> class_names = ['Retained', 'Churned']
+        >>> feature_names = ['CreditScore', 'Geography', 'Balance']
+        >>> categorical_features_map = {'CreditScore': ['France', 'Germany', 'Spain']}
+
+        Now let's say you've trained a simple ``scikit-learn`` model on data that looks like the above.
+
+        You must next define a ``predict_proba`` function that adheres to the following signature:
+
+        >>> def predict_proba(model, input_features: np.ndarray, **kwargs):
+        ...     # Optional pre-processing of input_features
+        ...     preds = model.predict_proba(input_features)
+        ...     # Optional re-weighting of preds
+        ...     return preds
+
+        The ``model`` arg must be the actual trained model object, and the ``input_features`` arg must be a 2D numpy array
+        containing a batch of features that will be passed to the model as inputs.
+
+        You can optionally include other kwargs in the function, including tokenizers, variables, encoders etc.
+        You simply pass those kwargs to the ``client.add_model`` function call when you upload the model.
+
+        Here's an example of the ``predict_proba`` function in action:
+
+        >>> x_train = df[feature_names]
+        >>> y_train = df['Churned']
+
+        >>> sklearn_model = LogisticRegression(random_state=1300)
+        >>> sklearn_model.fit(x_train, y_train)
+        >>>
+        >>> input_features = x_train.to_numpy()
+        array([[618, 'France', 321.92],
+               [714, 'Germany', 102001.22],
+               [604, 'Spain', 12333.15], ...], dtype=object)
+
+        >>> predict_proba(sklearn_model, input_features)
+        array([[0.21735231, 0.78264769],
+               [0.66502929, 0.33497071],
+               [0.81455616, 0.18544384], ...])
+
+        The other model-specific variables needed by Unbox are:
+
+        >>> from unboxapi.models import ModelType
+        >>>
+        >>> model_type = ModelType.sklearn
+        >>> train_sample_df = df.sample(5000)
+        >>> train_sample_label_column_name = 'Churned'
+
+        .. important::
+            For tabular classification models, Unbox needs a representative sample of your training
+            dataset, so it can effectively explain your model's predictions.
+
+        You can now upload this dataset to Unbox:
+
+        >>> model = client.add_model(
+        ...     name='Churn Classifier',
+        ...     task_type=task_type,
+        ...     function=predict_proba,
+        ...     model=sklearn_model,
+        ...     model_type=model_type,
+        ...     class_names=class_names,
+        ...     feature_names=feature_names,
+        ...     train_sample_df=train_sample_df,
+        ...     train_sample_label_column_name=train_sample_label_column_name,
+        ...     categorical_features_map=categorical_features_map,
+        ... )
+        >>> model.to_dict()
+
+        **If your task type is text classification...**
+
+        Let's say your dataset looks like the following:
+
+        >>> df
+                                      Text  Sentiment
+        0    I have had a long weekend              0
+        1    I'm in a fantastic mood today          1
+        2    Things are looking up                  1
+        ..                             ...        ...
+
+        The first set of variables needed by Unbox are:
+
+        >>> from unboxapi.tasks import TaskType
+        >>>
+        >>> task_type = TaskType.TextClassification
+        >>> class_names = ['Negative', 'Positive']
+
+        Now let's say you've trained a simple ``scikit-learn`` model on data that looks like the above.
+
+        You must next define a ``predict_proba`` function that adheres to the following signature:
+
+        >>> def predict_proba(model, text_list: List[str], **kwargs):
+        ...     # Optional pre-processing of text_list
+        ...     preds = model.predict_proba(text_list)
+        ...     # Optional re-weighting of preds
+        ...     return preds
+
+        The ``model`` arg must be the actual trained model object, and the ``text_list`` arg must be a list of
+        strings.
+
+        You can optionally include other kwargs in the function, including tokenizers, variables, encoders etc.
+        You simply pass those kwargs to the ``client.add_model`` function call when you upload the model.
+
+        Here's an example of the ``predict_proba`` function in action:
+
+        >>> x_train = df['Text']
+        >>> y_train = df['Sentiment']
+
+        >>> sentiment_lr = Pipeline(
+        ...     [
+        ...         (
+        ...             "count_vect",
+        ...             CountVectorizer(min_df=100, ngram_range=(1, 2), stop_words="english"),
+        ...         ),
+        ...         ("lr", LogisticRegression()),
+        ...     ]
+        ... )
+        >>> sklearn_model.fit(x_train, y_train)
+
+        >>> text_list = ['good', 'bad']
+        >>> predict_proba(sentiment_lr, text_list)
+        array([[0.30857194, 0.69142806],
+               [0.71900947, 0.28099053]])
+
+        The other model-specific variables needed by Unbox are:
+
+        >>> from unboxapi.models import ModelType
+        >>>
+        >>> model_type = ModelType.sklearn
+
+        You can now upload this dataset to Unbox:
+
+        >>> model = client.add_model(
+        ...     name='Churn Classifier',
+        ...     task_type=task_type,
+        ...     function=predict_proba,
+        ...     model=sklearn_model,
+        ...     model_type=model_type,
+        ...     class_names=class_names,
+        ... )
+        >>> model.to_dict()
         """
         if custom_model_code:
             assert (
@@ -270,66 +419,122 @@ class UnboxClient(object):
     ) -> Dataset:
         """Uploads a dataset from a csv.
 
-        Args:
-            file_path (str):
-                Path to the dataset csv
-            task_type (TaskType):
-                Type of ML task
-                ex. `TaskType.TextClassification`
-            class_names (List[str]):
-                List of class names indexed by label integer in the dataset
-                ex. `[negative, positive]` when `[0, 1]` are labels in the csv
-            name (str):
-                Name of dataset
-            label_column_name (str):
-                Column header in the csv containing the labels
-            text_column_name (Optional[str]):
-                For TextClassification - Column header in the csv containing the input text
-            description (Optional[str]):
-                Description of dataset
-            tag_column_name (Optional[str]):
-                Column header in the csv containing any pre-computed tags
-            language (str):
-                The language of the dataset in ISO 639-1 (alpha-2 code) format
-            sep (str):
-                Delimiter to use
-            feature_names (List[str]):
-                List of input feature names. Required for tabular classification.
-            categorical_features_map (Dict[str, List[str]]):
-                A dict containing a list of category names for each feature that is categorical.
-                ex. {'Weather': ['Hot', 'Cold']}
+        Parameters
+        ----------
+        file_path : str
+            Path to the dataset csv
+        task_type : TaskType
+            Type of ML task
+            ex. `TaskType.TextClassification`
+        class_names : List[str]
+            List of class names indexed by label integer in the dataset
+            ex. `[negative, positive]` when `[0, 1]` are labels in the csv
+        name : str
+            Name of dataset
+        label_column_name : str
+            Column header in the csv containing the labels
+        text_column_name : Optional[str]
+            For TextClassification - Column header in the csv containing the input text
+        description : Optional[str]
+            Description of dataset
+        tag_column_name : Optional[str]
+            Column header in the csv containing any pre-computed tags
+        language : str
+            The language of the dataset in ISO 639-1 (alpha-2 code) format
+        sep : str
+            Delimiter to use
+        feature_names : List[str]
+            List of input feature names. Required for tabular classification.
+        categorical_features_map : Dict[str]
+            A dict containing a list of category names for each feature that is categorical.
+            ex. {'Weather': ['Hot', 'Cold']}
 
-        Raises:
-            UnboxException:
-                If the file doesn't exist or the label / text / tag column names
-                are not in the dataset
+        Returns
+        -------
+        Dataset
+            Returns uploaded dataset
 
-        Returns:
-            Dataset:
-                Returns uploaded dataset
+        Notes
+        -----
+        - Please ensure your input features are strings, ints or floats.
+        - Please ensure your label column name is not contained in ``feature_names``.
 
-        See Also:
-            `Tabular tutorial <https://unbox.readme.io/docs>`_ and `NLP tutorial <https://unbox.readme.io/docs>`_ 
+        Examples
+        --------
+        Instantiate the client
 
-        Example:
-            >>> import unboxapi
-            >>> from unboxapi.tasks import TaskType
-            >>> from unboxapi.models import ModelType
-            >>> 
-            >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
-            >>>
-            >>> dataset = client.add_dataframe(
-            >>>     df=x_val,
-            >>>     class_names=class_names,
-            >>>     label_column_name='churn',
-            >>>     name="Churn Validation",
-            >>>     description='this is my churn dataset',
-            >>>     task_type=TaskType.TabularClassification,
-            >>>     feature_names=feature_names,
-            >>>     categorical_features_map=categorical_map,
-            >>> )
-            >>> 
-            >>> dataset.to_dict()
+        >>> import unboxapi
+        >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+
+        **If your task type is tabular classification...**
+
+        Let's say your dataset looks like the following:
+
+        .. csv-table::
+            :header: CreditScore, Geography, Balance, Churned
+
+            618, France, 321.92, 1
+            714, Germany, 102001.22, 0
+            604, Spain, 12333.15, 0
+
+        .. important::
+            The labels in your csv **must** be integers that correctly index into the ``class_names`` array
+            that you define (as shown below). E.g. 0 => 'Retained', 1 => 'Churned'
+
+        The variables are needed by Unbox are:
+
+        >>> from unboxapi.tasks import TaskType
+        >>>
+        >>> task_type = TaskType.TabularClassification
+        >>> class_names = ['Retained', 'Churned']
+        >>> feature_names = ['CreditScore', 'Geography', 'Balance']
+        >>> label_column_name = 'Churned'
+        >>> categorical_features_map = {'CreditScore': ['France', 'Germany', 'Spain']}
+
+        You can now upload this dataset to Unbox:
+
+        >>> dataset = client.add_dataset(
+        ...     name='Churn Validation',
+        ...     task_type=task_type,
+        ...     file_path='/path/to/dataset.csv',
+        ...     class_names=class_names,
+        ...     feature_names=feature_names,
+        ...     label_column_name=label_column_name,
+        ...     categorical_features_map=categorical_map,
+        ... )
+        >>> dataset.to_dict()
+
+        **If your task type is text classification...**
+
+        Let's say your dataset looks like the following:
+
+        .. csv-table::
+            :header: Text, Sentiment
+
+            I have had a long weekend, 0
+            I'm in a fantastic mood today, 1
+            Things are looking up, 1
+
+        The variables are needed by Unbox are:
+
+        >>> from unboxapi.tasks import TaskType
+        >>>
+        >>> task_type = TaskType.TextClassification
+        >>> class_names = ['Negative', 'Positive']
+        >>> text_column_name = 'Text'
+        >>> label_column_name = 'Sentiment'
+
+        You can now upload this dataset to Unbox:
+
+        >>> dataset = client.add_dataset(
+        ...     name='Churn Validation',
+        ...     task_type=task_type,
+        ...     file_path='/path/to/dataset.csv',
+        ...     class_names=class_names,
+        ...     text_column_name=text_column_name,
+        ...     label_column_name=label_column_name,
+        ... )
+        >>> dataset.to_dict()
         """
         file_path = os.path.expanduser(file_path)
         if not os.path.isfile(file_path):
@@ -401,64 +606,114 @@ class UnboxClient(object):
     ) -> Dataset:
         """Uploads a dataset from a dataframe.
 
-        Args:
-            df (pd.DataFrame):
-                Dataframe object
-            task_type (TaskType):
-                Type of ML task
-                ex. `TaskType.TextClassification`
-            class_names (List[str]):
-                List of class names indexed by label integer in the dataset
-                ex. `[negative, positive]` when `[0, 1]` are labels in the csv
-            name (str):
-                Name of dataset
-            label_column_name (str):
-                Column header in the dataframe containing the labels
-            text_column_name (Optional[str]):
-                Column header in the datafrmae containing the input text
-            description (Optional[str]):
-                Description of dataset
-            tag_column_name (Optional[str]):
-                Column header in the dataframe containing any pre-computed tags
-            language (str):
-                The language of the dataset in ISO 639-1 (alpha-2 code) format
-            feature_names (List[str]):
-                List of input feature names. Required for tabular classification.
-            categorical_features_map (Dict[str, List[str]]):
-                A dict containing a list of category names for each feature that is categorical.
-                ex. {'Weather': ['Hot', 'Cold']}
+        Parameters
+        ----------
+        df : pd.DataFrame
+            Dataframe object
+        task_type : TaskType
+            Type of ML task
+            ex. `TaskType.TextClassification`
+        class_names : List[str]
+            List of class names indexed by label integer in the dataset
+            ex. `[negative, positive]` when `[0, 1]` are labels in the csv
+        name : str
+            Name of dataset
+        label_column_name : str
+            Column header in the dataframe containing the labels
+        text_column_name : Optional[str]
+            Column header in the datafrmae containing the input text
+        description : Optional[str]
+            Description of dataset
+        tag_column_name : Optional[str]
+            Column header in the dataframe containing any pre-computed tags
+        language : str
+            The language of the dataset in ISO 639-1 (alpha-2 code) format
+        feature_names : List[str]
+            List of input feature names. Required for tabular classification.
+        categorical_features_map : Dict[str
+            A dict containing a list of category names for each feature that is categorical.
+            ex. {'Weather': ['Hot', 'Cold']}
 
-        Raises:
-            UnboxException:
-                If the file doesn't exist or the label or text column names
-                are not in the dataset
+        Returns
+        -------
+        Dataset
+            Returns uploaded dataset
 
-        Returns:
-            Dataset:
-                Returns uploaded dataset
-        
-        See Also:
-            `Tabular tutorial <https://unbox.readme.io/docs>`_ and `NLP tutorial <https://unbox.readme.io/docs>`_ 
+        Notes
+        -----
+        - Please ensure your input features are strings, ints or floats.
+        - Please ensure your label column name is not contained in `feature_names`.
 
-        Example:
-            >>> import unboxapi
-            >>> from unboxapi.tasks import TaskType
-            >>> from unboxapi.models import ModelType
-            >>> 
-            >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
-            >>>
-            >>> dataset = client.add_dataframe(
-            >>>     df=x_val,
-            >>>     class_names=class_names,
-            >>>     label_column_name='churn',
-            >>>     name="Churn Validation",
-            >>>     description='this is my churn dataset',
-            >>>     task_type=TaskType.TabularClassification,
-            >>>     feature_names=feature_names,
-            >>>     categorical_features_map=categorical_map,
-            >>> )
-            >>> 
-            >>> dataset.to_dict()
+        Examples
+        --------
+        Instantiate the client
+
+        >>> import unboxapi
+        >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+
+        **If your task type is tabular classification...**
+
+        Let's say your dataframe looks like the following:
+
+        >>> df
+            CreditScore  Geography    Balance  Churned
+        0           618     France     321.92        1
+        1           714    Germany  102001.22        0
+        2           604      Spain   12333.15        0
+
+        The variables are needed by Unbox are:
+
+        >>> from unboxapi.tasks import TaskType
+        >>>
+        >>> task_type = TaskType.TabularClassification
+        >>> class_names = ['Retained', 'Churned']
+        >>> feature_names = ['CreditScore', 'Geography', 'Balance']
+        >>> label_column_name = 'Churned'
+        >>> categorical_features_map = {'CreditScore': ['France', 'Germany', 'Spain']}
+
+        You can now upload this dataset to Unbox:
+
+        >>> dataset = client.add_dataset(
+        ...     name='Churn Validation',
+        ...     task_type=task_type,
+        ...     df=df,
+        ...     class_names=class_names,
+        ...     feature_names=feature_names,
+        ...     label_column_name=label_column_name,
+        ...     categorical_features_map=categorical_map,
+        ... )
+        >>> dataset.to_dict()
+
+        **If your task type is text classification...**
+
+        Let's say your dataset looks like the following:
+
+        >>> df
+                                      Text  Sentiment
+        0    I have had a long weekend              0
+        1    I'm in a fantastic mood today          1
+        2    Things are looking up                  1
+
+        The variables are needed by Unbox are:
+
+        >>> from unboxapi.tasks import TaskType
+        >>>
+        >>> task_type = TaskType.TextClassification
+        >>> class_names = ['Negative', 'Positive']
+        >>> text_column_name = 'Text'
+        >>> label_column_name = 'Sentiment'
+
+        You can now upload this dataset to Unbox:
+
+        >>> dataset = client.add_dataset(
+        ...     name='Churn Validation',
+        ...     task_type=task_type,
+        ...     df=df,
+        ...     class_names=class_names,
+        ...     text_column_name=text_column_name,
+        ...     label_column_name=label_column_name,
+        ... )
+        >>> dataset.to_dict()
         """
         with tempfile.TemporaryDirectory() as tmp_dir:
             file_path = os.path.join(tmp_dir, str(uuid.uuid1()))
