@@ -74,7 +74,7 @@ DEPLOYMENT = DeploymentType.ONPREM # If using local trial
 In `api.py`
 
 ```python
-UNBOX_ENDPOINT = "https://api-staging.unbox.ai/api" # If using AWS
+UNBOX_ENDPOINT = "https://api.unbox.ai/api" # If using AWS
 UNBOX_ENDPOINT = "http://localhost:8080/api" # If using local trial
 ```
 
