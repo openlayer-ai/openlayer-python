@@ -10,7 +10,7 @@ import shutil
 
 
 class ModelType(Enum):
-    """Task Type List"""
+    """Model Type List"""
 
     custom = "Custom"
     fasttext = "FasttextModelArtifact"
@@ -45,8 +45,10 @@ class Model:
 
     def to_dict(self):
         """Returns object properties as a dict
-        Returns:
-            Dict with object properties
+
+        Returns
+        -------
+        Dict with object properties
         """
         return self._json
 
