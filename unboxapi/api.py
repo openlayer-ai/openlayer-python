@@ -10,7 +10,7 @@ from tqdm.utils import CallbackIOWrapper
 from .exceptions import ExceptionMap, UnboxException
 from .version import __version__
 
-# UNBOX_ENDPOINT = "https://api-staging.unbox.ai/api"
+# UNBOX_ENDPOINT = "https://api.unbox.ai/api"
 UNBOX_ENDPOINT = "http://localhost:8080/api"
 UNBOX_STORAGE_PATH = os.path.expanduser("~/unbox/unbox-onpremise/userStorage")
 
