@@ -85,11 +85,9 @@ class UnboxClient(object):
             Prediction function object in expected format
 
             .. note::
-
                 On the Unbox platform, running inference with the model corresponds to calling ``function``. Therefore,
                 expect the latency of model calls in the platform to be similar to that of calling ``function`` on a CPU. 
-                Preparing ``function`` to work with batches of data can improve latency.
-
+                Preparing ``function`` to work with batches of data can improve latency.  
         model :
             Model object
         model_type : :obj:`ModelType`
@@ -119,7 +117,7 @@ class UnboxClient(object):
             This is used to support explainability features.
         train_sample_label_column_name : str
             Column header in train_sample_df containing the labels
-        categorical_features_map : Dict[str
+        categorical_features_map : Dict[str]
             A dict containing a list of category names for each feature that is categorical.
             ex. {'Weather': ['Hot', 'Cold']}
         **kwargs
