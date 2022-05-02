@@ -11,15 +11,23 @@ import shutil
 
 class ModelType(Enum):
     """Model Type List"""
-
-    custom = "Custom"
+    
+    #: For models built with `fastText <https://fasttext.cc/>`_.
     fasttext = "FasttextModelArtifact"
+    #: For models built with `scikit-learn <https://scikit-learn.org/>`_.
     sklearn = "SklearnModelArtifact"
+    #: For models built with `PyTorch <https://pytorch.org/>`_.
     pytorch = "PytorchModelArtifact"
+    #: For models built with `TensorFlow <https://www.tensorflow.org/>`_.
     tensorflow = "TensorflowSavedModelArtifact"
+    #: For models built with `Hugging Face transformers <https://huggingface.co/docs/transformers/index>`_.
     transformers = "TransformersModelArtifact"
+    #: For models built with `Keras <https://keras.io/>`_.
     keras = "KerasModelArtifact"
+    #: For models built with `rasa <https://rasa.com/>`_.
     rasa = "Rasa"
+    #: For custom built models.
+    custom = "Custom"
 
 
 class Model:

@@ -3,10 +3,12 @@ from enum import Enum
 
 class TaskType(Enum):
     """Task Type List"""
-
-    TextClassification = "text-classification"
-    TabularClassification = "tabular-classification"
-    TabularRegression = "tabular-regression"
+    #: For textual classification tasks.
+    TextClassification = "text-classification"  
+    #: For tabular classification tasks. 
+    TabularClassification = "tabular-classification"  
+    #: Coming soon...
+    TabularRegression = "tabular-regression"  
 
 
 class Task:
