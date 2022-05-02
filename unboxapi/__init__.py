@@ -83,6 +83,13 @@ class UnboxClient(object):
         ----------
         function :
             Prediction function object in expected format
+
+            .. note::
+
+                On the Unbox platform, running inference with the model corresponds to calling ``function``. Therefore,
+                expect the latency of model calls in the platform to be similar to that of calling ``function`` on a CPU. 
+                Preparing ``function`` to work with batches of data can improve latency.
+
         model :
             Model object
         model_type : :obj:`ModelType`
