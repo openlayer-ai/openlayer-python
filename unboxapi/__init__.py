@@ -85,10 +85,10 @@ class UnboxClient(object):
             Prediction function object in expected format
         model :
             Model object
-        model_type : ModelType
+        model_type : :obj:`ModelType`
             Model framework type of model
             ex. `ModelType.sklearn`
-        task_type : TaskType
+        task_type : :obj:`TaskType`
             Type of ML task
             ex. `TaskType.TextClassification`
         class_names : List[str]
@@ -120,7 +120,7 @@ class UnboxClient(object):
 
         Returns
         -------
-        Model
+        :obj:`Model`
             Returns uploaded model
 
         Examples
@@ -423,7 +423,7 @@ class UnboxClient(object):
         ----------
         file_path : str
             Path to the dataset csv
-        task_type : TaskType
+        task_type : :obj:`TaskType`
             Type of ML task
             ex. `TaskType.TextClassification`
         class_names : List[str]
@@ -451,7 +451,7 @@ class UnboxClient(object):
 
         Returns
         -------
-        Dataset
+        :obj:`Dataset`
             Returns uploaded dataset
 
         Notes
@@ -610,7 +610,7 @@ class UnboxClient(object):
         ----------
         df : pd.DataFrame
             Dataframe object
-        task_type : TaskType
+        task_type : :obj:`TaskType`
             Type of ML task
             ex. `TaskType.TextClassification`
         class_names : List[str]
@@ -636,13 +636,13 @@ class UnboxClient(object):
 
         Returns
         -------
-        Dataset
+        :obj:`Dataset`
             Returns uploaded dataset
 
         Notes
         -----
         - Please ensure your input features are strings, ints or floats.
-        - Please ensure your label column name is not contained in `feature_names`.
+        - Please ensure your label column name is not contained in ``feature_names``.
 
         Examples
         --------
