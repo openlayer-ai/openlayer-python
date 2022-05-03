@@ -58,5 +58,6 @@ Objects
    :template: class.rst
    
    Model
+   Model.to_dict
    Dataset
-
+   Dataset.to_dict
