@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 
 * Prevents dataset upload when `label_column_name` is also in `feature_names`.
+* Unbox server URL.
 
 ## [0.1.0] - 2022-04-17
 
