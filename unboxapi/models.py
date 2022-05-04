@@ -57,7 +57,6 @@ class ModelType:
         ...    description='this is my fasttext model',
         ... )
         >>> model.to_dict()
-
         """
         return "FasttextModelArtifact"
 
@@ -235,12 +234,168 @@ class ModelType:
 
     @property
     def pytorch(self) -> str:
-        """For models built with `PyTorch <https://pytorch.org/>`_."""
+        """For models built with `PyTorch <https://pytorch.org/>`_.
+
+        Examples
+        --------
+        .. seealso::
+            Our `sample notebooks <https://github.com/unboxai/unboxapi-python-client/tree/cid/api-docs-improvements/examples/text-classification/tensorflow>`_ and
+            `tutorials <https://unbox.readme.io/docs/overview-of-tutorial-tracks>`_.
+
+        Let's say you have trained a ``torch`` model that performs text classification. Your training pipeline might look like this:
+
+        >>> import tensorflow as tf
+        >>> from tensorflow import keras
+        >>>
+        >>> model.compile(optimizer='adam',
+        ...     loss='binary_crossentropy',
+        ...     metrics=['accuracy'])
+        >>>
+        >>> model.fit(X_train, y_train, epochs=30, batch_size=512)
+
+        You must next define a ``predict_proba`` function that adheres to the signature defined below.
+
+        **If your task type is text classification...**
+
+        >>> def predict_proba(model, text_list: List[str], **kwargs):
+        ...     # Optional pre-processing of text_list
+        ...     preds = model(text_list)
+        ...     # Optional re-weighting of preds
+        ...     return preds
+
+        The ``model`` arg must be the actual trained model object, and the ``text_list`` arg must be a list of
+        strings.
+
+        **If your task type is tabular classification...**
+
+        >>> def predict_proba(model, input_features: np.ndarray, **kwargs):
+        ...     # Optional pre-processing of input_features
+        ...     preds = model(input_features)
+        ...     # Optional re-weighting of preds
+        ...     return preds
+
+        The ``model`` arg must be the actual trained model object, and the ``input_features`` arg must be a 2D numpy array
+        containing a batch of features that will be passed to the model as inputs.
+
+        On both cases, you can optionally include other kwargs in the function, including tokenizers, variables, encoders etc.
+        You simply pass those kwargs to the :meth:`unboxapi.UnboxClient.add_model` function call when you upload the model.
+
+        To upload the model to Unbox, first instantiate the client
+
+        >>> import unboxapi
+        >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+
+        Now, you can use the ``client.add_model()`` method:
+
+        **If your task type is text classification...**
+
+        >>> model = client.add_model(
+        ...    function=predict_proba,
+        ...    model=model,
+        ...    model_type=ModelType.tensorflow,
+        ...    task_type=TaskType.TextClassification,
+        ...    class_names=['Negative', 'Positive'],
+        ...    name='My Tensorflow model',
+        ...    description='this is my tensorflow model',
+        ... )
+        >>> model.to_dict()
+
+        **If your task type is tabular classification...**
+
+        >>> model = client.add_model(
+        ...    function=predict_proba,
+        ...    model=model,
+        ...    model_type=ModelType.tensorflow,
+        ...    task_type=TaskType.TabularClassification,
+        ...    class_names=['Exited', 'Retained'],
+        ...    name='My Tensorflow model',
+        ...    description='this is my tensorflow model',
+        ... )
+        >>> model.to_dict()
+        """
         return "PytorchModelArtifact"
 
     @property
     def tensorflow(self) -> str:
-        """For models built with `TensorFlow <https://www.tensorflow.org/>`_."""
+        """For models built with `TensorFlow <https://www.tensorflow.org/>`_.
+
+        Examples
+        --------
+        .. seealso::
+            Our `sample notebooks <https://github.com/unboxai/unboxapi-python-client/tree/cid/api-docs-improvements/examples/text-classification/tensorflow>`_ and
+            `tutorials <https://unbox.readme.io/docs/overview-of-tutorial-tracks>`_.
+
+        Let's say you have trained a ``tensorflow`` binary classifier. Your training pipeline might look like this:
+
+        >>> import tensorflow as tf
+        >>> from tensorflow import keras
+        >>>
+        >>> model.compile(optimizer='adam',
+        ...     loss='binary_crossentropy',
+        ...     metrics=['accuracy'])
+        >>>
+        >>> model.fit(X_train, y_train, epochs=30, batch_size=512)
+
+        You must next define a ``predict_proba`` function that adheres to the signature defined below.
+
+        **If your task type is text classification...**
+
+        >>> def predict_proba(model, text_list: List[str], **kwargs):
+        ...     # Optional pre-processing of text_list
+        ...     preds = model(text_list)
+        ...     # Optional re-weighting of preds
+        ...     return preds
+
+        The ``model`` arg must be the actual trained model object, and the ``text_list`` arg must be a list of
+        strings.
+
+        **If your task type is tabular classification...**
+
+        >>> def predict_proba(model, input_features: np.ndarray, **kwargs):
+        ...     # Optional pre-processing of input_features
+        ...     preds = model(input_features)
+        ...     # Optional re-weighting of preds
+        ...     return preds
+
+        The ``model`` arg must be the actual trained model object, and the ``input_features`` arg must be a 2D numpy array
+        containing a batch of features that will be passed to the model as inputs.
+
+        On both cases, you can optionally include other kwargs in the function, including tokenizers, variables, encoders etc.
+        You simply pass those kwargs to the :meth:`unboxapi.UnboxClient.add_model` function call when you upload the model.
+
+        To upload the model to Unbox, first instantiate the client
+
+        >>> import unboxapi
+        >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+
+        Now, you can use the ``client.add_model()`` method:
+
+        **If your task type is text classification...**
+
+        >>> model = client.add_model(
+        ...    function=predict_proba,
+        ...    model=model,
+        ...    model_type=ModelType.tensorflow,
+        ...    task_type=TaskType.TextClassification,
+        ...    class_names=['Negative', 'Positive'],
+        ...    name='My Tensorflow model',
+        ...    description='this is my tensorflow model',
+        ... )
+        >>> model.to_dict()
+
+        **If your task type is tabular classification...**
+
+        >>> model = client.add_model(
+        ...    function=predict_proba,
+        ...    model=model,
+        ...    model_type=ModelType.tensorflow,
+        ...    task_type=TaskType.TabularClassification,
+        ...    class_names=['Exited', 'Retained'],
+        ...    name='My Tensorflow model',
+        ...    description='this is my tensorflow model',
+        ... )
+        >>> model.to_dict()
+        """
         return "TensorflowSavedModelArtifact"
 
     @property
@@ -308,7 +463,6 @@ class ModelType:
         ...    requirements_txt_file='./requirements.txt'
         ... )
         >>> model.to_dict()
-
         """
         return "TransformersModelArtifact"
 
@@ -386,7 +540,6 @@ class ModelType:
         ...    description='this is my rasa model',
         ... )
         >>> model.to_dict()
-
         """
         return "Rasa"
 
