@@ -23,13 +23,12 @@ Upload functions
    UnboxClient.add_dataset
    UnboxClient.add_dataframe
 
-
 Model types
 -----------
 .. autosummary:: 
    :toctree: api/
    :template: class.rst
-   
+
    ModelType
    ModelType.fasttext
    ModelType.sklearn
