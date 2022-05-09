@@ -175,10 +175,10 @@ def create_template_model(
                 {_extract_input_from_json(task_type, from_csv_path=True)}
                 {_predict_function(model_type)}
                 with open(output_path, 'w') as f:
-                    if type(results) == list:
-                        json.dump(results, f)
-                    else:
-                        json.dump(results.tolist(), f)
+                    if type(results) not in [list, np.ndarray]:
+                        raise TypeError(f"Wrong return type from predict function: {{type(results)}}")
+                    results = np.array(results)
+                    json.dump(results.tolist(), f)
                 return "Success"
 
             @api(input=JsonInput())
