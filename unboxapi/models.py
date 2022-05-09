@@ -239,28 +239,20 @@ class ModelType:
         Examples
         --------
         .. seealso::
-            Our `sample notebooks <https://github.com/unboxai/unboxapi-python-client/tree/cid/api-docs-improvements/examples/text-classification/tensorflow>`_ and
+            Our `sample notebooks <https://github.com/unboxai/unboxapi-python-client/tree/cid/api-docs-improvements/examples/text-classification/pytorch>`_ and
             `tutorials <https://unbox.readme.io/docs/overview-of-tutorial-tracks>`_.
 
-        Let's say you have trained a ``torch`` model that performs text classification. Your training pipeline might look like this:
-
-        >>> import tensorflow as tf
-        >>> from tensorflow import keras
-        >>>
-        >>> model.compile(optimizer='adam',
-        ...     loss='binary_crossentropy',
-        ...     metrics=['accuracy'])
-        >>>
-        >>> model.fit(X_train, y_train, epochs=30, batch_size=512)
+        Let's say you have trained a ``torch`` model that performs text classification.
 
         You must next define a ``predict_proba`` function that adheres to the signature defined below.
 
         **If your task type is text classification...**
 
         >>> def predict_proba(model, text_list: List[str], **kwargs):
-        ...     # Optional pre-processing of text_list
-        ...     preds = model(text_list)
-        ...     # Optional re-weighting of preds
+        ...     with torch.no_grad():
+        ...         # Optional pre-processing of text_list
+        ...         preds = model(text_list)
+        ...         # Optional re-weighting of preds
         ...     return preds
 
         The ``model`` arg must be the actual trained model object, and the ``text_list`` arg must be a list of
@@ -269,9 +261,10 @@ class ModelType:
         **If your task type is tabular classification...**
 
         >>> def predict_proba(model, input_features: np.ndarray, **kwargs):
-        ...     # Optional pre-processing of input_features
-        ...     preds = model(input_features)
-        ...     # Optional re-weighting of preds
+        ...     with torch.no_grad():
+        ...         # Optional pre-processing of input_features
+        ...         preds = model(input_features)
+        ...         # Optional re-weighting of preds
         ...     return preds
 
         The ``model`` arg must be the actual trained model object, and the ``input_features`` arg must be a 2D numpy array
@@ -292,11 +285,11 @@ class ModelType:
         >>> model = client.add_model(
         ...    function=predict_proba,
         ...    model=model,
-        ...    model_type=ModelType.tensorflow,
+        ...    model_type=ModelType.pytorch,
         ...    task_type=TaskType.TextClassification,
         ...    class_names=['Negative', 'Positive'],
-        ...    name='My Tensorflow model',
-        ...    description='this is my tensorflow model',
+        ...    name='My Torch model',
+        ...    description='this is my torch model',
         ... )
         >>> model.to_dict()
 
@@ -305,11 +298,11 @@ class ModelType:
         >>> model = client.add_model(
         ...    function=predict_proba,
         ...    model=model,
-        ...    model_type=ModelType.tensorflow,
+        ...    model_type=ModelType.pytorch,
         ...    task_type=TaskType.TabularClassification,
         ...    class_names=['Exited', 'Retained'],
-        ...    name='My Tensorflow model',
-        ...    description='this is my tensorflow model',
+        ...    name='My Torch model',
+        ...    description='this is my torch model',
         ... )
         >>> model.to_dict()
         """
