@@ -143,7 +143,7 @@ class UnboxClient(object):
             Our `sample notebooks <https://github.com/unboxai/unboxapi-python-client/tree/main/examples>`_ and
             `tutorials <https://unbox.readme.io/docs/overview-of-tutorial-tracks>`_.
 
-        Instantiate the client
+        Instantiate the client:
 
         >>> import unboxapi
         >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
@@ -484,7 +484,7 @@ class UnboxClient(object):
 
         Examples
         --------
-        Instantiate the client
+        Instantiate the client:
 
         >>> import unboxapi
         >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
@@ -670,7 +670,7 @@ class UnboxClient(object):
         Returns
         -------
         :obj:`Dataset`
-            Returns uploaded dataset
+            An object containing information about your uploaded dataset.
 
         Notes
         -----
@@ -679,7 +679,7 @@ class UnboxClient(object):
 
         Examples
         --------
-        Instantiate the client
+        Instantiate the client:
 
         >>> import unboxapi
         >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')

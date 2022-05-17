@@ -134,7 +134,7 @@ html_css_files = [
 
 # Automatically extract typehints when specified and place them in
 # descriptions of the relevant function/method.
-# autosummary_generate = False
+# autosummary_generate = True
 autodoc_typehints = "none"
 
 # -- Options for HTMLHelp output ---------------------------------------------
