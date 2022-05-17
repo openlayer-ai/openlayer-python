@@ -47,7 +47,6 @@ extensions = [
     "sphinx.ext.autosummary",
     "numpydoc",
 ]
-# numpydoc_show_class_members = False  # avoids producing two summaries for each class with numpydoc
 numpydoc_attributes_as_param_list = False
 
 # Add any paths that contain templates here, relative to this directory.
@@ -135,7 +134,7 @@ html_css_files = [
 
 # Automatically extract typehints when specified and place them in
 # descriptions of the relevant function/method.
-# autosummary_generate = False
+# autosummary_generate = True
 autodoc_typehints = "none"
 
 # -- Options for HTMLHelp output ---------------------------------------------
