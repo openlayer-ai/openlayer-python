@@ -161,7 +161,7 @@ class UnboxClient(object):
 
         The first set of variables needed by Unbox are:
 
-        >>> from unboxapi.tasks import TaskType
+        >>> from unboxapi import TaskType
         >>>
         >>> task_type = TaskType.TabularClassification
         >>> class_names = ['Retained', 'Churned']
@@ -204,7 +204,7 @@ class UnboxClient(object):
 
         The other model-specific variables needed by Unbox are:
 
-        >>> from unboxapi.models import ModelType
+        >>> from unboxapi import ModelType
         >>>
         >>> model_type = ModelType.sklearn
         >>> train_sample_df = df.sample(5000)
@@ -243,7 +243,7 @@ class UnboxClient(object):
 
         The first set of variables needed by Unbox are:
 
-        >>> from unboxapi.tasks import TaskType
+        >>> from unboxapi import TaskType
         >>>
         >>> task_type = TaskType.TextClassification
         >>> class_names = ['Negative', 'Positive']
@@ -287,7 +287,7 @@ class UnboxClient(object):
 
         The other model-specific variables needed by Unbox are:
 
-        >>> from unboxapi.models import ModelType
+        >>> from unboxapi import ModelType
         >>>
         >>> model_type = ModelType.sklearn
 
@@ -506,7 +506,7 @@ class UnboxClient(object):
 
         The variables are needed by Unbox are:
 
-        >>> from unboxapi.tasks import TaskType
+        >>> from unboxapi import TaskType
         >>>
         >>> task_type = TaskType.TabularClassification
         >>> class_names = ['Retained', 'Churned']
@@ -540,7 +540,7 @@ class UnboxClient(object):
 
         The variables are needed by Unbox are:
 
-        >>> from unboxapi.tasks import TaskType
+        >>> from unboxapi import TaskType
         >>>
         >>> task_type = TaskType.TextClassification
         >>> class_names = ['Negative', 'Positive']
@@ -696,7 +696,7 @@ class UnboxClient(object):
 
         The variables are needed by Unbox are:
 
-        >>> from unboxapi.tasks import TaskType
+        >>> from unboxapi import TaskType
         >>>
         >>> task_type = TaskType.TabularClassification
         >>> class_names = ['Retained', 'Churned']
@@ -729,7 +729,7 @@ class UnboxClient(object):
 
         The variables are needed by Unbox are:
 
-        >>> from unboxapi.tasks import TaskType
+        >>> from unboxapi import TaskType
         >>>
         >>> task_type = TaskType.TextClassification
         >>> class_names = ['Negative', 'Positive']
