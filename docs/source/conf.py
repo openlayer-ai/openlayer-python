@@ -47,7 +47,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "numpydoc",
 ]
-numpydoc_show_class_members = False  # avoids producing two summaries for each class with numpydoc
+numpydoc_attributes_as_param_list = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -116,6 +116,10 @@ html_logo = "_static/img/unbox.svg"
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
+
+html_css_files = [
+    "css/logo.css",
+]
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.

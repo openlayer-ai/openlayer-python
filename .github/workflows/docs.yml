@@ -12,7 +12,16 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
-    # Standard drop-in approach that should work for most people.
+    # https://github.com/marketplace/actions/setup-python
+    # ^-- This gives info on matrix testing.
+    - name: Install Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+    - name: Install dependencies
+      run: |
+        pip install -r requirements-docs.txt
+        pip install -e .
     - uses: ammaraskar/sphinx-action@master
       with:
         docs-folder: "docs/"
