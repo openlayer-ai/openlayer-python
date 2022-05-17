@@ -93,8 +93,8 @@ class UnboxClient(object):
                 expect the latency of model calls in the platform to be similar to that of calling ``function`` on a CPU.
                 Preparing ``function`` to work with batches of data can improve latency.
         model :
-            The Python object for your model loaded into memory. This is what gets passed as the first arg
-            to your predict ``function``.
+            The Python object for your model loaded into memory. This will get pickled now and later loaded and
+            passed to your ``predict_proba`` function to compute run reports, test reports, or conduct what-if analysis.
         model_type : :obj:`ModelType`
             Model framework. E.g. :obj:`ModelType.sklearn`.
         class_names : List[str]
