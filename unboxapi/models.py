@@ -1,33 +1,71 @@
 import os
+import shutil
 import textwrap
-from enum import Enum
 from typing import Optional
+
+import bentoml
 
 from .tasks import TaskType
 
-import bentoml
-import shutil
 
+class ModelType:
+    """A selection of machine learning modeling frameworks supported by Unbox. """
 
-class ModelType(Enum):
-    """Model Type List"""
-    
-    #: For models built with `fastText <https://fasttext.cc/>`_.
-    fasttext = "FasttextModelArtifact"
-    #: For models built with `scikit-learn <https://scikit-learn.org/>`_.
-    sklearn = "SklearnModelArtifact"
-    #: For models built with `PyTorch <https://pytorch.org/>`_.
-    pytorch = "PytorchModelArtifact"
-    #: For models built with `TensorFlow <https://www.tensorflow.org/>`_.
-    tensorflow = "TensorflowSavedModelArtifact"
-    #: For models built with `Hugging Face transformers <https://huggingface.co/docs/transformers/index>`_.
-    transformers = "TransformersModelArtifact"
-    #: For models built with `Keras <https://keras.io/>`_.
-    keras = "KerasModelArtifact"
-    #: For models built with `rasa <https://rasa.com/>`_.
-    rasa = "Rasa"
-    #: For custom built models.
-    custom = "Custom"
+    @property
+    def sklearn(self) -> str:
+        """
+        For models built with `scikit-learn <https://scikit-learn.org/>`_.
+        """
+        return "SklearnModelArtifact"
+
+    @property
+    def fasttext(self) -> str:
+        """
+        For models built with `fastText <https://fasttext.cc/>`_.
+        """
+        return "FasttextModelArtifact"
+
+    @property
+    def pytorch(self) -> str:
+        """
+        For models built with `PyTorch <https://pytorch.org/>`_.
+        """
+        return "PytorchModelArtifact"
+
+    @property
+    def tensorflow(self) -> str:
+        """
+        For models built with `TensorFlow <https://www.tensorflow.org/>`_.
+        """
+        return "TensorflowSavedModelArtifact"
+
+    @property
+    def transformers(self) -> str:
+        """
+        For models built with `Hugging Face transformers <https://huggingface.co/docs/transformers/index>`_.
+        """
+        return "TransformersModelArtifact"
+
+    @property
+    def keras(self) -> str:
+        """
+        For models built with `Keras <https://keras.io/>`_.
+        """
+        return "KerasModelArtifact"
+
+    @property
+    def rasa(self) -> str:
+        """
+        For models built with `rasa <https://rasa.com/>`_.
+        """
+        return "Rasa"
+
+    @property
+    def custom(self) -> str:
+        """
+        For custom built models.
+        """
+        return "Custom"
 
 
 class Model:

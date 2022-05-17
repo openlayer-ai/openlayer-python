@@ -16,18 +16,18 @@ from .datasets import Dataset
 from .exceptions import UnboxException, UnboxInvalidRequest
 from .models import Model, ModelType, create_template_model
 from .tasks import TaskType
-
 from .version import __version__
 
 
 class DeploymentType(Enum):
-    """ Specify where your data should end up. """
+    """ Specify the storage medium being used by your Unbox deployment. """
 
     ONPREM = 1
     AWS = 2
     GCP = 3
 
 
+# NOTE: Don't modify this unless you are deploying on-prem.
 DEPLOYMENT = DeploymentType.ONPREM
 
 
@@ -60,73 +60,81 @@ class UnboxClient(object):
 
     def add_model(
         self,
+        name: str,
+        task_type: TaskType,
         function,
         model,
         model_type: ModelType,
-        task_type: TaskType,
         class_names: List[str],
-        name: str,
-        description: str = None,
         requirements_txt_file: Optional[str] = None,
+        feature_names: List[str] = [],
+        categorical_features_map: Dict[str, List[str]] = {},
+        train_sample_df: pd.DataFrame = None,
+        train_sample_label_column_name: str = None,
         setup_script: Optional[str] = None,
         custom_model_code: Optional[str] = None,
         dependent_dir: Optional[str] = None,
-        feature_names: List[str] = [],
-        train_sample_df: pd.DataFrame = None,
-        train_sample_label_column_name: str = None,
-        categorical_features_map: Dict[str, List[str]] = {},
+        description: str = None,
         **kwargs,
     ) -> Model:
         """Uploads a model.
 
         Parameters
         ----------
+        name : str
+            Name of your model.
+        task_type : :obj:`TaskType`
+            Type of ML task. E.g. :obj:`TaskType.TextClassification`.
         function :
-            Prediction function object in expected format
+            Prediction function object in expected format. Scroll down for examples.
 
             .. note::
                 On the Unbox platform, running inference with the model corresponds to calling ``function``. Therefore,
-                expect the latency of model calls in the platform to be similar to that of calling ``function`` on a CPU. 
-                Preparing ``function`` to work with batches of data can improve latency.  
+                expect the latency of model calls in the platform to be similar to that of calling ``function`` on a CPU.
+                Preparing ``function`` to work with batches of data can improve latency.
         model :
-            Model object
+            The Python object for your model loaded into memory. This is what gets passed as the first arg
+            to your predict ``function``.
         model_type : :obj:`ModelType`
-            Model framework type of model
-            ex. `ModelType.sklearn`
-        task_type : :obj:`TaskType`
-            Type of ML task
-            ex. `TaskType.TextClassification`
+            Model framework. E.g. :obj:`ModelType.sklearn`.
         class_names : List[str]
-            List of class names corresponding to outputs of predict function
-        name : str
-            Name of model
-        description : str
-            Description of model
-        requirements_txt_file : str
-            Path to a requirements file containing dependencies needed by the predict function
-        setup_script : Optional[str]
-            Path to a bash script executing any commands necessary to run before loading the model
-        custom_model_code : Optional[str]
-            Custom code needed to initialize the model. Model object must be none in this case.
-        dependent_dir : Optional[str]
-            Path to a dir of file dependencies needed to load the model
-        feature_names : List[str]
-            List of input feature names. Required for tabular classification.
-        train_sample_df : pd.DataFrame
-            A random sample of >= 100 rows from your training dataset. Required for tabular classification.
-            This is used to support explainability features.
-        train_sample_label_column_name : str
-            Column header in train_sample_df containing the labels
-        categorical_features_map : Dict[str]
-            A dict containing a list of category names for each feature that is categorical.
-            ex. {'Weather': ['Hot', 'Cold']}
+            List of class names corresponding to the outputs of your predict function. E.g. `['positive', 'negative']`.
+        requirements_txt_file : str, default None
+            Path to a requirements.txt file containing Python dependencies needed by your predict function.
+        feature_names : List[str], default []
+            List of input feature names. Only applicable if your ``task_type`` is
+            :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
+        categorical_features_map : Dict[str], default {}
+            A dict containing a list of category names for each feature that is categorical. E.g. `{'Weather': ['Hot', 'Cold']}`.
+            Only applicable if your ``task_type`` is :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
+        train_sample_df : pd.DataFrame, default None
+            A random sample of >= 100 rows from your training dataset. This is used to support explainability features.
+            Only applicable if your ``task_type`` is :obj:`TaskType.TabularClassification`
+            or :obj:`TaskType.TabularRegression`.
+        train_sample_label_column_name : str, default None
+            Column header in train_sample_df containing the labels. Only applicable if your ``task_type``
+            is :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
+        setup_script : str, default None
+            Path to a bash script executing any commands necessary to run before loading the model. This is run after installing
+            python requirements.
+
+            .. note::
+                This is useful for installing custom libraries, downloading NLTK corpora etc.
+        custom_model_code : str, default None
+            Code needed to initialize the model. Model object must be ``None`` in this case. Only applicable if your
+            ``model_type`` is :obj:`ModelType.custom`.
+        dependent_dir : str, default None
+            Path to a dir of file dependencies needed to load the model. Necessary if your ``model_type``
+            is :obj:`ModelType.custom`.
+        description : str, default None
+            Commit message for this version.
         **kwargs
-            Any additional keyword args you would like to pass to your predict_proba function.
+            Any additional keyword args you would like to pass to your ``predict_proba`` function.
 
         Returns
         -------
         :obj:`Model`
-            Returns uploaded model
+            An object containing information about your uploaded model.
 
         Examples
         --------
@@ -216,9 +224,9 @@ class UnboxClient(object):
         ...     model_type=model_type,
         ...     class_names=class_names,
         ...     feature_names=feature_names,
+        ...     categorical_features_map=categorical_features_map,
         ...     train_sample_df=train_sample_df,
         ...     train_sample_label_column_name=train_sample_label_column_name,
-        ...     categorical_features_map=categorical_features_map,
         ... )
         >>> model.to_dict()
 
@@ -409,55 +417,65 @@ class UnboxClient(object):
 
     def add_dataset(
         self,
-        file_path: str,
-        task_type: TaskType,
-        class_names: List[str],
         name: str,
+        task_type: TaskType,
+        file_path: str,
+        class_names: List[str],
         label_column_name: str,
+        feature_names: List[str] = [],
         text_column_name: Optional[str] = None,
-        description: Optional[str] = None,
+        categorical_features_map: Dict[str, List[str]] = {},
         tag_column_name: Optional[str] = None,
         language: str = "en",
         sep: str = ",",
-        feature_names: List[str] = [],
-        categorical_features_map: Dict[str, List[str]] = {},
+        description: Optional[str] = None,
     ) -> Dataset:
-        """Uploads a dataset from a csv.
+        r"""Uploads a dataset from a csv.
 
         Parameters
         ----------
-        file_path : str
-            Path to the dataset csv
-        task_type : :obj:`TaskType`
-            Type of ML task
-            ex. `TaskType.TextClassification`
-        class_names : List[str]
-            List of class names indexed by label integer in the dataset
-            ex. `[negative, positive]` when `[0, 1]` are labels in the csv
         name : str
-            Name of dataset
+            Name of your dataset.
+        task_type : :obj:`TaskType`
+            Type of ML task. E.g. :obj:`TaskType.TextClassification`.
+        file_path : str
+            Path to the csv file containing the dataset.
+        class_names : List[str]
+            List of class names indexed by label integer in the dataset.
+            E.g. `[negative, positive]` when `[0, 1]` are in your label column.
         label_column_name : str
-            Column header in the csv containing the labels
-        text_column_name : Optional[str]
-            For TextClassification - Column header in the csv containing the input text
-        description : Optional[str]
-            Description of dataset
-        tag_column_name : Optional[str]
-            Column header in the csv containing any pre-computed tags
-        language : str
-            The language of the dataset in ISO 639-1 (alpha-2 code) format
-        sep : str
-            Delimiter to use
-        feature_names : List[str]
-            List of input feature names. Required for tabular classification.
-        categorical_features_map : Dict[str]
-            A dict containing a list of category names for each feature that is categorical.
-            ex. {'Weather': ['Hot', 'Cold']}
+            Column header in the csv containing the labels.
+        feature_names : List[str], default []
+            List of input feature names. Only applicable if your ``task_type`` is
+            :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
+        text_column_name : str, default None
+            Column header in the csv containing the input text. Only applicable if your ``task_type`` is
+            :obj:`TaskType.TextClassification`.
+        categorical_features_map : Dict[str, List[str]], default {}
+            A dict containing a list of category names for each feature that is categorical. E.g. `{'Weather': ['Hot', 'Cold']}`.
+            Only applicable if your ``task_type`` is :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
+        tag_column_name : str, default None
+            Column header in the csv containing tags you want pre-populated in Unbox.
+
+            .. important::
+                Each cell in this column must be either empty or contain a list of strings.
+
+                .. csv-table::
+                    :header: ..., Tags
+
+                    ..., "['sample']"
+                    ..., "['tag_one', 'tag_two']"
+        language : str, default 'en'
+            The language of the dataset in ISO 639-1 (alpha-2 code) format.
+        sep : str, default ','
+            Delimiter to use. E.g. `'\\t'`.
+        description : str, default None
+            Commit message for this version.
 
         Returns
         -------
         :obj:`Dataset`
-            Returns uploaded dataset
+            An object containing information about your uploaded dataset.
 
         Notes
         -----
@@ -503,8 +521,8 @@ class UnboxClient(object):
         ...     task_type=task_type,
         ...     file_path='/path/to/dataset.csv',
         ...     class_names=class_names,
-        ...     feature_names=feature_names,
         ...     label_column_name=label_column_name,
+        ...     feature_names=feature_names,
         ...     categorical_features_map=categorical_map,
         ... )
         >>> dataset.to_dict()
@@ -536,8 +554,8 @@ class UnboxClient(object):
         ...     task_type=task_type,
         ...     file_path='/path/to/dataset.csv',
         ...     class_names=class_names,
-        ...     text_column_name=text_column_name,
         ...     label_column_name=label_column_name,
+        ...     text_column_name=text_column_name,
         ... )
         >>> dataset.to_dict()
         """
@@ -597,47 +615,57 @@ class UnboxClient(object):
 
     def add_dataframe(
         self,
-        df: pd.DataFrame,
-        task_type: TaskType,
-        class_names: List[str],
         name: str,
+        task_type: TaskType,
+        df: pd.DataFrame,
+        class_names: List[str],
         label_column_name: str,
+        feature_names: List[str] = [],
         text_column_name: Optional[str] = None,
+        categorical_features_map: Dict[str, List[str]] = {},
         description: Optional[str] = None,
         tag_column_name: Optional[str] = None,
         language: str = "en",
-        feature_names: List[str] = [],
-        categorical_features_map: Dict[str, List[str]] = {},
     ) -> Dataset:
         """Uploads a dataset from a dataframe.
 
         Parameters
         ----------
-        df : pd.DataFrame
-            Dataframe object
-        task_type : :obj:`TaskType`
-            Type of ML task
-            ex. `TaskType.TextClassification`
-        class_names : List[str]
-            List of class names indexed by label integer in the dataset
-            ex. `[negative, positive]` when `[0, 1]` are labels in the csv
         name : str
-            Name of dataset
+            Name of your dataset.
+        task_type : :obj:`TaskType`
+            Type of ML task. E.g. :obj:`TaskType.TextClassification`.
+        df : pd.DataFrame
+            Dataframe containing your dataset.
+        class_names : List[str]
+            List of class names indexed by label integer in the dataset.
+            E.g. `[negative, positive]` when `[0, 1]` are in your label column.
         label_column_name : str
-            Column header in the dataframe containing the labels
-        text_column_name : Optional[str]
-            Column header in the datafrmae containing the input text
-        description : Optional[str]
-            Description of dataset
-        tag_column_name : Optional[str]
-            Column header in the dataframe containing any pre-computed tags
-        language : str
-            The language of the dataset in ISO 639-1 (alpha-2 code) format
-        feature_names : List[str]
-            List of input feature names. Required for tabular classification.
-        categorical_features_map : Dict[str
-            A dict containing a list of category names for each feature that is categorical.
-            ex. {'Weather': ['Hot', 'Cold']}
+            Column header in the csv containing the labels.
+        feature_names : List[str], default []
+            List of input feature names. Only applicable if your ``task_type`` is
+            :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
+        text_column_name : str, default None
+            Column header in the csv containing the input text. Only applicable if your ``task_type`` is
+            :obj:`TaskType.TextClassification`.
+        categorical_features_map : Dict[str, List[str]], default {}
+            A dict containing a list of category names for each feature that is categorical. E.g. `{'Weather': ['Hot', 'Cold']}`.
+            Only applicable if your ``task_type`` is :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
+        description : str, default None
+            Commit message for this version.
+        tag_column_name : str, default None
+            Column header in the csv containing tags you want pre-populated in Unbox.
+
+            .. important::
+                Each cell in this column must be either empty or contain a list of strings.
+
+                .. csv-table::
+                    :header: ..., Tags
+
+                    ..., "['sample']"
+                    ..., "['tag_one', 'tag_two']"
+        language : str, default 'en'
+            The language of the dataset in ISO 639-1 (alpha-2 code) format.
 
         Returns
         -------
