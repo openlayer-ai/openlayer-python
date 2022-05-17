@@ -13,7 +13,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 
-* Prevents dataset upload when `label_column_name` is also in `feature_names`.
 * Unbox server URL (<https://api.unbox.ai/>).
 * Parameter ordering for `add_model`, `add_dataset`, `add_dataframe` for clarity's sake.
 
@@ -21,6 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 * Fix bug when predict function is a list with numpy objects.
 * Better error message if return type isn't a list or numpy array.
+* Prevents dataset upload when `label_column_name` is also in `feature_names`.
 
 ## [0.1.0] - 2022-04-17
 
