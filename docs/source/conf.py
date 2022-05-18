@@ -118,10 +118,6 @@ html_logo = "_static/img/unbox.svg"
 html_static_path = ["_static"]
 html_css_files = ["css/style.css"]
 
-html_css_files = [
-    "css/logo.css",
-]
-
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
 #
