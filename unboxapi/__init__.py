@@ -421,6 +421,7 @@ class UnboxClient(object):
         sep: str = ",",
         feature_names: List[str] = [],
         categorical_features_map: Dict[str, List[str]] = {},
+        dataset_type: Optional[str] = None
     ) -> Dataset:
         """Uploads a dataset from a csv.
 
@@ -592,6 +593,7 @@ class UnboxClient(object):
             sep=sep,
             featureNames=feature_names,
             categoricalFeaturesMap=categorical_features_map,
+            datasetType=dataset_type
         )
         return Dataset(self.upload(endpoint, file_path, payload))
 
@@ -608,6 +610,7 @@ class UnboxClient(object):
         language: str = "en",
         feature_names: List[str] = [],
         categorical_features_map: Dict[str, List[str]] = {},
+        dataset_type: Optional[str] = None
     ) -> Dataset:
         """Uploads a dataset from a dataframe.
 
@@ -735,6 +738,7 @@ class UnboxClient(object):
                 language=language,
                 feature_names=feature_names,
                 categorical_features_map=categorical_features_map,
+                dataset_type=dataset_type
             )
 
     @staticmethod
