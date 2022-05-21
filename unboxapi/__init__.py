@@ -12,7 +12,7 @@ from bentoml.saved_bundle.bundler import _write_bento_content_to_dir
 from bentoml.utils.tempdir import TempDirectory
 
 from .api import Api
-from .datasets import Dataset
+from .datasets import Dataset, DatasetType
 from .exceptions import UnboxException, UnboxInvalidRequest
 from .models import Model, ModelType, create_template_model
 from .tasks import TaskType
@@ -421,7 +421,7 @@ class UnboxClient(object):
         sep: str = ",",
         feature_names: List[str] = [],
         categorical_features_map: Dict[str, List[str]] = {},
-        dataset_type: Optional[str] = None
+        dataset_type: Optional[DatasetType] = None
     ) -> Dataset:
         """Uploads a dataset from a csv.
 
@@ -451,6 +451,8 @@ class UnboxClient(object):
             Delimiter to use
         feature_names : List[str]
             List of input feature names. Required for tabular classification.
+        dataset_type: Optional[:obj:`DatasetType`]
+            Dataset type.
         categorical_features_map : Dict[str]
             A dict containing a list of category names for each feature that is categorical.
             ex. {'Weather': ['Hot', 'Cold']}
@@ -593,7 +595,7 @@ class UnboxClient(object):
             sep=sep,
             featureNames=feature_names,
             categoricalFeaturesMap=categorical_features_map,
-            datasetType=dataset_type
+            datasetType=dataset_type.value
         )
         return Dataset(self.upload(endpoint, file_path, payload))
 
@@ -610,7 +612,7 @@ class UnboxClient(object):
         language: str = "en",
         feature_names: List[str] = [],
         categorical_features_map: Dict[str, List[str]] = {},
-        dataset_type: Optional[str] = None
+        dataset_type: Optional[DatasetType] = None
     ) -> Dataset:
         """Uploads a dataset from a dataframe.
 
@@ -638,6 +640,8 @@ class UnboxClient(object):
             The language of the dataset in ISO 639-1 (alpha-2 code) format
         feature_names : List[str]
             List of input feature names. Required for tabular classification.
+        dataset_type: Optional[:obj:`DatasetType`]
+            Dataset type.
         categorical_features_map : Dict[str
             A dict containing a list of category names for each feature that is categorical.
             ex. {'Weather': ['Hot', 'Cold']}

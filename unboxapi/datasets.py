@@ -1,3 +1,14 @@
+from enum import Enum
+
+
+class DatasetType(Enum):
+    """Dataset Type List"""
+    #: Training set.
+    Training = "training"  
+    #: Validation set. 
+    Validation = "validation"    
+
+
 class Dataset:
     """Dataset class."""
 
