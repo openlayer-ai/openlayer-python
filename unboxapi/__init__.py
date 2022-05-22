@@ -28,7 +28,7 @@ class DeploymentType(Enum):
 
 
 # NOTE: Don't modify this unless you are deploying on-prem.
-DEPLOYMENT = DeploymentType.ONPREM
+DEPLOYMENT = DeploymentType.AWS
 
 
 class UnboxClient(object):
