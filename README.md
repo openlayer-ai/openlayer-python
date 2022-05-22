@@ -1,5 +1,5 @@
 <div align="left">
-  <img src="https://reference.unbox.ai/_static/unbox.svg"><br>
+  <img src="docs/source/_static/logo-blue-text.svg"><br>
 </div>
 
 # Unbox AI | Python API Library
