@@ -23,32 +23,13 @@ Upload functions
    UnboxClient.add_dataset
    UnboxClient.add_dataframe
 
-Model types
------------
+Model / Task types
+------------------
 .. autosummary:: 
    :toctree: api/
-   :template: class.rst
 
    ModelType
-   ModelType.fasttext
-   ModelType.sklearn
-   ModelType.pytorch
-   ModelType.tensorflow
-   ModelType.transformers
-   ModelType.keras
-   ModelType.rasa
-   ModelType.custom
-
-Task types
------------
-.. autosummary:: 
-   :toctree: api/
-   :template: class.rst
-   
    TaskType
-   TaskType.TextClassification
-   TaskType.TabularClassification
-   TaskType.TabularRegression
 
 Objects
 -------
@@ -57,6 +38,6 @@ Objects
    :template: class.rst
    
    Model
-   Model.to_dict
    Dataset
+   Model.to_dict
    Dataset.to_dict

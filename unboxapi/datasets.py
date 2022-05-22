@@ -1,5 +1,5 @@
 class Dataset:
-    """Dataset class."""
+    """An object containing information about a dataset on the Unbox platform."""
 
     def __init__(self, json):
         self._json = json
@@ -20,10 +20,10 @@ class Dataset:
         return f"Dataset({self._json})"
 
     def to_dict(self):
-        """Returns object properties as a dict
+        """Returns object properties as a dict.
 
         Returns
         -------
-        Dict with object properties
+        Dict with object properties.
         """
         return self._json

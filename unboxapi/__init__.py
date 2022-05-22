@@ -77,7 +77,7 @@ class UnboxClient(object):
         description: str = None,
         **kwargs,
     ) -> Model:
-        """Uploads a model.
+        """Uploads a model to the Unbox platform.
 
         Parameters
         ----------
@@ -430,7 +430,7 @@ class UnboxClient(object):
         sep: str = ",",
         description: Optional[str] = None,
     ) -> Dataset:
-        r"""Uploads a dataset from a csv.
+        r"""Uploads a dataset to the Unbox platform (from a csv).
 
         Parameters
         ----------
@@ -627,7 +627,7 @@ class UnboxClient(object):
         tag_column_name: Optional[str] = None,
         language: str = "en",
     ) -> Dataset:
-        """Uploads a dataset from a dataframe.
+        r"""Uploads a dataset to the Unbox platform (from a pandas DataFrame).
 
         Parameters
         ----------

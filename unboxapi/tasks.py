@@ -1,23 +1,17 @@
-class TaskType:
-    """A selection of machine learning tasks supported by Unbox. """
+from enum import Enum
 
-    @property
-    def TextClassification(self) -> str:
-        """
-        For sequence classification tasks.
-        """
-        return "text-classification"
 
-    @property
-    def TabularClassification(self) -> str:
-        """
-        For tabular classification tasks.
-        """
-        return "tabular-classification"
+class TaskType(Enum):
+    """A selection of machine learning tasks supported by Unbox.
 
-    @property
-    def TabularRegression(self) -> str:
-        """
-        Coming soon!
-        """
-        return "tabular-regression"
+    .. note::
+        Our `sample notebooks <https://github.com/unboxai/unboxapi-python-client/tree/main/examples>`_
+        show you how to use each one of these task types with Unbox.
+    """
+
+    #: For sequence classification tasks.
+    TextClassification = "text-classification"
+    #: For tabular classification tasks.
+    TabularClassification = "tabular-classification"
+    #: Coming soon!
+    TabularRegression = "tabular-regression"
