@@ -3,6 +3,7 @@ unboxapi.egg-info/
 data/
 .ipynb_checkpoints/
 .DS_Store
+.eggs/
 build
 dist
 template_model.py
