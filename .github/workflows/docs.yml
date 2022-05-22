@@ -36,5 +36,6 @@ jobs:
       with:
         branch: gh-pages
         directory: gh-pages
+        force: true # This push fails otherwise
         github_token: ${{ secrets.GITHUB_TOKEN }}
     # ===============================
