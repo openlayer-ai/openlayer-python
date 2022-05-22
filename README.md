@@ -1,93 +1,43 @@
-# Unbox AI | Python SDK
+<div align="left">
+  <img src="https://reference.unbox.ai/_static/unbox.svg"><br>
+</div>
+
+# Unbox AI | Python API Library
 
 [![PyPI Latest Release](https://img.shields.io/pypi/v/unboxapi.svg)](https://pypi.org/project/Unbox/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
 
+## What is it?
+
+Unbox is a debugging workspace for ML & Data Science. Unbox combines and builds upon SOTA techniques in explainability, model and dataset versioning, synthetic data generation, data-centric testing and much more to form a powerful, **unified platform for model development**.
+
+👉 [Join our Slack community!](https://l.linklyhq.com/l/1DG73) We'd love to meet you and help you get started with Unbox!
+
+This is the official Python library for interacting with the Unbox platform. Navigate [here](https://docs.unbox.ai) for a quickstart guide and for in-depth tutorials.
+
+## Main Features
+
+This library's primary function is to enable you to easily package your models and datasets and add them to your Unbox account.
+
 ## Installation
 
+Install with PyPI (pip)
+
 ```console
-pip install -e .
+pip install --upgrade unboxapi
 ```
 
-## Usage
+or install with Anaconda (conda)
 
-```python
-import unboxapi
-
-client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+```console
+conda install unboxapi --channel conda-forge
 ```
 
-## Models
+## Documentation
 
-```python
-from unboxapi.models import ModelType
+The official documentation for this Python library can be found [here](https://reference.unbox.ai).
 
-# Predict function
-def predict(model, text_list):
-    return model.predict(text_list)
+## Contributing
 
-# Package your model and upload it to Unbox
-client.add_model(
-    function=predict,
-    model=model,
-    model_type=ModelType.sklearn,
-    class_names=['negative', 'positive'],
-    name='My First Model',
-    description='Sentiment analyzer for tweets',
-    requirements_txt_file='./requirements.txt',
-    **kwargs # specify additional kwargs for your predict function
-)
-```
-
-## Datasets
-
-```python
-# Upload your dataset csv to Unbox
-client.add_dataset(
-    file_path='path/to/dataset.csv', 
-    class_names=['negative', 'positive'], # Notice it matches the model class names
-    label_column_name='polarity',
-    text_column_name='text',
-    name='My First Dataset',
-    description='My sentiment analysis validation dataset',
-)
-
-# Alternatively, upload your pandas dataframe to Unbox
-client.add_dataframe(
-    df=dataframe,
-    class_names=['negative', 'positive'], # Notice it matches the model class names
-    label_column_name='polarity',
-    text_column_name='text',
-    name='My Second Dataset',
-    description='My sentiment analysis validation pandas dataframe',
-)
-```
-
-## Customer Onboarding
-
-When creating a wheel for customers, make sure the following global variables are set as appropriate below:
-
-In `__init__.py`
-
-```python
-DEPLOYMENT = DeploymentType.AWS # If using AWS
-DEPLOYMENT = DeploymentType.ONPREM # If using local trial
-```
-
-In `api.py`
-
-```python
-UNBOX_ENDPOINT = "https://api.unbox.ai/api" # If using AWS
-UNBOX_ENDPOINT = "http://localhost:8080/api" # If using local trial
-```
-
-1. To create a wheel, run:
-
-```bash
-python setup.py bdist_wheel
-```
-
-The file should be here: `./dist/unboxapi-{version}-py3-none-any.whl`.
-
-2. Select appropriate sample notebooks from `examples/` and move them into a new folder. Zip that folder and send it over Slack to customers during onboarding
+All contributions, bug reports, bug fixes, documentation improvements, enhancements, and ideas are welcome! Just send us a message on [Slack](https://l.linklyhq.com/l/1DG73).
