@@ -25,10 +25,11 @@ class DeploymentType(Enum):
     ONPREM = 1
     AWS = 2
     GCP = 3
+    AZURE = 4
 
 
 # NOTE: Don't modify this unless you are deploying on-prem.
-DEPLOYMENT = DeploymentType.AWS
+DEPLOYMENT = DeploymentType.AZURE
 
 
 class UnboxClient(object):
@@ -55,6 +56,8 @@ class UnboxClient(object):
             self.upload = self.api.upload_blob_s3
         elif DEPLOYMENT == DeploymentType.GCP:
             self.upload = self.api.upload_blob_gcs
+        elif DEPLOYMENT == DeploymentType.AZURE:
+            self.upload = self.api.upload_blob_azure
         else:
             self.upload = self.api.transfer_blob
 
