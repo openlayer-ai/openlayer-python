@@ -10,8 +10,8 @@ from tqdm.utils import CallbackIOWrapper
 from .exceptions import ExceptionMap, UnboxException
 from .version import __version__
 
-UNBOX_ENDPOINT = "https://api.unbox.ai/api"
-# UNBOX_ENDPOINT = "http://localhost:8080/api"
+# UNBOX_ENDPOINT = "https://api.unbox.ai/api"
+UNBOX_ENDPOINT = "http://localhost:8080/api"
 UNBOX_STORAGE_PATH = os.path.expanduser("~/unbox/unbox-onpremise/userStorage")
 
 
@@ -189,6 +189,36 @@ class Api:
                     presigned_json["url"],
                     data=wrapped_file,
                     headers={"Content-Type": "application/x-gzip"},
+                )
+        if res.ok:
+            body["storagePath"] = presigned_json["storagePath"]
+            return self.post_request(f"{endpoint}/{presigned_json['id']}", body=body)
+        else:
+            self._raise_on_respose(res)
+
+    def upload_blob_azure(
+        self, endpoint: str, file_path: str, object_name: str = None, body=None
+    ):
+        """Generic method to upload data to Azure Blob Storage and create the appropriate resource
+        in the backend.
+        """
+        params = {"storageInterface": "azure", "objectName": object_name}
+        presigned_json = self.get_request(endpoint, params=params)
+        with open(file_path, "rb") as f:
+            with tqdm(
+                total=os.stat(file_path).st_size,
+                unit="B",
+                unit_scale=True,
+                unit_divisor=1024,
+            ) as t:
+                wrapped_file = CallbackIOWrapper(t.update, f, "read")
+                res = requests.put(
+                    presigned_json["url"],
+                    data=wrapped_file,
+                    headers={
+                        "Content-Type": "application/x-gzip",
+                        "x-ms-blob-type": "BlockBlob",
+                    },
                 )
         if res.ok:
             body["storagePath"] = presigned_json["storagePath"]
