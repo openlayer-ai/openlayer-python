@@ -124,10 +124,10 @@ class UnboxClient(object):
             .. note::
                 This is useful for installing custom libraries, downloading NLTK corpora etc.
         custom_model_code : str, default None
-            Code needed to initialize the model. Model object must be ``None`` in this case. Only applicable if your
+            Code needed to initialize the model. Model object must be ``None`` in this case. Required, and only applicable if your
             ``model_type`` is :obj:`ModelType.custom`.
         dependent_dir : str, default None
-            Path to a dir of file dependencies needed to load the model. Necessary if your ``model_type``
+            Path to a dir of file dependencies needed to load the model. Required if your ``model_type``
             is :obj:`ModelType.custom`.
         description : str, default None
             Commit message for this version.
