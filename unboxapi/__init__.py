@@ -310,6 +310,13 @@ class UnboxClient(object):
             assert (
                 model_type is ModelType.custom
             ), "model_type must be ModelType.custom if specifying custom_model_code"
+        if model_type is ModelType.custom:
+            assert (
+                custom_model_code is not None
+            ), "Must specify custom_model_code when using ModelType.custom"
+            assert (
+                dependent_dir is not None
+            ), "Must specify dependent_dir when using ModelType.custom"
         if task_type in [TaskType.TabularClassification, TaskType.TabularRegression]:
             required_fields = [
                 (feature_names, "feature_names"),
