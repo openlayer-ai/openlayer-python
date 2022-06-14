@@ -1,23 +1,23 @@
 import csv
 import os
+import pandas as pd
 import shutil
 import tarfile
 import tempfile
 import uuid
-from enum import Enum
-from typing import Dict, List, Optional
 
-import pandas as pd
-from bentoml.saved_bundle.bundler import _write_bento_content_to_dir
-from bentoml.utils.tempdir import TempDirectory
+from enum import Enum
 
 from .api import Api
-from .datasets import Dataset
+from bentoml.saved_bundle.bundler import _write_bento_content_to_dir
+from bentoml.utils.tempdir import TempDirectory
 from .exceptions import UnboxException, UnboxInvalidRequest
 from .models import Model, ModelType, create_template_model
+from .datasets import Dataset
 from .tasks import TaskType
+from typing import Dict, List, Optional
+from .projects import Project
 from .version import __version__
-
 
 class DeploymentType(Enum):
     """Specify the storage medium being used by your Unbox deployment."""
@@ -61,6 +61,24 @@ class UnboxClient(object):
         else:
             self.upload = self.api.transfer_blob
 
+    def create_project(
+        self,
+        name: str,
+        description: str,
+    ):
+        endpoint = "initialize_project"
+        payload = dict(
+            name=name,
+            description=description,
+        )
+        project_data = self.api.post_request(endpoint, body=payload)
+        return Project(project_data, self.upload, self.subscription_plan, self)
+
+    def load_project(self, name: str):
+        endpoint = f"load_project/{name}"
+        project_data = self.api.get_request(endpoint)
+        return Project(project_data, self.upload, self.subscription_plan, self)
+
     def add_model(
         self,
         name: str,
@@ -78,6 +96,7 @@ class UnboxClient(object):
         custom_model_code: Optional[str] = None,
         dependent_dir: Optional[str] = None,
         description: str = None,
+        project_id: str = None,
         **kwargs,
     ) -> Model:
         """Uploads a model to the Unbox platform.
@@ -306,6 +325,7 @@ class UnboxClient(object):
         ... )
         >>> model.to_dict()
         """
+
         if custom_model_code:
             assert (
                 model_type is ModelType.custom
@@ -423,6 +443,7 @@ class UnboxClient(object):
                     endpoint = "models"
                     payload = dict(
                         name=name,
+                        project_id=project_id,
                         description=description,
                         classNames=class_names,
                         taskType=task_type.value,
@@ -456,6 +477,7 @@ class UnboxClient(object):
         language: str = "en",
         sep: str = ",",
         description: Optional[str] = None,
+        project_id: str = None,
     ) -> Dataset:
         r"""Uploads a dataset to the Unbox platform (from a csv).
 
@@ -631,6 +653,7 @@ class UnboxClient(object):
         endpoint = "datasets"
         payload = dict(
             name=name,
+            project_id=project_id,
             description=description,
             taskType=task_type.value,
             classNames=class_names,
@@ -663,6 +686,7 @@ class UnboxClient(object):
         description: Optional[str] = None,
         tag_column_name: Optional[str] = None,
         language: str = "en",
+        project_id: str =  None
     ) -> Dataset:
         r"""Uploads a dataset to the Unbox platform (from a pandas DataFrame).
 
@@ -804,6 +828,7 @@ class UnboxClient(object):
                 language=language,
                 feature_names=feature_names,
                 categorical_feature_names=categorical_feature_names,
+                project_id=project_id
             )
 
     @staticmethod
@@ -816,3 +841,4 @@ class UnboxClient(object):
                     f"Feature '{feature}' contains more options in the df than provided "
                     "for it in `categorical_features_map`"
                 )
+
