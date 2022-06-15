@@ -5,11 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0a1]
 
 ### Fixed
 
-* Fail early if `custom_model_code` or `dependent_dir` are `None` when model type is `ModelType.custom`.
+* Fail early if `custom_model_code`, `dependent_dir` or `requirements_txt_file` are `None` when model type is `ModelType.custom`.
+* Fail early if `model` is not `None` when model type is `ModelType.custom`.
 
 ## [0.2.0a0]
 
