@@ -695,7 +695,7 @@ class UnboxClient(object):
         2           604      Spain   12333.15        0
 
         .. important::
-            The labels in your csv **must** be integers that correctly index into the ``class_names`` array
+            The labels in your dataframe **must** be integers that correctly index into the ``class_names`` array
             that you define (as shown below). E.g. 0 => 'Retained', 1 => 'Churned'
 
         The variables are needed by Unbox are:
