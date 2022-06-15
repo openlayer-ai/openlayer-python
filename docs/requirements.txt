@@ -1,5 +1,5 @@
 numpydoc
-pydata-sphinx-theme
+pydata-sphinx-theme==0.8.1
 sphinx>=4.5.0
 # These packages cause 'make' to break
 protobuf==3.20.0
