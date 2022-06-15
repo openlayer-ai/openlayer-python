@@ -16,7 +16,7 @@ jobs:
     # ^-- This gives info on matrix testing.
     - uses: ammaraskar/sphinx-action@master
       with:
-        pre-build-command: "pip install -e ."
+        pre-build-command: "pip install --upgrade pip; pip install -e ."
         docs-folder: "docs/"
     # ===============================
     - name: Commit documentation changes
