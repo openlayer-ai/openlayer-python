@@ -321,6 +321,12 @@ class UnboxClient(object):
                 requirements_txt_file is not None
             ), "Must specify requirements_txt_file when using ModelType.custom"
             assert model is None, "model must be None when using ModelType.custom"
+        # Validate predict_proba extra args
+        user_args = function.__code__.co_varnames[: function.__code__.co_argcount][2:]
+        kwarg_keys = tuple(kwargs)
+        assert (
+            user_args == kwarg_keys
+        ), f"Your function's additional args {user_args} must match the kwargs you specifed {kwarg_keys}"
         if task_type in [TaskType.TabularClassification, TaskType.TabularRegression]:
             required_fields = [
                 (feature_names, "feature_names"),
