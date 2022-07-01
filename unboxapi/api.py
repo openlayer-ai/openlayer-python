@@ -164,7 +164,7 @@ class Api:
                     presigned_json["url"], data=presigned_json["fields"], files=files
                 )
         if res.ok:
-            body["storagePath"] = presigned_json["storagePath"]
+            body["storageUri"] = presigned_json["storageUri"]
             return self.post_request(f"{endpoint}/{presigned_json['id']}", body=body)
         else:
             self._raise_on_respose(res)
@@ -191,7 +191,7 @@ class Api:
                     headers={"Content-Type": "application/x-gzip"},
                 )
         if res.ok:
-            body["storagePath"] = presigned_json["storagePath"]
+            body["storageUri"] = presigned_json["storageUri"]
             return self.post_request(f"{endpoint}/{presigned_json['id']}", body=body)
         else:
             self._raise_on_respose(res)
@@ -221,7 +221,7 @@ class Api:
                     },
                 )
         if res.ok:
-            body["storagePath"] = presigned_json["storagePath"]
+            body["storageUri"] = presigned_json["storageUri"]
             return self.post_request(f"{endpoint}/{presigned_json['id']}", body=body)
         else:
             self._raise_on_respose(res)
@@ -237,5 +237,5 @@ class Api:
         except OSError as _:
             raise UnboxException(f"Directory {blob_path} cannot be created")
         shutil.copyfile(file_path, f"{blob_path}/{object_name}")
-        body["storagePath"] = f"local://{blob_path}"
+        body["storageUri"] = f"local://{blob_path}"
         return self.post_request(f"{endpoint}/{id}", body=body)
