@@ -20,7 +20,7 @@ from .version import __version__
 
 
 class DeploymentType(Enum):
-    """ Specify the storage medium being used by your Unbox deployment. """
+    """Specify the storage medium being used by your Unbox deployment."""
 
     ONPREM = 1
     AWS = 2
@@ -71,7 +71,7 @@ class UnboxClient(object):
         class_names: List[str],
         requirements_txt_file: Optional[str] = None,
         feature_names: List[str] = [],
-        categorical_features_map: Dict[str, List[str]] = {},
+        categorical_feature_names: List[str] = [],
         train_sample_df: pd.DataFrame = None,
         train_sample_label_column_name: str = None,
         setup_script: Optional[str] = None,
@@ -353,9 +353,11 @@ class UnboxClient(object):
                 raise UnboxException(
                     "Feature / label column names not in train_sample_df"
                 )
-            self._validate_categorical_features(
-                train_sample_df, categorical_features_map
-            )
+
+            # TODO: replace validation
+            # self._validate_categorical_features(
+            #     train_sample_df, categorical_features_map
+            # )
 
         with TempDirectory() as dir:
             bento_service = create_template_model(
@@ -427,7 +429,7 @@ class UnboxClient(object):
                         type=model_type.name,
                         kwargs=list(kwargs.keys()),
                         featureNames=feature_names,
-                        categoricalFeaturesMap=categorical_features_map,
+                        categoricalFeatureNames=categorical_feature_names,
                         trainSampleLabelColumnName=train_sample_label_column_name,
                     )
                     print("Uploading model to Unbox...")
@@ -449,7 +451,7 @@ class UnboxClient(object):
         label_column_name: str,
         feature_names: List[str] = [],
         text_column_name: Optional[str] = None,
-        categorical_features_map: Dict[str, List[str]] = {},
+        categorical_feature_names: List[str] = [],
         tag_column_name: Optional[str] = None,
         language: str = "en",
         sep: str = ",",
@@ -597,9 +599,11 @@ class UnboxClient(object):
                 raise UnboxException(
                     "Must specify feature_names for TabularClassification"
                 )
-            self._validate_categorical_features(
-                pd.read_csv(file_path, sep=sep), categorical_features_map
-            )
+
+            # TODO: replace validation
+            # self._validate_categorical_features(
+            #     pd.read_csv(file_path, sep=sep), categorical_features_map
+            # )
         else:
             feature_names = []
 
@@ -635,7 +639,7 @@ class UnboxClient(object):
             language=language,
             sep=sep,
             featureNames=feature_names,
-            categoricalFeaturesMap=categorical_features_map,
+            categoricalFeatureNames=categorical_feature_names,
         )
         return Dataset(
             self.upload(
@@ -655,7 +659,7 @@ class UnboxClient(object):
         label_column_name: str,
         feature_names: List[str] = [],
         text_column_name: Optional[str] = None,
-        categorical_features_map: Dict[str, List[str]] = {},
+        categorical_feature_names: List[str] = [],
         description: Optional[str] = None,
         tag_column_name: Optional[str] = None,
         language: str = "en",
@@ -799,7 +803,7 @@ class UnboxClient(object):
                 tag_column_name=tag_column_name,
                 language=language,
                 feature_names=feature_names,
-                categorical_features_map=categorical_features_map,
+                categorical_feature_names=categorical_feature_names,
             )
 
     @staticmethod
