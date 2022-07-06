@@ -29,7 +29,7 @@ class DeploymentType(Enum):
 
 
 # NOTE: Don't modify this unless you are deploying on-prem.
-DEPLOYMENT = DeploymentType.AZURE
+DEPLOYMENT = DeploymentType.ONPREM
 
 
 class UnboxClient(object):
