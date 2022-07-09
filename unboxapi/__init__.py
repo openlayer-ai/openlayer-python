@@ -31,6 +31,9 @@ from typing import Dict, List, Optional
 from .projects import Project
 from .version import __version__
 
+from .schemas import DatasetSchema, ModelSchema
+from marshmallow import ValidationError
+
 
 from .schemas import DatasetSchema, ModelSchema
 from marshmallow import ValidationError
