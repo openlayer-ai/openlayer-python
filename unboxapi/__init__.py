@@ -4,20 +4,37 @@ import pandas as pd
 import shutil
 import tarfile
 import tempfile
+import traceback
 import uuid
 
 from enum import Enum
+from typing import Callable, Dict, List, Optional
 
 from .api import Api
 from bentoml.saved_bundle.bundler import _write_bento_content_to_dir
 from bentoml.utils.tempdir import TempDirectory
-from .exceptions import UnboxException, UnboxInvalidRequest
+
+from .api import Api
+from .datasets import Dataset
+from .exceptions import (
+    UnboxException,
+    UnboxInvalidRequest,
+    UnboxResourceError,
+    UnboxSubscriptionPlanException,
+    UnboxValidationError,
+    UnboxDatasetInconsistencyError,
+)
 from .models import Model, ModelType, create_template_model
 from .datasets import Dataset
 from .tasks import TaskType
 from typing import Dict, List, Optional
 from .projects import Project
 from .version import __version__
+
+
+from .schemas import DatasetSchema, ModelSchema
+from marshmallow import ValidationError
+
 
 class DeploymentType(Enum):
     """Specify the storage medium being used by your Unbox deployment."""
@@ -48,7 +65,7 @@ class UnboxClient(object):
     >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
     """
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str = None):
         self.api = Api(api_key)
         self.subscription_plan = self.api.get_request("users/subscriptionPlan")
 
@@ -325,44 +342,119 @@ class UnboxClient(object):
         ... )
         >>> model.to_dict()
         """
+        # ---------------------------- Schema validations ---------------------------- #
+        model_schema = ModelSchema()
+        try:
+            model_schema.load(
+                {
+                    "name": name,
+                    "description": description,
+                    "task_type": task_type.value,
+                    "model_type": model_type.value,
+                    "class_names": class_names,
+                    "requirements_txt_file": requirements_txt_file,
+                    "train_sample_label_column_name": train_sample_label_column_name,
+                    "feature_names": feature_names,
+                    "categorical_feature_names": categorical_feature_names,
+                    "setup_script": setup_script,
+                    "custom_model_code": custom_model_code,
+                    "dependent_dir": dependent_dir,
+                }
+            )
+        except ValidationError as err:
+            raise UnboxValidationError(self._format_error_message(err))
 
-        if custom_model_code:
-            assert (
-                model_type is ModelType.custom
-            ), "model_type must be ModelType.custom if specifying custom_model_code"
-        if model_type is ModelType.custom:
-            assert (
-                custom_model_code is not None
-            ), "Must specify custom_model_code when using ModelType.custom"
-            assert (
-                dependent_dir is not None
-            ), "Must specify dependent_dir when using ModelType.custom"
-            assert (
-                requirements_txt_file is not None
-            ), "Must specify requirements_txt_file when using ModelType.custom"
-            assert model is None, "model must be None when using ModelType.custom"
-        # Validate predict_proba extra args
-        user_args = function.__code__.co_varnames[: function.__code__.co_argcount][2:]
-        kwarg_keys = tuple(kwargs)
-        assert (
-            user_args == kwarg_keys
-        ), f"Your function's additional args {user_args} must match the kwargs you specifed {kwarg_keys}"
+        # --------------------------- Resource validations --------------------------- #
+        # Requirements check
+        if requirements_txt_file and not os.path.isfile(
+            os.path.expanduser(requirements_txt_file)
+        ):
+            raise UnboxResourceError(
+                f"The file path `{requirements_txt_file}` specified on `requirements_txt_file` does not"
+                " contain a file with the requirements ."
+            )
+
+        # Setup script
+        if setup_script and not os.path.isfile(os.path.expanduser(setup_script)):
+            raise UnboxResourceError(
+                f"The file path `{setup_script}` specified on `setup_script` does not"
+                " contain a file with the bash script with commands required before model loading."
+            )
+
+        # Dependent dir
+        if dependent_dir and dependent_dir == os.getcwd():
+            raise UnboxResourceError(
+                "`dependent_dir` cannot be the working directory. \n",
+                mitigation=f"Make sure that the specified `dependent_dir` is different than {os.getcwd()}",
+            )
+
+        # Training set
         if task_type in [TaskType.TabularClassification, TaskType.TabularRegression]:
-            required_fields = [
-                (feature_names, "feature_names"),
-                (train_sample_df, "train_sample_df"),
-                (train_sample_label_column_name, "train_sample_label_column_name"),
-            ]
-            for value, field in required_fields:
-                if value is None:
-                    raise UnboxException(
-                        f"Must specify {field} for TabularClassification"
-                    )
             if len(train_sample_df.index) < 100:
-                raise UnboxException("train_sample_df must have at least 100 rows")
+                raise UnboxResourceError(
+                    context="There is an issue with the specified `train_sample_df`. \n",
+                    message=f"The `train_sample_df` is too small, with only {len(train_sample_df.index)} rows. \n",
+                    mitigation="Make sure to upload a training set sample with at least 100 rows.",
+                )
+            if train_sample_df.isnull().values.any():
+                raise UnboxResourceError(
+                    context="There is an issue with the specified `train_sample_df`. \n",
+                    message=f"The `train_sample_df` contains missing values. \n",
+                    mitigation="Currently, Unbox does not support datasets with missing values."
+                    + "Make sure to upload a training set sample without missing values by applying the same"
+                    + " preprocessing steps expected by your model.",
+                )
+
             train_sample_df = train_sample_df.sample(
                 min(3000, len(train_sample_df.index))
             )
+
+        # predict_proba
+        if not isinstance(function, Callable):
+            raise UnboxValidationError(
+                f"- The argument `{function}` specified as `function` is not callable. \n"
+            )
+
+        user_args = function.__code__.co_varnames[: function.__code__.co_argcount][2:]
+        kwarg_keys = tuple(kwargs)
+        if user_args != kwarg_keys:
+            raise UnboxResourceError(
+                context="There is an issue with the speficied `function`. \n",
+                message=f"Your function's additional args {user_args} do not match the kwargs you specifed {kwarg_keys}. \n",
+                mitigation=f"Make sure to include all of the required kwargs to run inference with your `function`.",
+            )
+        try:
+            if task_type in [
+                TaskType.TabularClassification,
+                TaskType.TabularRegression,
+            ]:
+                test_input = train_sample_df[:3][feature_names].to_numpy()
+                function(model, test_input, **kwargs)
+            else:
+                test_input = ["Test predict function.", "Unbox is great!"]
+                function(model, test_input, **kwargs)
+        except Exception as e:
+            exception_stack = "".join(
+                traceback.format_exception(type(e), e, e.__traceback__)
+            )
+            raise UnboxResourceError(
+                context="There is n issue with the specified `function`. \n",
+                message=f"It is failing with the following error: \n{exception_stack} \n",
+                mitigation="Make sure your function receives the model and the input as arguments, plus the additional kwargs.",
+            )
+
+        # Transformers resources
+        if model_type is ModelType.transformers:
+            if "tokenizer" not in kwargs:
+                raise UnboxResourceError(
+                    context="There is a missing keyword argument for the specified model type. \n",
+                    message="The `tokenizer` must be specified in kwargs when using a transformers model. \n",
+                    mitigation="Make sure to specify the additional kwargs needed for the model type.",
+                )
+
+        # ----------------- Resource-schema consistency validations ---------------- #
+        # Feature validations
+        if task_type in [TaskType.TabularClassification, TaskType.TabularRegression]:
             try:
                 headers = train_sample_df.columns.tolist()
                 [
@@ -370,14 +462,27 @@ class UnboxClient(object):
                     for name in feature_names + [train_sample_label_column_name]
                 ]
             except ValueError:
-                raise UnboxException(
-                    "Feature / label column names not in train_sample_df"
+                features_not_in_dataset = [
+                    feature
+                    for feature in feature_names + [train_sample_label_column_name]
+                    if feature not in headers
+                ]
+                raise UnboxDatasetInconsistencyError(
+                    f"The features {features_not_in_dataset} specified as `feature_names` are not on the dataset. \n"
                 )
 
-            # TODO: replace validation
-            # self._validate_categorical_features(
-            #     train_sample_df, categorical_features_map
-            # )
+            required_fields = [
+                (feature_names, "feature_names"),
+                (train_sample_df, "train_sample_df"),
+                (train_sample_label_column_name, "train_sample_label_column_name"),
+            ]
+            for value, field in required_fields:
+                if value is None:
+                    raise UnboxDatasetInconsistencyError(
+                        message=f"TabularClassification task with `{field}` missing. \n",
+                        mitigation=f"Make sure to specify `{field}` for tabular classification tasks.",
+                    )
+        # --------------------- Subscription plan validations ---------------------- #
 
         with TempDirectory() as dir:
             bento_service = create_template_model(
@@ -389,10 +494,6 @@ class UnboxClient(object):
                 custom_model_code,
             )
             if model_type is ModelType.transformers:
-                if "tokenizer" not in kwargs:
-                    raise UnboxException(
-                        "Must specify tokenizer in kwargs when using a transformers model"
-                    )
                 bento_service.pack(
                     "model", {"model": model, "tokenizer": kwargs["tokenizer"]}
                 )
@@ -413,8 +514,6 @@ class UnboxClient(object):
                 # Add dependent directory to bundle
                 if dependent_dir is not None:
                     dependent_dir = os.path.abspath(dependent_dir)
-                    if dependent_dir == os.getcwd():
-                        raise UnboxException("dependent_dir can't be working directory")
                     shutil.copytree(
                         dependent_dir,
                         os.path.join(
@@ -608,48 +707,112 @@ class UnboxClient(object):
         ... )
         >>> dataset.to_dict()
         """
-        file_path = os.path.expanduser(file_path)
-        object_name = "original.csv"
-        if not os.path.isfile(file_path):
-            raise UnboxException("File path does not exist.")
-        if label_column_name in feature_names:
-            raise UnboxException(
-                f"label_column_name `{label_column_name}` must not be in feature_names."
+        # ---------------------------- Schema validations ---------------------------- #
+        dataset_schema = DatasetSchema()
+        try:
+            dataset_schema.load(
+                {
+                    "name": name,
+                    "file_path": file_path,
+                    "description": description,
+                    "task_type": task_type.value,
+                    "class_names": class_names,
+                    "label_column_name": label_column_name,
+                    "tag_column_name": tag_column_name,
+                    "language": language,
+                    "sep": sep,
+                    "feature_names": feature_names,
+                    "text_column_name": text_column_name,
+                    "categorical_feature_names": categorical_feature_names,
+                }
             )
-        if task_type in [TaskType.TabularClassification, TaskType.TabularRegression]:
-            if feature_names is None:
-                raise UnboxException(
-                    "Must specify feature_names for TabularClassification"
-                )
+        except ValidationError as err:
+            raise UnboxValidationError(self._format_error_message(err))
 
-            # TODO: replace validation
-            # self._validate_categorical_features(
-            #     pd.read_csv(file_path, sep=sep), categorical_features_map
-            # )
-        else:
-            feature_names = []
+        # --------------------------- Resource validations --------------------------- #
+        exp_file_path = os.path.expanduser(file_path)
+        object_name = "original.csv"
+        if not os.path.isfile(exp_file_path):
+            raise UnboxResourceError(
+                f"The file path `{file_path}` specified on `file_path` does not contain a file with the dataset."
+            )
 
-        with open(file_path, "rt") as f:
+        with open(exp_file_path, "rt") as f:
             reader = csv.reader(f, delimiter=sep)
             headers = next(reader)
             row_count = sum(1 for _ in reader)
-        if row_count > self.subscription_plan["datasetSize"]:
-            raise UnboxException(
-                f"Dataset contains {row_count} rows, which exceeds your plan's"
-                f" limit of {self.subscription_plan['datasetSize']}."
+
+        df = pd.read_csv(file_path, sep=sep)
+
+        if df.isnull().values.any():
+            raise UnboxResourceError(
+                context="There is an issue with the specified dataset. \n",
+                message="The dataset contains missing values. \n",
+                mitigation="Currently, Unbox does not support datasets with missing values."
+                + "Make sure to upload a training set sample without missing values by applying the same"
+                + " preprocessing steps expected by your model.",
             )
+
+        # ----------------- Resource-schema consistency validations ---------------- #
+        # Label column validations
         try:
             headers.index(label_column_name)
+        except ValueError:
+            raise UnboxDatasetInconsistencyError(
+                f"The column {label_column_name} specified as `label_column_name` is not on the dataset. \n"
+            )
+
+        dataset_classes = list(df[label_column_name].unique())
+        if len(dataset_classes) > len(class_names):
+            raise UnboxDatasetInconsistencyError(
+                f"There are {len(dataset_classes)} classes represented on the dataset, but there are only"
+                f"{len(class_names)} items on the `class_names` list. \n",
+                mitigation=f"Make sure that there are at most {len(class_names)} classes in your dataset.",
+            )
+
+        # Feature validations
+        try:
             if text_column_name:
                 feature_names.append(text_column_name)
-            if tag_column_name:
-                headers.index(tag_column_name)
             for feature_name in feature_names:
                 headers.index(feature_name)
         except ValueError:
-            raise UnboxException(
-                "Label / text / feature / tag column names not in dataset."
+            if text_column_name:
+                raise UnboxDatasetInconsistencyError(
+                    f"The column {text_column_name} specified as `text_column_name` is not on the dataset. \n"
+                )
+            else:
+                features_not_in_dataset = [
+                    feature for feature in feature_names if feature not in headers
+                ]
+                raise UnboxDatasetInconsistencyError(
+                    f"The features {features_not_in_dataset} specified as `feature_names` are not on the dataset. \n"
+                )
+
+        # Tag column validation
+        try:
+            if tag_column_name:
+                headers.index(tag_column_name)
+        except ValueError:
+            raise UnboxDatasetInconsistencyError(
+                f"The column `{tag_column_name}` specified as `tag_column_name` is not on the dataset. \n"
             )
+
+        # --------------------- Subscription plan validations ---------------------- #
+        if row_count > self.subscription_plan["datasetSize"]:
+            raise UnboxSubscriptionPlanException(
+                f"The dataset your are trying to upload contains {row_count} rows, which exceeds your plan's"
+                f" limit of {self.subscription_plan['datasetSize']}. \n"
+            )
+        if task_type == TaskType.TextClassification:
+            max_text_size = df.text_column.str.len().max()
+            # TODO: set limit per subscription plan
+            if max_text_size > 100000:
+                raise UnboxSubscriptionPlanException(
+                    f"The dataset you are trying to upload contains texts with {max_text_size} characters,"
+                    "which exceeds your plan's limit of 100,000 characters."
+                )
+
         endpoint = "datasets"
         payload = dict(
             name=name,
@@ -686,7 +849,7 @@ class UnboxClient(object):
         description: Optional[str] = None,
         tag_column_name: Optional[str] = None,
         language: str = "en",
-        project_id: str =  None
+        project_id: str = None,
     ) -> Dataset:
         r"""Uploads a dataset to the Unbox platform (from a pandas DataFrame).
 
@@ -828,8 +991,24 @@ class UnboxClient(object):
                 language=language,
                 feature_names=feature_names,
                 categorical_feature_names=categorical_feature_names,
-                project_id=project_id
+                project_id=project_id,
             )
+
+    @staticmethod
+    def _format_error_message(err) -> str:
+        """Formats the error messaeges from Marshmallow"""
+        error_msg = ""
+        for input, msg in err.messages.items():
+            if input == "_schema":
+                temp_msg = "\n- ".join(msg)
+                error_msg += f"- {temp_msg} \n"
+            elif not isinstance(msg, dict):
+                temp_msg = msg[0].lower()
+                error_msg += f"- `{input}` {temp_msg} \n"
+            else:
+                temp_msg = list(msg.values())[0][0].lower()
+                error_msg += f"- `{input}` contains items that are {temp_msg} \n"
+        return error_msg
 
     @staticmethod
     def _validate_categorical_features(
@@ -841,4 +1020,3 @@ class UnboxClient(object):
                     f"Feature '{feature}' contains more options in the df than provided "
                     "for it in `categorical_features_map`"
                 )
-
