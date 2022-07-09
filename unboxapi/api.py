@@ -25,11 +25,15 @@ CLIENT_METADATA = {"version": __version__}
 
 
 class Api:
-    """ Internal class to handle http requests """
+    """Internal class to handle http requests"""
 
     def __init__(self, api_key: str):
         if api_key == "" or api_key is None:
-            raise UnboxException("Must provide a valid API Key.")
+            raise UnboxException(
+                "There is an issue instantiating the UnboxClient. \n"
+                "No valid API key is being provided. \n"
+                "Make sure to provide a valid API key, as in `UnboxClient('YOUR_API_KEY _HERE')`. You can find your API keys in the Profile page on the Unbox platform."
+            )
 
         self.api_key = api_key
         self._headers = {
@@ -99,7 +103,7 @@ class Api:
         files=None,
         data=None,
     ):
-        """Make any HTTP request + error handling. """
+        """Make any HTTP request + error handling."""
 
         url = f"{UNBOX_ENDPOINT}/{endpoint}"
 
@@ -114,11 +118,11 @@ class Api:
         return json
 
     def get_request(self, endpoint: str, params=None):
-        """Generic GET Request Wrapper. """
+        """Generic GET Request Wrapper."""
         return self._api_request("GET", endpoint, headers=self._headers, params=params)
 
     def post_request(self, endpoint: str, body=None, files=None, data=None):
-        """Generic POST Request Wrapper. """
+        """Generic POST Request Wrapper."""
         return self._api_request(
             "POST",
             endpoint,
@@ -131,7 +135,7 @@ class Api:
         )
 
     def put_request(self, endpoint: str, body=None, files=None, data=None):
-        """Generic PUT Request Wrapper. """
+        """Generic PUT Request Wrapper."""
         return self._api_request(
             "PUT",
             endpoint,

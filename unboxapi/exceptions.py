@@ -29,7 +29,7 @@ class UnboxInvalidRequest(UnboxException):
 
 
 class UnboxUnauthorized(UnboxException):
-    """401 - Unauthorized -- No valid API key provided. """
+    """401 - Unauthorized -- No valid API key provided."""
 
     code = 401
 
@@ -43,7 +43,7 @@ class UnboxNotEnabled(UnboxException):
 
 
 class UnboxResourceNotFound(UnboxException):
-    """404 - Not Found -- The requested resource doesn't exist. """
+    """404 - Not Found -- The requested resource doesn't exist."""
 
     code = 404
 
@@ -73,13 +73,13 @@ class UnboxInternalError(UnboxException):
 
 
 class UnboxServiceUnavailable(UnboxException):
-    """503 - Server Timeout From Request Queueing -- Try again later. """
+    """503 - Server Timeout From Request Queueing -- Try again later."""
 
     code = 503
 
 
 class UnboxTimeoutError(UnboxException):
-    """504 - Server Timeout Error -- Try again later. """
+    """504 - Server Timeout Error -- Try again later."""
 
     code = 504
 
