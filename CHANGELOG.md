@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 # Changed
 
+* Models and datasets must be added to projects. Added a `Project` helper class.
 * Deprecates `categorical_features_map` in favor of `categorical_feature_names` for model and dataset uploads.
 
 ## [0.2.0a1]
