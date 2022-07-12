@@ -745,6 +745,7 @@ class UnboxClient(object):
             headers = next(reader)
             row_count = sum(1 for _ in reader)
 
+        # ----------------- Resource-schema consistency validations ---------------- #
         df = pd.read_csv(file_path, sep=sep)
 
         if df.isnull().values.any():
