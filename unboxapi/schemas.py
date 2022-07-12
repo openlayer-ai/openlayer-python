@@ -8,25 +8,18 @@ from marshmallow import (
 
 
 class DatasetSchema(Schema):
-    file_path = fields.Str(
-        error_messages={"invalid": "The `file_path` is not a valid string."}
-    )
+    file_path = fields.Str()
     name = fields.Str(
         required=True,
-        error_messages={"invalid": "The `name` is not a valid string."},
         validate=validate.Length(
             min=1,
             max=64,
-            error=f"`name` string must be at least 1 and at most 64 characters long.",
         ),
     )
     description = fields.Str(
-        required=True,
-        error_messages={"invalid": "`description` is not a valid string."},
         validate=validate.Length(
             min=1,
             max=140,
-            error=f"The `description` string must be at least 1 and at most 140 characters long.",
         ),
     )
     task_type = fields.Str(
@@ -41,39 +34,29 @@ class DatasetSchema(Schema):
     )
     tag_column_name = fields.List(
         fields.Str(),
-        error_messages={"invalid": "`tag_column_name` is not a valid list of strings."},
         allow_none=True,
     )
     class_names = fields.List(
         fields.Str(),
-        error_messages={"invalid": "`class_names` is not a valid list of strings."},
     )
-    label_column_name = fields.Str(
-        error_messages={"invalid": "The `label_column_name` is not a valid string."}
-    )
+    label_column_name = fields.Str()
     language = fields.Str(
         default="en",
-        error_messages={"invalid": "`language` is not a valid string."},
         validate=validate.Regexp(
             r"^[a-z]{2}(-[A-Z]{2})?$",
             error="The `language` of the dataset is not in the ISO 639-1 (alpha-2 code) format.",
         ),
     )
-    sep = fields.Str(error_messages={"invalid": "The `sep` is not a valid string."})
+    sep = fields.Str()
     feature_names = fields.List(
         fields.Str(),
-        error_messages={"invalid": "`feature_names` is not a valid list of strings."},
         allow_none=True,
     )
     text_column_name = fields.Str(
-        error_messages={"invalid": "`text_column_name` is not a valid string."},
         allow_none=True,
     )
     categorical_feature_names = fields.List(
         fields.Str(),
-        error_messages={
-            "invalid": "The `categorical_feature_names` is not a valid list of strings."
-        },
     )
 
     @validates_schema
@@ -92,33 +75,28 @@ class DatasetSchema(Schema):
             and "feature_names" not in data
         ):
             raise ValidationError(
-                "Must specify `feature_names` for TabularClassification"
+                "Must specify `feature_names` for TabularClassification."
             )
         elif data["task_type"] == "text-classification" and "text_column" not in data:
-            raise ValidationError("Must specify `text_column` for TextClassification")
+            raise ValidationError("Must specify `text_column` for TextClassification.")
 
 
 class ModelSchema(Schema):
     name = fields.Str(
         required=True,
-        error_messages={"invalid": "The `name` is not a valid string."},
         validate=validate.Length(
             min=1,
             max=64,
-            error=f"`name` string must be at least 1 and at most 64 characters long.",
         ),
     )
     function = fields.Function(
         required=True,
-        error_messages={"invalid": "The `function` is not a valid function"},
     )
     description = fields.Str(
         required=True,
-        error_messages={"invalid": "`description` is not a valid string."},
         validate=validate.Length(
             min=1,
             max=140,
-            error=f"The `description` string must be at least 1 and at most 140 characters long.",
         ),
     )
     task_type = fields.Str(
@@ -137,46 +115,31 @@ class ModelSchema(Schema):
             "invalid": "`model_type` is not valid. Make sure you are importing ModelType correctly."
         },
         validate=validate.OneOf(
-            ["scikit-learn", "hugging-face"],
+            ["SklearnModelArtifact", "hugging-face"],
             error=f"The `model_type` must be one of either ModelType.x or ModelType.y.",
         ),
     )
     class_names = fields.List(
         fields.Str(),
-        error_messages={"invalid": "`class_names` is not a valid list of strings."},
     )
     requirements_txt_file = fields.Str(
-        error_messages={
-            "invalid": "The `requirements_txt_file` is not a valid string."
-        },
         allow_none=True,
     )
-    train_sample_label_column_name = fields.Str(
-        error_messages={
-            "invalid": "The `train_sample_label_column_name` is not a valid string."
-        }
-    )
+    train_sample_label_column_name = fields.Str()
     feature_names = fields.List(
         fields.Str(),
-        error_messages={"invalid": "`feature_names` is not a valid list of strings."},
         allow_none=True,
     )
     categorical_feature_names = fields.List(
         fields.Str(),
-        error_messages={
-            "invalid": "The `categorical_feature_names` is not a valid list of strings."
-        },
     )
     setup_script = fields.Str(
-        error_messages={"invalid": "The `setup_script` is not a valid string."},
         allow_none=True,
     )
     custom_model_code = fields.Str(
-        error_messages={"invalid": "The `custom_model_code` is not a valid string."},
         allow_none=True,
     )
     dependent_dir = fields.Str(
-        error_messages={"invalid": "The `dependent_dir` is not a valid string."},
         allow_none=True,
     )
 
@@ -205,20 +168,3 @@ class ModelSchema(Schema):
             raise ValidationError(
                 "Must specify `requirements_txt_file` when using ModelType.custom"
             )
-
-    @validates_schema
-    def validate_task_type_args(self, data, **kwargs):
-        if data["task_type"] in ["tabular-classification", "tabular-regression"]:
-            required_fields = [
-                (data["feature_names"], "feature_names"),
-                (data["train_sample_df"], "train_sample_df"),
-                (
-                    data["train_sample_label_column_name"],
-                    "train_sample_label_column_name",
-                ),
-            ]
-            for value, field in required_fields:
-                if value is None:
-                    raise ValidationError(
-                        f"Must specify {field} for TabularClassification"
-                    )
