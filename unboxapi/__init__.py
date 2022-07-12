@@ -3,9 +3,10 @@ import os
 import shutil
 import tarfile
 import tempfile
+import traceback
 import uuid
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 import pandas as pd
 from bentoml.saved_bundle.bundler import _write_bento_content_to_dir
@@ -322,7 +323,6 @@ class UnboxClient(object):
             model_schema.load(
                 {
                     "name": name,
-                    "function": function,
                     "description": description,
                     "task_type": task_type.value,
                     "model_type": model_type.value,
@@ -363,7 +363,7 @@ class UnboxClient(object):
                 mitigation=f"Make sure that the specified `dependent_dir` is different than {os.getcwd()}",
             )
 
-        # Training set size
+        # Training set
         if task_type in [TaskType.TabularClassification, TaskType.TabularRegression]:
             if len(train_sample_df.index) < 100:
                 raise UnboxResourceError(
@@ -371,10 +371,25 @@ class UnboxClient(object):
                     message=f"The `train_sample_df` is too small, with only {len(train_sample_df.index)} rows. \n",
                     mitigation="Make sure to upload a training set sample with at least 100 rows.",
                 )
+            if train_sample_df.isnull().values.any():
+                raise UnboxResourceError(
+                    context="There is an issue with the specified `train_sample_df`. \n",
+                    message=f"The `train_sample_df` contains missing values. \n",
+                    mitigation="Currently, Unbox does not support datasets with missing values."
+                    + "Make sure to upload a training set sample without missing values by applying the same"
+                    + " preprocessing steps expected by your model.",
+                )
+
             train_sample_df = train_sample_df.sample(
                 min(3000, len(train_sample_df.index))
             )
-        # predict_proba extra args
+
+        # predict_proba
+        if not isinstance(function, Callable):
+            raise UnboxValidationError(
+                f"- The argument `{function}` specified as `function` is not callable. \n"
+            )
+
         user_args = function.__code__.co_varnames[: function.__code__.co_argcount][2:]
         kwarg_keys = tuple(kwargs)
         if user_args != kwarg_keys:
@@ -382,6 +397,25 @@ class UnboxClient(object):
                 context="There is an issue with the speficied `function`. \n",
                 message=f"Your function's additional args {user_args} do not match the kwargs you specifed {kwarg_keys}. \n",
                 mitigation=f"Make sure to include all of the required kwargs to run inference with your `function`.",
+            )
+        try:
+            if task_type in [
+                TaskType.TabularClassification,
+                TaskType.TabularRegression,
+            ]:
+                test_input = train_sample_df[:3][feature_names].to_numpy()
+                function(model, test_input, **kwargs)
+            else:
+                test_input = ["Test predict function.", "Unbox is great!"]
+                function(model, test_input, **kwargs)
+        except Exception as e:
+            exception_stack = "".join(
+                traceback.format_exception(type(e), e, e.__traceback__)
+            )
+            raise UnboxResourceError(
+                context="There is n issue with the specified `function`. \n",
+                message=f"It is failing with the following error: \n{exception_stack} \n",
+                mitigation="Make sure your function receives the model and the input as arguments, plus the additional kwargs.",
             )
 
         # Transformers resources
@@ -681,9 +715,18 @@ class UnboxClient(object):
             headers = next(reader)
             row_count = sum(1 for _ in reader)
 
-        # ----------------- Resource-schema consistency validations ---------------- #
         df = pd.read_csv(file_path, sep=sep)
 
+        if df.isnull().values.any():
+            raise UnboxResourceError(
+                context="There is an issue with the specified dataset. \n",
+                message="The dataset contains missing values. \n",
+                mitigation="Currently, Unbox does not support datasets with missing values."
+                + "Make sure to upload a training set sample without missing values by applying the same"
+                + " preprocessing steps expected by your model.",
+            )
+
+        # ----------------- Resource-schema consistency validations ---------------- #
         # Label column validations
         try:
             headers.index(label_column_name)

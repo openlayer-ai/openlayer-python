@@ -89,9 +89,6 @@ class ModelSchema(Schema):
             max=64,
         ),
     )
-    function = fields.Function(
-        required=True,
-    )
     description = fields.Str(
         required=True,
         validate=validate.Length(
