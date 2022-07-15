@@ -7,6 +7,22 @@ from marshmallow import (
 )
 
 
+class ProjectSchema(Schema):
+    name = name = fields.Str(
+        required=True,
+        validate=validate.Length(
+            min=1,
+            max=64,
+        ),
+    )
+    description = fields.Str(
+        validate=validate.Length(
+            min=1,
+            max=140,
+        ),
+    )
+
+
 class DatasetSchema(Schema):
     file_path = fields.Str()
     name = fields.Str(

@@ -31,7 +31,7 @@ from typing import Dict, List, Optional
 from .projects import Project
 from .version import __version__
 
-from .schemas import DatasetSchema, ModelSchema
+from .schemas import DatasetSchema, ModelSchema, ProjectSchema
 from marshmallow import ValidationError
 
 
@@ -86,6 +86,13 @@ class UnboxClient(object):
         name: str,
         description: str,
     ):
+        # ----------------------------- Schema validation ---------------------------- #
+        project_schema = ProjectSchema()
+        try:
+            project_schema.load({"name": name, "description": description})
+        except ValidationError as err:
+            raise UnboxValidationError(self._format_error_message(err))
+
         endpoint = "initialize_project"
         payload = dict(
             name=name,
@@ -346,6 +353,15 @@ class UnboxClient(object):
         >>> model.to_dict()
         """
         # ---------------------------- Schema validations ---------------------------- #
+        if task_type not in [
+            TaskType.TabularClassification,
+            TaskType.TextClassification,
+        ]:
+            raise UnboxValidationError(
+                "`task_type` must be either TaskType.TabularClassification or TaskType.TextClassification. \n"
+            )
+        if model_type not in []:
+            pass
         model_schema = ModelSchema()
         try:
             model_schema.load(
@@ -711,14 +727,21 @@ class UnboxClient(object):
         >>> dataset.to_dict()
         """
         # ---------------------------- Schema validations ---------------------------- #
+        if task_type not in [
+            TaskType.TabularClassification,
+            TaskType.TextClassification,
+        ]:
+            raise UnboxValidationError(
+                "`task_type` must be either TaskType.TabularClassification or TaskType.TextClassification. \n"
+            )
         dataset_schema = DatasetSchema()
         try:
             dataset_schema.load(
                 {
                     "name": name,
                     "file_path": file_path,
-                    "description": description,
                     "task_type": task_type.value,
+                    "description": description,
                     "class_names": class_names,
                     "label_column_name": label_column_name,
                     "tag_column_name": tag_column_name,
