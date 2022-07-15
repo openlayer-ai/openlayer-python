@@ -56,7 +56,7 @@ class UnboxSubscriptionPlanException(UnboxException):
         if not context:
             context = "You have reached your subscription plan's limits. \n"
         if not mitigation:
-            mitigation = "To upgrade your plan, visit our website https://unbox.ai"
+            mitigation = "To upgrade your plan, visit https://unbox.ai"
         super().__init__(context + message + mitigation)
 
 

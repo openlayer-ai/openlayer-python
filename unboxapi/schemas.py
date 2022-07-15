@@ -5,6 +5,7 @@ from marshmallow import (
     ValidationError,
     validates_schema,
 )
+from .models import ModelType
 
 
 class ProjectSchema(Schema):
@@ -80,7 +81,7 @@ class DatasetSchema(Schema):
         """Validates whether the label column name is not on the feature names list"""
         if data["label_column_name"] in data["feature_names"]:
             raise ValidationError(
-                f"The `label_column_name` {data['label_column_name']} must not be in `feature_names`."
+                f"The `label_column_name` `{data['label_column_name']}` must not be in `feature_names`."
             )
 
     @validates_schema
@@ -91,10 +92,12 @@ class DatasetSchema(Schema):
             and "feature_names" not in data
         ):
             raise ValidationError(
-                "Must specify `feature_names` for TabularClassification."
+                "Must specify `feature_names` for TabularClassification `task_type`. \n"
             )
         elif data["task_type"] == "text-classification" and "text_column" not in data:
-            raise ValidationError("Must specify `text_column` for TextClassification.")
+            raise ValidationError(
+                "Must specify `text_column` for TextClassification. `task_type` \n"
+            )
 
 
 class ModelSchema(Schema):
@@ -128,8 +131,8 @@ class ModelSchema(Schema):
             "invalid": "`model_type` is not valid. Make sure you are importing ModelType correctly."
         },
         validate=validate.OneOf(
-            ["SklearnModelArtifact", "hugging-face"],
-            error=f"The `model_type` must be one of either ModelType.x or ModelType.y.",
+            [model_framework.value for model_framework in ModelType],
+            error=f"The `model_type` must be one of the supported frameworks. Check out our API reference for a full list https://reference.unbox.ai/reference/api/unboxapi.ModelType.html.\n ",
         ),
     )
     class_names = fields.List(
@@ -159,25 +162,25 @@ class ModelSchema(Schema):
     @validates_schema
     def validate_custom_model_code(self, data, **kwargs):
         """Validates the model type when `custom_code` is specified"""
-        if data["model_type"] == "custom" and data["custom_model_code"] is None:
+        if data["model_type"] == "Custom" and data["custom_model_code"] is None:
             raise ValidationError(
-                "`model_type` must be ModelType.custom if specifying `custom_model_code`."
+                "Must specify `custom_model_code` when using ModelType.custom. \n"
             )
-        elif data["custom_model_code"] is not None and data["model_type"] != "custom":
+        elif data["custom_model_code"] is not None and data["model_type"] != "Custom":
             raise ValidationError(
-                "Must specify `custom_model_code` when using ModelType.custom"
+                "`model_type` must be ModelType.custom if specifying `custom_model_code`. \n"
             )
 
     @validates_schema
     def validate_custom_model_dependent_dir(self, data, **kwargs):
-        if data["model_type"] == "custom" and data["dependent_dir"] is None:
+        if data["model_type"] == "Custom" and data["dependent_dir"] is None:
             raise ValidationError(
-                "Must specify `dependent_dir` when using ModelType.custom"
+                "Must specify `dependent_dir` when using ModelType.custom. \n"
             )
 
     @validates_schema
     def validate_custom_model_requirements(self, data, **kwargs):
-        if data["model_type"] == "custom" and data["requirements_txt_file"] is None:
+        if data["model_type"] == "Custom" and data["requirements_txt_file"] is None:
             raise ValidationError(
-                "Must specify `requirements_txt_file` when using ModelType.custom"
+                "Must specify `requirements_txt_file` when using ModelType.custom. \n"
             )

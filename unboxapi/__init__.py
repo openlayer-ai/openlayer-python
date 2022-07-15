@@ -356,8 +356,10 @@ class UnboxClient(object):
             raise UnboxValidationError(
                 "`task_type` must be either TaskType.TabularClassification or TaskType.TextClassification. \n"
             )
-        if model_type not in []:
-            pass
+        if model_type not in [model_framework for model_framework in ModelType]:
+            raise UnboxValidationError(
+                "`model_type` must be one of the supported ModelTypes. Check out our API reference for a full list https://reference.unbox.ai/reference/api/unboxapi.ModelType.html. \n"
+            )
         model_schema = ModelSchema()
         try:
             model_schema.load(
@@ -386,14 +388,14 @@ class UnboxClient(object):
         ):
             raise UnboxResourceError(
                 f"The file path `{requirements_txt_file}` specified on `requirements_txt_file` does not"
-                " contain a file with the requirements ."
+                " contain a file with the requirements. \n"
             )
 
         # Setup script
         if setup_script and not os.path.isfile(os.path.expanduser(setup_script)):
             raise UnboxResourceError(
                 f"The file path `{setup_script}` specified on `setup_script` does not"
-                " contain a file with the bash script with commands required before model loading."
+                " contain a file with the bash script with commands required before model loading. \n"
             )
 
         # Dependent dir
@@ -467,7 +469,7 @@ class UnboxClient(object):
                     mitigation="Make sure to specify the additional kwargs needed for the model type.",
                 )
 
-        # ----------------- Resource-schema consistency validations ---------------- #
+        # ------------------ Resource-schema consistency validations ----------------- #
         # Feature validations
         if task_type in [TaskType.TabularClassification, TaskType.TabularRegression]:
             try:
@@ -483,7 +485,7 @@ class UnboxClient(object):
                     if feature not in headers
                 ]
                 raise UnboxDatasetInconsistencyError(
-                    f"The features {features_not_in_dataset} specified as `feature_names` are not on the dataset. \n"
+                    f"The features {features_not_in_dataset} specified in `feature_names` are not on the dataset. \n"
                 )
 
             required_fields = [
@@ -497,7 +499,6 @@ class UnboxClient(object):
                         message=f"TabularClassification task with `{field}` missing. \n",
                         mitigation=f"Make sure to specify `{field}` for tabular classification tasks.",
                     )
-        # --------------------- Subscription plan validations ---------------------- #
 
         with TempDirectory() as dir:
             bento_service = create_template_model(
@@ -775,13 +776,13 @@ class UnboxClient(object):
                 + " preprocessing steps expected by your model.",
             )
 
-        # ----------------- Resource-schema consistency validations ---------------- #
+        # ------------------ Resource-schema consistency validations ----------------- #
         # Label column validations
         try:
             headers.index(label_column_name)
         except ValueError:
             raise UnboxDatasetInconsistencyError(
-                f"The column {label_column_name} specified as `label_column_name` is not on the dataset. \n"
+                f"The column `{label_column_name}` specified as `label_column_name` is not on the dataset. \n"
             )
 
         dataset_classes = list(df[label_column_name].unique())
@@ -801,14 +802,14 @@ class UnboxClient(object):
         except ValueError:
             if text_column_name:
                 raise UnboxDatasetInconsistencyError(
-                    f"The column {text_column_name} specified as `text_column_name` is not on the dataset. \n"
+                    f"The column `{text_column_name}` specified as `text_column_name` is not on the dataset. \n"
                 )
             else:
                 features_not_in_dataset = [
                     feature for feature in feature_names if feature not in headers
                 ]
                 raise UnboxDatasetInconsistencyError(
-                    f"The features {features_not_in_dataset} specified as `feature_names` are not on the dataset. \n"
+                    f"The features {features_not_in_dataset} specified in `feature_names` are not on the dataset. \n"
                 )
 
         # Tag column validation
@@ -820,7 +821,7 @@ class UnboxClient(object):
                 f"The column `{tag_column_name}` specified as `tag_column_name` is not on the dataset. \n"
             )
 
-        # --------------------- Subscription plan validations ---------------------- #
+        # ----------------------- Subscription plan validations ---------------------- #
         if row_count > self.subscription_plan["datasetSize"]:
             raise UnboxSubscriptionPlanException(
                 f"The dataset your are trying to upload contains {row_count} rows, which exceeds your plan's"
