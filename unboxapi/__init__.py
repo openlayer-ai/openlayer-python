@@ -35,10 +35,6 @@ from .schemas import DatasetSchema, ModelSchema, ProjectSchema
 from marshmallow import ValidationError
 
 
-from .schemas import DatasetSchema, ModelSchema
-from marshmallow import ValidationError
-
-
 class DeploymentType(Enum):
     """Specify the storage medium being used by your Unbox deployment."""
 
