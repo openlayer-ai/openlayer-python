@@ -108,7 +108,7 @@ class UnboxClient(object):
         try:
             project_schema.load({"name": name, "description": description})
         except ValidationError as err:
-            raise UnboxValidationError(self._format_error_message(err))
+            raise UnboxValidationError(self._format_error_message(err)) from None
 
         endpoint = "initialize_project"
         payload = dict(
@@ -1041,7 +1041,7 @@ class UnboxClient(object):
         if not isinstance(df, pd.DataFrame):
             raise UnboxValidationError(
                 f"- `df` is a {type(df)}, but it must be a pandas dataframe (pd.DataFrame). \n"
-            )
+            ) from None
         with tempfile.TemporaryDirectory() as tmp_dir:
             file_path = os.path.join(tmp_dir, str(uuid.uuid1()))
             df.to_csv(file_path, index=False)
