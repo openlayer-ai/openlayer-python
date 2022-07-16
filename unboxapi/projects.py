@@ -1,6 +1,7 @@
 from .models import Model
 from .datasets import Dataset
 
+
 class Project:
     """An object containing information about a project on the Unbox platform."""
 
@@ -50,10 +51,6 @@ class Project:
         kwargs["project_id"] = self.id
         return self.client.add_dataset(*args, **kwargs)
 
-    def add_dataframe(
-        self,
-        *args,
-        **kwargs
-    ) -> Dataset:
+    def add_dataframe(self, *args, **kwargs) -> Dataset:
         kwargs["project_id"] = self.id
         return self.client.add_dataframe(*args, **kwargs)

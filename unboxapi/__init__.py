@@ -19,6 +19,7 @@ from typing import Dict, List, Optional
 from .projects import Project
 from .version import __version__
 
+
 class DeploymentType(Enum):
     """Specify the storage medium being used by your Unbox deployment."""
 
@@ -50,7 +51,7 @@ class UnboxClient(object):
 
     def __init__(self, api_key: str):
         self.api = Api(api_key)
-        self.subscription_plan = self.api.get_request("users/subscriptionPlan")
+        self.subscription_plan = self.api.get_request("me/subscription-plan")
 
         if DEPLOYMENT == DeploymentType.AWS:
             self.upload = self.api.upload_blob_s3
@@ -61,21 +62,14 @@ class UnboxClient(object):
         else:
             self.upload = self.api.transfer_blob
 
-    def create_project(
-        self,
-        name: str,
-        description: str,
-    ):
-        endpoint = "initialize_project"
-        payload = dict(
-            name=name,
-            description=description,
-        )
+    def create_project(self, name: str, description: str):
+        endpoint = "projects"
+        payload = dict(name=name, description=description)
         project_data = self.api.post_request(endpoint, body=payload)
         return Project(project_data, self.upload, self.subscription_plan, self)
 
     def load_project(self, name: str):
-        endpoint = f"load_project/{name}"
+        endpoint = f"projects/{name}"
         project_data = self.api.get_request(endpoint)
         return Project(project_data, self.upload, self.subscription_plan, self)
 
@@ -440,14 +434,14 @@ class UnboxClient(object):
                     with tarfile.open(tarfile_path, mode="w:gz") as tar:
                         tar.add(temp_dir, arcname=bento_service.name)
 
-                    endpoint = "models"
+                    endpoint = f"projects/{project_id}/ml-models"
                     payload = dict(
                         name=name,
                         project_id=project_id,
                         description=description,
                         classNames=class_names,
                         taskType=task_type.value,
-                        type=model_type.name,
+                        architectureType=model_type.name,
                         kwargs=list(kwargs.keys()),
                         featureNames=feature_names,
                         categoricalFeatureNames=categorical_feature_names,
@@ -650,7 +644,7 @@ class UnboxClient(object):
             raise UnboxException(
                 "Label / text / feature / tag column names not in dataset."
             )
-        endpoint = "datasets"
+        endpoint = f"projects/{project_id}/datasets"
         payload = dict(
             name=name,
             project_id=project_id,
@@ -686,7 +680,7 @@ class UnboxClient(object):
         description: Optional[str] = None,
         tag_column_name: Optional[str] = None,
         language: str = "en",
-        project_id: str =  None
+        project_id: str = None,
     ) -> Dataset:
         r"""Uploads a dataset to the Unbox platform (from a pandas DataFrame).
 
@@ -828,7 +822,7 @@ class UnboxClient(object):
                 language=language,
                 feature_names=feature_names,
                 categorical_feature_names=categorical_feature_names,
-                project_id=project_id
+                project_id=project_id,
             )
 
     @staticmethod
@@ -841,4 +835,3 @@ class UnboxClient(object):
                     f"Feature '{feature}' contains more options in the df than provided "
                     "for it in `categorical_features_map`"
                 )
-
