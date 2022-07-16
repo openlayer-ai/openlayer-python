@@ -34,7 +34,7 @@ class UnboxResourceError(UnboxException):
 class UnboxValidationError(UnboxException):
     def __init__(self, message, context=None, mitigation=None):
         if not context:
-            context = "There are issues with the data being passed as argument. \n"
+            context = "There are issues with some of the arguments: \n"
         if not mitigation:
             mitigation = (
                 "Make sure to respect the datatypes and constraints specified above."
@@ -45,7 +45,7 @@ class UnboxValidationError(UnboxException):
 class UnboxDatasetInconsistencyError(UnboxException):
     def __init__(self, message, context=None, mitigation=None):
         if not context:
-            context = "There are inconsistencies between the dataset and the data being passed as argument. \n"
+            context = "There are inconsistencies between the dataset and some of the arguments: \n"
         if not mitigation:
             mitigation = "Make sure that the value specified in the argument is a column header in the dataframe or csv being uploaded."
         super().__init__(context + message + mitigation)

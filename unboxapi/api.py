@@ -33,7 +33,7 @@ class Api:
             raise UnboxException(
                 "There is an issue instantiating the UnboxClient. \n"
                 "No valid API key is being provided. \n"
-                "Make sure to provide a valid API key, as in `UnboxClient('YOUR_API_KEY _HERE')`. You can find your API keys in the Profile page on the Unbox platform."
+                "Make sure to provide a valid API key using the syntax `UnboxClient('YOUR_API_KEY _HERE')`. You can find your API keys in your Profile page on the Unbox platform."
             )
 
         self.api_key = api_key
