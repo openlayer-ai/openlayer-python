@@ -25,6 +25,8 @@ class ModelType(Enum):
     pytorch = "PytorchModelArtifact"
     #: For models built with `TensorFlow <https://www.tensorflow.org/>`_.
     tensorflow = "TensorflowSavedModelArtifact"
+    #: For models built with `XGBoost <https://xgboost.readthedocs.io>`_.
+    xgboost = "XgboostModelArtifact"
     #: For models built with `Hugging Face transformers <https://huggingface.co/docs/transformers/index>`_.
     transformers = "TransformersModelArtifact"
     #: For models built with `Keras <https://keras.io/>`_.
