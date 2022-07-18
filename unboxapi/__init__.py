@@ -62,7 +62,7 @@ class DeploymentType(Enum):
     ONPREM = 1
     AWS = 2
     GCP = 3
-    AZURE = 4
+    AZURE = 43
 
 
 # NOTE: Don't modify this unless you are deploying on-prem.
@@ -103,6 +103,39 @@ class UnboxClient(object):
         name: str,
         description: str,
     ):
+        """Creates a project on the Unbox platform.
+
+        Parameters
+        ----------
+        name : str
+            Name of your project.
+
+            .. important::
+                The project name must be unique in a user's account. Furthermore, this is the name
+                that is used to identify the project when uploading models and datasets.
+
+        description : str
+            Project description.
+
+        Returns
+        -------
+        Project
+            An object that is used to upload models and datasets to the Unbox platform that
+            also contains information about the project.
+
+        Examples
+        --------
+        Instantiate the client and create the project:
+
+        >>> import unboxapi
+        >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+        >>>
+        >>> project = client.create_project(name="Churn prediction",
+        ...                                 description="My first error analysis playground")
+
+        With the Project object created, you are able to start uploading models and datasets to the platform. Refer to :obj:`add_model`
+        and obj:`add_dataset` or obj:`add_dataframe` for detailed examples.
+        """
         # ----------------------------- Schema validation ---------------------------- #
         project_schema = ProjectSchema()
         try:
@@ -123,6 +156,34 @@ class UnboxClient(object):
         return Project(project_data, self.upload, self.subscription_plan, self)
 
     def load_project(self, name: str):
+        """Loads an existing project from the Unbox platform.
+
+        Parameters
+        ----------
+        name : str
+            Name of the project to be loaded. The name of the project is the one displayed on the Unbox platform.
+
+            .. note::
+                If you haven't created the project yet, you should use the :obj:`create_project` method.
+
+        Returns
+        -------
+        Project
+            An object that is used to upload models and datasets to the Unbox platform that
+            also contains information about the project.
+
+        Examples
+        --------
+        Instantiate the client and load the project:
+
+        >>> import unboxapi
+        >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+        >>>
+        >>> project = client.load_project(name="Churn prediction")
+
+        With the Project object loaded, you are able to upload models and datasets to the platform. Refer to :obj:`add_model`
+        and obj:`add_dataset` or obj:`add_dataframe` for detailed examples.
+        """
         endpoint = f"load_project/{name}"
         project_data = self.api.get_request(endpoint)
         return Project(project_data, self.upload, self.subscription_plan, self)
@@ -153,6 +214,13 @@ class UnboxClient(object):
         ----------
         name : str
             Name of your model.
+
+            .. important::
+                Versioning models on the Unbox platform happens via the ``name`` argument. If ``add_model`` is called
+                with a ``name`` that still does not exist inside the project, Unbox treats it as the **first version** of a new model lineage.
+                On the other hand, if the ``name`` argument value already exists inside the project, Unbox treats it as a **new version** of an existing
+                model lineage.
+
         task_type : :obj:`TaskType`
             Type of ML task. E.g. :obj:`TaskType.TextClassification`.
         function :
@@ -174,8 +242,8 @@ class UnboxClient(object):
         feature_names : List[str], default []
             List of input feature names. Only applicable if your ``task_type`` is
             :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
-        categorical_features_map : Dict[str], default {}
-            A dict containing a list of category names for each feature that is categorical. E.g. `{'Weather': ['Hot', 'Cold']}`.
+        categorical_feature_names : List[str], default []
+            A list containing the feature names for each feature that is categorical. E.g. `["Gender", "Geography"]`.
             Only applicable if your ``task_type`` is :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
         train_sample_df : pd.DataFrame, default None
             A random sample of >= 100 rows from your training dataset. This is used to support explainability features.
@@ -213,10 +281,23 @@ class UnboxClient(object):
             Our `sample notebooks <https://github.com/unboxai/unboxapi-python-client/tree/main/examples>`_ and
             `tutorials <https://unbox.readme.io/docs/overview-of-tutorial-tracks>`_.
 
-        Instantiate the client:
+
+        The models are uploaded directly into a **project** on the Unbox platform, using the ``project.add_model()`` method.
+        Therefore, you need to get the project object to start uploading your models.
+
+        First, instantiate the client:
 
         >>> import unboxapi
         >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+
+        Then, get the project object. If you don't have a project yet, you need to create one using the :obj:`create_project` method:
+
+        >>> project = client.create_project(name="Your project name",
+        ...                                 description="Your project description")
+
+        Otherwise, if you already have a project created on the platform, you just need to load it using the :obj:`load_project` method:
+
+        >>> project = client.load_project(name="Your project name")
 
         **If your task type is tabular classification...**
 
@@ -236,7 +317,7 @@ class UnboxClient(object):
         >>> task_type = TaskType.TabularClassification
         >>> class_names = ['Retained', 'Churned']
         >>> feature_names = ['CreditScore', 'Geography', 'Balance']
-        >>> categorical_features_map = {'CreditScore': ['France', 'Germany', 'Spain']}
+        >>> categorical_feature_names = ['Geography']
 
         Now let's say you've trained a simple ``scikit-learn`` model on data that looks like the above.
 
@@ -251,8 +332,8 @@ class UnboxClient(object):
         The ``model`` arg must be the actual trained model object, and the ``input_features`` arg must be a 2D numpy array
         containing a batch of features that will be passed to the model as inputs.
 
-        You can optionally include other kwargs in the function, including tokenizers, variables, encoders etc.
-        You simply pass those kwargs to the ``client.add_model`` function call when you upload the model.
+        You can optionally include other kwargs in the function, including variables, encoders etc.
+        You simply pass those kwargs to the ``project.add_model`` function call when you upload the model.
 
         Here's an example of the ``predict_proba`` function in action:
 
@@ -286,15 +367,16 @@ class UnboxClient(object):
 
         You can now upload this dataset to Unbox:
 
-        >>> model = client.add_model(
-        ...     name='Churn Classifier',
+        >>> model = project.add_model(
+        ...     name='Linear classifiers',
+        ...     description='First iteration of vanilla logistic regression',
         ...     task_type=task_type,
         ...     function=predict_proba,
         ...     model=sklearn_model,
         ...     model_type=model_type,
         ...     class_names=class_names,
         ...     feature_names=feature_names,
-        ...     categorical_features_map=categorical_features_map,
+        ...     categorical_feature_names=categorical_feature_names,
         ...     train_sample_df=train_sample_df,
         ...     train_sample_label_column_name=train_sample_label_column_name,
         ... )
@@ -332,7 +414,7 @@ class UnboxClient(object):
         strings.
 
         You can optionally include other kwargs in the function, including tokenizers, variables, encoders etc.
-        You simply pass those kwargs to the ``client.add_model`` function call when you upload the model.
+        You simply pass those kwargs to the ``project.add_model`` function call when you upload the model.
 
         Here's an example of the ``predict_proba`` function in action:
 
@@ -363,8 +445,8 @@ class UnboxClient(object):
 
         You can now upload this dataset to Unbox:
 
-        >>> model = client.add_model(
-        ...     name='Churn Classifier',
+        >>> model = project.add_model(
+        ...     name='Linear classifiers',
         ...     task_type=task_type,
         ...     function=predict_proba,
         ...     model=sklearn_model,
@@ -372,6 +454,14 @@ class UnboxClient(object):
         ...     class_names=class_names,
         ... )
         >>> model.to_dict()
+
+        .. note::
+            If inside the given project the ``add_model`` method is called with ``name='Linear classifiers'`` for the first time,
+            a new model lineage will be created with ``Linear classifier`` as a name and ``description`` will be the first commit
+            on that new tree. In the future, if you'd like to commit a new version to that same lineage, you can simply call `add_model`
+            using ``name='Linear classifier'`` again and use ``description`` with the new commit message. Alternatively, if you'd like
+            to start a new separate lineage inside that project, you can call the ``add_model`` method with a different ``name``, e.g.,
+            ``name ='Nonlinear classifiers'``.
         """
         # ---------------------------- Schema validations ---------------------------- #
         if task_type not in [
@@ -650,8 +740,8 @@ class UnboxClient(object):
         text_column_name : str, default None
             Column header in the csv containing the input text. Only applicable if your ``task_type`` is
             :obj:`TaskType.TextClassification`.
-        categorical_features_map : Dict[str, List[str]], default {}
-            A dict containing a list of category names for each feature that is categorical. E.g. `{'Weather': ['Hot', 'Cold']}`.
+        categorical_feature_names : List[str], default []
+            A list containing the feature names for each feature that is categorical. E.g. `["Gender", "Geography"]`.
             Only applicable if your ``task_type`` is :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
         tag_column_name : str, default None
             Column header in the csv containing tags you want pre-populated in Unbox.
@@ -683,10 +773,22 @@ class UnboxClient(object):
 
         Examples
         --------
-        Instantiate the client:
+        The datasets are uploaded directly into a **project** on the Unbox platform, using the ``project.add_dataset()`` method.
+        Therefore, you need to get the project object to start uploading your datasets.
+
+        First, instantiate the client:
 
         >>> import unboxapi
         >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+
+        Then, get the project object. If you don't have a project yet, you need to create one using the :obj:`create_project` method:
+
+        >>> project = client.create_project(name="Your project name",
+        ...                                 description="Your project description")
+
+        Otherwise, if you already have a project created on the platform, you just need to load it using the :obj:`load_project` method:
+
+        >>> project = client.load_project(name="Your project name")
 
         **If your task type is tabular classification...**
 
@@ -711,18 +813,18 @@ class UnboxClient(object):
         >>> class_names = ['Retained', 'Churned']
         >>> feature_names = ['CreditScore', 'Geography', 'Balance']
         >>> label_column_name = 'Churned'
-        >>> categorical_features_map = {'CreditScore': ['France', 'Germany', 'Spain']}
+        >>> categorical_feature_names = ['Geography']
 
         You can now upload this dataset to Unbox:
 
-        >>> dataset = client.add_dataset(
+        >>> dataset = project.add_dataset(
         ...     name='Churn Validation',
         ...     task_type=task_type,
         ...     file_path='/path/to/dataset.csv',
         ...     class_names=class_names,
         ...     label_column_name=label_column_name,
         ...     feature_names=feature_names,
-        ...     categorical_features_map=categorical_map,
+        ...     categorical_feature_names=categorical_feature_names,
         ... )
         >>> dataset.to_dict()
 
@@ -748,7 +850,7 @@ class UnboxClient(object):
 
         You can now upload this dataset to Unbox:
 
-        >>> dataset = client.add_dataset(
+        >>> dataset = project.add_dataset(
         ...     name='Churn Validation',
         ...     task_type=task_type,
         ...     file_path='/path/to/dataset.csv',
@@ -933,8 +1035,8 @@ class UnboxClient(object):
         text_column_name : str, default None
             Column header in the csv containing the input text. Only applicable if your ``task_type`` is
             :obj:`TaskType.TextClassification`.
-        categorical_features_map : Dict[str, List[str]], default {}
-            A dict containing a list of category names for each feature that is categorical. E.g. `{'Weather': ['Hot', 'Cold']}`.
+        categorical_feature_names : List[str], default []
+            A list containing the feature names for each feature that is categorical. E.g. `["Gender", "Geography"]`.
             Only applicable if your ``task_type`` is :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
         description : str, default None
             Commit message for this version.
@@ -964,10 +1066,22 @@ class UnboxClient(object):
 
         Examples
         --------
-        Instantiate the client
+        The dataframes are uploaded directly into a **project** on the Unbox platform, using the ``project.add_dataframe()`` method.
+        Therefore, you need to get the project object to start uploading your dataframes.
+
+        First, instantiate the client:
 
         >>> import unboxapi
         >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+
+        Then, get the project object. If you don't have a project yet, you need to create one using the :obj:`create_project` method:
+
+        >>> project = client.create_project(name="Your project name",
+        ...                                 description="Your project description")
+
+        Otherwise, if you already have a project created on the platform, you just need to load it using the :obj:`load_project` method:
+
+        >>> project = client.load_project(name="Your project name")
 
         **If your task type is tabular classification...**
 
@@ -991,18 +1105,18 @@ class UnboxClient(object):
         >>> class_names = ['Retained', 'Churned']
         >>> feature_names = ['CreditScore', 'Geography', 'Balance']
         >>> label_column_name = 'Churned'
-        >>> categorical_features_map = {'CreditScore': ['France', 'Germany', 'Spain']}
+        >>> categorical_feature_names = ['Geography']
 
         You can now upload this dataset to Unbox:
 
-        >>> dataset = client.add_dataset(
+        >>> dataset = project.add_dataset(
         ...     name='Churn Validation',
         ...     task_type=task_type,
         ...     df=df,
         ...     class_names=class_names,
         ...     feature_names=feature_names,
         ...     label_column_name=label_column_name,
-        ...     categorical_features_map=categorical_map,
+        ...     categorical_feature_names=categorical_feature_names,
         ... )
         >>> dataset.to_dict()
 
@@ -1027,7 +1141,7 @@ class UnboxClient(object):
 
         You can now upload this dataset to Unbox:
 
-        >>> dataset = client.add_dataset(
+        >>> dataset = project.add_dataset(
         ...     name='Churn Validation',
         ...     task_type=task_type,
         ...     df=df,
