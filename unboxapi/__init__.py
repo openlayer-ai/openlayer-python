@@ -62,7 +62,7 @@ class DeploymentType(Enum):
     ONPREM = 1
     AWS = 2
     GCP = 3
-    AZURE = 43
+    AZURE = 4
 
 
 # NOTE: Don't modify this unless you are deploying on-prem.
