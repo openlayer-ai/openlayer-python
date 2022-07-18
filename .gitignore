@@ -12,12 +12,6 @@ dependencies/
 *.bin
 *.csv
 
-# Ignore everything in examples/ except the task dirs
-!examples
-examples/*
-!examples/tabular-classification
-!examples/text-classification
-
 
 # Documentation generated files #
 #################################
