@@ -412,15 +412,15 @@ class UnboxClient(object):
             os.path.expanduser(requirements_txt_file)
         ):
             raise UnboxResourceError(
-                f"The file path `{requirements_txt_file}` specified on `requirements_txt_file` does not"
-                " contain a file with the requirements. \n"
+                f"File at path `{requirements_txt_file}` does not"
+                " contain the requirements. \n"
             ) from None
 
         # Setup script
         if setup_script and not os.path.isfile(os.path.expanduser(setup_script)):
             raise UnboxResourceError(
-                f"The file path `{setup_script}` specified on `setup_script` does not"
-                " contain a file with the bash script with commands required before model loading. \n"
+                f"File at path `{setup_script}` does not"
+                " contain the bash script with commands required before model loading. \n"
             ) from None
 
         # Dependent dir
@@ -441,9 +441,8 @@ class UnboxClient(object):
             if train_sample_df.isnull().values.any():
                 raise UnboxResourceError(
                     context="There is an issue with the specified `train_sample_df`. \n",
-                    message=f"The `train_sample_df` contains missing values. \n",
-                    mitigation="Currently, Unbox does not support datasets with missing values."
-                    + "Make sure to upload a training set sample without missing values by applying the same"
+                    message=f"The `train_sample_df` contains missing values, which is currently not supported. \n",
+                    mitigation="Make sure to upload a training set sample without missing values by applying the same"
                     + " preprocessing steps expected by your model.",
                 ) from None
 
@@ -454,7 +453,7 @@ class UnboxClient(object):
         # predict_proba
         if not isinstance(function, Callable):
             raise UnboxValidationError(
-                f"- The argument `{function}` specified as `function` is not callable. \n"
+                f"- `{function}` specified as `function` is not callable. \n"
             ) from None
 
         user_args = function.__code__.co_varnames[: function.__code__.co_argcount][2:]
@@ -496,7 +495,7 @@ class UnboxClient(object):
             if "tokenizer" not in kwargs:
                 raise UnboxResourceError(
                     context="There is a missing keyword argument for the specified model type. \n",
-                    message="The `tokenizer` must be specified in kwargs when using a transformers model. \n",
+                    message="`tokenizer` must be specified in kwargs when using a transformers model. \n",
                     mitigation="Make sure to specify the additional kwargs needed for the model type.",
                 ) from None
 
@@ -516,7 +515,7 @@ class UnboxClient(object):
                     if feature not in headers
                 ]
                 raise UnboxDatasetInconsistencyError(
-                    f"The features {features_not_in_dataset} specified in `feature_names` are not on the dataset. \n"
+                    f"Features {features_not_in_dataset} specified in `feature_names` are not on the dataset. \n"
                 ) from None
 
             required_fields = [
@@ -792,7 +791,7 @@ class UnboxClient(object):
         object_name = "original.csv"
         if not os.path.isfile(exp_file_path):
             raise UnboxResourceError(
-                f"The file path `{file_path}` specified on `file_path` does not contain a file with the dataset. \n"
+                f"File at path `{file_path}` does not contain the dataset. \n"
             ) from None
 
         with open(exp_file_path, "rt") as f:
@@ -805,9 +804,8 @@ class UnboxClient(object):
         if df.isnull().values.any():
             raise UnboxResourceError(
                 context="There is an issue with the specified dataset. \n",
-                message="The dataset contains missing values. \n",
-                mitigation="Currently, Unbox does not support datasets with missing values."
-                + "Make sure to upload a training set sample without missing values by applying the same"
+                message="The dataset contains missing values, which is currently not supported. \n",
+                mitigation="Make sure to upload a training set sample without missing values by applying the same"
                 + " preprocessing steps expected by your model.",
             ) from None
 
@@ -817,13 +815,13 @@ class UnboxClient(object):
             headers.index(label_column_name)
         except ValueError:
             raise UnboxDatasetInconsistencyError(
-                f"The column `{label_column_name}` specified as `label_column_name` is not on the dataset. \n"
+                f"`{label_column_name}` specified as `label_column_name` is not on the dataset. \n"
             ) from None
 
         dataset_classes = list(df[label_column_name].unique())
         if len(dataset_classes) > len(class_names):
             raise UnboxDatasetInconsistencyError(
-                f"There are {len(dataset_classes)} classes represented on the dataset, but there are only"
+                f"There are {len(dataset_classes)} classes represented on the dataset, but there are only "
                 f"{len(class_names)} items on the `class_names` list. \n",
                 mitigation=f"Make sure that there are at most {len(class_names)} classes in your dataset.",
             ) from None
@@ -837,14 +835,14 @@ class UnboxClient(object):
         except ValueError:
             if text_column_name:
                 raise UnboxDatasetInconsistencyError(
-                    f"The column `{text_column_name}` specified as `text_column_name` is not on the dataset. \n"
+                    f"`{text_column_name}` specified as `text_column_name` is not on the dataset. \n"
                 ) from None
             else:
                 features_not_in_dataset = [
                     feature for feature in feature_names if feature not in headers
                 ]
                 raise UnboxDatasetInconsistencyError(
-                    f"The features {features_not_in_dataset} specified in `feature_names` are not on the dataset. \n"
+                    f"Features {features_not_in_dataset} specified in `feature_names` are not on the dataset. \n"
                 ) from None
 
         # Tag column validation
@@ -853,7 +851,7 @@ class UnboxClient(object):
                 headers.index(tag_column_name)
         except ValueError:
             raise UnboxDatasetInconsistencyError(
-                f"The column `{tag_column_name}` specified as `tag_column_name` is not on the dataset. \n"
+                f"`{tag_column_name}` specified as `tag_column_name` is not on the dataset. \n"
             ) from None
 
         # ----------------------- Subscription plan validations ---------------------- #

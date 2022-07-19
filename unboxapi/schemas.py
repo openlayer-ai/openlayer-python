@@ -46,7 +46,7 @@ class ModelSchema(Schema):
         },
         validate=validate.OneOf(
             ["text-classification", "tabular-classification"],
-            error=f"The `task_type` must be one of either TaskType.TextClassification or TaskType.TabularClassification.",
+            error=f"`task_type` must be one of either TaskType.TextClassification or TaskType.TabularClassification.",
         ),
     )
     model_type = fields.Str(
@@ -56,7 +56,7 @@ class ModelSchema(Schema):
         },
         validate=validate.OneOf(
             [model_framework.value for model_framework in ModelType],
-            error=f"The `model_type` must be one of the supported frameworks. Check out our API reference for a full list https://reference.unbox.ai/reference/api/unboxapi.ModelType.html.\n ",
+            error=f"`model_type` must be one of the supported frameworks. Check out our API reference for a full list https://reference.unbox.ai/reference/api/unboxapi.ModelType.html.\n ",
         ),
     )
     class_names = fields.List(
@@ -88,25 +88,25 @@ class ModelSchema(Schema):
         """Validates the model type when `custom_code` is specified"""
         if data["model_type"] == "Custom" and data["custom_model_code"] is None:
             raise ValidationError(
-                "Must specify `custom_model_code` when using ModelType.custom. \n"
+                "ModelType.custom without `custom_model_code`. Must specify `custom_model_code` when using ModelType.custom. \n"
             )
         elif data["custom_model_code"] is not None and data["model_type"] != "Custom":
             raise ValidationError(
-                "`model_type` must be ModelType.custom if specifying `custom_model_code`. \n"
+                "Incompatible `model_type` for `custom_model_code`. `model_type` must be ModelType.custom if specifying `custom_model_code`. \n"
             )
 
     @validates_schema
     def validate_custom_model_dependent_dir(self, data, **kwargs):
         if data["model_type"] == "Custom" and data["dependent_dir"] is None:
             raise ValidationError(
-                "Must specify `dependent_dir` when using ModelType.custom. \n"
+                "`dependent_dir` not specified with ModelType.custom. Must specify `dependent_dir` when using ModelType.custom. \n"
             )
 
     @validates_schema
     def validate_custom_model_requirements(self, data, **kwargs):
         if data["model_type"] == "Custom" and data["requirements_txt_file"] is None:
             raise ValidationError(
-                "Must specify `requirements_txt_file` when using ModelType.custom. \n"
+                "`requirements_txt_file` not specified with ModelType.custom. Must specify `requirements_txt_file` when using ModelType.custom. \n"
             )
 
 
@@ -132,7 +132,7 @@ class DatasetSchema(Schema):
         },
         validate=validate.OneOf(
             ["text-classification", "tabular-classification"],
-            error=f"The `task_type` must be one of either TaskType.TextClassification or TaskType.TabularClassification.",
+            error=f"`task_type` must be one of either TaskType.TextClassification or TaskType.TabularClassification.",
         ),
     )
     tag_column_name = fields.List(
@@ -147,7 +147,7 @@ class DatasetSchema(Schema):
         default="en",
         validate=validate.Regexp(
             r"^[a-z]{2}(-[A-Z]{2})?$",
-            error="The `language` of the dataset is not in the ISO 639-1 (alpha-2 code) format.",
+            error="`language` of the dataset is not in the ISO 639-1 (alpha-2 code) format.",
         ),
     )
     sep = fields.Str()
@@ -167,7 +167,7 @@ class DatasetSchema(Schema):
         """Validates whether the label column name is not on the feature names list"""
         if data["label_column_name"] in data["feature_names"]:
             raise ValidationError(
-                f"The `label_column_name` `{data['label_column_name']}` must not be in `feature_names`."
+                f"`label_column_name` `{data['label_column_name']}` must not be in `feature_names`."
             )
 
     @validates_schema
@@ -175,13 +175,13 @@ class DatasetSchema(Schema):
         """Validates whether the data columns are present according to the task type"""
         if data["task_type"] == "tabular-classification" and not data["feature_names"]:
             raise ValidationError(
-                "Must specify `feature_names` for TabularClassification `task_type`."
+                "`feature_names` not specified for tabular classification task. Must specify `feature_names` for TabularClassification `task_type`."
             )
         elif (
             data["task_type"] == "text-classification" and not data["text_column_name"]
         ):
             raise ValidationError(
-                "Must specify `text_column_name` for TextClassification `task_type`."
+                "`text_column_name` not specified for text classification task. Must specify `text_column_name` for TextClassification `task_type`."
             )
         elif data["feature_names"] and data["text_column_name"]:
             if data["task_type"] == "tabular-classification":
