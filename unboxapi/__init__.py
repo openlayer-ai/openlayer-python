@@ -464,31 +464,33 @@ class UnboxClient(object):
                 message=f"Your function's additional args {user_args} do not match the kwargs you specifed {kwarg_keys}. \n",
                 mitigation=f"Make sure to include all of the required kwargs to run inference with your `function`.",
             ) from None
-        try:
-            if task_type in [
-                TaskType.TabularClassification,
-                TaskType.TabularRegression,
-            ]:
-                test_input = train_sample_df[:3][feature_names].to_numpy()
-                with HidePrints():
-                    function(model, test_input, **kwargs)
-            else:
-                test_input = [
-                    "Unbox is great!",
-                    "Let's see if this function is ready for some error analysis",
-                ]
-                with HidePrints():
-                    function(model, test_input, **kwargs)
-        except Exception as e:
-            exception_stack = "".join(
-                traceback.format_exception(type(e), e, e.__traceback__)
-            )
-            raise UnboxResourceError(
-                context="There is an issue with the specified `function`. \n",
-                message=f"It is failing with the following error: \n{exception_stack}",
-                mitigation="Make sure your function receives the model and the input as arguments, plus the additional kwargs. Additionally,"
-                + "you may find it useful to debug it on the Jupyter notebook, to ensure it is working correctly before uploading it.",
-            ) from None
+
+        if model_type != ModelType.custom:
+            try:
+                if task_type in [
+                    TaskType.TabularClassification,
+                    TaskType.TabularRegression,
+                ]:
+                    test_input = train_sample_df[:3][feature_names].to_numpy()
+                    with HidePrints():
+                        function(model, test_input, **kwargs)
+                else:
+                    test_input = [
+                        "Unbox is great!",
+                        "Let's see if this function is ready for some error analysis",
+                    ]
+                    with HidePrints():
+                        function(model, test_input, **kwargs)
+            except Exception as e:
+                exception_stack = "".join(
+                    traceback.format_exception(type(e), e, e.__traceback__)
+                )
+                raise UnboxResourceError(
+                    context="There is an issue with the specified `function`. \n",
+                    message=f"It is failing with the following error: \n{exception_stack}",
+                    mitigation="Make sure your function receives the model and the input as arguments, plus the additional kwargs. Additionally,"
+                    + "you may find it useful to debug it on the Jupyter notebook, to ensure it is working correctly before uploading it.",
+                ) from None
 
         # Transformers resources
         if model_type is ModelType.transformers:
