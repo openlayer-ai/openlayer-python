@@ -7,13 +7,24 @@
 [![PyPI Latest Release](https://img.shields.io/pypi/v/unboxapi.svg)](https://pypi.org/project/unboxapi/)
 [![downloads](https://pepy.tech/badge/unboxapi)](https://pepy.tech/project/unboxapi)
 
-This repository contains a gallery of sample notebooks that illustrate the process of **uploading models and datasets** to Unbox. The goal is to demonstrate how the flow that precedes the error analysis that happens on the Unbox platform looks like for the various supported task types and model frameworks.
+This repository contains a gallery of sample notebooks illustrating the process of **creating projects and uploading models & datasets** to the Unbox platform. 
 
-👉 [Join our Slack community!](https://l.linklyhq.com/l/1DG73) We'd love to meet you and help you get started with Unbox!
+## Why this repository exists?
+
+This repository fulfils two main goals:
+
+1. It demonstrates our Python API in action; and
+2. It provides toy examples that may be somewhat similar to the problems you are solving at your organization. 
+
+We take privacy seriously and understand that sometimes, your actual models and datasets are sensible and cannot be uploaded to our community edition platform. No worries, we got you covered. Unbox also offers an on-premise solution that you can host in your own virtual private cloud (VPC). 
+
+In that case, pick a task type, model framework or problem that shares similarities with your actual models / datasets and start exploring Unbox's right away! If you like it, [contact us](mailto:founders@unbox.ai) and we can discuss the best solution for your organization's needs.
 
 ## What is Unbox?
 
 Unbox is a debugging workspace for ML & Data Science. Unbox combines and builds upon SOTA techniques in explainability, model and dataset versioning, synthetic data generation, data-centric testing and much more to form a powerful, **unified platform for model development**.
+
+👉 [Join our Slack community!](https://l.linklyhq.com/l/1DG73) We'd love to meet you and help you get started with Unbox!
 
 ## Installation
 
