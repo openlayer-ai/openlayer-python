@@ -69,7 +69,7 @@ class UnboxClient(object):
         return Project(project_data, self.upload, self.subscription_plan, self)
 
     def load_project(self, name: str):
-        endpoint = f"projects/{name}"
+        endpoint = f"me/projects/{name}"
         project_data = self.api.get_request(endpoint)
         return Project(project_data, self.upload, self.subscription_plan, self)
 
