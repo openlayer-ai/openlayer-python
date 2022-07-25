@@ -327,7 +327,7 @@ class UnboxClient(object):
         The ``model`` arg must be the actual trained model object, and the ``input_features`` arg must be a 2D numpy array
         containing a batch of features that will be passed to the model as inputs.
 
-        You can optionally include other kwargs in the function, including tokenizers, variables, encoders etc.
+        You can optionally include other kwargs in the function, including variables, encoders etc.
         You simply pass those kwargs to the ``project.add_model`` function call when you upload the model.
 
         Here's an example of the ``predict_proba`` function in action:
