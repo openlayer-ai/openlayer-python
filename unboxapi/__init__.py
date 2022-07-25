@@ -111,8 +111,7 @@ class UnboxClient(object):
             Name of your project.
 
             .. important::
-                The project name must be unique in a user's account. Furthermore, this is the name
-                that is used to identify the project when uploading models and datasets.
+                The project name must be unique in a user's collection of projects.
 
         description : str
             Project description.
@@ -218,8 +217,8 @@ class UnboxClient(object):
             .. important::
                 Versioning models on the Unbox platform happens via the ``name`` argument. If ``add_model`` is called
                 with a ``name`` that still does not exist inside the project, Unbox treats it as the **first version** of a new model lineage.
-                On the other hand, if the ``name`` argument value already exists inside the project, Unbox treats it as a **new version** of an existing
-                model lineage.
+                On the other hand, if a model with the specified ``name`` already exists inside the project, Unbox treats it as a **new version**
+                of an existing model lineage.
 
         task_type : :obj:`TaskType`
             Type of ML task. E.g. :obj:`TaskType.TextClassification`.
@@ -243,7 +242,7 @@ class UnboxClient(object):
             List of input feature names. Only applicable if your ``task_type`` is
             :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
         categorical_feature_names : List[str], default []
-            A list containing the feature names for each feature that is categorical. E.g. `["Gender", "Geography"]`.
+            A list containing the names of all categorical features used by the model. E.g. `["Gender", "Geography"]`.
             Only applicable if your ``task_type`` is :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
         train_sample_df : pd.DataFrame, default None
             A random sample of >= 100 rows from your training dataset. This is used to support explainability features.
@@ -280,10 +279,6 @@ class UnboxClient(object):
         .. seealso::
             Our `sample notebooks <https://github.com/unboxai/unboxapi-python-client/tree/main/examples>`_ and
             `tutorials <https://unbox.readme.io/docs/overview-of-tutorial-tracks>`_.
-
-
-        The models are uploaded directly into a **project** on the Unbox platform, using the ``project.add_model()`` method.
-        Therefore, you need to get the project object to start uploading your models.
 
         First, instantiate the client:
 
@@ -332,7 +327,7 @@ class UnboxClient(object):
         The ``model`` arg must be the actual trained model object, and the ``input_features`` arg must be a 2D numpy array
         containing a batch of features that will be passed to the model as inputs.
 
-        You can optionally include other kwargs in the function, including variables, encoders etc.
+        You can optionally include other kwargs in the function, including tokenizers, variables, encoders etc.
         You simply pass those kwargs to the ``project.add_model`` function call when you upload the model.
 
         Here's an example of the ``predict_proba`` function in action:
@@ -365,10 +360,10 @@ class UnboxClient(object):
             For tabular classification models, Unbox needs a representative sample of your training
             dataset, so it can effectively explain your model's predictions.
 
-        You can now upload this dataset to Unbox:
+        You can now upload this model to Unbox:
 
         >>> model = project.add_model(
-        ...     name='Linear classifiers',
+        ...     name='Linear classifier',
         ...     description='First iteration of vanilla logistic regression',
         ...     task_type=task_type,
         ...     function=predict_proba,
@@ -456,12 +451,12 @@ class UnboxClient(object):
         >>> model.to_dict()
 
         .. note::
-            If inside the given project the ``add_model`` method is called with ``name='Linear classifiers'`` for the first time,
+            If inside the given project the ``add_model`` method is called with ``name='Linear classifier'`` for the first time,
             a new model lineage will be created with ``Linear classifier`` as a name and ``description`` will be the first commit
             on that new tree. In the future, if you'd like to commit a new version to that same lineage, you can simply call `add_model`
             using ``name='Linear classifier'`` again and use ``description`` with the new commit message. Alternatively, if you'd like
             to start a new separate lineage inside that project, you can call the ``add_model`` method with a different ``name``, e.g.,
-            ``name ='Nonlinear classifiers'``.
+            ``name ='Nonlinear classifier'``.
         """
         # ---------------------------- Schema validations ---------------------------- #
         if task_type not in [
@@ -741,7 +736,7 @@ class UnboxClient(object):
             Column header in the csv containing the input text. Only applicable if your ``task_type`` is
             :obj:`TaskType.TextClassification`.
         categorical_feature_names : List[str], default []
-            A list containing the feature names for each feature that is categorical. E.g. `["Gender", "Geography"]`.
+            A list containing the names of all categorical features on the dataset. E.g. `["Gender", "Geography"]`.
             Only applicable if your ``task_type`` is :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
         tag_column_name : str, default None
             Column header in the csv containing tags you want pre-populated in Unbox.
@@ -773,8 +768,6 @@ class UnboxClient(object):
 
         Examples
         --------
-        The datasets are uploaded directly into a **project** on the Unbox platform, using the ``project.add_dataset()`` method.
-        Therefore, you need to get the project object to start uploading your datasets.
 
         First, instantiate the client:
 
@@ -1036,7 +1029,7 @@ class UnboxClient(object):
             Column header in the csv containing the input text. Only applicable if your ``task_type`` is
             :obj:`TaskType.TextClassification`.
         categorical_feature_names : List[str], default []
-            A list containing the feature names for each feature that is categorical. E.g. `["Gender", "Geography"]`.
+            A list containing the names of all categorical features on the dataframe. E.g. `["Gender", "Geography"]`.
             Only applicable if your ``task_type`` is :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
         description : str, default None
             Commit message for this version.
@@ -1066,8 +1059,6 @@ class UnboxClient(object):
 
         Examples
         --------
-        The dataframes are uploaded directly into a **project** on the Unbox platform, using the ``project.add_dataframe()`` method.
-        Therefore, you need to get the project object to start uploading your dataframes.
 
         First, instantiate the client:
 
