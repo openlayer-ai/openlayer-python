@@ -23,7 +23,7 @@ jobs:
     needs: changed_files
     if: ${{needs.changed_files.outputs.run_validations}}
     env:
-      USER_EMAIL: gustavo@unbox.ai
+      USER_EMAIL: gitbot@unbox.ai
     steps:
       - uses: actions/checkout@v2
       - name: Pushes to another repository
