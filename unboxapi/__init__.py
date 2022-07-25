@@ -441,7 +441,7 @@ class UnboxClient(object):
         You can now upload this dataset to Unbox:
 
         >>> model = project.add_model(
-        ...     name='Linear classifiers',
+        ...     name='Linear classifier',
         ...     task_type=task_type,
         ...     function=predict_proba,
         ...     model=sklearn_model,
@@ -736,7 +736,7 @@ class UnboxClient(object):
             Column header in the csv containing the input text. Only applicable if your ``task_type`` is
             :obj:`TaskType.TextClassification`.
         categorical_feature_names : List[str], default []
-            A list containing the names of all categorical features on the dataset. E.g. `["Gender", "Geography"]`.
+            A list containing the names of all categorical features in the dataset. E.g. `["Gender", "Geography"]`.
             Only applicable if your ``task_type`` is :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
         tag_column_name : str, default None
             Column header in the csv containing tags you want pre-populated in Unbox.
@@ -1029,7 +1029,7 @@ class UnboxClient(object):
             Column header in the csv containing the input text. Only applicable if your ``task_type`` is
             :obj:`TaskType.TextClassification`.
         categorical_feature_names : List[str], default []
-            A list containing the names of all categorical features on the dataframe. E.g. `["Gender", "Geography"]`.
+            A list containing the names of all categorical features in the dataframe. E.g. `["Gender", "Geography"]`.
             Only applicable if your ``task_type`` is :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
         description : str, default None
             Commit message for this version.
