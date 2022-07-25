@@ -12,7 +12,7 @@ from .version import __version__
 
 # UNBOX_ENDPOINT = "https://api-dev.unbox.ai/api"
 # UNBOX_ENDPOINT = "https://api.unbox.ai/api"
-UNBOX_ENDPOINT = "http://localhost:8080/api"
+UNBOX_ENDPOINT = "http://localhost:8080/v1"
 UNBOX_STORAGE_PATH = os.path.expanduser("~/unbox/unbox-onpremise/userStorage")
 
 
