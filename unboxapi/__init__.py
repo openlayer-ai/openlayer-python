@@ -437,7 +437,7 @@ class UnboxClient(object):
                     endpoint = f"projects/{project_id}/ml-models"
                     payload = dict(
                         name=name,
-                        project_id=project_id,
+                        projectId=project_id,
                         description=description,
                         classNames=class_names,
                         taskType=task_type.value,
@@ -459,7 +459,6 @@ class UnboxClient(object):
 
     def add_dataset(
         self,
-        name: str,
         task_type: TaskType,
         file_path: str,
         class_names: List[str],
@@ -470,15 +469,13 @@ class UnboxClient(object):
         tag_column_name: Optional[str] = None,
         language: str = "en",
         sep: str = ",",
-        description: Optional[str] = None,
+        commit_message: Optional[str] = None,
         project_id: str = None,
     ) -> Dataset:
         r"""Uploads a dataset to the Unbox platform (from a csv).
 
         Parameters
         ----------
-        name : str
-            Name of your dataset.
         task_type : :obj:`TaskType`
             Type of ML task. E.g. :obj:`TaskType.TextClassification`.
         file_path : str
@@ -512,7 +509,7 @@ class UnboxClient(object):
             The language of the dataset in ISO 639-1 (alpha-2 code) format.
         sep : str, default ','
             Delimiter to use. E.g. `'\\t'`.
-        description : str, default None
+        commit_message : str, default None
             Commit message for this version.
 
         Returns
@@ -560,7 +557,6 @@ class UnboxClient(object):
         You can now upload this dataset to Unbox:
 
         >>> dataset = client.add_dataset(
-        ...     name='Churn Validation',
         ...     task_type=task_type,
         ...     file_path='/path/to/dataset.csv',
         ...     class_names=class_names,
@@ -593,7 +589,6 @@ class UnboxClient(object):
         You can now upload this dataset to Unbox:
 
         >>> dataset = client.add_dataset(
-        ...     name='Churn Validation',
         ...     task_type=task_type,
         ...     file_path='/path/to/dataset.csv',
         ...     class_names=class_names,
@@ -646,9 +641,8 @@ class UnboxClient(object):
             )
         endpoint = f"projects/{project_id}/datasets"
         payload = dict(
-            name=name,
-            project_id=project_id,
-            description=description,
+            projectId=project_id,
+            commitMessage=commit_message,
             taskType=task_type.value,
             classNames=class_names,
             labelColumnName=label_column_name,
@@ -669,7 +663,6 @@ class UnboxClient(object):
 
     def add_dataframe(
         self,
-        name: str,
         task_type: TaskType,
         df: pd.DataFrame,
         class_names: List[str],
@@ -677,7 +670,7 @@ class UnboxClient(object):
         feature_names: List[str] = [],
         text_column_name: Optional[str] = None,
         categorical_feature_names: List[str] = [],
-        description: Optional[str] = None,
+        commit_message: Optional[str] = None,
         tag_column_name: Optional[str] = None,
         language: str = "en",
         project_id: str = None,
@@ -686,8 +679,6 @@ class UnboxClient(object):
 
         Parameters
         ----------
-        name : str
-            Name of your dataset.
         task_type : :obj:`TaskType`
             Type of ML task. E.g. :obj:`TaskType.TextClassification`.
         df : pd.DataFrame
@@ -706,7 +697,7 @@ class UnboxClient(object):
         categorical_features_map : Dict[str, List[str]], default {}
             A dict containing a list of category names for each feature that is categorical. E.g. `{'Weather': ['Hot', 'Cold']}`.
             Only applicable if your ``task_type`` is :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
-        description : str, default None
+        commit_message : str, default None
             Commit message for this version.
         tag_column_name : str, default None
             Column header in the csv containing tags you want pre-populated in Unbox.
@@ -766,7 +757,6 @@ class UnboxClient(object):
         You can now upload this dataset to Unbox:
 
         >>> dataset = client.add_dataset(
-        ...     name='Churn Validation',
         ...     task_type=task_type,
         ...     df=df,
         ...     class_names=class_names,
@@ -798,7 +788,6 @@ class UnboxClient(object):
         You can now upload this dataset to Unbox:
 
         >>> dataset = client.add_dataset(
-        ...     name='Churn Validation',
         ...     task_type=task_type,
         ...     df=df,
         ...     class_names=class_names,
@@ -816,8 +805,7 @@ class UnboxClient(object):
                 class_names=class_names,
                 label_column_name=label_column_name,
                 text_column_name=text_column_name,
-                name=name,
-                description=description,
+                commit_message=commit_message,
                 tag_column_name=tag_column_name,
                 language=language,
                 feature_names=feature_names,
