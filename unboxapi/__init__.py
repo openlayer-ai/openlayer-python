@@ -447,7 +447,6 @@ class UnboxClient(object):
                     endpoint = f"projects/{project_id}/ml-models"
                     payload = dict(
                         name=name,
-                        projectId=project_id,
                         description=description,
                         classNames=class_names,
                         architectureType=model_type.name,
@@ -650,7 +649,6 @@ class UnboxClient(object):
             )
         endpoint = f"projects/{project_id}/datasets"
         payload = dict(
-            projectId=project_id,
             commitMessage=commit_message,
             taskType=task_type.value,
             classNames=class_names,
