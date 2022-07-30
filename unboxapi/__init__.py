@@ -1,23 +1,23 @@
 import csv
 import os
-import pandas as pd
 import shutil
 import tarfile
 import tempfile
 import uuid
-
 from enum import Enum
+from typing import Dict, List, Optional
 
-from .api import Api
+import pandas as pd
 from bentoml.saved_bundle.bundler import _write_bento_content_to_dir
 from bentoml.utils.tempdir import TempDirectory
+
+from .api import Api
+from .datasets import Dataset
 from .exceptions import UnboxDuplicateTask, UnboxException, UnboxInvalidRequest
 from .models import Model, ModelType, create_template_model
-from .datasets import Dataset
-from .tasks import TaskType
-from typing import Dict, List, Optional
 from .projects import Project
-from .version import __version__
+from .tasks import TaskType
+from .version import __version__  # noqa: F401
 
 
 class DeploymentType(Enum):
@@ -65,18 +65,16 @@ class UnboxClient(object):
     def create_project(self, name: str, description: str, task_type: TaskType):
         endpoint = "projects"
         payload = dict(
-            name=name, 
+            name=name,
             description=description,
             taskType=task_type.value,
         )
         project_data = self.api.post_request(endpoint, body=payload)
-        print(project_data)
         return Project(project_data, self.upload, self.subscription_plan, self)
 
     def load_project(self, name: str):
         endpoint = f"me/projects/{name}"
         project_data = self.api.get_request(endpoint)
-        print(project_data)
         return Project(project_data, self.upload, self.subscription_plan, self)
 
     def create_or_load_project(self, name: str, description: str, task_type: TaskType):

@@ -1,6 +1,7 @@
 from unboxapi import tasks
-from .models import Model
+
 from .datasets import Dataset
+from .models import Model
 
 
 class Project:
@@ -41,7 +42,9 @@ class Project:
         *args,
         **kwargs,
     ) -> Model:
-        return self.client.add_model(*args, project_id=self.id, task_type=tasks.TaskType(self.taskType), **kwargs)
+        return self.client.add_model(
+            *args, project_id=self.id, task_type=tasks.TaskType(self.taskType), **kwargs
+        )
 
     def add_dataset(
         self,
