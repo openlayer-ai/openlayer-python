@@ -51,9 +51,11 @@ class Project:
         *args,
         **kwargs,
     ) -> Dataset:
-        kwargs["project_id"] = self.id
-        return self.client.add_dataset(*args, **kwargs)
+        return self.client.add_dataset(
+            *args, project_id=self.id, task_type=tasks.TaskType(self.taskType), **kwargs
+        )
 
     def add_dataframe(self, *args, **kwargs) -> Dataset:
-        kwargs["project_id"] = self.id
-        return self.client.add_dataframe(*args, **kwargs)
+        return self.client.add_dataframe(
+            *args, project_id=self.id, task_type=tasks.TaskType(self.taskType), **kwargs
+        )
