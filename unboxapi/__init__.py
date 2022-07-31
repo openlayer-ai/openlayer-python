@@ -62,7 +62,9 @@ class UnboxClient(object):
         else:
             self.upload = self.api.transfer_blob
 
-    def create_project(self, name: str, description: str, task_type: TaskType):
+    def create_project(
+        self, name: str, task_type: TaskType, description: Optional[str] = None
+    ):
         endpoint = "projects"
         payload = dict(
             name=name,
@@ -77,9 +79,13 @@ class UnboxClient(object):
         project_data = self.api.get_request(endpoint)
         return Project(project_data, self.upload, self.subscription_plan, self)
 
-    def create_or_load_project(self, name: str, description: str, task_type: TaskType):
+    def create_or_load_project(
+        self, name: str, task_type: TaskType, description: Optional[str] = None
+    ):
         try:
-            return self.create_project(name, description, task_type)
+            return self.create_project(
+                name=name, task_type=task_type, description=description
+            )
         except UnboxDuplicateTask:
             return self.load_project(name)
 
