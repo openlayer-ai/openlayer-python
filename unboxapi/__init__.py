@@ -99,7 +99,7 @@ class UnboxClient(object):
         setup_script: Optional[str] = None,
         custom_model_code: Optional[str] = None,
         dependent_dir: Optional[str] = None,
-        description: str = None,
+        commit_message: str = None,
         project_id: str = None,
         **kwargs,
     ) -> Model:
@@ -152,7 +152,7 @@ class UnboxClient(object):
         dependent_dir : str, default None
             Path to a dir of file dependencies needed to load the model. Required if your ``model_type``
             is :obj:`ModelType.custom`.
-        description : str, default None
+        commit_message : str, default None
             Commit message for this version.
         **kwargs
             Any additional keyword args you would like to pass to your ``predict_proba`` function.
@@ -447,7 +447,7 @@ class UnboxClient(object):
                     endpoint = f"projects/{project_id}/ml-models"
                     payload = dict(
                         name=name,
-                        description=description,
+                        commitMessage=commit_message,
                         classNames=class_names,
                         architectureType=model_type.name,
                         kwargs=list(kwargs.keys()),

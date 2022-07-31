@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 * Deprecates `categorical_features_map` in favor of `categorical_feature_names` for model and dataset uploads.
 * Added a convenience method `create_or_load_project` which loads in a project in if it is already created.
 * Moved `TaskType` attribute from the `Model` level to the `Project` level. Creating a `Project` now requires specifying the `TaskType`.
+* Removed `name` from `add_dataset`.
+* Changed `description` to `commit_message` from `add_dataset`, `add_dataframe` and `add_model`.
 
 ## [0.2.0a1]
 
