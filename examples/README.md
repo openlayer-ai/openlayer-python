@@ -1,7 +1,3 @@
-<div align="left">
-  <img src="logo-blue-text.svg"><br>
-</div>
-
 # Examples Gallery | Unbox AI
 
 [![Tweet](https://img.shields.io/twitter/url/http/shields.io.svg?style=social)](https://twitter.com/intent/tweet?text=Unbox:%20The%20debugging%20workspace%20for%20ML%20&url=https://github.com/unboxai&via=unbox_ai&hashtags=mlops)
