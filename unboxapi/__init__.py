@@ -97,7 +97,7 @@ class UnboxClient(object):
 
     def create_project(
         self, name: str, task_type: TaskType, description: Optional[str] = None
-    ):
+    ) -> Project:
         """Creates a project on the Unbox platform.
 
         Parameters
@@ -148,10 +148,12 @@ class UnboxClient(object):
         project_data = self.api.post_request(endpoint, body=payload)
 
         project = Project(project_data, self.upload, self.subscription_plan, self)
-        print(f"Created your project. Check out https://unbox.ai/projects!")
+        print(
+            f"Created your project. Navigate to {project.links['app']} to see it in the UI."
+        )
         return project
 
-    def load_project(self, name: str):
+    def load_project(self, name: str) -> Project:
         """Loads an existing project from the Unbox platform.
 
         Parameters
@@ -182,7 +184,11 @@ class UnboxClient(object):
         """
         endpoint = f"me/projects/{name}"
         project_data = self.api.get_request(endpoint)
-        return Project(project_data, self.upload, self.subscription_plan, self)
+        project = Project(project_data, self.upload, self.subscription_plan, self)
+        print(
+            f"Found your project. Navigate to {project.links['app']} to see it in the UI."
+        )
+        return project
 
     def create_or_load_project(
         self, name: str, task_type: TaskType, description: Optional[str] = None
