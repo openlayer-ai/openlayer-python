@@ -108,6 +108,9 @@ class UnboxClient(object):
             .. important::
                 The project name must be unique in a user's collection of projects.
 
+        task_type : :obj:`TaskType`
+            Type of ML task. E.g. :obj:`TaskType.TabularClassification` or :obj:`TaskType.TextClassification`.
+
         description : str
             Project description.
 
@@ -124,7 +127,9 @@ class UnboxClient(object):
         >>> import unboxapi
         >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
         >>>
+        >>> from unboxapi.tasks import TaskType
         >>> project = client.create_project(name="Churn prediction",
+        ...                                 task_type=TaskType.TabularClassification,
         ...                                 description="My first error analysis playground")
 
         With the Project object created, you are able to start uploading models and datasets
@@ -221,9 +226,6 @@ class UnboxClient(object):
                 with a ``name`` that still does not exist inside the project, Unbox treats it as the **first version** of a new model lineage.
                 On the other hand, if a model with the specified ``name`` already exists inside the project, Unbox treats it as a **new version**
                 of an existing model lineage.
-
-        task_type : :obj:`TaskType`
-            Type of ML task. E.g. :obj:`TaskType.TextClassification`.
         function :
             Prediction function object in expected format. Scroll down for examples.
 
@@ -289,7 +291,9 @@ class UnboxClient(object):
 
         Then, get the project object. If you don't have a project yet, you need to create one using the :obj:`create_project` method:
 
+        >>> from unboxapi.tasks import TaskType
         >>> project = client.create_project(name="Your project name",
+        ...                                 task_type=TaskType.TabularClassification,  # or some other TaskType
         ...                                 description="Your project description")
 
         Otherwise, if you already have a project created on the platform, you just need to load it using the :obj:`load_project` method:
@@ -311,7 +315,6 @@ class UnboxClient(object):
 
         >>> from unboxapi import TaskType
         >>>
-        >>> task_type = TaskType.TabularClassification
         >>> class_names = ['Retained', 'Churned']
         >>> feature_names = ['CreditScore', 'Geography', 'Balance']
         >>> categorical_feature_names = ['Geography']
@@ -367,7 +370,6 @@ class UnboxClient(object):
         >>> model = project.add_model(
         ...     name='Linear classifier',
         ...     commit_message='First iteration of vanilla logistic regression',
-        ...     task_type=task_type,
         ...     function=predict_proba,
         ...     model=sklearn_model,
         ...     model_type=model_type,
@@ -390,11 +392,8 @@ class UnboxClient(object):
         2    Things are looking up                  1
         ..                             ...        ...
 
-        The first set of variables needed by Unbox are:
+        The first variable needed by Unbox is:
 
-        >>> from unboxapi import TaskType
-        >>>
-        >>> task_type = TaskType.TextClassification
         >>> class_names = ['Negative', 'Positive']
 
         Now let's say you've trained a simple ``scikit-learn`` model on data that looks like the above.
@@ -444,7 +443,7 @@ class UnboxClient(object):
 
         >>> model = project.add_model(
         ...     name='Linear classifier',
-        ...     task_type=task_type,
+        ...     commit_message='First iteration of vanilla logistic regression',
         ...     function=predict_proba,
         ...     model=sklearn_model,
         ...     model_type=model_type,
@@ -719,8 +718,6 @@ class UnboxClient(object):
 
         Parameters
         ----------
-        task_type : :obj:`TaskType`
-            Type of ML task. E.g. :obj:`TaskType.TextClassification`.
         file_path : str
             Path to the csv file containing the dataset.
         class_names : List[str]
@@ -775,7 +772,9 @@ class UnboxClient(object):
 
         Then, get the project object. If you don't have a project yet, you need to create one using the :obj:`create_project` method:
 
+        >>> from unboxapi.tasks import TaskType
         >>> project = client.create_project(name="Your project name",
+        ...                                 task_type=TaskType.TabularClassification,  # or some other TaskType
         ...                                 description="Your project description")
 
         Otherwise, if you already have a project created on the platform, you just need to load it using the :obj:`load_project` method:
@@ -799,9 +798,6 @@ class UnboxClient(object):
 
         The variables are needed by Unbox are:
 
-        >>> from unboxapi import TaskType
-        >>>
-        >>> task_type = TaskType.TabularClassification
         >>> class_names = ['Retained', 'Churned']
         >>> feature_names = ['CreditScore', 'Geography', 'Balance']
         >>> label_column_name = 'Churned'
@@ -810,7 +806,6 @@ class UnboxClient(object):
         You can now upload this dataset to Unbox:
 
         >>> dataset = client.add_dataset(
-        ...     task_type=task_type,
         ...     file_path='/path/to/dataset.csv',
         ...     commit_message="First commit!",
         ...     class_names=class_names,
@@ -833,9 +828,6 @@ class UnboxClient(object):
 
         The variables are needed by Unbox are:
 
-        >>> from unboxapi import TaskType
-        >>>
-        >>> task_type = TaskType.TextClassification
         >>> class_names = ['Negative', 'Positive']
         >>> text_column_name = 'Text'
         >>> label_column_name = 'Sentiment'
@@ -843,8 +835,8 @@ class UnboxClient(object):
         You can now upload this dataset to Unbox:
 
         >>> dataset = client.add_dataset(
-        ...     task_type=task_type,
         ...     file_path='/path/to/dataset.csv',
+        ...     commit_message="First commit!",
         ...     class_names=class_names,
         ...     label_column_name=label_column_name,
         ...     text_column_name=text_column_name,
@@ -1004,8 +996,6 @@ class UnboxClient(object):
 
         Parameters
         ----------
-        task_type : :obj:`TaskType`
-            Type of ML task. E.g. :obj:`TaskType.TextClassification`.
         df : pd.DataFrame
             Dataframe containing your dataset.
         class_names : List[str]
@@ -1058,7 +1048,9 @@ class UnboxClient(object):
 
         Then, get the project object. If you don't have a project yet, you need to create one using the :obj:`create_project` method:
 
+        >>> from unboxapi.tasks import TaskType
         >>> project = client.create_project(name="Your project name",
+        ...                                 task_type=TaskType.TabularClassification  # or some other TaskType
         ...                                 description="Your project description")
 
         Otherwise, if you already have a project created on the platform, you just need to load it using the :obj:`load_project` method:
@@ -1081,9 +1073,6 @@ class UnboxClient(object):
 
         The variables are needed by Unbox are:
 
-        >>> from unboxapi import TaskType
-        >>>
-        >>> task_type = TaskType.TabularClassification
         >>> class_names = ['Retained', 'Churned']
         >>> feature_names = ['CreditScore', 'Geography', 'Balance']
         >>> label_column_name = 'Churned'
@@ -1092,7 +1081,6 @@ class UnboxClient(object):
         You can now upload this dataset to Unbox:
 
         >>> dataset = client.add_dataset(
-        ...     task_type=task_type,
         ...     df=df,
         ...     commit_message="First commit!",
         ...     class_names=class_names,
@@ -1114,9 +1102,6 @@ class UnboxClient(object):
 
         The variables are needed by Unbox are:
 
-        >>> from unboxapi import TaskType
-        >>>
-        >>> task_type = TaskType.TextClassification
         >>> class_names = ['Negative', 'Positive']
         >>> text_column_name = 'Text'
         >>> label_column_name = 'Sentiment'
@@ -1124,7 +1109,6 @@ class UnboxClient(object):
         You can now upload this dataset to Unbox:
 
         >>> dataset = client.add_dataset(
-        ...     task_type=task_type,
         ...     df=df,
         ...     commit_message="First commit!",
         ...     class_names=class_names,
