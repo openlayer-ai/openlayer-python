@@ -700,9 +700,7 @@ class UnboxClient(object):
                     )
         os.remove("template_model.py")
 
-        print(
-            f"Uploading model to Unbox! Check out https://unbox.ai/models to have a look!"
-        )
+        print(f"Adding your model to Unbox! Check out the project page to have a look.")
         return Model(modeldata)
 
     def add_dataset(
@@ -972,9 +970,7 @@ class UnboxClient(object):
             featureNames=feature_names,
             categoricalFeatureNames=categorical_feature_names,
         )
-        print(
-            f"Uploading dataset to Unbox! Check out https://unbox.ai/datasets to have a look!"
-        )
+        print(f"Adding your dataset to Unbox! Check out the project page to have a look.")
         return Dataset(
             self.upload(
                 endpoint=endpoint,
