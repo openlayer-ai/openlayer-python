@@ -13,6 +13,15 @@ Client constructor
 
    UnboxClient
 
+Project creation and loading
+----------------------------
+.. autosummary:: 
+   :toctree: api/
+   :template: class.rst
+   
+   UnboxClient.create_project
+   UnboxClient.load_project
+
 Upload functions
 ----------------
 .. autosummary:: 

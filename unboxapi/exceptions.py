@@ -20,6 +20,46 @@ class UnboxException(Exception):
             super().__init__(f"<Response> {message}")
 
 
+class UnboxResourceError(UnboxException):
+    def __init__(self, message, context=None, mitigation=None):
+        if not context:
+            context = "There is a problem with the specified file path. \n"
+        if not mitigation:
+            mitigation = (
+                "Make sure that the specified filepath contains the expected resource."
+            )
+        super().__init__(context + message + mitigation)
+
+
+class UnboxValidationError(UnboxException):
+    def __init__(self, message, context=None, mitigation=None):
+        if not context:
+            context = "There are issues with some of the arguments: \n"
+        if not mitigation:
+            mitigation = (
+                "Make sure to respect the datatypes and constraints specified above."
+            )
+        super().__init__(context + message + mitigation)
+
+
+class UnboxDatasetInconsistencyError(UnboxException):
+    def __init__(self, message, context=None, mitigation=None):
+        if not context:
+            context = "There are inconsistencies between the dataset and some of the arguments: \n"
+        if not mitigation:
+            mitigation = "Make sure that the value specified in the argument is a column header in the dataframe or csv being uploaded."
+        super().__init__(context + message + mitigation)
+
+
+class UnboxSubscriptionPlanException(UnboxException):
+    def __init__(self, message, context=None, mitigation=None):
+        if not context:
+            context = "You have reached your subscription plan's limits. \n"
+        if not mitigation:
+            mitigation = "To upgrade your plan, visit https://unbox.ai"
+        super().__init__(context + message + mitigation)
+
+
 class UnboxInvalidRequest(UnboxException):
     """400 - Bad Request -- The request was unacceptable,
     often due to missing a required parameter.
@@ -29,7 +69,7 @@ class UnboxInvalidRequest(UnboxException):
 
 
 class UnboxUnauthorized(UnboxException):
-    """401 - Unauthorized -- No valid API key provided. """
+    """401 - Unauthorized -- No valid API key provided."""
 
     code = 401
 
@@ -43,7 +83,7 @@ class UnboxNotEnabled(UnboxException):
 
 
 class UnboxResourceNotFound(UnboxException):
-    """404 - Not Found -- The requested resource doesn't exist. """
+    """404 - Not Found -- The requested resource doesn't exist."""
 
     code = 404
 
@@ -73,13 +113,13 @@ class UnboxInternalError(UnboxException):
 
 
 class UnboxServiceUnavailable(UnboxException):
-    """503 - Server Timeout From Request Queueing -- Try again later. """
+    """503 - Server Timeout From Request Queueing -- Try again later."""
 
     code = 503
 
 
 class UnboxTimeoutError(UnboxException):
-    """504 - Server Timeout Error -- Try again later. """
+    """504 - Server Timeout Error -- Try again later."""
 
     code = 504
 

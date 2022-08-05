@@ -18,7 +18,6 @@ examples/*
 !examples/tabular-classification
 !examples/text-classification
 
-
 # Documentation generated files #
 #################################
 docs/source/generated
