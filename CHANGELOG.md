@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 # Fixed
 
 * Fixed link to project page when loading / creating a project.
+* Presigned url endpoint when using AWS / GCP / Azure.
 
 # Changed
 

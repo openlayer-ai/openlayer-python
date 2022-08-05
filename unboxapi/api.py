@@ -155,7 +155,7 @@ class Api:
         in the backend.
         """
         params = {"storageInterface": "s3", "objectName": object_name}
-        presigned_json = self.get_request(endpoint, params=params)
+        presigned_json = self.get_request(f"{endpoint}/presigned-url", params=params)
         with open(file_path, "rb") as f:
             with tqdm(
                 total=os.stat(file_path).st_size,
@@ -181,7 +181,7 @@ class Api:
         in the backend.
         """
         params = {"storageInterface": "gcs", "objectName": object_name}
-        presigned_json = self.get_request(endpoint, params=params)
+        presigned_json = self.get_request(f"{endpoint}/presigned-url", params=params)
         with open(file_path, "rb") as f:
             with tqdm(
                 total=os.stat(file_path).st_size,
@@ -208,7 +208,7 @@ class Api:
         in the backend.
         """
         params = {"storageInterface": "azure", "objectName": object_name}
-        presigned_json = self.get_request(endpoint, params=params)
+        presigned_json = self.get_request(f"{endpoint}/presigned-url", params=params)
         with open(file_path, "rb") as f:
             with tqdm(
                 total=os.stat(file_path).st_size,
@@ -239,7 +239,7 @@ class Api:
         blob_path = f"{UNBOX_STORAGE_PATH}/{endpoint}/{id}"
         try:
             os.makedirs(blob_path, exist_ok=True)
-        except OSError as _:
+        except OSError:
             raise UnboxException(f"Directory {blob_path} cannot be created")
         shutil.copyfile(file_path, f"{blob_path}/{object_name}")
         body["storageUri"] = f"local://{blob_path}"
