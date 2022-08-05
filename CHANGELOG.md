@@ -5,13 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.0a0]
+
+# Added
+
+* A `Project` helper class.
+* A convenience method `create_or_load_project` which loads in a project in if it is already created.
 
 # Changed
 
-* Models and datasets must be added to projects. Added a `Project` helper class.
+* Models and datasets must be added to projects.
 * Deprecates `categorical_features_map` in favor of `categorical_feature_names` for model and dataset uploads.
-* Added a convenience method `create_or_load_project` which loads in a project in if it is already created.
 * Moved `TaskType` attribute from the `Model` level to the `Project` level. Creating a `Project` now requires specifying the `TaskType`.
 * Removed `name` from `add_dataset`.
 * Changed `description` to `commit_message` from `add_dataset`, `add_dataframe` and `add_model`.
