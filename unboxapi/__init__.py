@@ -127,8 +127,9 @@ class UnboxClient(object):
         >>> project = client.create_project(name="Churn prediction",
         ...                                 description="My first error analysis playground")
 
-        With the Project object created, you are able to start uploading models and datasets to the platform. Refer to :obj:`add_model`
-        and obj:`add_dataset` or obj:`add_dataframe` for detailed examples.
+        With the Project object created, you are able to start uploading models and datasets
+        to the platform. Refer to :obj:`add_model` and obj:`add_dataset` or
+        obj:`add_dataframe` for detailed examples.
         """
         # ----------------------------- Schema validation ---------------------------- #
         project_schema = ProjectSchema()
@@ -138,17 +139,12 @@ class UnboxClient(object):
             raise UnboxValidationError(self._format_error_message(err)) from None
 
         endpoint = "projects"
-        payload = dict(
-            name=name,
-            description=description,
-            taskType=task_type.value,
-        )
+        payload = dict(name=name, description=description, taskType=task_type.value)
         project_data = self.api.post_request(endpoint, body=payload)
 
-        print(
-            f"Creating project on Unbox! Check out https://unbox.ai/projects to have a look!"
-        )
-        return Project(project_data, self.upload, self.subscription_plan, self)
+        project = Project(project_data, self.upload, self.subscription_plan, self)
+        print(f"Created your project. Check out https://unbox.ai/projects!")
+        return project
 
     def load_project(self, name: str):
         """Loads an existing project from the Unbox platform.
@@ -370,7 +366,7 @@ class UnboxClient(object):
 
         >>> model = project.add_model(
         ...     name='Linear classifier',
-        ...     description='First iteration of vanilla logistic regression',
+        ...     commit_message='First iteration of vanilla logistic regression',
         ...     task_type=task_type,
         ...     function=predict_proba,
         ...     model=sklearn_model,
@@ -481,7 +477,7 @@ class UnboxClient(object):
             model_schema.load(
                 {
                     "name": name,
-                    "description": commit_message,
+                    "commit_message": commit_message,
                     "task_type": task_type.value,
                     "model_type": model_type.value,
                     "class_names": class_names,
@@ -816,6 +812,7 @@ class UnboxClient(object):
         >>> dataset = client.add_dataset(
         ...     task_type=task_type,
         ...     file_path='/path/to/dataset.csv',
+        ...     commit_message="First commit!",
         ...     class_names=class_names,
         ...     label_column_name=label_column_name,
         ...     feature_names=feature_names,
@@ -868,7 +865,7 @@ class UnboxClient(object):
                 {
                     "file_path": file_path,
                     "task_type": task_type.value,
-                    "description": commit_message,
+                    "commit_message": commit_message,
                     "class_names": class_names,
                     "label_column_name": label_column_name,
                     "tag_column_name": tag_column_name,
@@ -1097,6 +1094,7 @@ class UnboxClient(object):
         >>> dataset = client.add_dataset(
         ...     task_type=task_type,
         ...     df=df,
+        ...     commit_message="First commit!",
         ...     class_names=class_names,
         ...     feature_names=feature_names,
         ...     label_column_name=label_column_name,
@@ -1128,6 +1126,7 @@ class UnboxClient(object):
         >>> dataset = client.add_dataset(
         ...     task_type=task_type,
         ...     df=df,
+        ...     commit_message="First commit!",
         ...     class_names=class_names,
         ...     text_column_name=text_column_name,
         ...     label_column_name=label_column_name,
