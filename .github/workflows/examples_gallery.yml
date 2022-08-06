@@ -22,8 +22,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: changed_files
     if: ${{needs.changed_files.outputs.run_validations}}
-    env:
-      USER_EMAIL: gitbot@unbox.ai
     steps:
       - uses: actions/checkout@v2
       - name: Pushes to another repository
@@ -35,7 +33,7 @@ jobs:
           source-directory: examples
           destination-github-username: "unboxai"
           destination-repository-name: "examples-gallery"
-          user-email: ${{ USER_EMAIL }}
+          user-email: gitbot@unbox.ai
           commit-message: ${{ github.event.head_commit.message }}
           target-branch: main
       - name: Test get variable exported by push-to-another-repository
