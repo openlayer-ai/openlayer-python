@@ -17,6 +17,7 @@ dependencies/
 examples/*
 !examples/tabular-classification
 !examples/text-classification
+!examples/_static
 
 # Documentation generated files #
 #################################
