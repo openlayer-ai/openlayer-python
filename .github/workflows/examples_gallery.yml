@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - cid/fix-gh-actions
 
 jobs:
   changed_files:
