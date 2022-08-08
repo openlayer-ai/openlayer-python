@@ -7,35 +7,35 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-# Fixed
+### Fixed
 
 * Added protobuf==3.2.0 to requirements to fix bug with model deployment.
 
 ## [0.3.0a2]
 
-# Fixed
+### Fixed
 
 * Fixed link to project page when loading / creating a project.
 * Presigned url endpoint when using AWS / GCP / Azure.
 
-# Changed
+### Changed
 
 * Removed links when uploading dataset and models. Just the project link is appropriate.
 
 ## [0.3.0a1]
 
-# Changed
+### Changed
 
 * Default Unbox server URL (<https://api-staging.unbox.ai/>).
 
 ## [0.3.0a0]
 
-# Added
+### Added
 
 * A `Project` helper class.
 * A convenience method `create_or_load_project` which loads in a project in if it is already created.
 
-# Changed
+### Changed
 
 * Models and datasets must be added to projects.
 * Deprecates `categorical_features_map` in favor of `categorical_feature_names` for model and dataset uploads.
