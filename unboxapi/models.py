@@ -113,20 +113,19 @@ def _format_custom_code(custom_model_code: Optional[str]) -> str:
 
 
 def _env_dependencies(
-    tmp_dir: str, requirements_txt_file: Optional[str], setup_script: Optional[str]
+    tmp_dir: str, requirements_txt_file: str, setup_script: Optional[str]
 ):
     unbox_req_file = f"{tmp_dir}/requirements.txt"
     env_wrapper_str = ""
-    if not requirements_txt_file:
-        env_wrapper_str += "@env(infer_pip_packages=True"
-    else:
-        shutil.copy(requirements_txt_file, unbox_req_file)
-        # Add required dependencies
-        deps = [f"bentoml=={bentoml.__version__}", "pandas"]
-        with open(unbox_req_file, "a") as f:
-            f.write("\n")
-            [f.write(f"{dep}\n") for dep in deps]
-        env_wrapper_str += f"@env(requirements_txt_file='{unbox_req_file}'"
+
+    shutil.copy(requirements_txt_file, unbox_req_file)
+    # Add required dependencies
+    deps = [f"bentoml=={bentoml.__version__}", "pandas"]
+    with open(unbox_req_file, "a") as f:
+        f.write("\n")
+        [f.write(f"{dep}\n") for dep in deps]
+
+    env_wrapper_str += f"@env(requirements_txt_file='{unbox_req_file}'"
 
     # Add a user defined setup script to execute on startup
     if setup_script:

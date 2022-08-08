@@ -208,7 +208,7 @@ class UnboxClient(object):
         model,
         model_type: ModelType,
         class_names: List[str],
-        requirements_txt_file: str = None,
+        requirements_txt_file: str,
         feature_names: List[str] = [],
         categorical_feature_names: List[str] = [],
         train_sample_df: pd.DataFrame = None,
