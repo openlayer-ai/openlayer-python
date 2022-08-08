@@ -62,9 +62,7 @@ class ModelSchema(Schema):
     class_names = fields.List(
         fields.Str(),
     )
-    requirements_txt_file = fields.Str(
-        allow_none=True,
-    )
+    requirements_txt_file = fields.Str(allow_none=False)
     train_sample_label_column_name = fields.Str(allow_none=True)
     feature_names = fields.List(
         fields.Str(),

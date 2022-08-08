@@ -208,7 +208,7 @@ class UnboxClient(object):
         model,
         model_type: ModelType,
         class_names: List[str],
-        requirements_txt_file: Optional[str] = None,
+        requirements_txt_file: str = None,
         feature_names: List[str] = [],
         categorical_feature_names: List[str] = [],
         train_sample_df: pd.DataFrame = None,
@@ -366,6 +366,7 @@ class UnboxClient(object):
         >>> model_type = ModelType.sklearn
         >>> train_sample_df = df.sample(5000)
         >>> train_sample_label_column_name = 'Churned'
+        >>> requirements_txt_file = "requirements.txt"  # path to the requirements.txt file
 
         .. important::
             For tabular classification models, Unbox needs a representative sample of your training
@@ -384,6 +385,7 @@ class UnboxClient(object):
         ...     categorical_feature_names=categorical_feature_names,
         ...     train_sample_df=train_sample_df,
         ...     train_sample_label_column_name=train_sample_label_column_name,
+        ...     requirements_txt_file=requirements_txt_file
         ... )
         >>> model.to_dict()
 
@@ -444,6 +446,8 @@ class UnboxClient(object):
         >>> from unboxapi import ModelType
         >>>
         >>> model_type = ModelType.sklearn
+        >>> requirements_txt_file = "requirements.txt"  # path to the requirements.txt file
+
 
         You can now upload this dataset to Unbox:
 
@@ -454,6 +458,7 @@ class UnboxClient(object):
         ...     model=sklearn_model,
         ...     model_type=model_type,
         ...     class_names=class_names,
+        ...     requirements_txt_file=requirements_txt_file
         ... )
         >>> model.to_dict()
 
@@ -970,7 +975,9 @@ class UnboxClient(object):
             featureNames=feature_names,
             categoricalFeatureNames=categorical_feature_names,
         )
-        print(f"Adding your dataset to Unbox! Check out the project page to have a look.")
+        print(
+            f"Adding your dataset to Unbox! Check out the project page to have a look."
+        )
         return Dataset(
             self.upload(
                 endpoint=endpoint,
