@@ -7,11 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-# Changed
+### Changed
 
 * `requirements_txt_file` no longer optional for model uploads. 
 
-# Fixed
+### Fixed
 
 * Added protobuf==3.2.0 to requirements to fix bug with model deployment.
 
