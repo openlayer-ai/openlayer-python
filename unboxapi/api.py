@@ -32,8 +32,10 @@ class Api:
         if api_key == "" or api_key is None:
             raise UnboxException(
                 "There is an issue instantiating the UnboxClient. \n"
-                "No valid API key is being provided. \n"
-                "Make sure to provide a valid API key using the syntax `UnboxClient('YOUR_API_KEY _HERE')`. You can find your API keys in your Profile page on the Unbox platform."
+                "An invalid API key is being provided. \n"
+                "Make sure to provide a valid API key using the syntax "
+                "`UnboxClient('YOUR_API_KEY_HERE')`. You can find your API keys "
+                "in the Profile page on the Unbox platform."
             )
 
         self.api_key = api_key
@@ -177,8 +179,8 @@ class Api:
     def upload_blob_gcs(
         self, endpoint: str, file_path: str, object_name: str = None, body=None
     ):
-        """Generic method to upload data to Google Cloud Storage and create the appropriate resource
-        in the backend.
+        """Generic method to upload data to Google Cloud Storage and create the
+        appropriate resource in the backend.
         """
         params = {"storageInterface": "gcs", "objectName": object_name}
         presigned_json = self.get_request(f"{endpoint}/presigned-url", params=params)
@@ -204,8 +206,8 @@ class Api:
     def upload_blob_azure(
         self, endpoint: str, file_path: str, object_name: str = None, body=None
     ):
-        """Generic method to upload data to Azure Blob Storage and create the appropriate resource
-        in the backend.
+        """Generic method to upload data to Azure Blob Storage and create the
+        appropriate resource in the backend.
         """
         params = {"storageInterface": "azure", "objectName": object_name}
         presigned_json = self.get_request(f"{endpoint}/presigned-url", params=params)
