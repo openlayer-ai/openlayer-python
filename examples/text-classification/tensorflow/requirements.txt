@@ -1,2 +1,2 @@
-tensorflow==2.3.4
+tensorflow>=2.7.1
 pandas==1.1.4
