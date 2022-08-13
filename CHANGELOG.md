@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 
-* `requirements_txt_file` no longer optional for model uploads. 
+* `requirements_txt_file` no longer optional for model uploads.
+* Remove `id` from POST params to API server.
 
 ### Fixed
 
