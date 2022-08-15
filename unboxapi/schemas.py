@@ -174,14 +174,3 @@ class DatasetSchema(Schema):
             raise ValidationError(
                 "`text_column_name` not specified for text classification task. Must specify `text_column_name` for TextClassification `task_type`."
             )
-        elif data["feature_names"] and data["text_column_name"]:
-            if data["task_type"] == "tabular-classification":
-                raise ValidationError(
-                    f"`feature_names` and `text_column_name` being specified. For `task_type` TabularClassification"
-                    + ", only `feature_names` should be passed as argument."
-                )
-            elif data["task_type"] == "text-classification":
-                raise ValidationError(
-                    f"`feature_names` and `text_column_name` being specified. For `task_type` TextClassification"
-                    + ", only `text_column_name` should be passed as argument."
-                )
