@@ -218,6 +218,7 @@ class UnboxClient(object):
         dependent_dir: Optional[str] = None,
         commit_message: str = None,
         project_id: str = None,
+        explainability_tokenizer: Optional[callable] = None,
         **kwargs,
     ) -> Model:
         """Uploads a model to the Unbox platform.
@@ -275,6 +276,12 @@ class UnboxClient(object):
             is :obj:`ModelType.custom`.
         commit_message : str, default None
             Commit message for this version.
+        explainability_tokenizer: callable, default None
+            Optional custom tokenizer function that will be used exclusively by the explainability techniques.
+            This is **not** the tokenizer used by `function` (in case your `function` has a tokenizer as a kwarg).
+            The `explainability_tokenizer` should receive a list of sentences as input and return a list with lists of tokens.
+            E.g. `["Hello world", "San Francisco is hot today"]` as input and [["Hello", "world"], ["San Francisco", "is", "hot", "today"]]
+            as output.
         **kwargs
             Any additional keyword args you would like to pass to your ``predict_proba`` function.
 
@@ -587,6 +594,32 @@ class UnboxClient(object):
                     message=f"It is failing with the following error: \n{exception_stack}",
                     mitigation="Make sure your function receives the model and the input as arguments, plus the additional kwargs. Additionally,"
                     + "you may find it useful to debug it on the Jupyter notebook, to ensure it is working correctly before uploading it.",
+                ) from None
+
+        # explainability tokenizer
+        if not isinstance(explainability_tokenizer, Callable):
+            raise UnboxValidationError(
+                f"- `{explainability_tokenizer}` specified as `explainability_tokenizer` is not callable. \n"
+            ) from None
+
+        if model_type != ModelType.custom:
+            try:
+                if task_type in [TaskType.TextClassification]:
+                    test_input = [
+                        "Unbox is great!",
+                        "Let's see if this function is ready for some error analysis",
+                    ]
+                    with HidePrints():
+                        function(model, test_input, **kwargs)
+            except Exception as e:
+                exception_stack = "".join(
+                    traceback.format_exception(type(e), e, e.__traceback__)
+                )
+                raise UnboxResourceError(
+                    context="There is an issue with the specified `explainability_tokenizer`. \n",
+                    message=f"It is failing with the following error: \n{exception_stack}",
+                    mitigation="Make sure your `explainability_tokenizer` receives a list of sentences as input and returns a list of lists of tokens "
+                    + "as output.  Additionally, you may find it useful to debug it on the Jupyter notebook, to ensure it is working correctly before uploading it.",
                 ) from None
 
         # Transformers resources
