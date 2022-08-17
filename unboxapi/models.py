@@ -166,7 +166,7 @@ def create_template_model(
         from bentoml.service.artifacts.common import PickleArtifact
         from bentoml.adapters import JsonInput
         from bentoml.types import JsonSerializable
-        
+
         if not os.getenv("UNBOX_DO_NOT_LOAD_MODEL"):
             cwd = os.getcwd()
             os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -181,7 +181,7 @@ def create_template_model(
                 {_extract_input_from_json(task_type, from_csv_path=False)}
                 {_predict_function(model_type)}
                 return results
-            
+
             @api(input=JsonInput())
             def predict_from_path(self, parsed_json: JsonSerializable):
                 input_path = parsed_json["input_path"]
@@ -211,7 +211,7 @@ def create_template_model(
                 if "tokenizer" in self.artifacts.kwargs:
                     results = self.artifacts.kwargs["tokenizer"](input)
                 with open(output_path, 'w') as f:
-                    if type(results) == list:
+                    if type(results) is list:
                         json.dump(results, f)
                     else:
                         json.dump(results.tolist(), f)
