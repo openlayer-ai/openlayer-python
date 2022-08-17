@@ -1,10 +1,5 @@
-from marshmallow import (
-    fields,
-    Schema,
-    validate,
-    ValidationError,
-    validates_schema,
-)
+from marshmallow import Schema, ValidationError, fields, validate, validates_schema
+
 from .models import ModelType
 
 

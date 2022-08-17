@@ -1,6 +1,7 @@
 import os
 import shutil
 import uuid
+from enum import Enum
 
 import requests
 from requests.adapters import HTTPAdapter, Response, Retry
@@ -10,12 +11,6 @@ from tqdm.utils import CallbackIOWrapper
 from .exceptions import ExceptionMap, UnboxException
 from .version import __version__
 
-UNBOX_ENDPOINT = "https://api-staging.unbox.ai/v1"
-# UNBOX_ENDPOINT = "https://api.unbox.ai/v1"
-# UNBOX_ENDPOINT = "http://localhost:8080/v1"
-UNBOX_STORAGE_PATH = os.path.expanduser("~/unbox/unbox-onpremise/userStorage")
-
-
 # Parameters for HTTP retry
 HTTP_TOTAL_RETRIES = 3  # Number of total retries
 HTTP_RETRY_BACKOFF_FACTOR = 2  # Wait 1, 2, 4 seconds between retries
@@ -23,6 +18,22 @@ HTTP_STATUS_FORCE_LIST = [408, 429] + list(range(500, 504)) + list(range(506, 53
 HTTP_RETRY_ALLOWED_METHODS = frozenset({"GET", "PUT", "POST"})
 
 CLIENT_METADATA = {"version": __version__}
+
+
+class StorageType(Enum):
+    """Storage options for uploads."""
+
+    ONPREM = 1
+    AWS = 2
+    GCP = 3
+    AZURE = 4
+
+
+STORAGE = StorageType.AWS
+UNBOX_ENDPOINT = "https://api-staging.unbox.ai/v1"
+# UNBOX_ENDPOINT = "https://api.unbox.ai/v1"
+# UNBOX_ENDPOINT = "http://localhost:8080/v1"
+UNBOX_STORAGE_PATH = os.path.expanduser("~/unbox/unbox-onpremise/userStorage")
 
 
 class Api:
@@ -148,6 +159,25 @@ class Api:
             body=body,
             files=files,
             data=data,
+        )
+
+    def upload(self, endpoint: str, file_path: str, object_name: str = None, body=None):
+        """Generic method to upload data to the default storage medium and create the
+        appropriate resource in the backend.
+        """
+        if STORAGE == StorageType.AWS:
+            upload = self.upload_blob_s3
+        elif STORAGE == StorageType.GCP:
+            upload = self.upload_blob_gcs
+        elif STORAGE == StorageType.AZURE:
+            upload = self.upload_blob_azure
+        else:
+            upload = self.transfer_blob
+        return upload(
+            endpoint=endpoint,
+            file_path=file_path,
+            object_name=object_name,
+            body=body,
         )
 
     def upload_blob_s3(
