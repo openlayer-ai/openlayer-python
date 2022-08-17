@@ -7,10 +7,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-### Added
-
-* `explainability_tokenizer` as an optional argument to the `add_model` method, to be used by the explainability techniques.
-
 ### Changed
 
 * `requirements_txt_file` no longer optional for model uploads.
