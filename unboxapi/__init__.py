@@ -965,7 +965,7 @@ class UnboxClient(object):
         # Feature validations
         try:
             if text_column_name:
-                feature_names.append(text_column_name)
+                feature_names = [text_column_name]
             for feature_name in feature_names:
                 headers.index(feature_name)
         except ValueError:
@@ -982,7 +982,6 @@ class UnboxClient(object):
                     f"Features {features_not_in_dataset} specified in `feature_names` "
                     "are not in the dataset. \n"
                 ) from None
-
         # Tag column validation
         try:
             if tag_column_name:
@@ -1002,10 +1001,10 @@ class UnboxClient(object):
             ) from None
         if task_type == TaskType.TextClassification:
             max_text_size = df[text_column_name].str.len().max()
-            if max_text_size > 100000:
+            if max_text_size > 1000:
                 raise exceptions.UnboxSubscriptionPlanException(
                     "The dataset you are trying to upload contains rows with "
-                    f"{max_text_size} characters, which exceeds the 100,000 character "
+                    f"{max_text_size} characters, which exceeds the 1000 character "
                     "limit."
                 ) from None
 
