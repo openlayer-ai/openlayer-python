@@ -11,9 +11,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 * `requirements_txt_file` no longer optional for model uploads.
 * Remove `id` from POST params to API server.
+* NLP dataset character limit to 1000 characters.
 
 ### Fixed
 
+* Fix issue with duplicate feature names for NLP datasets.
 * Added protobuf==3.2.0 to requirements to fix bug with model deployment.
 
 ## [0.3.0a2]
