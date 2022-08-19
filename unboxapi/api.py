@@ -1,6 +1,5 @@
 import os
 import shutil
-import uuid
 from enum import Enum
 
 import requests
@@ -31,9 +30,6 @@ class StorageType(Enum):
 
 STORAGE = StorageType.AWS
 UNBOX_ENDPOINT = "https://api-staging.unbox.ai/v1"
-# UNBOX_ENDPOINT = "https://api.unbox.ai/v1"
-# UNBOX_ENDPOINT = "http://localhost:8080/v1"
-UNBOX_STORAGE_PATH = os.path.expanduser("~/unbox/unbox-onpremise/userStorage")
 
 
 class Api:
@@ -267,12 +263,13 @@ class Api:
         """Generic method to transfer data to the unbox folder and create the appropriate
         resource in the backend when using a local deployment.
         """
-        id = uuid.uuid4()
-        blob_path = f"{UNBOX_STORAGE_PATH}/{endpoint}/{id}"
+        params = {"storageInterface": "local", "objectName": object_name}
+        presigned_json = self.get_request(f"{endpoint}/presigned-url", params=params)
+        blob_path = presigned_json["storageUri"].replace("local://", "")
         try:
             os.makedirs(blob_path, exist_ok=True)
         except OSError:
             raise UnboxException(f"Directory {blob_path} cannot be created")
         shutil.copyfile(file_path, f"{blob_path}/{object_name}")
-        body["storageUri"] = f"local://{blob_path}"
+        body["storageUri"] = presigned_json["storageUri"]
         return self.post_request(f"{endpoint}", body=body)
