@@ -766,6 +766,9 @@ class UnboxClient(object):
             E.g. `[negative, positive]` when `[0, 1]` are in your label column.
         label_column_name : str
             Column header in the csv containing the labels.
+
+            .. important::
+                The labels in this column must be zero-indexed integer values.
         feature_names : List[str], default []
             List of input feature names. Only applicable if your ``task_type`` is
             :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
@@ -1056,12 +1059,15 @@ class UnboxClient(object):
             List of class names indexed by label integer in the dataset.
             E.g. `[negative, positive]` when `[0, 1]` are in your label column.
         label_column_name : str
-            Column header in the csv containing the labels.
+            Column header in the dataframe containing the labels.
+
+            .. important::
+                The labels in this column must be zero-indexed integer values.
         feature_names : List[str], default []
             List of input feature names. Only applicable if your ``task_type`` is
             :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
         text_column_name : str, default None
-            Column header in the csv containing the input text. Only applicable if your
+            Column header in the dataframe containing the input text. Only applicable if your
             ``task_type`` is :obj:`TaskType.TextClassification`.
         categorical_feature_names : List[str], default []
             A list containing the names of all categorical features in the dataframe.
@@ -1070,7 +1076,7 @@ class UnboxClient(object):
         commit_message : str, default None
             Commit message for this version.
         tag_column_name : str, default None
-            Column header in the csv containing tags you want pre-populated in Unbox.
+            Column header in the dataframe containing tags you want pre-populated in Unbox.
 
             .. important::
                 Each cell in this column must be either empty or contain a list of
