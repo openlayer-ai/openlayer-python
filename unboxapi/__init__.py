@@ -584,7 +584,7 @@ class UnboxClient(object):
             raise exceptions.UnboxResourceError(
                 context="There's an issue with the speficied `function`. \n",
                 message=f"Your function's additional args {user_args} do not match the "
-                f"kwargs you specifed {kwarg_keys}. \n",
+                f"kwargs you specified {kwarg_keys}. \n",
                 mitigation=f"Make sure to include all of the kwargs required "
                 "to run your inference `function`.",
             ) from None
