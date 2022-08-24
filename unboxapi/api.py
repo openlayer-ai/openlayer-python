@@ -29,7 +29,7 @@ class StorageType(Enum):
 
 
 STORAGE = StorageType.AWS
-UNBOX_ENDPOINT = "https://api-staging.unbox.ai/v1"
+UNBOX_ENDPOINT = "https://api.unbox.ai/v1"
 
 
 class Api:
