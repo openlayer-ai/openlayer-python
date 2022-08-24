@@ -996,11 +996,11 @@ class UnboxClient(object):
             ) from None
 
         # ----------------------- Subscription plan validations ---------------------- #
-        if row_count > self.subscription_plan["datasetSize"]:
+        if row_count > self.subscription_plan["datasetRowCount"]:
             raise exceptions.UnboxSubscriptionPlanException(
                 f"The dataset your are trying to upload contains {row_count} rows, "
                 "which exceeds your plan's limit of "
-                f"{self.subscription_plan['datasetSize']}. \n"
+                f"{self.subscription_plan['datasetRowCount']}. \n"
             ) from None
         if task_type == TaskType.TextClassification:
             max_text_size = df[text_column_name].str.len().max()
