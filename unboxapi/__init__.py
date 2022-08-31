@@ -41,7 +41,7 @@ class UnboxClient(object):
         self.subscription_plan = self.api.get_request("me/subscription-plan")
 
     def create_project(
-        self, name: str, task_type: TaskType, description: Optional[str] = None
+        self, name: str, task_type: TaskType, description: str = None
     ) -> Project:
         """Creates a project on the Unbox platform.
 
@@ -140,7 +140,7 @@ class UnboxClient(object):
         return project
 
     def create_or_load_project(
-        self, name: str, task_type: TaskType, description: Optional[str] = None
+        self, name: str, task_type: TaskType, description: str = None
     ) -> Project:
         """Helper function that returns a project given a name. Creates a new project
         if no project with the name exists.
@@ -225,6 +225,8 @@ class UnboxClient(object):
                 **first version** of a new model lineage. On the other hand, if
                 a model with the specified ``name`` already exists inside the project,
                 Unbox treats it as a **new version** of an existing model lineage.
+        commit_message : str, default None
+            Commit message for this version.
         function :
             Prediction function object in expected format. Scroll down for examples.
 
@@ -260,22 +262,20 @@ class UnboxClient(object):
             Column header in train_sample_df containing the labels. Only applicable if
             your ``task_type`` is :obj:`TaskType.TabularClassification` or
             :obj:`TaskType.TabularRegression`.
-        setup_script : str, default None
+        setup_script : str, optional, default None
             Path to a bash script executing any commands necessary to run before
             loading the model. This is run after installing python requirements.
 
             .. note::
                 This is useful for installing custom libraries, downloading NLTK
                 corpora etc.
-        custom_model_code : str, default None
+        custom_model_code : str, optional, default None
             Code needed to initialize the model. Model object must be ``None`` in
             this case. Required, and only applicable if your ``model_type`` is
             :obj:`ModelType.custom`.
-        dependent_dir : str, default None
+        dependent_dir : str, optional, default None
             Path to a dir of file dependencies needed to load the model.
             Required if your ``model_type`` is :obj:`ModelType.custom`.
-        commit_message : str, default None
-            Commit message for this version.
         **kwargs
             Any additional keyword args you would like to pass to your
             ``predict_proba`` function.
@@ -747,12 +747,12 @@ class UnboxClient(object):
         class_names: List[str],
         label_column_name: str,
         feature_names: List[str] = [],
-        text_column_name: Optional[str] = None,
+        text_column_name: str = None,
         categorical_feature_names: List[str] = [],
         tag_column_name: Optional[str] = None,
-        language: str = "en",
-        sep: str = ",",
-        commit_message: Optional[str] = None,
+        language: Optional[str] = "en",
+        sep: Optional[str] = ",",
+        commit_message: str = None,
         project_id: str = None,
     ) -> Dataset:
         r"""Uploads a dataset to the Unbox platform (from a csv).
@@ -761,6 +761,8 @@ class UnboxClient(object):
         ----------
         file_path : str
             Path to the csv file containing the dataset.
+        commit_message : str, default None
+            Commit message for this version.
         class_names : List[str]
             List of class names indexed by label integer in the dataset.
             E.g. `[negative, positive]` when `[0, 1]` are in your label column.
@@ -779,7 +781,7 @@ class UnboxClient(object):
             A list containing the names of all categorical features in the dataset.
             E.g. `["Gender", "Geography"]`. Only applicable if your ``task_type`` is
             :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
-        tag_column_name : str, default None
+        tag_column_name : str, optional, default None
             Column header in the csv containing tags you want pre-populated in Unbox.
 
             .. important::
@@ -791,12 +793,10 @@ class UnboxClient(object):
 
                     ..., "['sample']"
                     ..., "['tag_one', 'tag_two']"
-        language : str, default 'en'
+        language : str, optional, default 'en'
             The language of the dataset in ISO 639-1 (alpha-2 code) format.
-        sep : str, default ','
+        sep : str, optional, default ','
             Delimiter to use. E.g. `'\\t'`.
-        commit_message : str, default None
-            Commit message for this version.
 
         Returns
         -------
@@ -1042,11 +1042,11 @@ class UnboxClient(object):
         class_names: List[str],
         label_column_name: str,
         feature_names: List[str] = [],
-        text_column_name: Optional[str] = None,
+        text_column_name: str = None,
         categorical_feature_names: List[str] = [],
-        commit_message: Optional[str] = None,
+        commit_message: str = None,
         tag_column_name: Optional[str] = None,
-        language: str = "en",
+        language: Optional[str] = "en",
         project_id: str = None,
     ) -> Dataset:
         r"""Uploads a dataset to the Unbox platform (from a pandas DataFrame).
@@ -1055,6 +1055,8 @@ class UnboxClient(object):
         ----------
         df : pd.DataFrame
             Dataframe containing your dataset.
+        commit_message : str, default None
+            Commit message for this version.
         class_names : List[str]
             List of class names indexed by label integer in the dataset.
             E.g. `[negative, positive]` when `[0, 1]` are in your label column.
@@ -1073,9 +1075,7 @@ class UnboxClient(object):
             A list containing the names of all categorical features in the dataframe.
             E.g. `["Gender", "Geography"]`. Only applicable if your ``task_type`` is
             :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
-        commit_message : str, default None
-            Commit message for this version.
-        tag_column_name : str, default None
+        tag_column_name : str, optional, default None
             Column header in the dataframe containing tags you want pre-populated in Unbox.
 
             .. important::
@@ -1087,7 +1087,7 @@ class UnboxClient(object):
 
                     ..., "['sample']"
                     ..., "['tag_one', 'tag_two']"
-        language : str, default 'en'
+        language : str, optional, default 'en'
             The language of the dataset in ISO 639-1 (alpha-2 code) format.
 
         Returns
