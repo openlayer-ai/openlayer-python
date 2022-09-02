@@ -16,6 +16,7 @@ class ProjectSchema(Schema):
             min=1,
             max=140,
         ),
+        allow_none=True,
     )
 
 
