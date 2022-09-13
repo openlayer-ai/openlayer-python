@@ -100,6 +100,8 @@ def _model(model_type: ModelType) -> str:
 def _artifacts(model_type: ModelType) -> str:
     if model_type is ModelType.custom or model_type is ModelType.rasa:
         return "@artifacts([PickleArtifact('function'), PickleArtifact('kwargs')])"
+    elif model_type is ModelType.sklearn:
+        return f"@artifacts([PickleArtifact('model'), PickleArtifact('function'), PickleArtifact('kwargs')])"
     else:
         return f"@artifacts([{model_type.value}('model'), PickleArtifact('function'), PickleArtifact('kwargs')])"
 

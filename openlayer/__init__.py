@@ -9,6 +9,7 @@ from typing import Callable, List, Optional
 
 import marshmallow as ma
 import pandas as pd
+from Automunge import AutoMunge
 from bentoml.saved_bundle import bundler
 from bentoml.utils import tempdir
 
@@ -17,6 +18,7 @@ from .datasets import Dataset
 from .models import Model, ModelType, create_template_model
 from .projects import Project
 from .tasks import TaskType
+from .baseline import QuickBaseline
 from .version import __version__  # noqa: F401
 
 
@@ -1205,6 +1207,187 @@ class OpenlayerClient(object):
                 categorical_feature_names=categorical_feature_names,
                 project_id=project_id,
             )
+
+    def add_baseline(
+        self,
+        dataset_name: str,
+        task_type: TaskType,
+        class_names: List[str],
+        train_df: pd.DataFrame = None,
+        val_df: pd.DataFrame = None,
+        df: pd.DataFrame = None,
+        label_column: str = "label",
+        ensemble_size: int = 10,
+        max_training_size: int = 200000,
+        max_validation_size: int = 10000,
+        random_seed: int = 0,
+        timeout: int = 60,
+        per_run_limit: int = None,
+        project_id: str = None,
+        include_dataset: bool = True,
+    ):
+        """Loads an existing project from the Unbox platform.
+
+        Parameters
+        ----------
+        dataset_name : str
+            Name of your Dataset.
+        task_type : :obj:`TaskType`
+            Type of ML task. E.g. :obj:`TaskType.TabularClassification` or
+            :obj:`TaskType.TextClassification`.
+        class_names : List[str]
+            List of class names corresponding to the outputs of your predict function.
+            E.g. `['positive', 'negative']`.
+        train_df : pd.DataFrame, default None
+            Training set. Only used if `df` is not set.
+        val_df : pd.DataFrame, default None
+            Validation set. Only used if `df` is not set.
+        df : pd.DataFrame, default None
+            Full dataset. Only used if `train_df` and `val_df` are not set.
+        label_column : str, default 'label'
+            Column containing dataset labels
+        ensemble_size : int, default 10
+            Number of models ensembled.
+        max_training_size : int, default 200000
+            Maximum size of training set.
+        max_validation_size : int, default 10000
+            Maximum size of validation set.
+        random_seed : int, default 0
+            Random seed to be used across projects.
+        timeout : int, default 60
+            Maximum time to train all the models.
+        per_run_limit : int, default None
+            Maximum time to train each model.
+        project_id : str, default None
+            Project identier.
+        include_dataset : bool, default True
+            If dataset should be uploaded or not.
+
+        Returns
+        -------
+        :obj:`Model`
+            An object containing information about your uploaded model.
+
+        Examples
+        --------
+
+        .. seealso::
+            Our `sample notebooks
+            <https://github.com/unboxai/unboxapi-python-client/tree/main/examples>`_ and
+            `tutorials <https://unbox.readme.io/docs/overview-of-tutorial-tracks>`_.
+
+        First, instantiate the client:
+
+        >>> import unboxapi
+        >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+
+        Create a project if you don't have one:
+
+        >>> from unboxapi.tasks import TaskType
+        >>> project = client.create_project(
+        ...     name="Churn Prediction",
+        ...     task_type=TaskType.TabularClassification,
+        ...     description="My first project!",
+        ... )
+
+        If you already have a project created on the platform:
+
+        >>> project = client.load_project(name="Your project name")
+
+        **If your project's task type is tabular classification...**
+
+        Let's say your dataset looks like the following:
+
+        >>> df
+            CreditScore  Geography    Balance  Churned
+        0           618     France     321.92        1
+        1           714    Germany  102001.22        0
+        2           604      Spain   12333.15        0
+        ..          ...        ...        ...      ...
+
+        Now you can create a baseline model:
+
+        >>> c_names = ['Retained', 'Churned']
+        >>> label_col = 'Exited'
+        >>> project.add_baseline(
+        ...     dataset_name='Churn Validation',
+        ...     class_names=c_names,
+        ...     label_column=label_col,
+        ...     df=df,
+        ...     ensemble_size=3,
+        ...     timeout=60*10,
+        ...     per_run_limit=None,
+        ...     include_dataset=False
+        ... )
+        """
+
+        # Either df or the pair (train_df + val_df) is mandatory. QuickBaseline init handles that.
+        qb = QuickBaseline(
+            train_df=train_df,
+            val_df=val_df,
+            df=df,
+            label_column=label_column,
+            max_training_size=max_training_size,
+            max_validation_size=max_validation_size,
+            ensemble_size=ensemble_size,
+            random_seed=random_seed,
+        )
+
+        # Process categorical and numerical features
+        print("Processing dataset...")
+        qb.process_dataset()
+        training_set = qb.train_df
+        validation_set = qb.val_df
+
+        # Get everything needed for Model Deployment
+        print(
+            f"Training model for approximately {math.ceil(0.0166 * timeout)} minutes."
+        )
+        model, func, col_names, cat_names, process_dict = qb.get_model_and_function(
+            timeout, per_run_limit
+        )
+
+        # Upload dataset
+        if include_dataset:
+            self.add_dataframe(
+                task_type=task_type,
+                project_id=project_id,
+                df=validation_set,
+                class_names=class_names,
+                label_column_name=label_column,
+                commit_message="first commit: Baseline",
+                feature_names=col_names,
+                categorical_feature_names=cat_names,
+            )
+
+        # Create requirements file
+        filename = "auto-requirements.txt"
+        with open("auto-requirements.txt", "w") as f:
+            f.write("Automunge==8.30\n")
+            f.write("scikit-learn== 0.24.1")
+
+        # Upload model
+        model_info = self.add_model(
+            function=func,
+            task_type=task_type,
+            project_id=project_id,
+            model=model,
+            model_type=ModelType.sklearn,
+            class_names=class_names,
+            name=f"Baseline Model for {dataset_name}.",
+            commit_message="first commit: baseline model",
+            feature_names=col_names,
+            train_sample_df=training_set[:3000],
+            train_sample_label_column_name=label_column,
+            categorical_feature_names=cat_names,
+            requirements_txt_file="auto-requirements.txt",
+            col_names=col_names,
+            processor=AutoMunge(),
+            process_dict=process_dict,
+        )
+
+        os.remove(filename)
+        return model_info
 
     @staticmethod
     def _format_error_message(err) -> str:
