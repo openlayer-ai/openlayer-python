@@ -1241,6 +1241,8 @@ class OpenlayerClient(object):
             Commit message for the model version.
         train_df : pd.DataFrame, default None
             Training set dataframe.
+        val_df : pd.DataFrame, default None
+            Validation set dataframe. If specified, will be added to the project.
         ensemble_size : int, default 10
             Number of models ensembled.
         random_seed : int, default 0
@@ -1297,6 +1299,7 @@ class OpenlayerClient(object):
         ...     class_names=class_names,
         ...     label_column_name=label_column,
         ...     train_df=train_df,
+        ...     val_df=val_df,
         ...     ensemble_size=3,
         ...     timeout=60*10,
         ...     per_run_limit=None,
@@ -1332,7 +1335,9 @@ class OpenlayerClient(object):
         categorical_feature_names = qb.get_categorical_feature_names(train_features_df)
 
         # Train model
-        print(f"Training model for approximately {round(0.0166 * timeout, 2)} minute(s).")
+        print(
+            f"Training model for approximately {round(0.0166 * timeout, 2)} minute(s)."
+        )
         model = qb.train_auto_classifiers(
             timeout=timeout,
             per_run_limit=per_run_limit,
@@ -1359,7 +1364,6 @@ class OpenlayerClient(object):
                 feature_names=col_names,
                 categorical_feature_names=categorical_feature_names,
             )
-
 
         # Upload model
         model_info = self.add_model(

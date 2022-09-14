@@ -178,15 +178,16 @@ class QuickBaseline:
 
         return voter_clf
 
-    def transform_to_voter(self, auto_clf, y):
-        """_summary_
+    def transform_to_voter(self, auto_clf, y: pd.DataFrame):
+        """Combines AutoSklearn models in a voting scheme and
+        transforms them to Sklearn models
 
         Args:
-            auto_clf (_type_): _description_
-            y (_type_): _description_
+            auto_clf (AutoSklearnClassifier object): AutoSklearn model
+            y (pd.DataFrame): dataset labels
 
         Returns:
-            _type_: _description_
+            sklearn.ensemble.VotingClassifier object: voting classifier
         """
         _weights = auto_clf.automl_.ensemble_.weights_
         _id = auto_clf.automl_.ensemble_.identifiers_
@@ -206,16 +207,16 @@ class QuickBaseline:
         return self.set_ensemble(models, weights, y)
 
     @staticmethod
-    def set_ensemble(models, weights, y):
-        """_summary_
+    def set_ensemble(models: List[object], weights: List[float], y: pd.DataFrame):
+        """Sets corresponding attributes for the Voting classifier
 
         Args:
-            models (_type_): _description_
-            weights (_type_): _description_
-            y (_type_): _description_
+            models (List[object]): list of models to be combined by voting
+            weights (List[float]): list of weights for the voting
+            y (pd.DataFrame): dataset labels
 
         Returns:
-            _type_: _description_
+            sklearn.ensemble.VotingClassifier object: voting classifier
         """
         voter = VotingClassifier(estimators=None, voting="soft")
 
@@ -228,15 +229,15 @@ class QuickBaseline:
         return voter
 
     @staticmethod
-    def to_sklearn(steps):
+    def to_sklearn(steps: Tuple[str, object]):
         """Converts the auto-sklearn model objects to sklearn for
         model deployment purposes.
 
         Args:
-            steps (_type_): _description_
+            steps (Tuple[str, object]): tuple with name and pipeline objects
 
         Returns:
-            _type_: _description_
+            model: model as an sklearn model object
         """
         model = None
 
