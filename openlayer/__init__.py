@@ -14,11 +14,11 @@ from bentoml.saved_bundle import bundler
 from bentoml.utils import tempdir
 
 from . import api, exceptions, schemas, utils
+from .baseline import QuickBaseline
 from .datasets import Dataset
 from .models import Model, ModelType, create_template_model
 from .projects import Project
 from .tasks import TaskType
-from .baseline import QuickBaseline
 from .version import __version__  # noqa: F401
 
 
@@ -1210,58 +1210,44 @@ class OpenlayerClient(object):
 
     def add_baseline(
         self,
-        dataset_name: str,
         task_type: TaskType,
         class_names: List[str],
+        label_column_name: str,
         train_df: pd.DataFrame = None,
-        val_df: pd.DataFrame = None,
-        df: pd.DataFrame = None,
-        label_column: str = "label",
         ensemble_size: int = 10,
-        max_training_size: int = 200000,
-        max_validation_size: int = 10000,
         random_seed: int = 0,
         timeout: int = 60,
         per_run_limit: int = None,
+        commit_message: Optional[str] = None,
         project_id: str = None,
-        include_dataset: bool = True,
-    ):
-        """Loads an existing project from the Unbox platform.
+    ) -> Model:
+        """Add a baseline model to the Unbox platform. You only need to specify a training set
+        and we will automatically find and train a baseline model using AutoML.
 
         Parameters
         ----------
-        dataset_name : str
-            Name of your Dataset.
         task_type : :obj:`TaskType`
-            Type of ML task. E.g. :obj:`TaskType.TabularClassification` or
-            :obj:`TaskType.TextClassification`.
+            Type of ML task. E.g. :obj:`TaskType.TabularClassification`
+            .. important::
+                For now, the `add_baseline` method only supports tabular classification
+                tasks, so `task_type` must be equal to `TaskType.TabularClassification`
         class_names : List[str]
             List of class names corresponding to the outputs of your predict function.
             E.g. `['positive', 'negative']`.
-        train_df : pd.DataFrame, default None
-            Training set. Only used if `df` is not set.
-        val_df : pd.DataFrame, default None
-            Validation set. Only used if `df` is not set.
-        df : pd.DataFrame, default None
-            Full dataset. Only used if `train_df` and `val_df` are not set.
-        label_column : str, default 'label'
+        label_column_name : str
             Column containing dataset labels
+        train_df : pd.DataFrame, default None
+            Training set dataframe.
         ensemble_size : int, default 10
             Number of models ensembled.
-        max_training_size : int, default 200000
-            Maximum size of training set.
-        max_validation_size : int, default 10000
-            Maximum size of validation set.
         random_seed : int, default 0
-            Random seed to be used across projects.
+            Random seed to be used for model training.
         timeout : int, default 60
             Maximum time to train all the models.
         per_run_limit : int, default None
             Maximum time to train each model.
-        project_id : str, default None
-            Project identier.
-        include_dataset : bool, default True
-            If dataset should be uploaded or not.
+        commit_message : str, default None
+            Commit message for the model version.
 
         Returns
         -------
@@ -1270,7 +1256,6 @@ class OpenlayerClient(object):
 
         Examples
         --------
-
         .. seealso::
             Our `sample notebooks
             <https://github.com/unboxai/unboxapi-python-client/tree/main/examples>`_ and
@@ -1294,11 +1279,9 @@ class OpenlayerClient(object):
 
         >>> project = client.load_project(name="Your project name")
 
-        **If your project's task type is tabular classification...**
+        Let's say your training set looks like the following:
 
-        Let's say your dataset looks like the following:
-
-        >>> df
+        >>> train_df
             CreditScore  Geography    Balance  Churned
         0           618     France     321.92        1
         1           714    Germany  102001.22        0
@@ -1307,58 +1290,56 @@ class OpenlayerClient(object):
 
         Now you can create a baseline model:
 
-        >>> c_names = ['Retained', 'Churned']
-        >>> label_col = 'Exited'
+        >>> class_names = ['Retained', 'Churned']
+        >>> label_column_name = 'Exited'
         >>> project.add_baseline(
-        ...     dataset_name='Churn Validation',
-        ...     class_names=c_names,
-        ...     label_column=label_col,
-        ...     df=df,
+        ...     class_names=class_names,
+        ...     label_column_name=label_column,
+        ...     train_df=train_df,
         ...     ensemble_size=3,
         ...     timeout=60*10,
         ...     per_run_limit=None,
-        ...     include_dataset=False
+        ...     commit_message="first commit!"
         ... )
         """
+        # ---------------------------- Schema validations ---------------------------- #
+        if task_type is not TaskType.TabularClassification:
+            raise exceptions.UnboxValidationError(
+                "The `add_baseline` method is only valid for TaskType.TabularClassification tasks. \n "
+            ) from None
+        # --------------------------- Resource validations --------------------------- #
+        if len(train_df) < 3000:
+            raise exceptions.UnboxResourceError(
+                f"The training set specified as `train_df` is too small, with only {len(train_df)} rows. \n",
+                mitigation="Please provide a training set with at least 3000 rows.",
+            ) from None
 
-        # Either df or the pair (train_df + val_df) is mandatory. QuickBaseline init handles that.
+        # Instantiate object
         qb = QuickBaseline(
             train_df=train_df,
-            val_df=val_df,
-            df=df,
-            label_column=label_column,
-            max_training_size=max_training_size,
-            max_validation_size=max_validation_size,
+            label_column_name=label_column_name,
             ensemble_size=ensemble_size,
             random_seed=random_seed,
         )
 
-        # Process categorical and numerical features
-        print("Processing dataset...")
-        qb.process_dataset()
-        training_set = qb.train_df
-        validation_set = qb.val_df
+        # Preprocess the training set
+        print("Preprocessing the training set")
+        preprocessing_dict, train_features_df = qb.preprocess_dataset()
 
-        # Get everything needed for Model Deployment
-        print(
-            f"Training model for approximately {math.ceil(0.0166 * timeout)} minutes."
-        )
-        model, func, col_names, cat_names, process_dict = qb.get_model_and_function(
-            timeout, per_run_limit
+        # Get the column names and categorical feature names
+        col_names = qb.column_names
+        categorical_feature_names = qb.get_categorical_feature_names(train_features_df)
+
+        # Train model
+        print(f"Training model for approximately {round(0.0166 * timeout, 2)} minutes")
+        model = qb.train_auto_classifiers(
+            timeout=timeout,
+            per_run_limit=per_run_limit,
+            train_features_df=train_features_df,
         )
 
-        # Upload dataset
-        if include_dataset:
-            self.add_dataframe(
-                task_type=task_type,
-                project_id=project_id,
-                df=validation_set,
-                class_names=class_names,
-                label_column_name=label_column,
-                commit_message="first commit: Baseline",
-                feature_names=col_names,
-                categorical_feature_names=cat_names,
-            )
+        # Get model predict function for the upload process
+        predict_proba = qb.get_predict_function()
 
         # Create requirements file
         filename = "auto-requirements.txt"
@@ -1368,25 +1349,24 @@ class OpenlayerClient(object):
 
         # Upload model
         model_info = self.add_model(
-            function=func,
+            function=predict_proba,
             task_type=task_type,
             project_id=project_id,
             model=model,
             model_type=ModelType.sklearn,
             class_names=class_names,
-            name=f"Baseline Model for {dataset_name}.",
-            commit_message="first commit: baseline model",
+            name=f"Baseline model",
+            commit_message=commit_message,
             feature_names=col_names,
-            train_sample_df=training_set[:3000],
-            train_sample_label_column_name=label_column,
-            categorical_feature_names=cat_names,
+            train_sample_df=pd.sample(train_df, n=3000, random_state=random_seed),
+            train_sample_label_column_name=label_column_name,
+            categorical_feature_names=categorical_feature_names,
             requirements_txt_file="auto-requirements.txt",
             col_names=col_names,
-            processor=AutoMunge(),
-            process_dict=process_dict,
+            preprocessor=AutoMunge(),
+            preprocessing_dict=preprocessing_dict,
         )
 
-        os.remove(filename)
         return model_info
 
     @staticmethod

@@ -1,20 +1,23 @@
-from Automunge import AutoMunge
-import pandas as pd
-import numpy as np
-import autosklearn.classification
+from typing import Callable, Dict, List, Tuple
 
+import autosklearn.classification
 import autosklearn.estimators
+import numpy as np
+import pandas as pd
+from Automunge import AutoMunge
+from autosklearn.pipeline.components.base import AutoSklearnPreprocessingAlgorithm
+from autosklearn.pipeline.constants import DENSE, INPUT, SPARSE, UNSIGNED_DATA
+from ConfigSpace.configuration_space import ConfigurationSpace
 from sklearn.ensemble import VotingClassifier
 from sklearn.preprocessing import LabelEncoder
 
-from ConfigSpace.configuration_space import ConfigurationSpace
-from autosklearn.pipeline.components.base import AutoSklearnPreprocessingAlgorithm
-from autosklearn.pipeline.constants import SPARSE, DENSE, UNSIGNED_DATA, INPUT
+# ------------------------------- MONKEY PATCH ------------------------------- #
+"""Include the option of not preprocessing to auto-sklearn."""
 
 
 class NoPreprocessing(AutoSklearnPreprocessingAlgorithm):
     def __init__(self, **kwargs):
-        """ This preprocessors does not change the data """
+        """This preprocessors does not change the data"""
         # Some internal checks makes sure parameters are set
         for key, val in kwargs.items():
             setattr(self, key, val)
@@ -48,98 +51,100 @@ class NoPreprocessing(AutoSklearnPreprocessingAlgorithm):
 # Add NoPreprocessing component to auto-sklearn.
 autosklearn.pipeline.components.data_preprocessing.add_preprocessor(NoPreprocessing)
 
+# ----------------------------- END MONKEY PATCH ----------------------------- #
+
 
 class QuickBaseline:
     def __init__(
         self,
+        label_column_name: str,
         train_df: pd.DataFrame = None,
-        val_df: pd.DataFrame = None,
-        df: pd.DataFrame = None,
-        max_training_size: int = 200000,
-        max_validation_size: int = 10000,
         ensemble_size: int = 10,
-        label_column: str = "label",
         random_seed: int = 0,
     ):
-        if train_df is None:
-            if df is None:
-                raise Exception("No dataframe found.")
-            train_df, val_df = self.split_dataset(
-                df, random_seed, max_training_size, max_validation_size
-            )
-
-        if val_df is None:
-            raise Exception("No validation dataframe found.")
-
         self.train_df = train_df.dropna()
-        self.val_df = val_df.dropna()
-        self.label_column = label_column
+        self.label_column_name = label_column_name
         self.column_names = self.train_df.drop(
-            self.label_column, axis=1
+            self.label_column_name, axis=1
         ).columns.tolist()
+        self.train_labels = self.train_df[self.label_column_name]
         self.ensemble_size = ensemble_size
+        self.random_seed = random_seed
 
-        self.category_names = None
-        self.process_dict = None
-        self.train_features = None
-        self.train_labels = None
+    def preprocess_dataset(self) -> Tuple[Dict[any, any], pd.DataFrame]:
+        """Preprocesses the training set prior to fitting the model.
+        Processing steps include normalizing, encoding, and others.
 
-    def process_dataset(self,):
-        # Run processor
-        processor = AutoMunge()
-        # print('train_df', self.train_df)
-        args = processor.automunge(
+        Returns:
+            Tuple[Dict[any, any], pd.DataFrame]: tuple with preprocessing dict
+                and transformed dataset
+        """
+        # Run AutoMunge to find the suggested feature preprocessing
+        preprocessor = AutoMunge()
+        args = preprocessor.automunge(
             self.train_df,
-            labels_column=self.label_column,
+            labels_column=self.label_column_name,
             NArw_marker=False,
             printstatus=False,
         )
-        process_dict = args[-1]
 
-        # get features
-        train_features, train_ids, train_labels, _ = processor.postmunge(
-            process_dict, self.train_df, printstatus=False
+        # Get the features metadata, including the normalization and encoding types
+        preprocessing_dict = args[-1]
+
+        # Apply the transformations to the training set
+        train_features_df, _, _, _ = preprocessor.postmunge(
+            preprocessing_dict, self.train_df, printstatus=False
         )
 
-        cols = args[0].columns.to_list()
-        cat_names = []
-        transformation_list = ["_1010", "_bnry", "_hsh2", "_hash"]
+        return (preprocessing_dict, train_features_df)
 
-        for col in cols:
+    def get_categorical_feature_names(
+        self, train_features_df: pd.DataFrame
+    ) -> List[str]:
+        """Get the list of categorical feature names based on the preprocessed
+        dataset
+
+        Args:
+            train_features_df (pd.DataFrame): pandas df with the processed training set
+
+        Returns:
+           List[str]: list with the categorical feature names
+        """
+
+        column_names = train_features_df.columns.to_list()
+
+        categorical_feature_names = []
+        categorical_transformation_list = ["_1010", "_bnry", "_hsh2", "_hash"]
+
+        for col in column_names:
+            # last 5 characters indicate the type of transformation applied
             ending = col[-5:]
 
             if ending != "_nmbr":
-                for transformation in transformation_list:
+                for transformation in categorical_transformation_list:
                     split_name = col.split(transformation)
                     if len(split_name) > 1:
-                        cat_names.append(split_name[0])
+                        categorical_feature_names.append(split_name[0])
                         break
 
-        self.process_dict = process_dict
-        self.train_features = train_features
-        self.train_labels = self.train_df[self.label_column]
-        self.category_names = list(set(cat_names))
+        return list(set(categorical_feature_names))
 
-    @staticmethod
-    def split_dataset(
-        df: pd.DataFrame, random_seed, max_training_size, max_validation_size
+    def train_auto_classifiers(
+        self, timeout: int, per_run_limit: int, train_features_df: pd.DataFrame
     ):
-        size = len(df)
+        """Automatically finds and trains the classifiers suited for task
 
-        if size < 30000:
-            max_training_size, max_validation_size = (
-                int(0.7 * size),
-                (size - int(0.7 * size)),
-            )
+        Args:
+            timeout (int): time limit in seconds for the search of appropriate models
+            per_run_limit (int): time limit for a single call to the machine learning
+                model. Model fitting will be terminated if the ML algorithm runs over
+                the time limit
+            train_features_df (pd.DataFrame): processed training set
 
-        df = df.sample(random_state=random_seed)
-        train_df = df[:max_training_size]
-        val_df = df[max_training_size : max_training_size + max_validation_size]
-
-        return train_df, val_df
-
-    def get_auto(self, timeout: int, per_run_limit: int):
-        model = autosklearn.estimators.AutoSklearnClassifier(
+        Returns:
+            model: trained model object
+        """
+        auto_clf = autosklearn.estimators.AutoSklearnClassifier(
             time_left_for_this_task=timeout,
             per_run_time_limit=per_run_limit,
             ensemble_size=self.ensemble_size,
@@ -160,13 +165,29 @@ class QuickBaseline:
                     "sgd",
                 ],
             },
+            seed=self.random_seed,
         )
 
-        model.fit(self.train_features, self.train_labels, dataset_name="auto")
+        # Fit classifiers
+        auto_clf.fit(train_features_df, self.train_labels, dataset_name="auto")
 
-        return model
+        # Combine classifiers using a voting scheme
+        voter_clf = self.transform_to_voter(
+            auto_clf, self.train_df.copy()[self.label_column_name]
+        )
+
+        return voter_clf
 
     def transform_to_voter(self, auto_clf, y):
+        """_summary_
+
+        Args:
+            auto_clf (_type_): _description_
+            y (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
         _weights = auto_clf.automl_.ensemble_.weights_
         _id = auto_clf.automl_.ensemble_.identifiers_
         _models = auto_clf.automl_.models_
@@ -186,7 +207,16 @@ class QuickBaseline:
 
     @staticmethod
     def set_ensemble(models, weights, y):
+        """_summary_
 
+        Args:
+            models (_type_): _description_
+            weights (_type_): _description_
+            y (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
         voter = VotingClassifier(estimators=None, voting="soft")
 
         voter.estimators = models
@@ -199,6 +229,15 @@ class QuickBaseline:
 
     @staticmethod
     def to_sklearn(steps):
+        """Converts the auto-sklearn model objects to sklearn for
+        model deployment purposes.
+
+        Args:
+            steps (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
         model = None
 
         for name, step in steps:
@@ -207,32 +246,26 @@ class QuickBaseline:
 
         return model
 
-    def get_model_and_function(self, timeout: int, per_run_limit: int):
+    def get_predict_function(self) -> Callable:
+        """Defines the predict function for the trained model"""
+
         def predict_proba(
-            model, input_features, col_names, processor, process_dict,
+            model,
+            input_features,
+            col_names,
+            preprocessor,
+            preprocessing_dict,
         ):
-            # from Automunge import AutoMunge
             df = pd.DataFrame(input_features, columns=col_names)
-            features, _ids, _labels, _ = processor.postmunge(
-                process_dict, df, printstatus=False
+            features, _, _, _ = preprocessor.postmunge(
+                preprocessing_dict, df, printstatus=False
             )
 
-            input_feats = features.to_numpy().astype(float)
+            input_feats = features.to_numpy(dtype="O")
             predictions = np.average(
                 model._collect_probas(input_feats), axis=0, weights=model.weights
             )
 
             return predictions
 
-        auto_clf = self.get_auto(timeout, per_run_limit)
-        voter_clf = self.transform_to_voter(
-            auto_clf, self.train_df.copy()[self.label_column]
-        )
-
-        return (
-            voter_clf,
-            predict_proba,
-            self.column_names,
-            self.category_names,
-            self.process_dict,
-        )
+        return predict_proba
