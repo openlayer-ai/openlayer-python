@@ -1213,12 +1213,13 @@ class OpenlayerClient(object):
         task_type: TaskType,
         class_names: List[str],
         label_column_name: str,
+        commit_message: str,
         train_df: pd.DataFrame = None,
+        val_df: pd.DataFrame = None,
         ensemble_size: int = 10,
         random_seed: int = 0,
         timeout: int = 60,
         per_run_limit: int = None,
-        commit_message: Optional[str] = None,
         project_id: str = None,
     ) -> Model:
         """Add a baseline model to the Unbox platform. You only need to specify a training set
@@ -1236,6 +1237,8 @@ class OpenlayerClient(object):
             E.g. `['positive', 'negative']`.
         label_column_name : str
             Column containing dataset labels
+        commit_message : str
+            Commit message for the model version.
         train_df : pd.DataFrame, default None
             Training set dataframe.
         ensemble_size : int, default 10
@@ -1246,8 +1249,6 @@ class OpenlayerClient(object):
             Maximum time to train all the models.
         per_run_limit : int, default None
             Maximum time to train each model.
-        commit_message : str, default None
-            Commit message for the model version.
 
         Returns
         -------
@@ -1331,7 +1332,7 @@ class OpenlayerClient(object):
         categorical_feature_names = qb.get_categorical_feature_names(train_features_df)
 
         # Train model
-        print(f"Training model for approximately {round(0.0166 * timeout, 2)} minutes")
+        print(f"Training model for approximately {round(0.0166 * timeout, 2)} minute(s).")
         model = qb.train_auto_classifiers(
             timeout=timeout,
             per_run_limit=per_run_limit,
@@ -1347,6 +1348,19 @@ class OpenlayerClient(object):
             f.write("Automunge==8.30\n")
             f.write("scikit-learn== 0.24.1")
 
+        if val_df is not None:
+            self.add_dataframe(
+                df=val_df,
+                task_type=task_type,
+                project_id=project_id,
+                class_names=class_names,
+                label_column_name=label_column_name,
+                commit_message=commit_message,
+                feature_names=col_names,
+                categorical_feature_names=categorical_feature_names,
+            )
+
+
         # Upload model
         model_info = self.add_model(
             function=predict_proba,
@@ -1358,7 +1372,7 @@ class OpenlayerClient(object):
             name=f"Baseline model",
             commit_message=commit_message,
             feature_names=col_names,
-            train_sample_df=pd.sample(train_df, n=3000, random_state=random_seed),
+            train_sample_df=train_df.sample(n=3000, random_state=random_seed),
             train_sample_label_column_name=label_column_name,
             categorical_feature_names=categorical_feature_names,
             requirements_txt_file="auto-requirements.txt",
