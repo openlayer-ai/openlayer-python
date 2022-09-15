@@ -1334,6 +1334,19 @@ class OpenlayerClient(object):
         col_names = qb.column_names
         categorical_feature_names = qb.get_categorical_feature_names(train_features_df)
 
+        # Upload the validation set -- if there are issues, it's better to fail prior to model training
+        if val_df is not None:
+            self.add_dataframe(
+                df=val_df,
+                task_type=task_type,
+                project_id=project_id,
+                class_names=class_names,
+                label_column_name=label_column_name,
+                commit_message=commit_message,
+                feature_names=col_names,
+                categorical_feature_names=categorical_feature_names,
+            )
+
         # Train model
         print(
             f"Training model for approximately {round(0.0166 * timeout, 2)} minute(s)."
@@ -1349,21 +1362,9 @@ class OpenlayerClient(object):
 
         # Create requirements file
         filename = "auto-requirements.txt"
-        with open("auto-requirements.txt", "w") as f:
+        with open(filename, "w") as f:
             f.write("Automunge==8.30\n")
             f.write("scikit-learn== 0.24.1")
-
-        if val_df is not None:
-            self.add_dataframe(
-                df=val_df,
-                task_type=task_type,
-                project_id=project_id,
-                class_names=class_names,
-                label_column_name=label_column_name,
-                commit_message=commit_message,
-                feature_names=col_names,
-                categorical_feature_names=categorical_feature_names,
-            )
 
         # Upload model
         model_info = self.add_model(
