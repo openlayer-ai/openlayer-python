@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## Added 
 
 * Added `protobuf<3.20` to requirements to fix compatibility issue with Tensorflow.
+* Warnings if the dependencies from the `requirement_txt_file` and current environment are inconsistent.
 
 ### Changed
 

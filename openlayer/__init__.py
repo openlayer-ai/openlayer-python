@@ -5,10 +5,12 @@ import tarfile
 import tempfile
 import traceback
 import uuid
+import warnings
 from typing import Callable, List, Optional
 
 import marshmallow as ma
 import pandas as pd
+import pkg_resources
 from bentoml.saved_bundle import bundler
 from bentoml.utils import tempdir
 
@@ -536,6 +538,7 @@ class OpenlayerClient(object):
             raise exceptions.OpenlayerResourceError(
                 f"File `{requirements_txt_file}` does not exist. \n"
             ) from None
+        self._check_dependencies(requirements_txt_file)
 
         # Setup script
         if setup_script and not os.path.isfile(os.path.expanduser(setup_script)):
@@ -1208,7 +1211,7 @@ class OpenlayerClient(object):
 
     @staticmethod
     def _format_error_message(err) -> str:
-        """Formats the error messaeges from Marshmallow"""
+        """Formats the error messages from Marshmallow"""
         error_msg = ""
         for input, msg in err.messages.items():
             if input == "_schema":
@@ -1221,3 +1224,53 @@ class OpenlayerClient(object):
                 temp_msg = list(msg.values())[0][0].lower()
                 error_msg += f"- `{input}` contains items that are {temp_msg} \n"
         return error_msg
+
+    @staticmethod
+    def _check_dependencies(requirements_txt_file: str):
+        """Checks the modules specified in the `requirements_txt_file` against
+        the ones installed in the current enviromnent
+        """
+        # Read requirements file
+        with open(requirements_txt_file) as f:
+            lines = f.readlines()
+
+        # Parse the requirements file
+        dependencies = pkg_resources.parse_requirements(lines)
+
+        for requirement in dependencies:
+            requirement = str(requirement)
+            try:
+                pkg_resources.require(requirement)
+            except pkg_resources.VersionConflict as err:
+                try:
+                    warnings.warn(
+                        "There is a version discrepancy between the current "
+                        f"environment and the dependency `{requirement}`. \n"
+                        f"`requirements_txt_file` specifies `{err.req}`, but the current "
+                        f"environment contains `{err.dist}` installed. \n"
+                        "There might be unexpected results once the model is in the platform. "
+                        "Use at your own discretion.",
+                        category=Warning,
+                    )
+                    return None
+                except AttributeError:
+                    warnings.warn(
+                        "There is a version discrepancy between the current "
+                        f"environment and the dependency `{requirement}`. \n"
+                        f"`requirements_txt_file` specifies `{requirement}`, but the current "
+                        f"environment contains an incompatible version installed. \n"
+                        "There might be unexpected results once the model is in the platform. "
+                        "Use at your own discretion.",
+                        category=Warning,
+                    )
+                    return None
+            except pkg_resources.DistributionNotFound as err:
+                warnings.warn(
+                    f"The dependency `{requirement}` specified in the `requirements_txt_file` "
+                    "is not installed in the current environment. \n"
+                    "There might be unexpected results once the model is in the platform. "
+                    "Use at your own discretion.",
+                    category=Warning,
+                )
+                return None
+        return None
