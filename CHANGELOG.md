@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## Added 
+
+* Added `protobuf<3.20` to requirements to fix compatibility issue with Tensorflow.
+
 ### Changed
 
 * Migrated package name from [openlayer](https://pypi.org/project/openlayer/) to [openlayer](https://pypi.org/project/openlayer/) due to a company name change.
