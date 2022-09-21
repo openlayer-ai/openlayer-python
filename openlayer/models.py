@@ -125,11 +125,11 @@ def _env_dependencies(
         f.write("\n")
         [f.write(f"{dep}\n") for dep in deps]
 
-    env_wrapper_str += f"@env(requirements_txt_file='{openlayer_req_file}'"
+    env_wrapper_str += f"@env(requirements_txt_file=r'{openlayer_req_file}'"
 
     # Add a user defined setup script to execute on startup
     if setup_script:
-        env_wrapper_str += f", setup_sh='{setup_script}')"
+        env_wrapper_str += f", setup_sh=r'{setup_script}')"
     else:
         env_wrapper_str += ")"
     return env_wrapper_str
