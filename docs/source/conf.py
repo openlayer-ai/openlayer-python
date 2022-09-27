@@ -15,19 +15,19 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath("../unboxapi"))
+sys.path.insert(0, os.path.abspath("../openlayer"))
 
 
 # -- Project information -----------------------------------------------------
 
-project = "Unbox Python API reference"
-copyright = "2022, Unbox Inc"
-author = "Unbox"
+project = "Openlayer Python API reference"
+copyright = "2022, Unbox Inc."
+author = "Openlayer"
 
 # The short X.Y version
-import unboxapi  # isort:skip
+import openlayer  # isort:skip
 
-version = str(unboxapi.__version__)
+version = str(openlayer.__version__)
 
 # The full version, including alpha/beta/rc tags
 release = version
@@ -93,24 +93,24 @@ switcher_version = version
 html_theme_options = {
     "external_links": [
         {
-            "url": "https://github.com/unboxai/unboxapi-python-client/blob/main/CHANGELOG.md",
+            "url": "https://github.com/unboxai/openlayer-python/blob/main/CHANGELOG.md",
             "name": "Changelog",
         }
     ],
-    "github_url": "https://github.com/unboxai/unboxapi-python-client",
+    "github_url": "https://github.com/unboxai/openlayer-python",
     "twitter_url": "https://twitter.com/unbox_ai",
     # "google_analytics_id": "UA-27880019-2",
     "navbar_end": ["version-switcher", "navbar-icon-links"],
     "switcher": {
         # "json_url": "https://pandas.pydata.org/versions.json",
-        "url_template": "https://unbox.ai/docs/{version}/",
+        "url_template": "https://openlayer.com/docs/{version}/",
         "version_match": switcher_version,
     },
 }
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = "_static/img/unbox.svg"
+html_logo = "_static/img/openlayer.svg"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -137,7 +137,7 @@ autodoc_typehints = "none"
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "UnboxPythonAPIreferencedoc"
+htmlhelp_basename = "OpenlayerPythonAPIreferencedoc"
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -163,9 +163,9 @@ latex_elements = {
 latex_documents = [
     (
         master_doc,
-        "UnboxPythonAPIreference.tex",
-        "Unbox Python API reference Documentation",
-        "Unbox",
+        "OpenlayerPythonAPIreference.tex",
+        "Openlayer Python API reference Documentation",
+        "Openlayer",
         "manual",
     ),
 ]
@@ -178,8 +178,8 @@ latex_documents = [
 man_pages = [
     (
         master_doc,
-        "unboxpythonapireference",
-        "Unbox Python API reference Documentation",
+        "openlayerpythonapireference",
+        "Openlayer Python API reference Documentation",
         [author],
         1,
     )
@@ -194,10 +194,10 @@ man_pages = [
 texinfo_documents = [
     (
         master_doc,
-        "UnboxPythonAPIreference",
-        "Unbox Python API reference Documentation",
+        "OpenlayerPythonAPIreference",
+        "Openlayer Python API reference Documentation",
         author,
-        "UnboxPythonAPIreference",
+        "OpenlayerPythonAPIreference",
         "One line description of project.",
         "Miscellaneous",
     ),

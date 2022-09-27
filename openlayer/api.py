@@ -7,7 +7,7 @@ from requests.adapters import HTTPAdapter, Response, Retry
 from tqdm import tqdm
 from tqdm.utils import CallbackIOWrapper
 
-from .exceptions import ExceptionMap, UnboxException
+from .exceptions import ExceptionMap, OpenlayerException
 from .version import __version__
 
 # Parameters for HTTP retry
@@ -29,7 +29,7 @@ class StorageType(Enum):
 
 
 STORAGE = StorageType.AWS
-UNBOX_ENDPOINT = "https://api.unbox.ai/v1"
+OPENLAYER_ENDPOINT = "https://api.openlayer.com/v1"
 
 
 class Api:
@@ -37,12 +37,12 @@ class Api:
 
     def __init__(self, api_key: str):
         if api_key == "" or api_key is None:
-            raise UnboxException(
-                "There is an issue instantiating the UnboxClient. \n"
+            raise OpenlayerException(
+                "There is an issue instantiating the OpenlayerClient. \n"
                 "An invalid API key is being provided. \n"
                 "Make sure to provide a valid API key using the syntax "
-                "`UnboxClient('YOUR_API_KEY_HERE')`. You can find your API keys "
-                "in the Profile page on the Unbox platform."
+                "`OpenlayerClient('YOUR_API_KEY_HERE')`. You can find your API keys "
+                "in the Profile page on the Openlayer platform."
             )
 
         self.api_key = api_key
@@ -90,7 +90,7 @@ class Api:
 
             return res
         except Exception as err:
-            raise UnboxException(err) from err
+            raise OpenlayerException(err) from err
 
     @staticmethod
     def _raise_on_respose(res: Response):
@@ -100,7 +100,7 @@ class Api:
         except ValueError:
             message = res.text
 
-        exception = ExceptionMap.get(res.status_code, UnboxException)
+        exception = ExceptionMap.get(res.status_code, OpenlayerException)
         raise exception(message, res.status_code)
 
     def _api_request(
@@ -115,7 +115,7 @@ class Api:
     ):
         """Make any HTTP request + error handling."""
 
-        url = f"{UNBOX_ENDPOINT}/{endpoint}"
+        url = f"{OPENLAYER_ENDPOINT}/{endpoint}"
 
         res = self._http_request(method, url, headers, params, body, files, data)
 
@@ -260,7 +260,7 @@ class Api:
             self._raise_on_respose(res)
 
     def transfer_blob(self, endpoint: str, file_path: str, object_name: str, body=None):
-        """Generic method to transfer data to the unbox folder and create the appropriate
+        """Generic method to transfer data to the openlayer folder and create the appropriate
         resource in the backend when using a local deployment.
         """
         params = {"storageInterface": "local", "objectName": object_name}
@@ -269,7 +269,7 @@ class Api:
         try:
             os.makedirs(blob_path, exist_ok=True)
         except OSError:
-            raise UnboxException(f"Directory {blob_path} cannot be created")
+            raise OpenlayerException(f"Directory {blob_path} cannot be created")
         shutil.copyfile(file_path, f"{blob_path}/{object_name}")
         body["storageUri"] = presigned_json["storageUri"]
         return self.post_request(f"{endpoint}", body=body)

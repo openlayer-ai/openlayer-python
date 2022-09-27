@@ -1,8 +1,8 @@
 from typing import Dict
 
 
-class UnboxException(Exception):
-    """Generic UnboxException class"""
+class OpenlayerException(Exception):
+    """Generic OpenlayerException class"""
 
     code = None
 
@@ -20,7 +20,7 @@ class UnboxException(Exception):
             super().__init__(f"<Response> {message}")
 
 
-class UnboxResourceError(UnboxException):
+class OpenlayerResourceError(OpenlayerException):
     def __init__(self, message, context=None, mitigation=None):
         if not context:
             context = "There is a problem with the specified file path. \n"
@@ -31,7 +31,7 @@ class UnboxResourceError(UnboxException):
         super().__init__(context + message + mitigation)
 
 
-class UnboxValidationError(UnboxException):
+class OpenlayerValidationError(OpenlayerException):
     def __init__(self, message, context=None, mitigation=None):
         if not context:
             context = "There are issues with some of the arguments: \n"
@@ -42,7 +42,7 @@ class UnboxValidationError(UnboxException):
         super().__init__(context + message + mitigation)
 
 
-class UnboxDatasetInconsistencyError(UnboxException):
+class OpenlayerDatasetInconsistencyError(OpenlayerException):
     def __init__(self, message, context=None, mitigation=None):
         if not context:
             context = "There are inconsistencies between the dataset and some of the arguments: \n"
@@ -51,16 +51,16 @@ class UnboxDatasetInconsistencyError(UnboxException):
         super().__init__(context + message + mitigation)
 
 
-class UnboxSubscriptionPlanException(UnboxException):
+class OpenlayerSubscriptionPlanException(OpenlayerException):
     def __init__(self, message, context=None, mitigation=None):
         if not context:
             context = "You have reached your subscription plan's limits. \n"
         if not mitigation:
-            mitigation = "To upgrade your plan, visit https://unbox.ai"
+            mitigation = "To upgrade your plan, visit https://openlayer.com"
         super().__init__(context + message + mitigation)
 
 
-class UnboxInvalidRequest(UnboxException):
+class OpenlayerInvalidRequest(OpenlayerException):
     """400 - Bad Request -- The request was unacceptable,
     often due to missing a required parameter.
     """
@@ -68,27 +68,27 @@ class UnboxInvalidRequest(UnboxException):
     code = 400
 
 
-class UnboxUnauthorized(UnboxException):
+class OpenlayerUnauthorized(OpenlayerException):
     """401 - Unauthorized -- No valid API key provided."""
 
     code = 401
 
 
-class UnboxNotEnabled(UnboxException):
-    """402 - Not enabled -- Please contact sales@tryunbox.ai before
+class OpenlayerNotEnabled(OpenlayerException):
+    """402 - Not enabled -- Please contact sales@openlayer.com before
     creating this type of task.
     """
 
     code = 402
 
 
-class UnboxResourceNotFound(UnboxException):
+class OpenlayerResourceNotFound(OpenlayerException):
     """404 - Not Found -- The requested resource doesn't exist."""
 
     code = 404
 
 
-class UnboxDuplicateTask(UnboxException):
+class OpenlayerDuplicateTask(OpenlayerException):
     """409 - Conflict -- The provided idempotency key or unique_id is
     already in use for a different request.
     """
@@ -96,7 +96,7 @@ class UnboxDuplicateTask(UnboxException):
     code = 409
 
 
-class UnboxTooManyRequests(UnboxException):
+class OpenlayerTooManyRequests(OpenlayerException):
     """429 - Too Many Requests -- Too many requests hit the API
     too quickly.
     """
@@ -104,7 +104,7 @@ class UnboxTooManyRequests(UnboxException):
     code = 429
 
 
-class UnboxInternalError(UnboxException):
+class OpenlayerInternalError(OpenlayerException):
     """500 - Internal Server Error -- We had a problem with our server.
     Try again later.
     """
@@ -112,26 +112,26 @@ class UnboxInternalError(UnboxException):
     code = 500
 
 
-class UnboxServiceUnavailable(UnboxException):
+class OpenlayerServiceUnavailable(OpenlayerException):
     """503 - Server Timeout From Request Queueing -- Try again later."""
 
     code = 503
 
 
-class UnboxTimeoutError(UnboxException):
+class OpenlayerTimeoutError(OpenlayerException):
     """504 - Server Timeout Error -- Try again later."""
 
     code = 504
 
 
-ExceptionMap: Dict[int, UnboxException] = {
-    UnboxInvalidRequest.code: UnboxInvalidRequest,
-    UnboxUnauthorized.code: UnboxUnauthorized,
-    UnboxNotEnabled.code: UnboxNotEnabled,
-    UnboxResourceNotFound.code: UnboxResourceNotFound,
-    UnboxDuplicateTask.code: UnboxDuplicateTask,
-    UnboxTooManyRequests.code: UnboxTooManyRequests,
-    UnboxInternalError.code: UnboxInternalError,
-    UnboxTimeoutError.code: UnboxTimeoutError,
-    UnboxServiceUnavailable.code: UnboxServiceUnavailable,
+ExceptionMap: Dict[int, OpenlayerException] = {
+    OpenlayerInvalidRequest.code: OpenlayerInvalidRequest,
+    OpenlayerUnauthorized.code: OpenlayerUnauthorized,
+    OpenlayerNotEnabled.code: OpenlayerNotEnabled,
+    OpenlayerResourceNotFound.code: OpenlayerResourceNotFound,
+    OpenlayerDuplicateTask.code: OpenlayerDuplicateTask,
+    OpenlayerTooManyRequests.code: OpenlayerTooManyRequests,
+    OpenlayerInternalError.code: OpenlayerInternalError,
+    OpenlayerTimeoutError.code: OpenlayerTimeoutError,
+    OpenlayerServiceUnavailable.code: OpenlayerServiceUnavailable,
 }

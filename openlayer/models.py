@@ -10,11 +10,11 @@ from .tasks import TaskType
 
 
 class ModelType(Enum):
-    """A selection of machine learning modeling frameworks supported by Unbox.
+    """A selection of machine learning modeling frameworks supported by Openlayer.
 
     .. note::
-        Our `sample notebooks <https://github.com/unboxai/unboxapi-python-client/tree/main/examples>`_
-        show you how to use each one of these model types with Unbox.
+        Our `sample notebooks <https://github.com/unboxai/openlayer-python/tree/main/examples>`_
+        show you how to use each one of these model types with Openlayer.
     """
 
     #: For models built with `fastText <https://fasttext.cc/>`_.
@@ -38,7 +38,7 @@ class ModelType(Enum):
 
 
 class Model:
-    """An object containing information about a model on the Unbox platform."""
+    """An object containing information about a model on the Openlayer platform."""
 
     def __init__(self, json):
         self._json = json
@@ -115,17 +115,17 @@ def _format_custom_code(custom_model_code: Optional[str]) -> str:
 def _env_dependencies(
     tmp_dir: str, requirements_txt_file: str, setup_script: Optional[str]
 ):
-    unbox_req_file = f"{tmp_dir}/requirements.txt"
+    openlayer_req_file = f"{tmp_dir}/requirements.txt"
     env_wrapper_str = ""
 
-    shutil.copy(requirements_txt_file, unbox_req_file)
+    shutil.copy(requirements_txt_file, openlayer_req_file)
     # Add required dependencies
     deps = [f"bentoml=={bentoml.__version__}", "pandas"]
-    with open(unbox_req_file, "a") as f:
+    with open(openlayer_req_file, "a") as f:
         f.write("\n")
         [f.write(f"{dep}\n") for dep in deps]
 
-    env_wrapper_str += f"@env(requirements_txt_file='{unbox_req_file}'"
+    env_wrapper_str += f"@env(requirements_txt_file='{openlayer_req_file}'"
 
     # Add a user defined setup script to execute on startup
     if setup_script:
@@ -150,7 +150,7 @@ def create_template_model(
         """
     if custom_model_code:
         # Set a flag to prevent wasted memory when importing the script
-        os.environ["UNBOX_DO_NOT_LOAD_MODEL"] = "True"
+        os.environ["OPENLAYER_DO_NOT_LOAD_MODEL"] = "True"
         assert (
             "model = " in custom_model_code
         ), "custom_model_code must intialize a `model` var"
@@ -167,7 +167,7 @@ def create_template_model(
         from bentoml.adapters import JsonInput
         from bentoml.types import JsonSerializable
 
-        if not os.getenv("UNBOX_DO_NOT_LOAD_MODEL"):
+        if not os.getenv("OPENLAYER_DO_NOT_LOAD_MODEL"):
             cwd = os.getcwd()
             os.chdir(os.path.dirname(os.path.abspath(__file__)))
             {_format_custom_code(custom_model_code)}

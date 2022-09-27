@@ -4,7 +4,7 @@
 API reference
 =============
 
-This page gives an overview of all public unboxapi objects, functions and methods.
+This page gives an overview of all public openlayer objects, functions and methods.
 
 .. toctree::
    :maxdepth: 2
@@ -13,4 +13,4 @@ This page gives an overview of all public unboxapi objects, functions and method
 
 .. meta::
     :description lang=en:
-        Documentation for users who wish to use Unbox.
+        Documentation for users who wish to use Openlayer.

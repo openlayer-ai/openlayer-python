@@ -1,11 +1,11 @@
-from unboxapi import tasks
+from openlayer import tasks
 
 from .datasets import Dataset
 from .models import Model
 
 
 class Project:
-    """An object containing information about a project on the Unbox platform."""
+    """An object containing information about a project on the Openlayer platform."""
 
     def __init__(self, json, upload, subscription_plan, client):
         self._json = json

@@ -3,7 +3,7 @@
 ========================
 Upload models / datasets
 ========================
-.. currentmodule:: unboxapi
+.. currentmodule:: openlayer
 
 Client constructor 
 ------------------
@@ -11,7 +11,7 @@ Client constructor
    :toctree: api/
    :template: class.rst
 
-   UnboxClient
+   OpenlayerClient
 
 Project creation and loading
 ----------------------------
@@ -19,8 +19,8 @@ Project creation and loading
    :toctree: api/
    :template: class.rst
    
-   UnboxClient.create_project
-   UnboxClient.load_project
+   OpenlayerClient.create_project
+   OpenlayerClient.load_project
 
 Upload functions
 ----------------
@@ -28,9 +28,9 @@ Upload functions
    :toctree: api/
    :template: class.rst
    
-   UnboxClient.add_model   
-   UnboxClient.add_dataset
-   UnboxClient.add_dataframe
+   OpenlayerClient.add_model   
+   OpenlayerClient.add_dataset
+   OpenlayerClient.add_dataframe
 
 Model / Task types
 ------------------
