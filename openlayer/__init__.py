@@ -20,8 +20,8 @@ from .tasks import TaskType
 from .version import __version__  # noqa: F401
 
 
-class UnboxClient(object):
-    """Client class that interacts with the Unbox Platform.
+class OpenlayerClient(object):
+    """Client class that interacts with the Openlayer Platform.
 
     Parameters
     ----------
@@ -32,8 +32,8 @@ class UnboxClient(object):
     --------
     Instantiate a client with your api key
 
-    >>> import unboxapi
-    >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+    >>> import openlayer
+    >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
     """
 
     def __init__(self, api_key: str = None):
@@ -43,7 +43,7 @@ class UnboxClient(object):
     def create_project(
         self, name: str, task_type: TaskType, description: Optional[str] = None
     ) -> Project:
-        """Creates a project on the Unbox platform.
+        """Creates a project on the Openlayer platform.
 
         Parameters
         ----------
@@ -63,17 +63,17 @@ class UnboxClient(object):
         Returns
         -------
         Project
-            An object that is used to upload models and datasets to the Unbox platform
+            An object that is used to upload models and datasets to the Openlayer platform
             that also contains information about the project.
 
         Examples
         --------
         Instantiate the client and create the project:
 
-        >>> import unboxapi
-        >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+        >>> import openlayer
+        >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
         >>>
-        >>> from unboxapi.tasks import TaskType
+        >>> from openlayer.tasks import TaskType
         >>> project = client.create_project(
         ...     name="Churn prediction",
         ...     task_type=TaskType.TabularClassification,
@@ -89,7 +89,7 @@ class UnboxClient(object):
         try:
             project_schema.load({"name": name, "description": description})
         except ma.ValidationError as err:
-            raise exceptions.UnboxValidationError(
+            raise exceptions.OpenlayerValidationError(
                 self._format_error_message(err)
             ) from None
 
@@ -102,13 +102,13 @@ class UnboxClient(object):
         return project
 
     def load_project(self, name: str) -> Project:
-        """Loads an existing project from the Unbox platform.
+        """Loads an existing project from the Openlayer platform.
 
         Parameters
         ----------
         name : str
             Name of the project to be loaded. The name of the project is the one
-            displayed on the Unbox platform.
+            displayed on the Openlayer platform.
 
             .. note::
                 If you haven't created the project yet, you should use the
@@ -117,15 +117,15 @@ class UnboxClient(object):
         Returns
         -------
         Project
-            An object that is used to upload models and datasets to the Unbox platform
+            An object that is used to upload models and datasets to the Openlayer platform
             that also contains information about the project.
 
         Examples
         --------
         Instantiate the client and load the project:
 
-        >>> import unboxapi
-        >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+        >>> import openlayer
+        >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
         >>>
         >>> project = client.load_project(name="Churn prediction")
 
@@ -163,17 +163,17 @@ class UnboxClient(object):
         Returns
         -------
         Project
-            An object that is used to upload models and datasets to the Unbox platform
+            An object that is used to upload models and datasets to the Openlayer platform
             that also contains information about the project.
 
         Examples
         --------
         Instantiate the client and create or load the project:
 
-        >>> import unboxapi
-        >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+        >>> import openlayer
+        >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
         >>>
-        >>> from unboxapi.tasks import TaskType
+        >>> from openlayer.tasks import TaskType
         >>> project = client.create_or_load_project(
         ...     name="Churn prediction",
         ...     task_type=TaskType.TabularClassification,
@@ -188,7 +188,7 @@ class UnboxClient(object):
             return self.create_project(
                 name=name, task_type=task_type, description=description
             )
-        except exceptions.UnboxDuplicateTask:
+        except exceptions.OpenlayerDuplicateTask:
             return self.load_project(name)
 
     def add_model(
@@ -211,7 +211,7 @@ class UnboxClient(object):
         project_id: str = None,
         **kwargs,
     ) -> Model:
-        """Uploads a model to the Unbox platform.
+        """Uploads a model to the Openlayer platform.
 
         Parameters
         ----------
@@ -219,17 +219,17 @@ class UnboxClient(object):
             Name of your model.
 
             .. important::
-                Versioning models on the Unbox platform happens via the ``name``
+                Versioning models on the Openlayer platform happens via the ``name``
                 argument. If ``add_model`` is called with a ``name`` that still
-                does not exist inside the project, Unbox treats it as the
+                does not exist inside the project, Openlayer treats it as the
                 **first version** of a new model lineage. On the other hand, if
                 a model with the specified ``name`` already exists inside the project,
-                Unbox treats it as a **new version** of an existing model lineage.
+                Openlayer treats it as a **new version** of an existing model lineage.
         function :
             Prediction function object in expected format. Scroll down for examples.
 
             .. note::
-                On the Unbox platform, running inference with the model corresponds
+                On the Openlayer platform, running inference with the model corresponds
                 to calling ``function``. Therefore, expect the latency of model calls
                 in the platform to be similar to that of calling ``function`` on a CPU.
                 Preparing ``function`` to work with batches of data can improve latency.
@@ -294,17 +294,17 @@ class UnboxClient(object):
 
         .. seealso::
             Our `sample notebooks
-            <https://github.com/unboxai/unboxapi-python-client/tree/main/examples>`_ and
-            `tutorials <https://unbox.readme.io/docs/overview-of-tutorial-tracks>`_.
+            <https://github.com/unboxai/openlayer-python/tree/main/examples>`_ and
+            `tutorials <https://docs.openlayer.com/docs/overview-of-tutorial-tracks>`_.
 
         First, instantiate the client:
 
-        >>> import unboxapi
-        >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+        >>> import openlayer
+        >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
 
         Create a project if you don't have one:
 
-        >>> from unboxapi.tasks import TaskType
+        >>> from openlayer.tasks import TaskType
         >>> project = client.create_project(
         ...     name="Churn Prediction",
         ...     task_type=TaskType.TabularClassification,
@@ -326,9 +326,9 @@ class UnboxClient(object):
         2           604      Spain   12333.15        0
         ..          ...        ...        ...      ...
 
-        The first set of variables needed by Unbox are:
+        The first set of variables needed by Openlayer are:
 
-        >>> from unboxapi import TaskType
+        >>> from openlayer import TaskType
         >>>
         >>> class_names = ['Retained', 'Churned']
         >>> feature_names = ['CreditScore', 'Geography', 'Balance']
@@ -372,9 +372,9 @@ class UnboxClient(object):
                [0.66502929, 0.33497071],
                [0.81455616, 0.18544384], ...])
 
-        The other model-specific variables needed by Unbox are:
+        The other model-specific variables needed by Openlayer are:
 
-        >>> from unboxapi import ModelType
+        >>> from openlayer import ModelType
         >>>
         >>> model_type = ModelType.sklearn
         >>> train_sample_df = df.sample(5000)
@@ -382,11 +382,11 @@ class UnboxClient(object):
         >>> requirements_txt_file = "requirements.txt"  # path to requirements.txt
 
         .. important::
-            For tabular classification models, Unbox needs a representative sample
+            For tabular classification models, Openlayer needs a representative sample
             of your training dataset, so it can effectively explain your
             model's predictions.
 
-        You can now upload this model to Unbox:
+        You can now upload this model to Openlayer:
 
         >>> model = project.add_model(
         ...     name='Linear classifier',
@@ -414,7 +414,7 @@ class UnboxClient(object):
         2    Things are looking up                  1
         ..                             ...        ...
 
-        The first variable needed by Unbox is:
+        The first variable needed by Openlayer is:
 
         >>> class_names = ['Negative', 'Positive']
 
@@ -458,15 +458,15 @@ class UnboxClient(object):
         array([[0.30857194, 0.69142806],
                [0.71900947, 0.28099053]])
 
-        The other model-specific variables needed by Unbox are:
+        The other model-specific variables needed by Openlayer are:
 
-        >>> from unboxapi import ModelType
+        >>> from openlayer import ModelType
         >>>
         >>> model_type = ModelType.sklearn
         >>> requirements_txt_file = "requirements.txt"  # path to requirements.txt
 
 
-        You can now upload this dataset to Unbox:
+        You can now upload this dataset to Openlayer:
 
         >>> model = project.add_model(
         ...     name='Linear classifier',
@@ -495,15 +495,15 @@ class UnboxClient(object):
             TaskType.TabularClassification,
             TaskType.TextClassification,
         ]:
-            raise exceptions.UnboxValidationError(
+            raise exceptions.OpenlayerValidationError(
                 "`task_type` must be either TaskType.TabularClassification or "
                 "TaskType.TextClassification. \n"
             ) from None
         if model_type not in [model_framework for model_framework in ModelType]:
-            raise exceptions.UnboxValidationError(
+            raise exceptions.OpenlayerValidationError(
                 "`model_type` must be one of the supported ModelTypes. Check out "
                 "our API reference for a full list "
-                "https://reference.unbox.ai/reference/api/unboxapi.ModelType.html. \n"
+                "https://reference.openlayer.com/reference/api/openlayer.ModelType.html. \n"
             ) from None
         model_schema = schemas.ModelSchema()
         try:
@@ -524,7 +524,7 @@ class UnboxClient(object):
                 }
             )
         except ma.ValidationError as err:
-            raise exceptions.UnboxValidationError(
+            raise exceptions.OpenlayerValidationError(
                 self._format_error_message(err)
             ) from None
 
@@ -533,19 +533,19 @@ class UnboxClient(object):
         if requirements_txt_file and not os.path.isfile(
             os.path.expanduser(requirements_txt_file)
         ):
-            raise exceptions.UnboxResourceError(
+            raise exceptions.OpenlayerResourceError(
                 f"File `{requirements_txt_file}` does not exist. \n"
             ) from None
 
         # Setup script
         if setup_script and not os.path.isfile(os.path.expanduser(setup_script)):
-            raise exceptions.UnboxResourceError(
+            raise exceptions.OpenlayerResourceError(
                 f"File `{setup_script}` does not exist. \n"
             ) from None
 
         # Dependent dir
         if dependent_dir and dependent_dir == os.getcwd():
-            raise exceptions.UnboxResourceError(
+            raise exceptions.OpenlayerResourceError(
                 "`dependent_dir` cannot be the working directory. \n",
                 mitigation="Make sure that the specified `dependent_dir` is different "
                 f"from `{os.getcwd()}`.",
@@ -554,13 +554,13 @@ class UnboxClient(object):
         # Training set
         if task_type in [TaskType.TabularClassification, TaskType.TabularRegression]:
             if len(train_sample_df.index) < 100:
-                raise exceptions.UnboxResourceError(
+                raise exceptions.OpenlayerResourceError(
                     context="There's an issue with the specified `train_sample_df`. \n",
                     message=f"Only {len(train_sample_df.index)} rows were found. \n",
                     mitigation="Make sure to upload a training sample with 100+ rows.",
                 ) from None
             if train_sample_df.isnull().values.any():
-                raise exceptions.UnboxResourceError(
+                raise exceptions.OpenlayerResourceError(
                     context="There's an issue with the specified `train_sample_df`. \n",
                     message=f"The `train_sample_df` contains null values, which is "
                     "currently not supported. \n",
@@ -574,14 +574,14 @@ class UnboxClient(object):
 
         # predict_proba
         if not isinstance(function, Callable):
-            raise exceptions.UnboxValidationError(
+            raise exceptions.OpenlayerValidationError(
                 f"- `{function}` specified as `function` is not callable. \n"
             ) from None
 
         user_args = function.__code__.co_varnames[: function.__code__.co_argcount][2:]
         kwarg_keys = tuple(kwargs)
         if user_args != kwarg_keys:
-            raise exceptions.UnboxResourceError(
+            raise exceptions.OpenlayerResourceError(
                 context="There's an issue with the speficied `function`. \n",
                 message=f"Your function's additional args {user_args} do not match the "
                 f"kwargs you specified {kwarg_keys}. \n",
@@ -600,7 +600,7 @@ class UnboxClient(object):
                         function(model, test_input, **kwargs)
                 else:
                     test_input = [
-                        "Unbox is great!",
+                        "Openlayer is great!",
                         "Let's see if this function is ready for some error analysis",
                     ]
                     with utils.HidePrints():
@@ -609,7 +609,7 @@ class UnboxClient(object):
                 exception_stack = "".join(
                     traceback.format_exception(type(e), e, e.__traceback__)
                 )
-                raise exceptions.UnboxResourceError(
+                raise exceptions.OpenlayerResourceError(
                     context="There's an issue with the specified `function`. \n",
                     message=f"It is failing with the following error: \n"
                     f"{exception_stack}",
@@ -621,7 +621,7 @@ class UnboxClient(object):
         # Transformers resources
         if model_type is ModelType.transformers:
             if "tokenizer" not in kwargs:
-                raise exceptions.UnboxResourceError(
+                raise exceptions.OpenlayerResourceError(
                     context="There's a missing kwarg for the specified model type. \n",
                     message="`tokenizer` must be specified in kwargs when using a "
                     "transformers model. \n",
@@ -643,7 +643,7 @@ class UnboxClient(object):
                     for feature in feature_names + [train_sample_label_column_name]
                     if feature not in headers
                 ]
-                raise exceptions.UnboxDatasetInconsistencyError(
+                raise exceptions.OpenlayerDatasetInconsistencyError(
                     f"Features {features_not_in_dataset} specified in `feature_names` "
                     "are not on the training sample. \n"
                 ) from None
@@ -655,7 +655,7 @@ class UnboxClient(object):
             ]
             for value, field in required_fields:
                 if value is None:
-                    raise exceptions.UnboxDatasetInconsistencyError(
+                    raise exceptions.OpenlayerDatasetInconsistencyError(
                         message=f"TabularClassification task missing `{field}`.\n",
                         mitigation=f"Make sure to specify `{field}` for tabular "
                         "classification tasks.",
@@ -737,7 +737,9 @@ class UnboxClient(object):
                     )
         os.remove("template_model.py")
 
-        print(f"Adding your model to Unbox! Check out the project page to have a look.")
+        print(
+            f"Adding your model to Openlayer! Check out the project page to have a look."
+        )
         return Model(modeldata)
 
     def add_dataset(
@@ -755,7 +757,7 @@ class UnboxClient(object):
         commit_message: Optional[str] = None,
         project_id: str = None,
     ) -> Dataset:
-        r"""Uploads a dataset to the Unbox platform (from a csv).
+        r"""Uploads a dataset to the Openlayer platform (from a csv).
 
         Parameters
         ----------
@@ -780,7 +782,7 @@ class UnboxClient(object):
             E.g. `["Gender", "Geography"]`. Only applicable if your ``task_type`` is
             :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
         tag_column_name : str, default None
-            Column header in the csv containing tags you want pre-populated in Unbox.
+            Column header in the csv containing tags you want pre-populated in Openlayer.
 
             .. important::
                 Each cell in this column must be either empty or contain a list of
@@ -813,12 +815,12 @@ class UnboxClient(object):
 
         First, instantiate the client:
 
-        >>> import unboxapi
-        >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+        >>> import openlayer
+        >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
 
         Create a project if you don't have one:
 
-        >>> from unboxapi.tasks import TaskType
+        >>> from openlayer.tasks import TaskType
         >>> project = client.create_project(
         ...     name="Churn Prediction",
         ...     task_type=TaskType.TabularClassification,
@@ -845,14 +847,14 @@ class UnboxClient(object):
             ``class_names`` array that you define (as shown below).
             E.g. 0 => 'Retained', 1 => 'Churned'
 
-        The variables are needed by Unbox are:
+        The variables are needed by Openlayer are:
 
         >>> class_names = ['Retained', 'Churned']
         >>> feature_names = ['CreditScore', 'Geography', 'Balance']
         >>> label_column_name = 'Churned'
         >>> categorical_feature_names = ['Geography']
 
-        You can now upload this dataset to Unbox:
+        You can now upload this dataset to Openlayer:
 
         >>> dataset = client.add_dataset(
         ...     file_path='/path/to/dataset.csv',
@@ -875,13 +877,13 @@ class UnboxClient(object):
             I'm in a fantastic mood today, 1
             Things are looking up, 1
 
-        The variables are needed by Unbox are:
+        The variables are needed by Openlayer are:
 
         >>> class_names = ['Negative', 'Positive']
         >>> text_column_name = 'Text'
         >>> label_column_name = 'Sentiment'
 
-        You can now upload this dataset to Unbox:
+        You can now upload this dataset to Openlayer:
 
         >>> dataset = client.add_dataset(
         ...     file_path='/path/to/dataset.csv',
@@ -897,7 +899,7 @@ class UnboxClient(object):
             TaskType.TabularClassification,
             TaskType.TextClassification,
         ]:
-            raise exceptions.UnboxValidationError(
+            raise exceptions.OpenlayerValidationError(
                 "`task_type` must be either TaskType.TabularClassification or "
                 "TaskType.TextClassification. \n"
             ) from None
@@ -919,7 +921,7 @@ class UnboxClient(object):
                 }
             )
         except ma.ValidationError as err:
-            raise exceptions.UnboxValidationError(
+            raise exceptions.OpenlayerValidationError(
                 self._format_error_message(err)
             ) from None
 
@@ -927,7 +929,7 @@ class UnboxClient(object):
         exp_file_path = os.path.expanduser(file_path)
         object_name = "original.csv"
         if not os.path.isfile(exp_file_path):
-            raise exceptions.UnboxResourceError(
+            raise exceptions.OpenlayerResourceError(
                 f"File at path `{file_path}` does not contain the dataset. \n"
             ) from None
 
@@ -939,7 +941,7 @@ class UnboxClient(object):
         df = pd.read_csv(file_path, sep=sep)
 
         if df.isnull().values.any():
-            raise exceptions.UnboxResourceError(
+            raise exceptions.OpenlayerResourceError(
                 context="There's an issue with the specified dataset. \n",
                 message="The dataset contains null values, which is currently "
                 "not supported. \n",
@@ -951,14 +953,14 @@ class UnboxClient(object):
         try:
             headers.index(label_column_name)
         except ValueError:
-            raise exceptions.UnboxDatasetInconsistencyError(
+            raise exceptions.OpenlayerDatasetInconsistencyError(
                 f"`{label_column_name}` specified as `label_column_name` is not "
                 "in the dataset. \n"
             ) from None
 
         dataset_classes = list(df[label_column_name].unique())
         if len(dataset_classes) > len(class_names):
-            raise exceptions.UnboxDatasetInconsistencyError(
+            raise exceptions.OpenlayerDatasetInconsistencyError(
                 f"There are {len(dataset_classes)} classes represented in the dataset, "
                 f"but only {len(class_names)} items in your `class_names`. \n",
                 mitigation=f"Make sure that there are at most {len(class_names)} "
@@ -973,7 +975,7 @@ class UnboxClient(object):
                 headers.index(feature_name)
         except ValueError:
             if text_column_name:
-                raise exceptions.UnboxDatasetInconsistencyError(
+                raise exceptions.OpenlayerDatasetInconsistencyError(
                     f"`{text_column_name}` specified as `text_column_name` is not in "
                     "the dataset. \n"
                 ) from None
@@ -981,7 +983,7 @@ class UnboxClient(object):
                 features_not_in_dataset = [
                     feature for feature in feature_names if feature not in headers
                 ]
-                raise exceptions.UnboxDatasetInconsistencyError(
+                raise exceptions.OpenlayerDatasetInconsistencyError(
                     f"Features {features_not_in_dataset} specified in `feature_names` "
                     "are not in the dataset. \n"
                 ) from None
@@ -990,14 +992,14 @@ class UnboxClient(object):
             if tag_column_name:
                 headers.index(tag_column_name)
         except ValueError:
-            raise exceptions.UnboxDatasetInconsistencyError(
+            raise exceptions.OpenlayerDatasetInconsistencyError(
                 f"`{tag_column_name}` specified as `tag_column_name` is not in "
                 "the dataset. \n"
             ) from None
 
         # ----------------------- Subscription plan validations ---------------------- #
         if row_count > self.subscription_plan["datasetRowCount"]:
-            raise exceptions.UnboxSubscriptionPlanException(
+            raise exceptions.OpenlayerSubscriptionPlanException(
                 f"The dataset your are trying to upload contains {row_count} rows, "
                 "which exceeds your plan's limit of "
                 f"{self.subscription_plan['datasetRowCount']}. \n"
@@ -1005,7 +1007,7 @@ class UnboxClient(object):
         if task_type == TaskType.TextClassification:
             max_text_size = df[text_column_name].str.len().max()
             if max_text_size > 1000:
-                raise exceptions.UnboxSubscriptionPlanException(
+                raise exceptions.OpenlayerSubscriptionPlanException(
                     "The dataset you are trying to upload contains rows with "
                     f"{max_text_size} characters, which exceeds the 1000 character "
                     "limit."
@@ -1024,7 +1026,7 @@ class UnboxClient(object):
             categoricalFeatureNames=categorical_feature_names,
         )
         print(
-            f"Adding your dataset to Unbox! Check out the project page to have a look."
+            f"Adding your dataset to Openlayer! Check out the project page to have a look."
         )
         return Dataset(
             self.api.upload(
@@ -1049,7 +1051,7 @@ class UnboxClient(object):
         language: str = "en",
         project_id: str = None,
     ) -> Dataset:
-        r"""Uploads a dataset to the Unbox platform (from a pandas DataFrame).
+        r"""Uploads a dataset to the Openlayer platform (from a pandas DataFrame).
 
         Parameters
         ----------
@@ -1076,7 +1078,7 @@ class UnboxClient(object):
         commit_message : str, default None
             Commit message for this version.
         tag_column_name : str, default None
-            Column header in the dataframe containing tags you want pre-populated in Unbox.
+            Column header in the dataframe containing tags you want pre-populated in Openlayer.
 
             .. important::
                 Each cell in this column must be either empty or contain a list of
@@ -1105,12 +1107,12 @@ class UnboxClient(object):
 
         First, instantiate the client:
 
-        >>> import unboxapi
-        >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+        >>> import openlayer
+        >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
 
         Create a project if you don't have one:
 
-        >>> from unboxapi.tasks import TaskType
+        >>> from openlayer.tasks import TaskType
         >>> project = client.create_project(
         ...     name="Churn Prediction",
         ...     task_type=TaskType.TabularClassification,
@@ -1136,14 +1138,14 @@ class UnboxClient(object):
             the ``class_names`` array that you define (as shown below).
             E.g. 0 => 'Retained', 1 => 'Churned'.
 
-        The variables are needed by Unbox are:
+        The variables are needed by Openlayer are:
 
         >>> class_names = ['Retained', 'Churned']
         >>> feature_names = ['CreditScore', 'Geography', 'Balance']
         >>> label_column_name = 'Churned'
         >>> categorical_feature_names = ['Geography']
 
-        You can now upload this dataset to Unbox:
+        You can now upload this dataset to Openlayer:
 
         >>> dataset = client.add_dataset(
         ...     df=df,
@@ -1165,13 +1167,13 @@ class UnboxClient(object):
         1    I'm in a fantastic mood today          1
         2    Things are looking up                  1
 
-        The variables are needed by Unbox are:
+        The variables are needed by Openlayer are:
 
         >>> class_names = ['Negative', 'Positive']
         >>> text_column_name = 'Text'
         >>> label_column_name = 'Sentiment'
 
-        You can now upload this dataset to Unbox:
+        You can now upload this dataset to Openlayer:
 
         >>> dataset = client.add_dataset(
         ...     df=df,
@@ -1184,7 +1186,7 @@ class UnboxClient(object):
         """
         # --------------------------- Resource validations --------------------------- #
         if not isinstance(df, pd.DataFrame):
-            raise exceptions.UnboxValidationError(
+            raise exceptions.OpenlayerValidationError(
                 f"- `df` is a `{type(df)}`, but it must be of type `pd.DataFrame`. \n"
             ) from None
         with tempfile.TemporaryDirectory() as tmp_dir:

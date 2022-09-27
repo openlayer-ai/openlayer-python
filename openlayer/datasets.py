@@ -1,5 +1,5 @@
 class Dataset:
-    """An object containing information about a dataset on the Unbox platform."""
+    """An object containing information about a dataset on the Openlayer platform."""
 
     def __init__(self, json):
         self._json = json

@@ -2,11 +2,11 @@ from enum import Enum
 
 
 class TaskType(Enum):
-    """A selection of machine learning tasks supported by Unbox.
+    """A selection of machine learning tasks supported by Openlayer.
 
     .. note::
-        Our `sample notebooks <https://github.com/unboxai/unboxapi-python-client/tree/main/examples>`_
-        show you how to use each one of these task types with Unbox.
+        Our `sample notebooks <https://github.com/unboxai/openlayer-python/tree/main/examples>`_
+        show you how to use each one of these task types with Openlayer.
     """
 
     #: For sequence classification tasks.

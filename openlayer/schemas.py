@@ -52,7 +52,7 @@ class ModelSchema(Schema):
         },
         validate=validate.OneOf(
             [model_framework.value for model_framework in ModelType],
-            error=f"`model_type` must be one of the supported frameworks. Check out our API reference for a full list https://reference.unbox.ai/reference/api/unboxapi.ModelType.html.\n ",
+            error=f"`model_type` must be one of the supported frameworks. Check out our API reference for a full list https://reference.openlayer.com/reference/api/openlayer.ModelType.html.\n ",
         ),
     )
     class_names = fields.List(

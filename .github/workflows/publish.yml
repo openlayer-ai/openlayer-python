@@ -1,10 +1,9 @@
 name: publish
 
-on: 
+on:
   push:
     tags:
-      - '*'
-
+      - "*"
 
 jobs:
   build-n-publish:
@@ -12,24 +11,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v1
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v1
-      with:
-        python-version: 3.9
-    - name: Install unboxapi
-      run: >-
-        pip install -e .
-    - name: Install pypa/build
-      run: >-
-        python -m pip install build --user
-    - name: Build a binary wheel and a source tarball
-      run: >-
-        python -m build --sdist --wheel --outdir dist/ .
-    # ======================
-    - name: Publish distribution 📦 to PyPI
-      if: startsWith(github.ref, 'refs/tags')
-      uses: pypa/gh-action-pypi-publish@master
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_API_TOKEN }}
+      - uses: actions/checkout@v1
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.9
+      - name: Install openlayer
+        run: >-
+          pip install -e .
+      - name: Install pypa/build
+        run: >-
+          python -m pip install build --user
+      - name: Build a binary wheel and a source tarball
+        run: >-
+          python -m build --sdist --wheel --outdir dist/ .
+      # ======================
+      - name: Publish distribution 📦 to PyPI
+        if: startsWith(github.ref, 'refs/tags')
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
