@@ -33,7 +33,7 @@ jobs:
           source-directory: examples
           destination-github-username: "unboxai"
           destination-repository-name: "examples-gallery"
-          user-email: gitbot@unbox.ai
+          user-email: gitbot@openlayer.com
           commit-message: ${{ github.event.head_commit.message }}
           target-branch: main
       - name: Test get variable exported by push-to-another-repository
