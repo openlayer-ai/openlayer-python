@@ -1222,7 +1222,7 @@ class OpenlayerClient(object):
         per_run_limit: int = None,
         project_id: str = None,
     ) -> Model:
-        """Add a baseline model to the Unbox platform. You only need to specify a training set
+        """Add a baseline model to the Openlayer platform. You only need to specify a training set
         and we will automatically find and train a baseline model using AutoML.
 
         Parameters
@@ -1261,17 +1261,17 @@ class OpenlayerClient(object):
         --------
         .. seealso::
             Our `sample notebooks
-            <https://github.com/unboxai/unboxapi-python-client/tree/main/examples>`_ and
-            `tutorials <https://unbox.readme.io/docs/overview-of-tutorial-tracks>`_.
+            <https://github.com/unboxai/openlayer-python/tree/main/examples>`_ and
+            `tutorials <https://docs.openlayer.com/docs/overview-of-tutorial-tracks>`_.
 
         First, instantiate the client:
 
-        >>> import unboxapi
-        >>> client = unboxapi.UnboxClient('YOUR_API_KEY_HERE')
+        >>> import openlayer
+        >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
 
         Create a project if you don't have one:
 
-        >>> from unboxapi.tasks import TaskType
+        >>> from openlayer.tasks import TaskType
         >>> project = client.create_project(
         ...     name="Churn Prediction",
         ...     task_type=TaskType.TabularClassification,
@@ -1308,12 +1308,12 @@ class OpenlayerClient(object):
         """
         # ---------------------------- Schema validations ---------------------------- #
         if task_type is not TaskType.TabularClassification:
-            raise exceptions.UnboxValidationError(
+            raise exceptions.OpenlayerValidationError(
                 "The `add_baseline` method is only valid for TaskType.TabularClassification tasks. \n "
             ) from None
         # --------------------------- Resource validations --------------------------- #
         if len(train_df) < 3000:
-            raise exceptions.UnboxResourceError(
+            raise exceptions.OpenlayerResourceError(
                 f"The training set specified as `train_df` is too small, with only {len(train_df)} rows. \n",
                 mitigation="Please provide a training set with at least 3000 rows.",
             ) from None
