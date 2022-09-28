@@ -954,13 +954,31 @@ class OpenlayerClient(object):
         zero_indexed_set = set(range(len(class_names)))
         if unique_labels != zero_indexed_set:
             raise exceptions.OpenlayerResourceError(
-                context=f"There's an issue with values in the column `{label_column_name}` of the dataset. \n",
-                message=f"The labels in `{label_column_name}` must be zero-indexed integer values. \n",
-                mitigation="Make sure to upload a dataset with zero-indexed integer labels that match "
-                f"the list in `class_names`. For example, the class `{class_names[0]}` should be represented as a 0 in the dataset, "
-                f" the class `{class_names[1]}` should be a 1, and so on.",
+                context=f"There's an issue with values in the column "
+                f"`{label_column_name}` of the dataset. \n",
+                message=f"The labels in `{label_column_name}` must be "
+                "zero-indexed integer values. \n",
+                mitigation="Make sure to upload a dataset with zero-indexed "
+                "integer labels that match the list in `class_names`. "
+                f"For example, the class `{class_names[0]}` should be "
+                "represented as a 0 in the dataset, the class "
+                f"`{class_names[1]}` should be a 1, and so on.",
             ) from None
 
+        # Validating the column dtypes
+        supported_dtypes = {"float32", "float64", "int32", "int64", "object"}
+        error_msg = ""
+        for col in df:
+            dtype = df[col].dtype.name
+            if dtype not in supported_dtypes:
+                error_msg += f"- Column `{col}` is of dtype {dtype}. \n"
+        if error_msg:
+            raise exceptions.OpenlayerResourceError(
+                context="There is an issue with some of the columns dtypes.\n",
+                message=error_msg,
+                mitigation=f"The supported dtypes are {supported_dtypes}. "
+                "Make sure to cast the above columns to a supported dtype.",
+            ) from None
         # ------------------ Resource-schema consistency validations ----------------- #
         # Label column validations
         try:
