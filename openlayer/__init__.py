@@ -943,12 +943,25 @@ class OpenlayerClient(object):
 
         df = pd.read_csv(file_path, sep=sep)
 
+        # Checking for null values
         if df.isnull().values.any():
             raise exceptions.OpenlayerResourceError(
                 context="There's an issue with the specified dataset. \n",
                 message="The dataset contains null values, which is currently "
                 "not supported. \n",
                 mitigation="Make sure to upload a dataset without null values.",
+            ) from None
+
+        # Validating if the labels are zero indexed ints
+        unique_labels = set(df[label_column_name].unique())
+        zero_indexed_set = set(range(len(class_names)))
+        if unique_labels != zero_indexed_set:
+            raise exceptions.OpenlayerResourceError(
+                context=f"There's an issue with values in the column `{label_column_name}` of the dataset. \n",
+                message=f"The labels in `{label_column_name}` must be zero-indexed integer values. \n",
+                mitigation="Make sure to upload a dataset with zero-indexed integer labels that match "
+                f"the list in `class_names`. For example, the class `{class_names[0]}` should be represented as a 0 in the dataset, "
+                f" the class `{class_names[1]}` should be a 1, and so on.",
             ) from None
 
         # ------------------ Resource-schema consistency validations ----------------- #
@@ -961,10 +974,9 @@ class OpenlayerClient(object):
                 "in the dataset. \n"
             ) from None
 
-        dataset_classes = list(df[label_column_name].unique())
-        if len(dataset_classes) > len(class_names):
+        if len(unique_labels) > len(class_names):
             raise exceptions.OpenlayerDatasetInconsistencyError(
-                f"There are {len(dataset_classes)} classes represented in the dataset, "
+                f"There are {len(unique_labels)} classes represented in the dataset, "
                 f"but only {len(class_names)} items in your `class_names`. \n",
                 mitigation=f"Make sure that there are at most {len(class_names)} "
                 "classes in your dataset.",
