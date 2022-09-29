@@ -93,11 +93,11 @@ switcher_version = version
 html_theme_options = {
     "external_links": [
         {
-            "url": "https://github.com/unboxai/openlayer-python/blob/main/CHANGELOG.md",
+            "url": "https://github.com/openlayer-ai/openlayer-python/blob/main/CHANGELOG.md",
             "name": "Changelog",
         }
     ],
-    "github_url": "https://github.com/unboxai/openlayer-python",
+    "github_url": "https://github.com/openlayer-ai/openlayer-python",
     "twitter_url": "https://twitter.com/unbox_ai",
     # "google_analytics_id": "UA-27880019-2",
     "navbar_end": ["version-switcher", "navbar-icon-links"],

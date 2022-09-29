@@ -294,7 +294,7 @@ class OpenlayerClient(object):
 
         .. seealso::
             Our `sample notebooks
-            <https://github.com/unboxai/openlayer-python/tree/main/examples>`_ and
+            <https://github.com/openlayer-ai/openlayer-python/tree/main/examples>`_ and
             `tutorials <https://docs.openlayer.com/docs/overview-of-tutorial-tracks>`_.
 
         First, instantiate the client:

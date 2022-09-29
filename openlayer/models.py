@@ -13,7 +13,7 @@ class ModelType(Enum):
     """A selection of machine learning modeling frameworks supported by Openlayer.
 
     .. note::
-        Our `sample notebooks <https://github.com/unboxai/openlayer-python/tree/main/examples>`_
+        Our `sample notebooks <https://github.com/openlayer-ai/openlayer-python/tree/main/examples>`_
         show you how to use each one of these model types with Openlayer.
     """
 

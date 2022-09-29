@@ -31,7 +31,7 @@ jobs:
           SSH_DEPLOY_KEY: ${{ secrets.SSH_DEPLOY_KEY }}
         with:
           source-directory: examples
-          destination-github-username: "unboxai"
+          destination-github-username: "openlayer-ai"
           destination-repository-name: "examples-gallery"
           user-email: gitbot@openlayer.com
           commit-message: ${{ github.event.head_commit.message }}
