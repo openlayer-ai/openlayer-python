@@ -37,12 +37,20 @@ class Project:
         """
         return self._json
 
-    def add_model(self, *args, **kwargs,) -> Model:
+    def add_model(
+        self,
+        *args,
+        **kwargs,
+    ) -> Model:
         return self.client.add_model(
             *args, project_id=self.id, task_type=tasks.TaskType(self.taskType), **kwargs
         )
 
-    def add_dataset(self, *args, **kwargs,) -> Dataset:
+    def add_dataset(
+        self,
+        *args,
+        **kwargs,
+    ) -> Dataset:
         return self.client.add_dataset(
             *args, project_id=self.id, task_type=tasks.TaskType(self.taskType), **kwargs
         )
