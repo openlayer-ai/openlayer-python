@@ -1,4 +1,5 @@
 import os
+from pickle import bytes_types
 import shutil
 from enum import Enum
 
@@ -9,6 +10,8 @@ from tqdm.utils import CallbackIOWrapper
 
 from .exceptions import ExceptionMap, OpenlayerException
 from .version import __version__
+
+from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 
 # Parameters for HTTP retry
 HTTP_TOTAL_RETRIES = 3  # Number of total retries
@@ -62,35 +65,34 @@ class Api:
         files=None,
         data=None,
     ) -> Response:
-
-        https = requests.Session()
-        retry_strategy = Retry(
-            total=HTTP_TOTAL_RETRIES,
-            backoff_factor=HTTP_RETRY_BACKOFF_FACTOR,
-            status_forcelist=HTTP_STATUS_FORCE_LIST,
-            method_whitelist=HTTP_RETRY_ALLOWED_METHODS,
-            raise_on_status=False,
-        )
-
-        adapter = HTTPAdapter(max_retries=retry_strategy)
-        https.mount("https://", adapter)
-
-        try:
-            params = params or {}
-            params.update(CLIENT_METADATA)
-            res = https.request(
-                method=method,
-                url=url,
-                headers=headers,
-                params=params,
-                json=body,
-                files=files,
-                data=data,
+        with requests.Session() as https:
+            retry_strategy = Retry(
+                total=HTTP_TOTAL_RETRIES,
+                backoff_factor=HTTP_RETRY_BACKOFF_FACTOR,
+                status_forcelist=HTTP_STATUS_FORCE_LIST,
+                method_whitelist=HTTP_RETRY_ALLOWED_METHODS,
+                raise_on_status=False,
             )
 
-            return res
-        except Exception as err:
-            raise OpenlayerException(err) from err
+            adapter = HTTPAdapter(max_retries=retry_strategy)
+            https.mount("https://", adapter)
+
+            try:
+                params = params or {}
+                params.update(CLIENT_METADATA)
+                res = https.request(
+                    method=method,
+                    url=url,
+                    headers=headers,
+                    params=params,
+                    json=body,
+                    files=files,
+                    data=data,
+                )
+
+                return res
+            except Exception as err:
+                raise OpenlayerException(err) from err
 
     @staticmethod
     def _raise_on_respose(res: Response):
@@ -184,18 +186,27 @@ class Api:
         """
         params = {"storageInterface": "s3", "objectName": object_name}
         presigned_json = self.get_request(f"{endpoint}/presigned-url", params=params)
-        with open(file_path, "rb") as f:
-            with tqdm(
-                total=os.stat(file_path).st_size,
-                unit="B",
-                unit_scale=True,
-                unit_divisor=1024,
-            ) as t:
-                wrapped_file = CallbackIOWrapper(t.update, f, "read")
-                files = {"file": (presigned_json["id"], wrapped_file)}
-                res = requests.post(
-                    presigned_json["url"], data=presigned_json["fields"], files=files
+        
+        with tqdm(
+            total=os.stat(file_path).st_size,
+            unit="B",
+            unit_scale=True,
+            unit_divisor=1024,
+            colour='BLUE'
+        ) as t:
+            with open(file_path, "rb") as f:
+                # Avoid logging here as it will break the progress bar
+                fields = presigned_json["fields"]
+                fields["file"] = (presigned_json["id"], f)
+                e = MultipartEncoder(fields=fields)
+                m = MultipartEncoderMonitor(
+                    e, lambda monitor: t.update(min(t.total, monitor.bytes_read) - t.n)
                 )
+                headers = {"Content-Type": m.content_type}
+                res = requests.post(
+                    presigned_json["url"], data=m, headers=headers
+                )
+
         if res.ok:
             body["storageUri"] = presigned_json["storageUri"]
             return self.post_request(f"{endpoint}", body=body)

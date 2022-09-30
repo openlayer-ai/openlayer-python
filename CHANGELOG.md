@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## Added 
+### Fixed
+* Fix warnings related to not closing requests sessions
+* Loading bar no longer jumps from 0% to 100% for large uploads
+
+### Added 
 
 * Added `protobuf<3.20` to requirements to fix compatibility issue with Tensorflow.
 * Warnings if the dependencies from the `requirement_txt_file` and current environment are inconsistent.
