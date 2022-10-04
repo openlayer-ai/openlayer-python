@@ -15,3 +15,4 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 
 * Migrated package name from [openlayer](https://pypi.org/project/openlayer/) to [openlayer](https://pypi.org/project/openlayer/) due to a company name change.
+* Required Python version `>=3.7` and `<3.9`.
