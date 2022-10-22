@@ -18,6 +18,16 @@ class ProjectSchema(Schema):
         ),
         allow_none=True,
     )
+    task_type = fields.Str(
+        required=True,
+        error_messages={
+            "invalid": "`task_type` is not valid. Make sure you are importing TaskType correctly."
+        },
+        validate=validate.OneOf(
+            ["text-classification", "tabular-classification"],
+            error=f"`task_type` must be one of either TaskType.TextClassification or TaskType.TabularClassification.",
+        ),
+    )
 
 
 class ModelSchema(Schema):
@@ -35,16 +45,7 @@ class ModelSchema(Schema):
             max=140,
         ),
     )
-    task_type = fields.Str(
-        required=True,
-        error_messages={
-            "invalid": "`task_type` is not valid. Make sure you are importing TaskType correctly."
-        },
-        validate=validate.OneOf(
-            ["text-classification", "tabular-classification"],
-            error=f"`task_type` must be one of either TaskType.TextClassification or TaskType.TabularClassification.",
-        ),
-    )
+    task_type = fields.Str(required=True)
     model_type = fields.Str(
         required=True,
         error_messages={

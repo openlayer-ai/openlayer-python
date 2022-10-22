@@ -89,7 +89,9 @@ class OpenlayerClient(object):
         # ----------------------------- Schema validation ---------------------------- #
         project_schema = schemas.ProjectSchema()
         try:
-            project_schema.load({"name": name, "description": description})
+            project_schema.load(
+                {"name": name, "description": description, "task_type": task_type.value}
+            )
         except ma.ValidationError as err:
             raise exceptions.OpenlayerValidationError(
                 self._format_error_message(err)
@@ -376,7 +378,7 @@ class OpenlayerClient(object):
 
         The other model-specific variables needed by Openlayer are:
 
-        >>> from openlayer import ModelType
+        >>> from openlayer.models import ModelType
         >>>
         >>> model_type = ModelType.sklearn
         >>> train_sample_df = df.sample(5000)
@@ -462,7 +464,7 @@ class OpenlayerClient(object):
 
         The other model-specific variables needed by Openlayer are:
 
-        >>> from openlayer import ModelType
+        >>> from openlayer.models import ModelType
         >>>
         >>> model_type = ModelType.sklearn
         >>> requirements_txt_file = "requirements.txt"  # path to requirements.txt
@@ -493,14 +495,6 @@ class OpenlayerClient(object):
             method with a different ``name``. E.g., ``name ='Nonlinear classifier'``.
         """
         # ---------------------------- Schema validations ---------------------------- #
-        if task_type not in [
-            TaskType.TabularClassification,
-            TaskType.TextClassification,
-        ]:
-            raise exceptions.OpenlayerValidationError(
-                "`task_type` must be either TaskType.TabularClassification or "
-                "TaskType.TextClassification. \n"
-            ) from None
         if model_type not in [model_framework for model_framework in ModelType]:
             raise exceptions.OpenlayerValidationError(
                 "`model_type` must be one of the supported ModelTypes. Check out "
