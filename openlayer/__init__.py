@@ -15,7 +15,7 @@ from bentoml.saved_bundle import bundler
 from bentoml.utils import tempdir
 
 from . import api, exceptions, schemas, utils
-from .datasets import Dataset
+from .datasets import Dataset, DatasetType
 from .models import Model, ModelType, create_template_model
 from .projects import Project
 from .tasks import TaskType
@@ -745,6 +745,7 @@ class OpenlayerClient(object):
         file_path: str,
         class_names: List[str],
         label_column_name: str,
+        dataset_type: DatasetType = DatasetType.Validation,
         feature_names: List[str] = [],
         text_column_name: Optional[str] = None,
         categorical_feature_names: List[str] = [],
@@ -768,6 +769,9 @@ class OpenlayerClient(object):
 
             .. important::
                 The labels in this column must be zero-indexed integer values.
+        dataset_type : :obj:`DatasetType`, default :obj:`DatasetType.Validation`
+            Type of dataset. E.g. :obj:`DatasetType.Validation` or
+            :obj:`DatasetType.Training`.
         feature_names : List[str], default []
             List of input feature names. Only applicable if your ``task_type`` is
             :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
@@ -846,10 +850,13 @@ class OpenlayerClient(object):
 
         The variables are needed by Openlayer are:
 
+        >>> from openlayer.datasets import DatasetType
+        >>>
         >>> class_names = ['Retained', 'Churned']
         >>> feature_names = ['CreditScore', 'Geography', 'Balance']
         >>> label_column_name = 'Churned'
         >>> categorical_feature_names = ['Geography']
+        >>> dataset_type = DatasetType.Validation
 
         You can now upload this dataset to Openlayer:
 
@@ -860,6 +867,7 @@ class OpenlayerClient(object):
         ...     label_column_name=label_column_name,
         ...     feature_names=feature_names,
         ...     categorical_feature_names=categorical_feature_names,
+        ...     dataset_type=dataset_type,
         ... )
         >>> dataset.to_dict()
 
@@ -876,9 +884,12 @@ class OpenlayerClient(object):
 
         The variables are needed by Openlayer are:
 
+        >>> from openlayer.datasets import DatasetType
+        >>>
         >>> class_names = ['Negative', 'Positive']
         >>> text_column_name = 'Text'
         >>> label_column_name = 'Sentiment'
+        >>> dataset_type = DatasetType.Validation
 
         You can now upload this dataset to Openlayer:
 
@@ -888,24 +899,18 @@ class OpenlayerClient(object):
         ...     class_names=class_names,
         ...     label_column_name=label_column_name,
         ...     text_column_name=text_column_name,
+        ...     dataset_type=dataset_type,
         ... )
         >>> dataset.to_dict()
         """
         # ---------------------------- Schema validations ---------------------------- #
-        if task_type not in [
-            TaskType.TabularClassification,
-            TaskType.TextClassification,
-        ]:
-            raise exceptions.OpenlayerValidationError(
-                "`task_type` must be either TaskType.TabularClassification or "
-                "TaskType.TextClassification. \n"
-            ) from None
         dataset_schema = schemas.DatasetSchema()
         try:
             dataset_schema.load(
                 {
                     "file_path": file_path,
                     "task_type": task_type.value,
+                    "dataset_type": dataset_type.value,
                     "commit_message": commit_message,
                     "class_names": class_names,
                     "label_column_name": label_column_name,
@@ -1031,6 +1036,11 @@ class OpenlayerClient(object):
                 "which exceeds your plan's limit of "
                 f"{self.subscription_plan['datasetRowCount']}. \n"
             ) from None
+        if dataset_type is DatasetType.Training and row_count > 200000:
+            raise exceptions.OpenlayerSubscriptionPlanException(
+                f"The training dataset your are trying to upload contains {row_count} rows, "
+                "which exceeds the currently supported limit of 200,000 rows. \n"
+            ) from None
         if task_type == TaskType.TextClassification:
             max_text_size = df[text_column_name].str.len().max()
             if max_text_size > 1000:
@@ -1044,6 +1054,7 @@ class OpenlayerClient(object):
         payload = dict(
             commitMessage=commit_message,
             taskType=task_type.value,
+            datasetType=dataset_type.value,
             classNames=class_names,
             labelColumnName=label_column_name,
             tagColumnName=tag_column_name,
@@ -1070,6 +1081,7 @@ class OpenlayerClient(object):
         df: pd.DataFrame,
         class_names: List[str],
         label_column_name: str,
+        dataset_type: DatasetType = DatasetType.Validation,
         feature_names: List[str] = [],
         text_column_name: Optional[str] = None,
         categorical_feature_names: List[str] = [],
@@ -1092,6 +1104,9 @@ class OpenlayerClient(object):
 
             .. important::
                 The labels in this column must be zero-indexed integer values.
+        dataset_type : :obj:`DatasetType`, default :obj:`DatasetType.Validation`
+            Type of dataset. E.g. :obj:`DatasetType.Validation` or
+            :obj:`DatasetType.Training`.
         feature_names : List[str], default []
             List of input feature names. Only applicable if your ``task_type`` is
             :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
@@ -1167,10 +1182,13 @@ class OpenlayerClient(object):
 
         The variables are needed by Openlayer are:
 
+        >>> from openlayer.datasets import DatasetType
+        >>>
         >>> class_names = ['Retained', 'Churned']
         >>> feature_names = ['CreditScore', 'Geography', 'Balance']
         >>> label_column_name = 'Churned'
         >>> categorical_feature_names = ['Geography']
+        >>> dataset_type = DatasetType.Validation
 
         You can now upload this dataset to Openlayer:
 
@@ -1181,6 +1199,7 @@ class OpenlayerClient(object):
         ...     feature_names=feature_names,
         ...     label_column_name=label_column_name,
         ...     categorical_feature_names=categorical_feature_names,
+        ...     dataset_type=dataset_type,
         ... )
         >>> dataset.to_dict()
 
@@ -1196,9 +1215,12 @@ class OpenlayerClient(object):
 
         The variables are needed by Openlayer are:
 
+        >>> from openlayer.datasets import DatasetType
+        >>>
         >>> class_names = ['Negative', 'Positive']
         >>> text_column_name = 'Text'
         >>> label_column_name = 'Sentiment'
+        >>> dataset_type = DatasetType.Validation
 
         You can now upload this dataset to Openlayer:
 
@@ -1208,6 +1230,7 @@ class OpenlayerClient(object):
         ...     class_names=class_names,
         ...     text_column_name=text_column_name,
         ...     label_column_name=label_column_name,
+        ...     dataset_type=dataset_type,
         ... )
         >>> dataset.to_dict()
         """
@@ -1222,6 +1245,7 @@ class OpenlayerClient(object):
             return self.add_dataset(
                 file_path=file_path,
                 task_type=task_type,
+                dataset_type=dataset_type,
                 class_names=class_names,
                 label_column_name=label_column_name,
                 text_column_name=text_column_name,

@@ -113,14 +113,15 @@ class DatasetSchema(Schema):
             max=140,
         ),
     )
-    task_type = fields.Str(
+    task_type = fields.Str(required=True)
+    dataset_type = fields.Str(
         required=True,
         error_messages={
-            "invalid": "`task_type` is not valid. Make sure you are importing TaskType correctly."
+            "invalid": "`dataset_type` is not valid. Make sure you are importing DatasetType correctly."
         },
         validate=validate.OneOf(
-            ["text-classification", "tabular-classification"],
-            error=f"`task_type` must be one of either TaskType.TextClassification or TaskType.TabularClassification.",
+            ["validation", "training"],
+            error=f"`dataset_type` must be one of either DatasetType.Validation or DatasetType.Training.",
         ),
     )
     tag_column_name = fields.List(

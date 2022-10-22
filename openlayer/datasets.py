@@ -1,3 +1,15 @@
+from enum import Enum
+
+
+class DatasetType(Enum):
+    """The different dataset types that are supported by Openlayer."""
+
+    #: For validation sets. Used for in-depth exploration of model performance.
+    Validation = "validation"
+    #: For training sets.
+    Training = "training"
+
+
 class Dataset:
     """An object containing information about a dataset on the Openlayer platform."""
 
