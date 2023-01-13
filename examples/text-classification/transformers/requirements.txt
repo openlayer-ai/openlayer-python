@@ -1,3 +1,5 @@
 scipy==1.7.3
-torch==1.12.0
+torch==1.13.1
 transformers==4.20.1
+wheel==0.38.1
+setuptools==65.5.1
