@@ -1,17 +1,16 @@
 import os
-from pickle import bytes_types
 import shutil
 from enum import Enum
+from pickle import bytes_types
 
 import requests
 from requests.adapters import HTTPAdapter, Response, Retry
+from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm
 from tqdm.utils import CallbackIOWrapper
 
 from .exceptions import ExceptionMap, OpenlayerException
 from .version import __version__
-
-from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 
 # Parameters for HTTP retry
 HTTP_TOTAL_RETRIES = 3  # Number of total retries
@@ -186,13 +185,13 @@ class Api:
         """
         params = {"storageInterface": "s3", "objectName": object_name}
         presigned_json = self.get_request(f"{endpoint}/presigned-url", params=params)
-        
+
         with tqdm(
             total=os.stat(file_path).st_size,
             unit="B",
             unit_scale=True,
             unit_divisor=1024,
-            colour='BLUE'
+            colour="BLUE",
         ) as t:
             with open(file_path, "rb") as f:
                 # Avoid logging here as it will break the progress bar
@@ -203,9 +202,7 @@ class Api:
                     e, lambda monitor: t.update(min(t.total, monitor.bytes_read) - t.n)
                 )
                 headers = {"Content-Type": m.content_type}
-                res = requests.post(
-                    presigned_json["url"], data=m, headers=headers
-                )
+                res = requests.post(presigned_json["url"], data=m, headers=headers)
 
         if res.ok:
             body["storageUri"] = presigned_json["storageUri"]
