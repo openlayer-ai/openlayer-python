@@ -1,22 +1,17 @@
 import csv
 import os
-import shutil
 import tarfile
 import tempfile
-import traceback
 import uuid
-import warnings
-from typing import Callable, List, Optional
+from typing import List, Optional
 
 import marshmallow as ma
 import pandas as pd
-import pkg_resources
-from bentoml.saved_bundle import bundler
-from bentoml.utils import tempdir
+import yaml
 
-from . import api, exceptions, schemas, utils
+from . import api, exceptions, schemas, utils, validators
 from .datasets import Dataset
-from .models import Model, ModelType, create_template_model
+from .models import Model
 from .projects import Project
 from .tasks import TaskType
 from .version import __version__  # noqa: F401
@@ -195,21 +190,9 @@ class OpenlayerClient(object):
 
     def add_model(
         self,
-        name: str,
+        model_package_dir: str,
         task_type: TaskType,
-        function,
-        model,
-        model_type: ModelType,
-        class_names: List[str],
-        requirements_txt_file: str,
-        feature_names: List[str] = [],
-        categorical_feature_names: List[str] = [],
-        train_sample_df: pd.DataFrame = None,
-        train_sample_label_column_name: str = None,
-        setup_script: Optional[str] = None,
-        custom_model_code: Optional[str] = None,
-        dependent_dir: Optional[str] = None,
-        commit_message: str = None,
+        sample_data: pd.DataFrame = None,
         project_id: str = None,
         **kwargs,
     ) -> Model:
@@ -217,74 +200,12 @@ class OpenlayerClient(object):
 
         Parameters
         ----------
-        name : str
-            Name of your model.
-
-            .. important::
-                Versioning models on the Openlayer platform happens via the ``name``
-                argument. If ``add_model`` is called with a ``name`` that still
-                does not exist inside the project, Openlayer treats it as the
-                **first version** of a new model lineage. On the other hand, if
-                a model with the specified ``name`` already exists inside the project,
-                Openlayer treats it as a **new version** of an existing model lineage.
-        function :
-            Prediction function object in expected format. Scroll down for examples.
-
-            .. note::
-                On the Openlayer platform, running inference with the model corresponds
-                to calling ``function``. Therefore, expect the latency of model calls
-                in the platform to be similar to that of calling ``function`` on a CPU.
-                Preparing ``function`` to work with batches of data can improve latency.
-        model :
-            The Python object for your model loaded into memory. This will get pickled
-            now and later loaded and passed to your ``predict_proba`` function to
-            compute run reports, test reports, or conduct what-if analysis.
-        model_type : :obj:`ModelType`
-            Model framework. E.g. :obj:`ModelType.sklearn`.
-        class_names : List[str]
-            List of class names corresponding to the outputs of your predict function.
-            E.g. `['positive', 'negative']`.
-        requirements_txt_file : str, default None
-            Path to a requirements.txt file containing Python dependencies needed by
-            your predict function.
-        feature_names : List[str], default []
-            List of input feature names. Only applicable if your ``task_type`` is
-            :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
-        categorical_feature_names : List[str], default []
-            A list containing the names of all categorical features used by the model.
-            E.g. `["Gender", "Geography"]`. Only applicable if your ``task_type`` is
-            :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
-        train_sample_df : pd.DataFrame, default None
-            A random sample of >= 100 rows from your training dataset. This is used to
-            support explainability features. Only applicable if your ``task_type`` is
-            :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
-        train_sample_label_column_name : str, default None
-            Column header in train_sample_df containing the labels. Only applicable if
-            your ``task_type`` is :obj:`TaskType.TabularClassification` or
-            :obj:`TaskType.TabularRegression`.
-        setup_script : str, default None
-            Path to a bash script executing any commands necessary to run before
-            loading the model. This is run after installing python requirements.
-
-            .. note::
-                This is useful for installing custom libraries, downloading NLTK
-                corpora etc.
-        custom_model_code : str, default None
-            Code needed to initialize the model. Model object must be ``None`` in
-            this case. Required, and only applicable if your ``model_type`` is
-            :obj:`ModelType.custom`.
-        dependent_dir : str, default None
-            Path to a dir of file dependencies needed to load the model.
-            Required if your ``model_type`` is :obj:`ModelType.custom`.
-        commit_message : str, default None
-            Commit message for this version.
-        **kwargs
-            Any additional keyword args you would like to pass to your
-            ``predict_proba`` function.
-
-            .. note::
-                If you include `tokenizer` as part of your ``predict_proba``'s kwargs,
-                it will also be used by our explainability techniques.
+        model_package_dir : str
+            Path to the directory containing the model package. For instructions on
+            how to create a model package, refer to the documentation.
+        sample_data : pd.DataFrame
+            Sample data that can be run through the model. This data is used to ensure
+            the model's prediction interface is compatible with the Openlayer platform.
 
         Returns
         -------
@@ -317,6 +238,8 @@ class OpenlayerClient(object):
 
         >>> project = client.load_project(name="Your project name")
 
+        **TODO: complete examples.**
+
         **If your project's task type is tabular classification...**
 
         Let's say your dataset looks like the following:
@@ -328,82 +251,6 @@ class OpenlayerClient(object):
         2           604      Spain   12333.15        0
         ..          ...        ...        ...      ...
 
-        The first set of variables needed by Openlayer are:
-
-        >>> from openlayer import TaskType
-        >>>
-        >>> class_names = ['Retained', 'Churned']
-        >>> feature_names = ['CreditScore', 'Geography', 'Balance']
-        >>> categorical_feature_names = ['Geography']
-
-        Now let's say you've trained a simple ``scikit-learn`` model on data that looks
-        like the above.
-
-        You must next define a ``predict_proba`` function that adheres to the
-        following signature:
-
-        >>> def predict_proba(model, input_features: np.ndarray, **kwargs):
-        ...     # Optional pre-processing of input_features
-        ...     preds = model.predict_proba(input_features)
-        ...     # Optional re-weighting of preds
-        ...     return preds
-
-        The ``model`` arg must be the actual trained model object, and the
-        ``input_features`` arg must be a 2D numpy array containing a batch of features
-        that will be passed to the model as inputs.
-
-        You can optionally include other kwargs in the function, including variables,
-        encoders etc. You simply pass those kwargs to the ``project.add_model``
-        function call when you upload the model.
-
-        Here's an example of the ``predict_proba`` function in action:
-
-        >>> x_train = df[feature_names]
-        >>> y_train = df['Churned']
-
-        >>> sklearn_model = LogisticRegression(random_state=1300)
-        >>> sklearn_model.fit(x_train, y_train)
-        >>>
-        >>> input_features = x_train.to_numpy()
-        array([[618, 'France', 321.92],
-               [714, 'Germany', 102001.22],
-               [604, 'Spain', 12333.15], ...], dtype=object)
-
-        >>> predict_proba(sklearn_model, input_features)
-        array([[0.21735231, 0.78264769],
-               [0.66502929, 0.33497071],
-               [0.81455616, 0.18544384], ...])
-
-        The other model-specific variables needed by Openlayer are:
-
-        >>> from openlayer import ModelType
-        >>>
-        >>> model_type = ModelType.sklearn
-        >>> train_sample_df = df.sample(5000)
-        >>> train_sample_label_column_name = 'Churned'
-        >>> requirements_txt_file = "requirements.txt"  # path to requirements.txt
-
-        .. important::
-            For tabular classification models, Openlayer needs a representative sample
-            of your training dataset, so it can effectively explain your
-            model's predictions.
-
-        You can now upload this model to Openlayer:
-
-        >>> model = project.add_model(
-        ...     name='Linear classifier',
-        ...     commit_message='First iteration of vanilla logistic regression',
-        ...     function=predict_proba,
-        ...     model=sklearn_model,
-        ...     model_type=model_type,
-        ...     class_names=class_names,
-        ...     feature_names=feature_names,
-        ...     categorical_feature_names=categorical_feature_names,
-        ...     train_sample_df=train_sample_df,
-        ...     train_sample_label_column_name=train_sample_label_column_name,
-        ...     requirements_txt_file=requirements_txt_file,
-        ... )
-        >>> model.to_dict()
 
         **If your task type is text classification...**
 
@@ -416,333 +263,77 @@ class OpenlayerClient(object):
         2    Things are looking up                  1
         ..                             ...        ...
 
-        The first variable needed by Openlayer is:
-
-        >>> class_names = ['Negative', 'Positive']
-
-        Now let's say you've trained a simple ``scikit-learn`` model on data that
-        looks like the above.
-
-        You must next define a ``predict_proba`` function that adheres to the
-        following signature:
-
-        >>> def predict_proba(model, text_list: List[str], **kwargs):
-        ...     # Optional pre-processing of text_list
-        ...     preds = model.predict_proba(text_list)
-        ...     # Optional re-weighting of preds
-        ...     return preds
-
-        The ``model`` arg must be the actual trained model object, and the
-        ``text_list`` arg must be a list of strings.
-
-        You can optionally include other kwargs in the function, including tokenizers,
-        variables, encoders etc. You simply pass those kwargs to the
-        ``project.add_model`` function call when you upload the model.
-
-        Here's an example of the ``predict_proba`` function in action:
-
-        >>> x_train = df['Text']
-        >>> y_train = df['Sentiment']
-
-        >>> sentiment_lr = Pipeline(
-        ...     [
-        ...         (
-        ...             "count_vect",
-        ...             CountVectorizer(min_df=100, ngram_range=(1, 2), stop_words="english"),
-        ...         ),
-        ...         ("lr", LogisticRegression()),
-        ...     ]
-        ... )
-        >>> sklearn_model.fit(x_train, y_train)
-
-        >>> text_list = ['good', 'bad']
-        >>> predict_proba(sentiment_lr, text_list)
-        array([[0.30857194, 0.69142806],
-               [0.71900947, 0.28099053]])
-
-        The other model-specific variables needed by Openlayer are:
-
-        >>> from openlayer import ModelType
-        >>>
-        >>> model_type = ModelType.sklearn
-        >>> requirements_txt_file = "requirements.txt"  # path to requirements.txt
-
-
-        You can now upload this dataset to Openlayer:
-
-        >>> model = project.add_model(
-        ...     name='Linear classifier',
-        ...     commit_message='First iteration of vanilla logistic regression',
-        ...     function=predict_proba,
-        ...     model=sklearn_model,
-        ...     model_type=model_type,
-        ...     class_names=class_names,
-        ...     requirements_txt_file=requirements_txt_file,
-        ... )
-        >>> model.to_dict()
-
-        .. note::
-            If inside the given project the ``add_model`` method is called with
-            ``name='Linear classifier'`` for the first time, a new model lineage
-            will be created with ``Linear classifier`` as a name and ``description``
-            will be the first commit on that new tree. In the future, if you'd like
-            to commit a new version to that same lineage, you can simply call
-            `add_model` using ``name='Linear classifier'`` again and use
-            ``description`` with the new commit message. If you'd like to start a
-            new separate lineage inside that project, you can call the ``add_model``
-            method with a different ``name``. E.g., ``name ='Nonlinear classifier'``.
         """
-        # ---------------------------- Schema validations ---------------------------- #
-        if task_type not in [
-            TaskType.TabularClassification,
-            TaskType.TextClassification,
-        ]:
-            raise exceptions.OpenlayerValidationError(
-                "`task_type` must be either TaskType.TabularClassification or "
-                "TaskType.TextClassification. \n"
-            ) from None
-        if model_type not in [model_framework for model_framework in ModelType]:
-            raise exceptions.OpenlayerValidationError(
-                "`model_type` must be one of the supported ModelTypes. Check out "
-                "our API reference for a full list "
-                "https://reference.openlayer.com/reference/api/openlayer.ModelType.html. \n"
-            ) from None
-        model_schema = schemas.ModelSchema()
-        try:
-            model_schema.load(
-                {
-                    "name": name,
-                    "commit_message": commit_message,
-                    "task_type": task_type.value,
-                    "model_type": model_type.value,
-                    "class_names": class_names,
-                    "requirements_txt_file": requirements_txt_file,
-                    "train_sample_label_column_name": train_sample_label_column_name,
-                    "feature_names": feature_names,
-                    "categorical_feature_names": categorical_feature_names,
-                    "setup_script": setup_script,
-                    "custom_model_code": custom_model_code,
-                    "dependent_dir": dependent_dir,
-                }
-            )
-        except ma.ValidationError as err:
-            raise exceptions.OpenlayerValidationError(
-                self._format_error_message(err)
-            ) from None
 
-        # --------------------------- Resource validations --------------------------- #
-        # Requirements check
-        if requirements_txt_file and not os.path.isfile(
-            os.path.expanduser(requirements_txt_file)
-        ):
-            raise exceptions.OpenlayerResourceError(
-                f"File `{requirements_txt_file}` does not exist. \n"
-            ) from None
-        self._check_dependencies(requirements_txt_file)
-
-        # Setup script
-        if setup_script and not os.path.isfile(os.path.expanduser(setup_script)):
-            raise exceptions.OpenlayerResourceError(
-                f"File `{setup_script}` does not exist. \n"
-            ) from None
-
-        # Dependent dir
-        if dependent_dir and dependent_dir == os.getcwd():
-            raise exceptions.OpenlayerResourceError(
-                "`dependent_dir` cannot be the working directory. \n",
-                mitigation="Make sure that the specified `dependent_dir` is different "
-                f"from `{os.getcwd()}`.",
-            ) from None
-
-        # Training set
-        if task_type in [TaskType.TabularClassification, TaskType.TabularRegression]:
-            if len(train_sample_df.index) < 100:
-                raise exceptions.OpenlayerResourceError(
-                    context="There's an issue with the specified `train_sample_df`. \n",
-                    message=f"Only {len(train_sample_df.index)} rows were found. \n",
-                    mitigation="Make sure to upload a training sample with 100+ rows.",
-                ) from None
-            if train_sample_df.isnull().values.any():
-                raise exceptions.OpenlayerResourceError(
-                    context="There's an issue with the specified `train_sample_df`. \n",
-                    message=f"The `train_sample_df` contains null values, which is "
-                    "currently not supported. \n",
-                    mitigation="Make sure to upload a training sample without "
-                    "null values.",
-                ) from None
-
-            train_sample_df = train_sample_df.sample(
-                min(3000, len(train_sample_df.index))
-            )
-
-        # predict_proba
-        if not isinstance(function, Callable):
-            raise exceptions.OpenlayerValidationError(
-                f"- `{function}` specified as `function` is not callable. \n"
-            ) from None
-
-        user_args = function.__code__.co_varnames[: function.__code__.co_argcount][2:]
-        kwarg_keys = tuple(kwargs)
-        if user_args != kwarg_keys:
-            raise exceptions.OpenlayerResourceError(
-                context="There's an issue with the speficied `function`. \n",
-                message=f"Your function's additional args {user_args} do not match the "
-                f"kwargs you specified {kwarg_keys}. \n",
-                mitigation=f"Make sure to include all of the kwargs required "
-                "to run your inference `function`.",
-            ) from None
-
-        if model_type != ModelType.custom:
-            try:
-                if task_type in [
-                    TaskType.TabularClassification,
-                    TaskType.TabularRegression,
-                ]:
-                    test_input = train_sample_df[:3][feature_names].to_numpy()
-                    with utils.HidePrints():
-                        function(model, test_input, **kwargs)
-                else:
-                    test_input = [
-                        "Openlayer is great!",
-                        "Let's see if this function is ready for some error analysis",
-                    ]
-                    with utils.HidePrints():
-                        function(model, test_input, **kwargs)
-            except Exception as e:
-                exception_stack = "".join(
-                    traceback.format_exception(type(e), e, e.__traceback__)
-                )
-                raise exceptions.OpenlayerResourceError(
-                    context="There's an issue with the specified `function`. \n",
-                    message=f"It is failing with the following error: \n"
-                    f"{exception_stack}",
-                    mitigation="Make sure your function receives the model and the "
-                    "input as arguments, plus the additional kwargs. You may find it "
-                    "helpful to test your function out before uploading your model.",
-                ) from None
-
-        # Transformers resources
-        if model_type is ModelType.transformers:
-            if "tokenizer" not in kwargs:
-                raise exceptions.OpenlayerResourceError(
-                    context="There's a missing kwarg for the specified model type. \n",
-                    message="`tokenizer` must be specified in kwargs when using a "
-                    "transformers model. \n",
-                    mitigation="Make sure to specify the `tokenizer`.",
-                ) from None
-
-        # ------------------ Resource-schema consistency validations ----------------- #
-        # Feature validations
-        if task_type in [TaskType.TabularClassification, TaskType.TabularRegression]:
-            try:
-                headers = train_sample_df.columns.tolist()
-                [
-                    headers.index(name)
-                    for name in feature_names + [train_sample_label_column_name]
-                ]
-            except ValueError:
-                features_not_in_dataset = [
-                    feature
-                    for feature in feature_names + [train_sample_label_column_name]
-                    if feature not in headers
-                ]
-                raise exceptions.OpenlayerDatasetInconsistencyError(
-                    f"Features {features_not_in_dataset} specified in `feature_names` "
-                    "are not on the training sample. \n"
-                ) from None
-
-            required_fields = [
-                (feature_names, "feature_names"),
-                (train_sample_df, "train_sample_df"),
-                (train_sample_label_column_name, "train_sample_label_column_name"),
-            ]
-            for value, field in required_fields:
-                if value is None:
-                    raise exceptions.OpenlayerDatasetInconsistencyError(
-                        message=f"TabularClassification task missing `{field}`.\n",
-                        mitigation=f"Make sure to specify `{field}` for tabular "
-                        "classification tasks.",
-                    ) from None
-
-        with tempdir.TempDirectory() as dir:
-            bento_service = create_template_model(
-                model_type,
-                task_type,
-                dir,
-                requirements_txt_file,
-                setup_script,
-                custom_model_code,
-            )
-            if model_type is ModelType.transformers:
-                bento_service.pack(
-                    "model", {"model": model, "tokenizer": kwargs["tokenizer"]}
-                )
-                kwargs.pop("tokenizer")
-            elif model_type not in [ModelType.custom, ModelType.rasa]:
-                bento_service.pack("model", model)
-
-            bento_service.pack("function", function)
-            bento_service.pack("kwargs", kwargs)
-
-            with tempdir.TempDirectory() as temp_dir:
-                print("Bundling model and artifacts...")
-                bundler._write_bento_content_to_dir(bento_service, temp_dir)
-
-                if model_type is ModelType.rasa:
-                    dependent_dir = model.model_metadata.model_dir
-
-                # Add dependent directory to bundle
-                if dependent_dir is not None:
-                    dependent_dir = os.path.abspath(dependent_dir)
-                    shutil.copytree(
-                        dependent_dir,
-                        os.path.join(
-                            temp_dir,
-                            f"TemplateModel/{os.path.basename(dependent_dir)}",
-                        ),
-                    )
-
-                # Add sample of training data to bundle
-                if task_type in [
-                    TaskType.TabularClassification,
-                    TaskType.TabularRegression,
-                ]:
-                    train_sample_df.to_csv(
-                        os.path.join(temp_dir, f"TemplateModel/train_sample.csv"),
-                        index=False,
-                    )
-
-                # Tar the model bundle with its artifacts and upload
-                with tempdir.TempDirectory() as tarfile_dir:
-                    tarfile_path = f"{tarfile_dir}/model"
-
-                    with tarfile.open(tarfile_path, mode="w:gz") as tar:
-                        tar.add(temp_dir, arcname=bento_service.name)
-
-                    endpoint = f"projects/{project_id}/ml-models"
-                    payload = dict(
-                        name=name,
-                        taskType=task_type.value,
-                        commitMessage=commit_message,
-                        classNames=class_names,
-                        architectureType=model_type.name,
-                        kwargs=list(kwargs.keys()),
-                        featureNames=feature_names,
-                        categoricalFeatureNames=categorical_feature_names,
-                        trainSampleLabelColumnName=train_sample_label_column_name,
-                    )
-
-                    modeldata = self.api.upload(
-                        endpoint=endpoint,
-                        file_path=tarfile_path,
-                        object_name="tarfile",
-                        body=payload,
-                    )
-        os.remove("template_model.py")
-
-        print(
-            f"Adding your model to Openlayer! Check out the project page to have a look."
+        # ------------------------- Model package validations ------------------------ #
+        model_package_validator = validators.ModelValidator(
+            model_package_dir=model_package_dir,
+            sample_data=sample_data,
         )
+        failed_validations = model_package_validator.validate()
+
+        if failed_validations:
+            raise exceptions.OpenlayerValidationError(
+                context="There are issues with the model package, as specified above. \n",
+                mitigation="Make sure to fix all of them before uploading the model.",
+            ) from None
+
+        # ------ Start of temporary workaround for the arguments in the payload ------ #
+        model_config_file = os.path.join(model_package_dir, "model_config.yaml")
+
+        with open(model_config_file, "r") as config_file:
+            model_config = yaml.safe_load(config_file)
+
+        name = model_config.get("name")
+        model_type = model_config.get("model_type")
+        class_names = model_config.get("class_names")
+        feature_names = model_config.get("feature_names") or model_config.get(
+            "text_column_name"
+        )
+        categorical_feature_names = model_config.get("categorical_feature_names")
+        # ------- End of temporary workaround for the arguments in the payload ------- #
+
+        # Prepare tar for upload
+        with utils.TempDirectory() as tarfile_dir:
+            tarfile_path = f"{tarfile_dir}/model"
+
+            # Augment model package with the current env's Python version
+            utils.write_python_version(model_package_dir)
+
+            with tarfile.open(tarfile_path, mode="w:gz") as tar:
+                tar.add(model_package_dir, arcname="model_package")
+
+            # Remove the Python version file after tarring
+            utils.remove_python_version(model_package_dir)
+
+            # Make sure the resulting model package is less than 2 GB
+            if float(os.path.getsize("model")) / 1e9 > 2:
+                raise exceptions.OpenlayerResourceError(
+                    context="There's an issue with the specified `model_package_dir`. \n",
+                    message=f"The model package is too large. \n",
+                    mitigation="Make sure to upload a model package with size less than 2 GB.",
+                ) from None
+
+            endpoint = f"projects/{project_id}/ml-models"
+
+            # TODO: Re-define arguments in the payload
+            payload = dict(
+                name=name,
+                commitMessage="Initial commit",
+                architectureType=model_type,
+                taskType=task_type.value,
+                classNames=class_names,
+                featureNames=feature_names,
+                categoricalFeatureNames=categorical_feature_names,
+            )
+
+            modeldata = self.api.upload(
+                endpoint=endpoint,
+                file_path=tarfile_path,
+                object_name="tarfile",
+                body=payload,
+            )
+
         return Model(modeldata)
 
     def add_dataset(
@@ -911,7 +502,6 @@ class OpenlayerClient(object):
             dataset_schema.load(
                 {
                     "file_path": file_path,
-                    "task_type": task_type.value,
                     "commit_message": commit_message,
                     "class_names": class_names,
                     "label_column_name": label_column_name,
@@ -1254,53 +844,3 @@ class OpenlayerClient(object):
                 temp_msg = list(msg.values())[0][0].lower()
                 error_msg += f"- `{input}` contains items that are {temp_msg} \n"
         return error_msg
-
-    @staticmethod
-    def _check_dependencies(requirements_txt_file: str):
-        """Checks the modules specified in the `requirements_txt_file` against
-        the ones installed in the current enviromnent
-        """
-        # Read requirements file
-        with open(requirements_txt_file) as f:
-            lines = f.readlines()
-
-        # Parse the requirements file
-        dependencies = pkg_resources.parse_requirements(lines)
-
-        for requirement in dependencies:
-            requirement = str(requirement)
-            try:
-                pkg_resources.require(requirement)
-            except pkg_resources.VersionConflict as err:
-                try:
-                    warnings.warn(
-                        "There is a version discrepancy between the current "
-                        f"environment and the dependency `{requirement}`. \n"
-                        f"`requirements_txt_file` specifies `{err.req}`, but the current "
-                        f"environment contains `{err.dist}` installed. \n"
-                        "There might be unexpected results once the model is in the platform. "
-                        "Use at your own discretion.",
-                        category=Warning,
-                    )
-                    return None
-                except AttributeError:
-                    warnings.warn(
-                        "There is a version discrepancy between the current "
-                        f"environment and the dependency `{requirement}`. \n"
-                        f"`requirements_txt_file` specifies `{requirement}`, but the current "
-                        f"environment contains an incompatible version installed. \n"
-                        "There might be unexpected results once the model is in the platform. "
-                        "Use at your own discretion.",
-                        category=Warning,
-                    )
-                    return None
-            except pkg_resources.DistributionNotFound as err:
-                warnings.warn(
-                    f"The dependency `{requirement}` specified in the `requirements_txt_file` "
-                    "is not installed in the current environment. \n"
-                    "There might be unexpected results once the model is in the platform. "
-                    "Use at your own discretion.",
-                    category=Warning,
-                )
-                return None
-        return None
