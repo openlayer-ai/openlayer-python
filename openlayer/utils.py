@@ -99,18 +99,3 @@ def remove_python_version(dir: str):
         dir (str): the directory to remove the file from.
     """
     os.remove(f"{dir}/python_version")
-
-
-def copy_to_tmp_dir(dir: str) -> str:
-    """Copies the contents of the specified directory (`dir`) to a temporary directory.
-
-    Args:
-        dir (str): the directory to copy the contents from.
-
-    Returns:
-        str: the path to the temporary directory.
-    """
-    tmp_dir = tempfile.mkdtemp()
-    distutils.dir_util.copy_tree(dir, tmp_dir)
-
-    return tmp_dir

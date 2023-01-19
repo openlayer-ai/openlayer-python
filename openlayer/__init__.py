@@ -10,7 +10,7 @@ import pandas as pd
 import yaml
 
 from . import api, exceptions, schemas, utils, validators
-from .datasets import Dataset
+from .datasets import Dataset, DatasetType
 from .models import Model
 from .projects import Project
 from .tasks import TaskType
@@ -274,8 +274,8 @@ class OpenlayerClient(object):
 
         if failed_validations:
             raise exceptions.OpenlayerValidationError(
-                context="There are issues with the model package, as specified above. \n",
-                mitigation="Make sure to fix all of them before uploading the model.",
+                "There are issues with the model package. \n"
+                "Make sure to fix all of the issues listed above before the upload.",
             ) from None
 
         # ------ Start of temporary workaround for the arguments in the payload ------ #
@@ -307,6 +307,7 @@ class OpenlayerClient(object):
             utils.remove_python_version(model_package_dir)
 
             # Make sure the resulting model package is less than 2 GB
+            # TODO: this should depend on the subscription plan
             if float(os.path.getsize("model")) / 1e9 > 2:
                 raise exceptions.OpenlayerResourceError(
                     context="There's an issue with the specified `model_package_dir`. \n",
@@ -342,6 +343,7 @@ class OpenlayerClient(object):
         file_path: str,
         class_names: List[str],
         label_column_name: str,
+        dataset_type: DatasetType,
         feature_names: List[str] = [],
         text_column_name: Optional[str] = None,
         categorical_feature_names: List[str] = [],
@@ -349,6 +351,7 @@ class OpenlayerClient(object):
         language: str = "en",
         sep: str = ",",
         commit_message: Optional[str] = None,
+        dataset_config_file_path: Optional[str] = None,
         project_id: str = None,
     ) -> Dataset:
         r"""Uploads a dataset to the Openlayer platform (from a csv).
@@ -365,6 +368,9 @@ class OpenlayerClient(object):
 
             .. important::
                 The labels in this column must be zero-indexed integer values.
+        dataset_type : :obj:`DatasetType`
+            Type of dataset. E.g. :obj:`DatasetType.Validation` or
+             :obj:`DatasetType.Training`.
         feature_names : List[str], default []
             List of input feature names. Only applicable if your ``task_type`` is
             :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
@@ -488,154 +494,36 @@ class OpenlayerClient(object):
         ... )
         >>> dataset.to_dict()
         """
-        # ---------------------------- Schema validations ---------------------------- #
-        if task_type not in [
-            TaskType.TabularClassification,
-            TaskType.TextClassification,
-        ]:
+        # ---------------------------- Dataset validations --------------------------- #
+        # TODO: re-think the way the arguments are passed for the dataset upload
+        dataset_config = None
+        if dataset_config_file_path is None:
+            dataset_config = {
+                "file_path": file_path,
+                "class_names": class_names,
+                "label_column_name": label_column_name,
+                "dataset_type": dataset_type.value,
+                "feature_names": feature_names,
+                "text_column_name": text_column_name,
+                "categorical_feature_names": categorical_feature_names,
+                "language": language,
+                "sep": sep,
+            }
+
+        dataset_validator = validators.DatasetValidator(
+            dataset_config_file_path=dataset_config_file_path,
+            dataset_config=dataset_config,
+            dataset_file_path=file_path,
+        )
+        failed_validations = dataset_validator.validate()
+
+        if failed_validations:
             raise exceptions.OpenlayerValidationError(
-                "`task_type` must be either TaskType.TabularClassification or "
-                "TaskType.TextClassification. \n"
-            ) from None
-        dataset_schema = schemas.DatasetSchema()
-        try:
-            dataset_schema.load(
-                {
-                    "file_path": file_path,
-                    "commit_message": commit_message,
-                    "class_names": class_names,
-                    "label_column_name": label_column_name,
-                    "tag_column_name": tag_column_name,
-                    "language": language,
-                    "sep": sep,
-                    "feature_names": feature_names,
-                    "text_column_name": text_column_name,
-                    "categorical_feature_names": categorical_feature_names,
-                }
-            )
-        except ma.ValidationError as err:
-            raise exceptions.OpenlayerValidationError(
-                self._format_error_message(err)
+                "There are issues with the dataset and its config. \n"
+                "Make sure to fix all of the issues listed above before the upload.",
             ) from None
 
-        # --------------------------- Resource validations --------------------------- #
-        exp_file_path = os.path.expanduser(file_path)
         object_name = "original.csv"
-        if not os.path.isfile(exp_file_path):
-            raise exceptions.OpenlayerResourceError(
-                f"File at path `{file_path}` does not contain the dataset. \n"
-            ) from None
-
-        with open(exp_file_path, "rt") as f:
-            reader = csv.reader(f, delimiter=sep)
-            headers = next(reader)
-            row_count = sum(1 for _ in reader)
-
-        df = pd.read_csv(file_path, sep=sep)
-
-        # Checking for null values
-        if df.isnull().values.any():
-            raise exceptions.OpenlayerResourceError(
-                context="There's an issue with the specified dataset. \n",
-                message="The dataset contains null values, which is currently "
-                "not supported. \n",
-                mitigation="Make sure to upload a dataset without null values.",
-            ) from None
-
-        # Validating if the labels are zero indexed ints
-        unique_labels = set(df[label_column_name].unique())
-        zero_indexed_set = set(range(len(class_names)))
-        if unique_labels != zero_indexed_set:
-            raise exceptions.OpenlayerResourceError(
-                context=f"There's an issue with values in the column "
-                f"`{label_column_name}` of the dataset. \n",
-                message=f"The labels in `{label_column_name}` must be "
-                "zero-indexed integer values. \n",
-                mitigation="Make sure to upload a dataset with zero-indexed "
-                "integer labels that match the list in `class_names`. "
-                f"For example, the class `{class_names[0]}` should be "
-                "represented as a 0 in the dataset, the class "
-                f"`{class_names[1]}` should be a 1, and so on.",
-            ) from None
-
-        # Validating the column dtypes
-        supported_dtypes = {"float32", "float64", "int32", "int64", "object"}
-        error_msg = ""
-        for col in df:
-            dtype = df[col].dtype.name
-            if dtype not in supported_dtypes:
-                error_msg += f"- Column `{col}` is of dtype {dtype}. \n"
-        if error_msg:
-            raise exceptions.OpenlayerResourceError(
-                context="There is an issue with some of the columns dtypes.\n",
-                message=error_msg,
-                mitigation=f"The supported dtypes are {supported_dtypes}. "
-                "Make sure to cast the above columns to a supported dtype.",
-            ) from None
-        # ------------------ Resource-schema consistency validations ----------------- #
-        # Label column validations
-        try:
-            headers.index(label_column_name)
-        except ValueError:
-            raise exceptions.OpenlayerDatasetInconsistencyError(
-                f"`{label_column_name}` specified as `label_column_name` is not "
-                "in the dataset. \n"
-            ) from None
-
-        if len(unique_labels) > len(class_names):
-            raise exceptions.OpenlayerDatasetInconsistencyError(
-                f"There are {len(unique_labels)} classes represented in the dataset, "
-                f"but only {len(class_names)} items in your `class_names`. \n",
-                mitigation=f"Make sure that there are at most {len(class_names)} "
-                "classes in your dataset.",
-            ) from None
-
-        # Feature validations
-        try:
-            if text_column_name:
-                feature_names = [text_column_name]
-            for feature_name in feature_names:
-                headers.index(feature_name)
-        except ValueError:
-            if text_column_name:
-                raise exceptions.OpenlayerDatasetInconsistencyError(
-                    f"`{text_column_name}` specified as `text_column_name` is not in "
-                    "the dataset. \n"
-                ) from None
-            else:
-                features_not_in_dataset = [
-                    feature for feature in feature_names if feature not in headers
-                ]
-                raise exceptions.OpenlayerDatasetInconsistencyError(
-                    f"Features {features_not_in_dataset} specified in `feature_names` "
-                    "are not in the dataset. \n"
-                ) from None
-        # Tag column validation
-        try:
-            if tag_column_name:
-                headers.index(tag_column_name)
-        except ValueError:
-            raise exceptions.OpenlayerDatasetInconsistencyError(
-                f"`{tag_column_name}` specified as `tag_column_name` is not in "
-                "the dataset. \n"
-            ) from None
-
-        # ----------------------- Subscription plan validations ---------------------- #
-        if row_count > self.subscription_plan["datasetRowCount"]:
-            raise exceptions.OpenlayerSubscriptionPlanException(
-                f"The dataset your are trying to upload contains {row_count} rows, "
-                "which exceeds your plan's limit of "
-                f"{self.subscription_plan['datasetRowCount']}. \n"
-            ) from None
-        if task_type == TaskType.TextClassification:
-            max_text_size = df[text_column_name].str.len().max()
-            if max_text_size > 1000:
-                raise exceptions.OpenlayerSubscriptionPlanException(
-                    "The dataset you are trying to upload contains rows with "
-                    f"{max_text_size} characters, which exceeds the 1000 character "
-                    "limit."
-                ) from None
-
         endpoint = f"projects/{project_id}/datasets"
         payload = dict(
             commitMessage=commit_message,
@@ -666,6 +554,7 @@ class OpenlayerClient(object):
         df: pd.DataFrame,
         class_names: List[str],
         label_column_name: str,
+        dataset_type: DatasetType,
         feature_names: List[str] = [],
         text_column_name: Optional[str] = None,
         categorical_feature_names: List[str] = [],
@@ -673,6 +562,7 @@ class OpenlayerClient(object):
         tag_column_name: Optional[str] = None,
         language: str = "en",
         project_id: str = None,
+        dataset_config_file_path: Optional[str] = None,
     ) -> Dataset:
         r"""Uploads a dataset to the Openlayer platform (from a pandas DataFrame).
 
@@ -688,6 +578,9 @@ class OpenlayerClient(object):
 
             .. important::
                 The labels in this column must be zero-indexed integer values.
+        dataset_type : :obj:`DatasetType`
+             Type of dataset. E.g. :obj:`DatasetType.Validation` or
+             :obj:`DatasetType.Training`.
         feature_names : List[str], default []
             List of input feature names. Only applicable if your ``task_type`` is
             :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
@@ -820,6 +713,7 @@ class OpenlayerClient(object):
                 task_type=task_type,
                 class_names=class_names,
                 label_column_name=label_column_name,
+                dataset_type=dataset_type,
                 text_column_name=text_column_name,
                 commit_message=commit_message,
                 tag_column_name=tag_column_name,
@@ -827,6 +721,7 @@ class OpenlayerClient(object):
                 feature_names=feature_names,
                 categorical_feature_names=categorical_feature_names,
                 project_id=project_id,
+                dataset_config_file_path=dataset_config_file_path,
             )
 
     @staticmethod
