@@ -1,5 +1,6 @@
 import marshmallow as ma
 
+from .datasets import DatasetType
 from .models import ModelType
 
 
@@ -55,9 +56,11 @@ class DatasetSchema(ma.Schema):
             max=140,
         ),
     )
-    tag_column_name = ma.fields.List(
-        ma.fields.Str(),
-        allow_none=True,
+    dataset_type = ma.fields.Str(
+        validate=ma.validate.OneOf(
+            [dataset_type.value for dataset_type in DatasetType],
+            error=f"`dataset_type` must be one of the supported frameworks. Check out our API reference for a full list https://reference.openlayer.com/reference/api/openlayer.DatasetType.html.\n ",
+        ),
     )
     class_names = ma.fields.List(
         ma.fields.Str(),
@@ -73,7 +76,6 @@ class DatasetSchema(ma.Schema):
     sep = ma.fields.Str()
     feature_names = ma.fields.List(
         ma.fields.Str(),
-        allow_none=True,
     )
     text_column_name = ma.fields.Str(
         allow_none=True,

@@ -2,7 +2,7 @@ import importlib
 import os
 import traceback
 import warnings
-from typing import List
+from typing import Dict, List, Optional
 
 import marshmallow as ma
 import pandas as pd
@@ -10,6 +10,298 @@ import pkg_resources
 import yaml
 
 from . import schemas, utils
+
+
+class DatasetValidator:
+    """Validates the dataset and its arguments prior to the upload.
+
+    Either the `dataset_file_path` or the `dataset_df` must be provided (not both).
+    Either the `dataset_config_file_path` or the `dataset_config` must be provided (not both).
+
+    Args:
+        dataset_config_file_path (str): the path to the dataset_config.yaml file.
+        dataset_config (dict): the dataset_config as a dictionary.
+        dataset_file_path (str): the path to the dataset file.
+        dataset_df (pd.DataFrame): the dataset to validate.
+    """
+
+    def __init__(
+        self,
+        dataset_config_file_path: Optional[str] = None,
+        dataset_config: Optional[Dict] = None,
+        dataset_file_path: Optional[str] = None,
+        dataset_df: Optional[pd.DataFrame] = None,
+    ):
+        if dataset_df is not None and dataset_file_path:
+            raise ValueError(
+                "Both dataset_df and dataset_file_path are provided. Please provide only one of them."
+            )
+        elif dataset_df is None and not dataset_file_path:
+            raise ValueError(
+                "Neither dataset_df nor dataset_file_path is provided. Please provide one of them."
+            )
+
+        if dataset_config_file_path and dataset_config:
+            raise ValueError(
+                "Both dataset_config_file_path and dataset_config are provided. Please provide only one of them."
+            )
+        elif not dataset_config_file_path and not dataset_config:
+            raise ValueError(
+                "Neither dataset_config_file_path nor dataset_config is provided. Please provide one of them."
+            )
+
+        self.dataset_file_path = dataset_file_path
+        self.dataset_df = dataset_df
+        self.dataset_config_file_path = dataset_config_file_path
+        self.dataset_config = dataset_config
+        self.failed_validations = []
+
+    def _validate_dataset_config(self):
+        """Checks whether the dataset_config is valid.
+
+        Beware of the order of the validations, as it is important.
+        """
+        dataset_config_failed_validations = []
+
+        # File existence check
+        if self.dataset_config_file_path:
+            if not os.path.isfile(os.path.expanduser(self.dataset_config_file_path)):
+                dataset_config_failed_validations.append(
+                    f"File `{self.dataset_config_file_path}` does not exist."
+                )
+            else:
+                with open(self.dataset_config_file_path, "r") as stream:
+                    self.dataset_config = yaml.safe_load(stream)
+
+        if self.dataset_config:
+            dataset_schema = schemas.DatasetSchema()
+            try:
+                dataset_schema.load(
+                    {
+                        "file_path": self.dataset_config.get("file_path"),
+                        "class_names": self.dataset_config.get("class_names"),
+                        "label_column_name": self.dataset_config.get(
+                            "label_column_name"
+                        ),
+                        "dataset_type": self.dataset_config.get("dataset_type"),
+                        "language": self.dataset_config.get("language", "en"),
+                        "sep": self.dataset_config.get("sep", ","),
+                        "feature_names": self.dataset_config.get("feature_names", []),
+                        "text_column_name": self.dataset_config.get("text_column_name"),
+                        "categorical_feature_names": self.dataset_config.get(
+                            "categorical_feature_names", []
+                        ),
+                    }
+                )
+            except ma.ValidationError as err:
+                dataset_config_failed_validations.extend(
+                    _format_marshmallow_error_message(err)
+                )
+
+        # Print results of the validation
+        if dataset_config_failed_validations:
+            print("Dataset_config failed validations: \n")
+            _list_failed_validation_messages(dataset_config_failed_validations)
+
+        # Add the `dataset_config.yaml` failed validations to the list of all failed validations
+        self.failed_validations.extend(dataset_config_failed_validations)
+
+    def _validate_dataset_file(self):
+        """Checks whether the dataset file exists and is valid.
+
+        If it is valid, it loads the dataset file into the `self.dataset_df` attribute.
+
+        Beware of the order of the validations, as it is important.
+        """
+        dataset_file_failed_validations = []
+
+        # File existence check
+        if not os.path.isfile(os.path.expanduser(self.dataset_file_path)):
+            dataset_file_failed_validations.append(
+                f"File `{self.dataset_file_path}` does not exist."
+            )
+        else:
+            # File format (csv) check by loading it as a pandas df
+            try:
+                self.dataset_df = pd.read_csv(self.dataset_file_path)
+            except Exception as err:
+                dataset_file_failed_validations.append(
+                    f"File `{self.dataset_file_path}` is not a valid .csv file."
+                )
+
+        # Print results of the validation
+        if dataset_file_failed_validations:
+            print("Dataset file failed validations: \n")
+            _list_failed_validation_messages(dataset_file_failed_validations)
+
+        # Add the dataset file failed validations to the list of all failed validations
+        self.failed_validations.extend(dataset_file_failed_validations)
+
+    def _validate_dataset_and_config_consistency(self):
+        """Checks whether the dataset and its config are consistent.
+
+        Beware of the order of the validations, as it is important.
+        """
+        dataset_and_config_consistency_failed_validations = []
+
+        if self.dataset_config and self.dataset_df is not None:
+            # Extract vars
+            dataset_df = self.dataset_df
+            class_names = self.dataset_config.get("class_names")
+            label_column_name = self.dataset_config.get("label_column_name")
+            feature_names = self.dataset_config.get("feature_names")
+            text_column_name = self.dataset_config.get("text_column_name")
+
+            if self.contains_null_values(dataset_df):
+                dataset_and_config_consistency_failed_validations.append(
+                    "The dataset contains null values, which are currently not supported. "
+                    "Please provide a dataset without null values."
+                )
+
+            if self.contains_unsupported_dtypes(dataset_df):
+                dataset_and_config_consistency_failed_validations.append(
+                    "The dataset contains unsupported dtypes. The supported dtypes are "
+                    "'float32', 'float64', 'int32', 'int64', 'object'. Please cast the columns "
+                    "in your dataset to conform to these dtypes."
+                )
+
+            if label_column_name:
+                if self.column_not_in_dataset_df(dataset_df, label_column_name):
+                    dataset_and_config_consistency_failed_validations.append(
+                        f"The label column `{label_column_name}` specified as `label_column_name` "
+                        "is not in the dataset."
+                    )
+                else:
+                    if class_names:
+                        if self.labels_not_in_class_names(
+                            dataset_df, label_column_name, class_names
+                        ):
+                            dataset_and_config_consistency_failed_validations.append(
+                                f"There are more labels in the dataset's column `{label_column_name}` "
+                                "than specified in `class_names`. "
+                                "Please specify all possible labels in the `class_names` list."
+                            )
+                        if self.labels_not_zero_indexed(
+                            dataset_df, label_column_name, class_names
+                        ):
+                            dataset_and_config_consistency_failed_validations.append(
+                                "The labels in the dataset are not zero-indexed. "
+                                f"Make sure that the labels in the column `{label_column_name}` "
+                                "are zero-indexed integers that match the list in `class_names`."
+                            )
+
+            # NLP-specific validations
+            if text_column_name:
+                if self.column_not_in_dataset_df(dataset_df, text_column_name):
+                    dataset_and_config_consistency_failed_validations.append(
+                        f"The text column `{text_column_name}` specified as `text_column_name` "
+                        "is not in the dataset."
+                    )
+                elif self.exceeds_character_limit(dataset_df, text_column_name):
+                    dataset_and_config_consistency_failed_validations.append(
+                        f"The column `{text_column_name}` of the dataset contains rows that "
+                        "exceed the 1000 character limit."
+                    )
+
+            # Tabular-specific validations
+            if feature_names:
+                if self.features_not_in_dataset_df(dataset_df, feature_names):
+                    dataset_and_config_consistency_failed_validations.append(
+                        f"There are features specified in `feature_names` which are "
+                        "not in the dataset."
+                    )
+
+        # Print results of the validation
+        if dataset_and_config_consistency_failed_validations:
+            print("Inconsistencies between the dataset config and the dataset: \n")
+            _list_failed_validation_messages(
+                dataset_and_config_consistency_failed_validations
+            )
+
+        # Add the consistency failed validations to the list of all failed validations
+        self.failed_validations.extend(
+            dataset_and_config_consistency_failed_validations
+        )
+
+    @staticmethod
+    def contains_null_values(dataset_df: pd.DataFrame) -> bool:
+        """Checks whether the dataset contains null values."""
+        return dataset_df.isnull().values.any()
+
+    @staticmethod
+    def labels_not_zero_indexed(
+        dataset_df: pd.DataFrame, label_column_name: str, class_names: List[str]
+    ) -> bool:
+        """Checks whether the labels are zero-indexed."""
+        unique_labels = set(dataset_df[label_column_name].unique())
+        zero_indexed_set = set(range(len(class_names)))
+        if unique_labels != zero_indexed_set:
+            return True
+        return False
+
+    @staticmethod
+    def contains_unsupported_dtypes(dataset_df: pd.DataFrame) -> bool:
+        """Checks whether the dataset contains unsupported dtypes."""
+        supported_dtypes = {"float32", "float64", "int32", "int64", "object"}
+        dataset_df_dtypes = set([dtype.name for dtype in dataset_df.dtypes])
+        unsupported_dtypes = dataset_df_dtypes - supported_dtypes
+        if unsupported_dtypes:
+            return True
+        return False
+
+    @staticmethod
+    def column_not_in_dataset_df(dataset_df: pd.DataFrame, column_name: str) -> bool:
+        """Checks whether the label column is in the dataset."""
+        if column_name not in dataset_df.columns:
+            return True
+        return False
+
+    @staticmethod
+    def features_not_in_dataset_df(
+        dataset_df: pd.DataFrame, feature_names: List[str]
+    ) -> bool:
+        """Checks whether the features are in the dataset."""
+        if set(feature_names) - set(dataset_df.columns):
+            return True
+        return False
+
+    @staticmethod
+    def exceeds_character_limit(
+        dataset_df: pd.DataFrame, text_column_name: str
+    ) -> bool:
+        """Checks whether the text column exceeds the character limit."""
+        if dataset_df[text_column_name].str.len().max() > 1000:
+            return True
+        return False
+
+    @staticmethod
+    def labels_not_in_class_names(
+        dataset_df: pd.DataFrame, label_column_name: str, class_names: List[str]
+    ) -> bool:
+        """Checks whether there are labels in the dataset which are not
+        in the `class_names`."""
+        num_classes = len(dataset_df[label_column_name].unique())
+        if num_classes > len(class_names):
+            return True
+        return False
+
+    def validate(self):
+        """Runs all dataset validations.
+
+        At each stage, prints all the failed validations.
+
+        Rerturns:
+            List[str]: a list of all failed validations.
+        """
+        self._validate_dataset_config()
+        if self.dataset_file_path:
+            self._validate_dataset_file()
+        self._validate_dataset_and_config_consistency()
+
+        if not self.failed_validations:
+            print("All validations passed!")
+
+        return self.failed_validations
 
 
 class ModelValidator:
@@ -224,6 +516,8 @@ class ModelValidator:
         Checks for the existence of the file, the required functions, and
         runs test data through the model to ensure there are no implementation
         errors.
+
+        Beware of the order of the validations, as it is important.
         """
         prediction_interface_failed_validations = []
 

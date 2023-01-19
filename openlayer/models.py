@@ -10,7 +10,7 @@ class ModelType(Enum):
     """
 
     #: For custom built models.
-    custom = "Custom"
+    custom = "custom"
     #: For models built with `fastText <https://fasttext.cc/>`_.
     fasttext = "fasttext"
     #: For models built with `Keras <https://keras.io/>`_.

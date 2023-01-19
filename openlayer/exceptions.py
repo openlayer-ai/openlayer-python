@@ -20,43 +20,15 @@ class OpenlayerException(Exception):
             super().__init__(f"<Response> {message}")
 
 
-class OpenlayerResourceError(OpenlayerException):
-    def __init__(self, message, context=None, mitigation=None):
-        if not context:
-            context = "There is a problem with the specified file path. \n"
-        if not mitigation:
-            mitigation = (
-                "Make sure that the specified filepath contains the expected resource."
-            )
-        super().__init__(context + message + mitigation)
-
-
 class OpenlayerValidationError(OpenlayerException):
-    def __init__(self, message, context=None, mitigation=None):
-        if not context:
-            context = "There are issues with some of the arguments: \n"
-        if not mitigation:
-            mitigation = (
-                "Make sure to respect the datatypes and constraints specified above."
-            )
-        super().__init__(context + message + mitigation)
-
-
-class OpenlayerDatasetInconsistencyError(OpenlayerException):
-    def __init__(self, message, context=None, mitigation=None):
-        if not context:
-            context = "There are inconsistencies between the dataset and some of the arguments: \n"
-        if not mitigation:
-            mitigation = "Make sure that the value specified in the argument is a column header in the dataframe or csv being uploaded."
-        super().__init__(context + message + mitigation)
+    def __init__(self, message):
+        super().__init__(message)
 
 
 class OpenlayerSubscriptionPlanException(OpenlayerException):
     def __init__(self, message, context=None, mitigation=None):
-        if not context:
-            context = "You have reached your subscription plan's limits. \n"
-        if not mitigation:
-            mitigation = "To upgrade your plan, visit https://openlayer.com"
+        context = context or "You have reached your subscription plan's limits. \n"
+        mitigation = mitigation or "To upgrade your plan, visit https://openlayer.com"
         super().__init__(context + message + mitigation)
 
 
