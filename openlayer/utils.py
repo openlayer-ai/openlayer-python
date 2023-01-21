@@ -1,8 +1,5 @@
-import distutils
 import os
-import shutil
 import sys
-import tempfile
 import warnings
 
 
@@ -25,50 +22,6 @@ class HidePrints:
         sys.stdout = self._original_stdout
         sys._jupyter_stdout = sys.stdout
         warnings.filterwarnings("default")
-
-
-class TempDirectory(object):
-    """Helper class that creates and cleans up a temporary directory.
-
-    >>> with TempDirectory() as tempdir:
-    >>>     print(os.path.isdir(tempdir))
-    """
-
-    def __init__(
-        self,
-        cleanup=True,
-        prefix="temp",
-    ):
-
-        self._cleanup = cleanup
-        self._prefix = prefix
-        self.path = None
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__} {self.path}>"
-
-    def __enter__(self):
-        self.create()
-        return self.path
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self._cleanup:
-            self.cleanup()
-
-    def create(self):
-        if self.path is not None:
-            return self.path
-
-        tempdir = tempfile.mkdtemp(prefix=f"openlayer-{self._prefix}-")
-        self.path = os.path.realpath(tempdir)
-
-    def cleanup(self, ignore_errors=False):
-        """
-        Remove the temporary directory created
-        """
-        if self.path is not None and os.path.exists(self.path):
-            shutil.rmtree(self.path, ignore_errors=ignore_errors)
-        self.path = None
 
 
 # ----------------------------- Helper functions ----------------------------- #

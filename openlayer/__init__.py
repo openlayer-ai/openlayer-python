@@ -1,20 +1,21 @@
-import csv
 import os
+import shutil
 import tarfile
 import tempfile
+import time
 import uuid
 from typing import List, Optional
 
-import marshmallow as ma
 import pandas as pd
 import yaml
 
-from . import api, exceptions, schemas, utils, validators
-from .datasets import Dataset, DatasetType
-from .models import Model
+from . import api, exceptions, utils, validators
+from .datasets import DatasetType
 from .projects import Project
 from .tasks import TaskType
 from .version import __version__  # noqa: F401
+
+OPENLAYER_DIR = os.path.join(os.path.expanduser("~"), ".openlayer")
 
 
 class OpenlayerClient(object):
@@ -36,6 +37,9 @@ class OpenlayerClient(object):
     def __init__(self, api_key: str = None):
         self.api = api.Api(api_key)
         self.subscription_plan = self.api.get_request("me/subscription-plan")
+
+        if not os.path.exists(OPENLAYER_DIR):
+            os.makedirs(OPENLAYER_DIR)
 
     def create_project(
         self, name: str, task_type: TaskType, description: Optional[str] = None
@@ -81,13 +85,19 @@ class OpenlayerClient(object):
         datasets to the platform. Refer to :obj:`add_model` and obj:`add_dataset` or
         obj:`add_dataframe` for detailed examples.
         """
-        # ----------------------------- Schema validation ---------------------------- #
-        project_schema = schemas.ProjectSchema()
-        try:
-            project_schema.load({"name": name, "description": description})
-        except ma.ValidationError as err:
+        # Validate project
+        project_config = {
+            "name": name,
+            "description": description,
+            "task_type": task_type,
+        }
+        project_validator = validators.ProjectValidator(project_config=project_config)
+        failed_validations = project_validator.validate()
+
+        if failed_validations:
             raise exceptions.OpenlayerValidationError(
-                self._format_error_message(err)
+                "There are issues with the project. \n"
+                "Make sure to fix all of the issues listed above before creating it.",
             ) from None
 
         endpoint = "projects"
@@ -95,6 +105,11 @@ class OpenlayerClient(object):
         project_data = self.api.post_request(endpoint, body=payload)
 
         project = Project(project_data, self.api.upload, self.subscription_plan, self)
+
+        # Here, the project is being first created, so no need to check if the staging area exists
+        project_dir = os.path.join(OPENLAYER_DIR, f"{project.id}/staging")
+        os.makedirs(project_dir)
+
         print(f"Created your project. Navigate to {project.links['app']} to see it.")
         return project
 
@@ -133,6 +148,12 @@ class OpenlayerClient(object):
         endpoint = f"me/projects/{name}"
         project_data = self.api.get_request(endpoint)
         project = Project(project_data, self.api.upload, self.subscription_plan, self)
+
+        # Create the project staging area, if it doesn't yet exist
+        project_dir = os.path.join(OPENLAYER_DIR, f"{project.id}/staging")
+        if not os.path.exists(project_dir):
+            os.makedirs(project_dir)
+
         print(f"Found your project. Navigate to {project.links['app']} to see it.")
         return project
 
@@ -195,7 +216,7 @@ class OpenlayerClient(object):
         sample_data: pd.DataFrame = None,
         project_id: str = None,
         **kwargs,
-    ) -> Model:
+    ):
         """Uploads a model to the Openlayer platform.
 
         Parameters
@@ -206,11 +227,6 @@ class OpenlayerClient(object):
         sample_data : pd.DataFrame
             Sample data that can be run through the model. This data is used to ensure
             the model's prediction interface is compatible with the Openlayer platform.
-
-        Returns
-        -------
-        :obj:`Model`
-            An object containing information about your uploaded model.
 
         Examples
         --------
@@ -264,8 +280,7 @@ class OpenlayerClient(object):
         ..                             ...        ...
 
         """
-
-        # ------------------------- Model package validations ------------------------ #
+        # Validate model package
         model_package_validator = validators.ModelValidator(
             model_package_dir=model_package_dir,
             sample_data=sample_data,
@@ -278,64 +293,9 @@ class OpenlayerClient(object):
                 "Make sure to fix all of the issues listed above before the upload.",
             ) from None
 
-        # ------ Start of temporary workaround for the arguments in the payload ------ #
-        model_config_file = os.path.join(model_package_dir, "model_config.yaml")
-
-        with open(model_config_file, "r") as config_file:
-            model_config = yaml.safe_load(config_file)
-
-        name = model_config.get("name")
-        model_type = model_config.get("model_type")
-        class_names = model_config.get("class_names")
-        feature_names = model_config.get("feature_names") or model_config.get(
-            "text_column_name"
+        self._stage_resource(
+            resource_name="model", resource_dir=model_package_dir, project_id=project_id
         )
-        categorical_feature_names = model_config.get("categorical_feature_names")
-        # ------- End of temporary workaround for the arguments in the payload ------- #
-
-        # Prepare tar for upload
-        with utils.TempDirectory() as tarfile_dir:
-            tarfile_path = f"{tarfile_dir}/model"
-
-            # Augment model package with the current env's Python version
-            utils.write_python_version(model_package_dir)
-
-            with tarfile.open(tarfile_path, mode="w:gz") as tar:
-                tar.add(model_package_dir, arcname="model_package")
-
-            # Remove the Python version file after tarring
-            utils.remove_python_version(model_package_dir)
-
-            # Make sure the resulting model package is less than 2 GB
-            # TODO: this should depend on the subscription plan
-            if float(os.path.getsize("model")) / 1e9 > 2:
-                raise exceptions.OpenlayerResourceError(
-                    context="There's an issue with the specified `model_package_dir`. \n",
-                    message=f"The model package is too large. \n",
-                    mitigation="Make sure to upload a model package with size less than 2 GB.",
-                ) from None
-
-            endpoint = f"projects/{project_id}/ml-models"
-
-            # TODO: Re-define arguments in the payload
-            payload = dict(
-                name=name,
-                commitMessage="Initial commit",
-                architectureType=model_type,
-                taskType=task_type.value,
-                classNames=class_names,
-                featureNames=feature_names,
-                categoricalFeatureNames=categorical_feature_names,
-            )
-
-            modeldata = self.api.upload(
-                endpoint=endpoint,
-                file_path=tarfile_path,
-                object_name="tarfile",
-                body=payload,
-            )
-
-        return Model(modeldata)
 
     def add_dataset(
         self,
@@ -347,13 +307,11 @@ class OpenlayerClient(object):
         feature_names: List[str] = [],
         text_column_name: Optional[str] = None,
         categorical_feature_names: List[str] = [],
-        tag_column_name: Optional[str] = None,
         language: str = "en",
         sep: str = ",",
-        commit_message: Optional[str] = None,
         dataset_config_file_path: Optional[str] = None,
         project_id: str = None,
-    ) -> Dataset:
+    ):
         r"""Uploads a dataset to the Openlayer platform (from a csv).
 
         Parameters
@@ -381,29 +339,10 @@ class OpenlayerClient(object):
             A list containing the names of all categorical features in the dataset.
             E.g. `["Gender", "Geography"]`. Only applicable if your ``task_type`` is
             :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
-        tag_column_name : str, default None
-            Column header in the csv containing tags you want pre-populated in Openlayer.
-
-            .. important::
-                Each cell in this column must be either empty or contain a list of
-                strings.
-
-                .. csv-table::
-                    :header: ..., Tags
-
-                    ..., "['sample']"
-                    ..., "['tag_one', 'tag_two']"
         language : str, default 'en'
             The language of the dataset in ISO 639-1 (alpha-2 code) format.
         sep : str, default ','
             Delimiter to use. E.g. `'\\t'`.
-        commit_message : str, default None
-            Commit message for this version.
-
-        Returns
-        -------
-        :obj:`Dataset`
-            An object containing information about your uploaded dataset.
 
         Notes
         -----
@@ -494,7 +433,7 @@ class OpenlayerClient(object):
         ... )
         >>> dataset.to_dict()
         """
-        # ---------------------------- Dataset validations --------------------------- #
+        # Validate dataset
         # TODO: re-think the way the arguments are passed for the dataset upload
         dataset_config = None
         if dataset_config_file_path is None:
@@ -510,9 +449,15 @@ class OpenlayerClient(object):
                 "sep": sep,
             }
 
+            # Save dataset_config to a temporary file
+            dataset_config_file_path = os.path.join(
+                tempfile.gettempdir(), "dataset_config.yaml"
+            )
+            with open(dataset_config_file_path, "w") as dataset_config_file:
+                yaml.dump(dataset_config, dataset_config_file, default_flow_style=False)
+
         dataset_validator = validators.DatasetValidator(
             dataset_config_file_path=dataset_config_file_path,
-            dataset_config=dataset_config,
             dataset_file_path=file_path,
         )
         failed_validations = dataset_validator.validate()
@@ -523,30 +468,16 @@ class OpenlayerClient(object):
                 "Make sure to fix all of the issues listed above before the upload.",
             ) from None
 
-        object_name = "original.csv"
-        endpoint = f"projects/{project_id}/datasets"
-        payload = dict(
-            commitMessage=commit_message,
-            taskType=task_type.value,
-            classNames=class_names,
-            labelColumnName=label_column_name,
-            tagColumnName=tag_column_name,
-            language=language,
-            sep=sep,
-            featureNames=feature_names,
-            categoricalFeatureNames=categorical_feature_names,
-        )
-        print(
-            f"Adding your dataset to Openlayer! Check out the project page to have a look."
-        )
-        return Dataset(
-            self.api.upload(
-                endpoint=endpoint,
-                file_path=file_path,
-                object_name=object_name,
-                body=payload,
+        # Copy relevant resources to temp directory
+        with tempfile.TemporaryDirectory() as temp_dir:
+            shutil.copy(file_path, temp_dir)
+            shutil.copy(dataset_config_file_path, temp_dir)
+
+            self._stage_resource(
+                resource_name=dataset_type.value,
+                resource_dir=temp_dir,
+                project_id=project_id,
             )
-        )
 
     def add_dataframe(
         self,
@@ -558,12 +489,10 @@ class OpenlayerClient(object):
         feature_names: List[str] = [],
         text_column_name: Optional[str] = None,
         categorical_feature_names: List[str] = [],
-        commit_message: Optional[str] = None,
-        tag_column_name: Optional[str] = None,
         language: str = "en",
         project_id: str = None,
         dataset_config_file_path: Optional[str] = None,
-    ) -> Dataset:
+    ):
         r"""Uploads a dataset to the Openlayer platform (from a pandas DataFrame).
 
         Parameters
@@ -593,25 +522,8 @@ class OpenlayerClient(object):
             :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
         commit_message : str, default None
             Commit message for this version.
-        tag_column_name : str, default None
-            Column header in the dataframe containing tags you want pre-populated in Openlayer.
-
-            .. important::
-                Each cell in this column must be either empty or contain a list of
-                strings.
-
-                .. csv-table::
-                    :header: ..., Tags
-
-                    ..., "['sample']"
-                    ..., "['tag_one', 'tag_two']"
         language : str, default 'en'
             The language of the dataset in ISO 639-1 (alpha-2 code) format.
-
-        Returns
-        -------
-        :obj:`Dataset`
-            An object containing information about your uploaded dataset.
 
         Notes
         -----
@@ -715,8 +627,6 @@ class OpenlayerClient(object):
                 label_column_name=label_column_name,
                 dataset_type=dataset_type,
                 text_column_name=text_column_name,
-                commit_message=commit_message,
-                tag_column_name=tag_column_name,
                 language=language,
                 feature_names=feature_names,
                 categorical_feature_names=categorical_feature_names,
@@ -724,18 +634,208 @@ class OpenlayerClient(object):
                 dataset_config_file_path=dataset_config_file_path,
             )
 
-    @staticmethod
-    def _format_error_message(err) -> str:
-        """Formats the error messages from Marshmallow"""
-        error_msg = ""
-        for input, msg in err.messages.items():
-            if input == "_schema":
-                temp_msg = "\n- ".join(msg)
-                error_msg += f"- {temp_msg} \n"
-            elif not isinstance(msg, dict):
-                temp_msg = msg[0].lower()
-                error_msg += f"- `{input}` {temp_msg} \n"
+    def commit(self, message: str, project_id: int):
+        """Adds a commit message to the staged resources that will be
+        pushed to the platform.
+
+        Parameters
+        ----------
+        message : str
+            The commit message, between 1 and 140 characters.
+
+        Notes
+        -----
+        - To use this method, you must first add a model and/or dataset to the staging area using
+        one of the `add` methods.
+        """
+        # Validate commit
+        commit_validator = validators.CommitValidator(commit_message=message)
+        failed_validations = commit_validator.validate()
+
+        if failed_validations:
+            raise exceptions.OpenlayerValidationError(
+                "There are issues with the commit message specified. \n"
+                "Make sure to fix all of the issues listed above before committing.",
+            ) from None
+
+        project_dir = f"{OPENLAYER_DIR}/{project_id}/staging"
+
+        if not os.listdir(project_dir):
+            print(
+                "There is nothing staged to commit. Please add model and/or datasets first before committing."
+            )
+            return
+
+        if os.path.exists(f"{project_dir}/commit.yaml"):
+            print("Found a previous commit that was not pushed to the platform.")
+            with open(f"{project_dir}/commit.yaml", "r") as commit_file:
+                commit = yaml.safe_load(commit_file)
+                print(
+                    f"\t - Commit message: `{commit['message']}` \n \t - Date: {commit['date']}"
+                )
+            overwrite = input(
+                "Do you want to overwrite it with the current message? [y/n]: "
+            )
+            if overwrite.lower() == "y":
+                print("Overwriting commit message...")
+                os.remove(f"{project_dir}/commit.yaml")
+
             else:
-                temp_msg = list(msg.values())[0][0].lower()
-                error_msg += f"- `{input}` contains items that are {temp_msg} \n"
-        return error_msg
+                print("Keeping the existing commit message.")
+                return
+
+        commit = dict(message=message, date=time.ctime())
+        with open(f"{project_dir}/commit.yaml", "w") as commit_file:
+            yaml.dump(commit, commit_file)
+
+        print("Committed!")
+
+    def push(self, project_id: int):
+        """Pushes the commited resources to the platform.
+
+        Notes
+        -----
+        - To use this method, you must first add a model and/or dataset to the staging area using
+        one of the `add` methods, and then add a commit message with the `commit` method.
+        """
+        project_dir = f"{OPENLAYER_DIR}/{project_id}/staging"
+
+        if not os.listdir(project_dir):
+            print(
+                "The staging area is clean and there is nothing committed to push. "
+                "Please add model and/or datasets first, and then commit before pushing."
+            )
+            return
+
+        if not os.path.exists(f"{project_dir}/commit.yaml"):
+            print(
+                "There are resources staged, but you haven't committed them yet. "
+                "Please commit before pushing"
+            )
+            return
+
+        with open(f"{project_dir}/commit.yaml", "r") as commit_file:
+            commit = yaml.safe_load(commit_file)
+
+        print(
+            "Pushing changes to the platform with the commit message: \n"
+            f"\t - Message: {commit['message']} \n"
+            f"\t - Date: {commit['date']}"
+        )
+
+        # Tar the project's staging area
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tar_file_path = os.path.join(tmp_dir, "staging")
+            with tarfile.open(tar_file_path, mode="w:gz") as tar:
+                tar.add(project_dir, arcname=os.path.basename(project_dir))
+
+            # TODO: Upload the tar file
+
+        # Clean up the staging area
+        shutil.rmtree(project_dir)
+        os.makedirs(project_dir, exist_ok=True)
+
+        print("Pushed!")
+
+    def status(self, project_id: int):
+        """Shows the state of the staging area, with the resources staged, committed,
+        ready to push.
+        """
+        project_dir = f"{OPENLAYER_DIR}/{project_id}/staging"
+
+        if not os.listdir(project_dir):
+            print(
+                "The staging area is clean. You can stage models and/or datasets by"
+                " using the corresponding `add` methods."
+            )
+            return
+
+        if not os.path.exists(f"{project_dir}/commit.yaml"):
+            print("The following resources are staged, waiting to be committed:")
+            for file in os.listdir(project_dir):
+                print(f"\t - {file}")
+            print("Use the `commit` method to add a commit message to your changes.")
+            return
+
+        with open(f"{project_dir}/commit.yaml", "r") as commit_file:
+            commit = yaml.safe_load(commit_file)
+        print(f"The following resources are committed, waiting to be pushed:")
+        for file in os.listdir(project_dir):
+            if file != "commit.yaml":
+                print(f"\t - {file}")
+        print(f"Commit message from {commit['date']}:")
+        print(f"\t {commit['message']}")
+        print("Use the `push` method to push your changes to the platform.")
+
+    def restore(self, resource_name: str, project_id: int):
+        """Removes the resource specified by `resource_name` from the staging area.
+
+        Parameters
+        ----------
+        resource_name : str
+            The name of the resource to restore. Can be one of "model", "training", or "validation".
+
+            .. important::
+                To see the names of the resources staged, use the `status` method.
+        """
+        project_dir = f"{OPENLAYER_DIR}/{project_id}/staging"
+
+        if not os.path.exists(f"{project_dir}/{resource_name}"):
+            print(
+                f"There's no resource named `{resource_name}` in the staging area. "
+                "Make sure that you are trying to restore a staged resource. "
+                "To see the names of the resources staged, use the `status` method."
+            )
+            return
+
+        shutil.rmtree(f"{project_dir}/{resource_name}")
+        print(f"Removed resource `{resource_name}` from the staging area.")
+
+        # Remove commit if there are no more resources staged
+        if len(os.listdir(project_dir)) == 1 and os.path.exists(
+            f"{project_dir}/commit.yaml"
+        ):
+            os.remove(f"{project_dir}/commit.yaml")
+
+    def _stage_resource(self, resource_name: str, resource_dir: str, project_id: int):
+        """Adds the resource specified by `resource_name` to the project's staging directory.
+
+        Parameters
+        ----------
+        resource_name : str
+            The name of the resource to stage. Can be one of "model", "training", or "validation".
+        resource_dir : str
+            The path from which to copy the resource.
+        project_id : int
+            The id of the project to which the resource should be added.
+        """
+        if resource_name not in ["model", "training", "validation"]:
+            raise ValueError(
+                f"Resource name must be one of 'model', 'training', or 'validation',"
+                f" but got {resource_name}."
+            )
+
+        staging_dir = f"{OPENLAYER_DIR}/{project_id}/staging/{resource_name}"
+
+        # Append ' dataset' to the end of the resource name for the prints
+        if resource_name in ["training", "validation"]:
+            resource_name += " dataset"
+
+        if os.path.exists(staging_dir):
+            print(f"Found an existing {resource_name} staged.")
+            overwrite = input("Do you want to overwrite it? [y/n] ")
+
+            if overwrite.lower() == "y":
+                print(f"Overwriting previously staged {resource_name}...")
+                shutil.rmtree(staging_dir)
+            else:
+                print(f"Keeping the existing {resource_name} staged.")
+                return
+
+        shutil.copytree(resource_dir, staging_dir)
+
+        # Augment with Python version information for models
+        if resource_name == "model":
+            utils.write_python_version(staging_dir)
+
+        print(f"Staged the {resource_name}!")

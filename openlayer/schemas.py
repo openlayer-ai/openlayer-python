@@ -2,49 +2,16 @@ import marshmallow as ma
 
 from .datasets import DatasetType
 from .models import ModelType
+from .tasks import TaskType
 
 
-class ProjectSchema(ma.Schema):
-    name = ma.fields.Str(
+class CommitSchema(ma.Schema):
+    commit_message = ma.fields.Str(
         required=True,
-        validate=ma.validate.Length(
-            min=1,
-            max=64,
-        ),
-    )
-    description = ma.fields.Str(
         validate=ma.validate.Length(
             min=1,
             max=140,
         ),
-        allow_none=True,
-    )
-
-
-class ModelSchema(ma.Schema):
-    name = ma.fields.Str(
-        required=True,
-        validate=ma.validate.Length(
-            min=1,
-            max=64,
-        ),
-    )
-    model_type = ma.fields.Str(
-        validate=ma.validate.OneOf(
-            [model_framework.value for model_framework in ModelType],
-            error=f"`model_type` must be one of the supported frameworks. Check out our API reference for a full list https://reference.openlayer.com/reference/api/openlayer.ModelType.html.\n ",
-        ),
-        allow_none=True,
-    )
-    class_names = ma.fields.List(
-        ma.fields.Str(),
-    )
-    feature_names = ma.fields.List(
-        ma.fields.Str(),
-        allow_none=True,
-    )
-    categorical_feature_names = ma.fields.List(
-        ma.fields.Str(),
     )
 
 
@@ -91,3 +58,52 @@ class DatasetSchema(ma.Schema):
             raise ma.ValidationError(
                 f"`label_column_name` `{data['label_column_name']}` must not be in `feature_names`."
             )
+
+
+class ModelSchema(ma.Schema):
+    name = ma.fields.Str(
+        required=True,
+        validate=ma.validate.Length(
+            min=1,
+            max=64,
+        ),
+    )
+    model_type = ma.fields.Str(
+        validate=ma.validate.OneOf(
+            [model_framework.value for model_framework in ModelType],
+            error=f"`model_type` must be one of the supported frameworks. Check out our API reference for a full list https://reference.openlayer.com/reference/api/openlayer.ModelType.html.\n ",
+        ),
+        allow_none=True,
+    )
+    class_names = ma.fields.List(
+        ma.fields.Str(),
+    )
+    feature_names = ma.fields.List(
+        ma.fields.Str(),
+        allow_none=True,
+    )
+    categorical_feature_names = ma.fields.List(
+        ma.fields.Str(),
+    )
+
+
+class ProjectSchema(ma.Schema):
+    name = ma.fields.Str(
+        required=True,
+        validate=ma.validate.Length(
+            min=1,
+            max=64,
+        ),
+    )
+    description = ma.fields.Str(
+        validate=ma.validate.Length(
+            min=1,
+            max=140,
+        ),
+    )
+    task_type = ma.fields.Str(
+        alidate=ma.validate.OneOf(
+            [task_type.value for task_type in TaskType],
+            error=f"`task_type` must be one of the supported tasks. Check out our API reference for a full list https://reference.openlayer.com/reference/api/openlayer.TaskType.html.\n ",
+        ),
+    )
