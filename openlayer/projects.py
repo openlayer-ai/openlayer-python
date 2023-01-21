@@ -1,8 +1,5 @@
 from openlayer import tasks
 
-from .datasets import Dataset
-from .models import Model
-
 
 class Project:
     """An object containing information about a project on the Openlayer platform."""
@@ -41,7 +38,7 @@ class Project:
         self,
         *args,
         **kwargs,
-    ) -> Model:
+    ):
         return self.client.add_model(
             *args, project_id=self.id, task_type=tasks.TaskType(self.taskType), **kwargs
         )
@@ -50,12 +47,24 @@ class Project:
         self,
         *args,
         **kwargs,
-    ) -> Dataset:
+    ):
         return self.client.add_dataset(
             *args, project_id=self.id, task_type=tasks.TaskType(self.taskType), **kwargs
         )
 
-    def add_dataframe(self, *args, **kwargs) -> Dataset:
+    def add_dataframe(self, *args, **kwargs):
         return self.client.add_dataframe(
             *args, project_id=self.id, task_type=tasks.TaskType(self.taskType), **kwargs
         )
+
+    def commit(self, *args, **kwargs):
+        return self.client.commit(*args, project_id=self.id, **kwargs)
+
+    def push(self, *args, **kwargs):
+        return self.client.push(*args, project_id=self.id, **kwargs)
+
+    def status(self, *args, **kwargs):
+        return self.client.status(*args, project_id=self.id, **kwargs)
+
+    def restore(self, *args, **kwargs):
+        return self.client.restore(*args, project_id=self.id, **kwargs)

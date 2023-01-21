@@ -12,17 +12,74 @@ import yaml
 from . import schemas, utils
 
 
+class CommitValidator:
+    """Validates the commit prior to the upload.
+
+    Parameters
+    ----------
+    commit_message : str
+        The commit message.
+    """
+
+    def __init__(
+        self,
+        commit_message: str,
+    ):
+        self.commit_message = commit_message
+        self.failed_validations = []
+
+    def _validate_commit_message(self):
+        """Checks whether the commit message is valid."""
+        commit_message_failed_validations = []
+
+        commit_schema = schemas.CommitSchema()
+        try:
+            commit_schema.load({"commit_message": self.commit_message})
+        except ma.ValidationError as err:
+            commit_message_failed_validations.extend(
+                _format_marshmallow_error_message(err)
+            )
+
+        # Print results of the validation
+        if commit_message_failed_validations:
+            print("Commit failed validations: \n")
+            _list_failed_validation_messages(commit_message_failed_validations)
+
+        # Add the commit failed validations to the list of all failed validations
+        self.failed_validations.extend(commit_message_failed_validations)
+
+    def validate(self) -> List[str]:
+        """Validates the commit.
+
+        Returns
+        -------
+        List[str]
+            A list of failed validations.
+        """
+        self._validate_commit_message()
+
+        if not self.failed_validations:
+            print("All validations passed!")
+
+        return self.failed_validations
+
+
 class DatasetValidator:
     """Validates the dataset and its arguments prior to the upload.
 
     Either the `dataset_file_path` or the `dataset_df` must be provided (not both).
     Either the `dataset_config_file_path` or the `dataset_config` must be provided (not both).
 
-    Args:
-        dataset_config_file_path (str): the path to the dataset_config.yaml file.
-        dataset_config (dict): the dataset_config as a dictionary.
-        dataset_file_path (str): the path to the dataset file.
-        dataset_df (pd.DataFrame): the dataset to validate.
+    Parameters
+    ----------
+    dataset_config_file_path : str, optional
+        The path to the dataset_config.yaml file.
+    dataset_config : dict, optional
+        The dataset_config as a dictionary.
+    dataset_file_path : str, optional
+        The path to the dataset file.
+    dataset_df : pd.DataFrame, optional
+        The dataset to validate.
     """
 
     def __init__(
@@ -285,13 +342,15 @@ class DatasetValidator:
             return True
         return False
 
-    def validate(self):
+    def validate(self) -> List[str]:
         """Runs all dataset validations.
 
         At each stage, prints all the failed validations.
 
-        Rerturns:
-            List[str]: a list of all failed validations.
+        Returns
+        -------
+        List[str]
+            List of all failed validations.
         """
         self._validate_dataset_config()
         if self.dataset_file_path:
@@ -307,9 +366,12 @@ class DatasetValidator:
 class ModelValidator:
     """Validates the model package's structure and files prior to the upload.
 
-    Args:
-        model_package_dir (str): path to the model package directory.
-        sample_data (pd.DataFrame): sample data to be used for the model validation.
+    Parameters
+    ----------
+    model_package_dir : str
+        Path to the model package directory.
+    sample_data : pd.DataFrame
+        Sample data to be used for the model validation.
     """
 
     def __init__(
@@ -589,8 +651,10 @@ class ModelValidator:
 
         At each stage, prints all the failed validations.
 
-        Rerturns:
-            List[str]: a list of all failed validations.
+        Returns
+        -------
+        List[str]
+            A list of all failed validations.
         """
         self._validate_model_package_dir()
         self._validate_requirements()
@@ -603,16 +667,72 @@ class ModelValidator:
         return self.failed_validations
 
 
+class ProjectValidator:
+    """Validates the project.
+
+    Parameters
+    ----------
+    project_config : Dict[str, str]
+        The project configuration.
+    """
+
+    def __init__(
+        self,
+        project_config: Dict[str, str],
+    ):
+        self.project_config = project_config
+        self.failed_validations = []
+
+    def _validate_project_config(self):
+        """Checks if the project configuration is valid."""
+        project_config_failed_validations = []
+
+        project_schema = schemas.ProjectSchema()
+        try:
+            project_schema.load(
+                {
+                    "name": self.project_config.get("name"),
+                    "description": self.project_config.get("description"),
+                    "task_type": self.project_config.get("task_type").value,
+                }
+            )
+        except ma.ValidationError as err:
+            project_config_failed_validations.extend(
+                _format_marshmallow_error_message(err)
+            )
+
+        # Print results of the validation
+        if project_config_failed_validations:
+            print("Project config failed validations: \n")
+            _list_failed_validation_messages(project_config_failed_validations)
+
+        # Add the commit failed validations to the list of all failed validations
+        self.failed_validations.extend(project_config_failed_validations)
+
+    def validate(self):
+        """Validates the project."""
+        self._validate_project_config()
+
+        if not self.failed_validations:
+            print("All validations passed!")
+
+        return self.failed_validations
+
+
 # ----------------------------- Helper functions ----------------------------- #
 def _format_marshmallow_error_message(err: ma.ValidationError) -> List[str]:
     """Formats the error messages from Marshmallow to conform to the expected
     list of strings format.
 
-    Args:
-        err (ma.ValidationError): the error object returned by Marshmallow.
+    Parameters
+    ----------
+    err : ma.ValidationError
+        The error object returned by Marshmallow.
 
-    Returns:
-        List[str]: a list of strings, where each string is a failed validation.
+    Returns
+    -------
+    List[str]
+        A list of strings, where each string is a failed validation.
     """
     error_msg = []
     for input, msg in err.messages.items():
