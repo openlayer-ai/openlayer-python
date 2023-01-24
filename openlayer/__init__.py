@@ -64,7 +64,7 @@ class OpenlayerClient(object):
         Returns
         -------
         Project
-            An object that is used to upload models and datasets to the Openlayer platform
+            An object that is used to add models and datasets to the Openlayer platform
             that also contains information about the project.
 
         Examples
@@ -81,9 +81,9 @@ class OpenlayerClient(object):
         ...     description="My first error analysis playground",
         ... )
 
-        With the Project object created, you are able to start uploading models and
-        datasets to the platform. Refer to :obj:`add_model` and obj:`add_dataset` or
-        obj:`add_dataframe` for detailed examples.
+        With the Project object created, you are able to start adding models and
+        datasets to it. Refer to :obj:`add_model` and :obj:`add_dataset` or
+        :obj:`add_dataframe` for detailed examples.
         """
         # Validate project
         project_config = {
@@ -129,7 +129,7 @@ class OpenlayerClient(object):
         Returns
         -------
         Project
-            An object that is used to upload models and datasets to the Openlayer platform
+            An object that is used to add models and datasets to the Openlayer platform
             that also contains information about the project.
 
         Examples
@@ -141,9 +141,9 @@ class OpenlayerClient(object):
         >>>
         >>> project = client.load_project(name="Churn prediction")
 
-        With the Project object loaded, you are able to upload models and datasets to
-        the platform. Refer to :obj:`add_model` and obj:`add_dataset` or
-        obj:`add_dataframe` for detailed examples.
+        With the Project object loaded, you are able to add models and datasets to
+        the it. Refer to :obj:`add_model` and :obj:`add_dataset` or
+        :obj:`add_dataframe` for detailed examples.
         """
         endpoint = f"me/projects/{name}"
         project_data = self.api.get_request(endpoint)
@@ -181,7 +181,7 @@ class OpenlayerClient(object):
         Returns
         -------
         Project
-            An object that is used to upload models and datasets to the Openlayer platform
+            An object that is used to add models and datasets to the Openlayer platform
             that also contains information about the project.
 
         Examples
@@ -198,9 +198,9 @@ class OpenlayerClient(object):
         ...     description="My first error analysis playground",
         ... )
 
-        With the Project object, you are able to start uploading models and
-        datasets to the platform. Refer to :obj:`add_model` and obj:`add_dataset` or
-        obj:`add_dataframe` for detailed examples.
+        With the Project object, you are able to start adding models and
+        datasets to it. Refer to :obj:`add_model` and :obj:`add_dataset` or
+        :obj:`add_dataframe` for detailed examples.
         """
         try:
             return self.create_project(
@@ -212,12 +212,10 @@ class OpenlayerClient(object):
     def add_model(
         self,
         model_package_dir: str,
-        task_type: TaskType,
         sample_data: pd.DataFrame = None,
         project_id: str = None,
-        **kwargs,
     ):
-        """Uploads a model to the Openlayer platform.
+        """Adds a model to a project's staging area.
 
         Parameters
         ----------
@@ -227,6 +225,9 @@ class OpenlayerClient(object):
         sample_data : pd.DataFrame
             Sample data that can be run through the model. This data is used to ensure
             the model's prediction interface is compatible with the Openlayer platform.
+
+            .. important::
+                The sample_data must be a dataframe with at least two rows.
 
         Examples
         --------
@@ -254,31 +255,60 @@ class OpenlayerClient(object):
 
         >>> project = client.load_project(name="Your project name")
 
-        **TODO: complete examples.**
-
         **If your project's task type is tabular classification...**
 
-        Let's say your dataset looks like the following:
+        Let's say your model expects to receive a dataset looks like
+        the following as input:
 
         >>> df
-            CreditScore  Geography    Balance  Churned
-        0           618     France     321.92        1
-        1           714    Germany  102001.22        0
-        2           604      Spain   12333.15        0
-        ..          ...        ...        ...      ...
+            CreditScore  Geography    Balance
+        0           618     France     321.92
+        1           714    Germany  102001.22
+        2           604      Spain   12333.15
+        ..          ...        ...        ...
 
+        Then, you can add the model to the project with:
+
+        >>> project.add_model(
+        ...     model_package_dir="path/to/model/package")
+        ...     sample_data=df.iloc[:5, :],
+        ... )
+
+        After adding the model to the project, it is staged, waiting to
+        be committed and pushed to the platform. You can check what's on
+        your staging area with :obj:`status`. If you want to push the model
+        right away with a commit message, you can use the :obj:`commit` and
+        :obj:`push` methods:
+
+        >>> project.commit("Initial model commit.")
+        >>> project.push()
 
         **If your task type is text classification...**
 
         Let's say your dataset looks like the following:
 
         >>> df
-                                      Text  Sentiment
-        0    I have had a long weekend              0
-        1    I'm in a fantastic mood today          1
-        2    Things are looking up                  1
-        ..                             ...        ...
+                                      Text
+        0    I have had a long weekend
+        1    I'm in a fantastic mood today
+        2    Things are looking up
+        ..                             ...
 
+        Then, you can add the model to the project with:
+
+        >>> project.add_model(
+        ...     model_package_dir="path/to/model/package")
+        ...     sample_data=df.iloc[:5, :],
+        ... )
+
+        After adding the model to the project, it is staged, waiting to
+        be committed and pushed to the platform. You can check what's on
+        your staging area with :obj:`status`. If you want to push the model
+        right away with a commit message, you can use the :obj:`commit` and
+        :obj:`push` methods:
+
+        >>> project.commit("Initial model commit.")
+        >>> project.push()
         """
         # Validate model package
         model_package_validator = validators.ModelValidator(
@@ -299,7 +329,6 @@ class OpenlayerClient(object):
 
     def add_dataset(
         self,
-        task_type: TaskType,
         file_path: str,
         class_names: List[str],
         label_column_name: str,
@@ -312,7 +341,7 @@ class OpenlayerClient(object):
         dataset_config_file_path: Optional[str] = None,
         project_id: str = None,
     ):
-        r"""Uploads a dataset to the Openlayer platform (from a csv).
+        r"""Adds a dataset to a project's staging area (from a csv).
 
         Parameters
         ----------
@@ -388,22 +417,33 @@ class OpenlayerClient(object):
 
         The variables are needed by Openlayer are:
 
+        >>> from openlayer.datasets import DatasetType
+        >>>
+        >>> dataset_type = DatasetType.Training  # or DatasetType.Validation
         >>> class_names = ['Retained', 'Churned']
         >>> feature_names = ['CreditScore', 'Geography', 'Balance']
         >>> label_column_name = 'Churned'
         >>> categorical_feature_names = ['Geography']
 
-        You can now upload this dataset to Openlayer:
+        You can now add this dataset to your project with:
 
-        >>> dataset = client.add_dataset(
+        >>> project.add_dataset(
         ...     file_path='/path/to/dataset.csv',
-        ...     commit_message="First commit!",
+        ...     dataset_type=dataset_type,
         ...     class_names=class_names,
         ...     label_column_name=label_column_name,
         ...     feature_names=feature_names,
         ...     categorical_feature_names=categorical_feature_names,
         ... )
-        >>> dataset.to_dict()
+
+        After adding the dataset to the project, it is staged, waiting to
+        be committed and pushed to the platform. You can check what's on
+        your staging area with :obj:`status`. If you want to push the dataset
+        right away with a commit message, you can use the :obj:`commit` and
+        :obj:`push` methods:
+
+        >>> project.commit("Initial dataset commit.")
+        >>> project.push()
 
         **If your task type is text classification...**
 
@@ -418,20 +458,31 @@ class OpenlayerClient(object):
 
         The variables are needed by Openlayer are:
 
+        >>> from openlayer.datasets import DatasetType
+        >>>
+        >>> dataset_type = DatasetType.Training  # or DatasetType.Validation
         >>> class_names = ['Negative', 'Positive']
         >>> text_column_name = 'Text'
         >>> label_column_name = 'Sentiment'
 
-        You can now upload this dataset to Openlayer:
+        You can now add this dataset to your project with:
 
-        >>> dataset = client.add_dataset(
+        >>> project.add_dataset(
         ...     file_path='/path/to/dataset.csv',
-        ...     commit_message="First commit!",
+        ...     dataset_type=dataset_type,
         ...     class_names=class_names,
         ...     label_column_name=label_column_name,
         ...     text_column_name=text_column_name,
         ... )
-        >>> dataset.to_dict()
+
+        After adding the dataset to the project, it is staged, waiting to
+        be committed and pushed to the platform. You can check what's on
+        your staging area with :obj:`status`. If you want to push the dataset
+        right away with a commit message, you can use the :obj:`commit` and
+        :obj:`push` methods:
+
+        >>> project.commit("Initial dataset commit.")
+        >>> project.push()
         """
         # Validate dataset
         # TODO: re-think the way the arguments are passed for the dataset upload
@@ -493,7 +544,7 @@ class OpenlayerClient(object):
         project_id: str = None,
         dataset_config_file_path: Optional[str] = None,
     ):
-        r"""Uploads a dataset to the Openlayer platform (from a pandas DataFrame).
+        r"""Adds a dataset to a project's staging area (from a pandas DataFrame).
 
         Parameters
         ----------
@@ -568,22 +619,33 @@ class OpenlayerClient(object):
 
         The variables are needed by Openlayer are:
 
+        >>> from openlayer.datasets import DatasetType
+        >>>
+        >>> dataset_type = DatasetType.Training # or DatasetType.Validation
         >>> class_names = ['Retained', 'Churned']
         >>> feature_names = ['CreditScore', 'Geography', 'Balance']
         >>> label_column_name = 'Churned'
         >>> categorical_feature_names = ['Geography']
 
-        You can now upload this dataset to Openlayer:
+        You can now add this dataset to your project with:
 
-        >>> dataset = client.add_dataset(
+        >>> project.add_dataset(
         ...     df=df,
-        ...     commit_message="First commit!",
+        ...     dataset_type=dataset_type,
         ...     class_names=class_names,
         ...     feature_names=feature_names,
         ...     label_column_name=label_column_name,
         ...     categorical_feature_names=categorical_feature_names,
         ... )
-        >>> dataset.to_dict()
+
+        After adding the dataset to the project, it is staged, waiting to
+        be committed and pushed to the platform. You can check what's on
+        your staging area with :obj:`status`. If you want to push the dataset
+        right away with a commit message, you can use the :obj:`commit` and
+        :obj:`push` methods:
+
+        >>> project.commit("Initial dataset commit.")
+        >>> project.push()
 
         **If your task type is text classification...**
 
@@ -597,20 +659,31 @@ class OpenlayerClient(object):
 
         The variables are needed by Openlayer are:
 
+        >>> from openlayer.datasets import DatasetType
+        >>>
+        >>> dataset_type = DatasetType.Training # or DatasetType.Validation
         >>> class_names = ['Negative', 'Positive']
         >>> text_column_name = 'Text'
         >>> label_column_name = 'Sentiment'
 
         You can now upload this dataset to Openlayer:
 
-        >>> dataset = client.add_dataset(
+        >>> project.add_dataset(
         ...     df=df,
-        ...     commit_message="First commit!",
+        ...     dataset_type=dataset_type,
         ...     class_names=class_names,
         ...     text_column_name=text_column_name,
         ...     label_column_name=label_column_name,
         ... )
-        >>> dataset.to_dict()
+
+        After adding the dataset to the project, it is staged, waiting to
+        be committed and pushed to the platform. You can check what's on
+        your staging area with :obj:`status`. If you want to push the dataset
+        right away with a commit message, you can use the :obj:`commit` and
+        :obj:`push` methods:
+
+        >>> project.commit("Initial dataset commit.")
+        >>> project.push()
         """
         # --------------------------- Resource validations --------------------------- #
         if not isinstance(df, pd.DataFrame):
@@ -635,8 +708,7 @@ class OpenlayerClient(object):
             )
 
     def commit(self, message: str, project_id: int):
-        """Adds a commit message to the staged resources that will be
-        pushed to the platform.
+        """Adds a commit message to staged resources.
 
         Parameters
         ----------
@@ -645,8 +717,27 @@ class OpenlayerClient(object):
 
         Notes
         -----
-        - To use this method, you must first add a model and/or dataset to the staging area using
-        one of the `add` methods.
+        - To use this method, you must first add a model and/or dataset to the staging area using one of the ``add`` methods (e.g., :obj:`add_model`, :obj:`add_dataset`, :obj:`add_dataframe`).
+
+        Examples
+        --------
+        A commit message is associated with a project version. We have a new project version every time
+        any of its resources (namely, model and/or dataset) are updated. The commit message is supposed
+        to be a short description of the changes from one version to the next.
+
+        Let's say you have a project with a model and a dataset staged. You can confirm these resources
+        are indeed in the staging area using the :obj:`status` method:
+
+        >>> project.status()
+
+        Now, you can add a commit message to the staged resources.
+
+        >>> project.commit("Initial commit.")
+
+        After adding the commit message, the resources are ready to be pushed to the platform. You use
+        the :obj:`push` method to do so:
+
+        >>> project.push()
         """
         # Validate commit
         commit_validator = validators.CommitValidator(commit_message=message)
@@ -695,8 +786,21 @@ class OpenlayerClient(object):
 
         Notes
         -----
-        - To use this method, you must first add a model and/or dataset to the staging area using
-        one of the `add` methods, and then add a commit message with the `commit` method.
+        - To use this method, you must first have committed your changes with the :obj:`commit` method.
+
+        Examples
+        --------
+
+        Let's say you have a project with a model and a dataset staged and committed. You can confirm these resources
+        are indeed in the staging area using the :obj:`status` method:
+
+        >>> project.status()
+
+        You should see the staged resources as well as the commit message associated with them.
+
+        Now, you can push the resources to the platform with:
+
+        >>> project.push()
         """
         project_dir = f"{OPENLAYER_DIR}/{project_id}/staging"
 
@@ -738,8 +842,24 @@ class OpenlayerClient(object):
         print("Pushed!")
 
     def status(self, project_id: int):
-        """Shows the state of the staging area, with the resources staged, committed,
-        ready to push.
+        """Shows the state of the staging area.
+
+        Examples
+        --------
+
+        You can use the :obj:`status` method to check the state of the staging area.
+
+        >>> project.status()
+
+        The staging area can be in one of three states.
+
+        You can have a clean staging area, which is the initial state as well as the state
+        after you have pushed your changes to the platform (with the :obj:`push` method).
+
+        You can have a staging area with different resources staged (e.g., models and datasets
+        added with the :obj:`add_model`, :obj:`add_dataset`, and :obj:`add_dataframe` mehtods).
+
+        Finally, you can have a staging area with resources staged and committed (with the :obj:`commit` method).
         """
         project_dir = f"{OPENLAYER_DIR}/{project_id}/staging"
 
@@ -768,15 +888,32 @@ class OpenlayerClient(object):
         print("Use the `push` method to push your changes to the platform.")
 
     def restore(self, resource_name: str, project_id: int):
-        """Removes the resource specified by `resource_name` from the staging area.
+        """Removes the resource specified by ``resource_name`` from the staging area.
 
         Parameters
         ----------
         resource_name : str
-            The name of the resource to restore. Can be one of "model", "training", or "validation".
+            The name of the resource to restore. Can be one of ``"model"``, ``"training"``, or ``"validation"``.
 
             .. important::
-                To see the names of the resources staged, use the `status` method.
+                To see the names of the resources staged, use the :obj:`status` method.
+
+        Examples
+        --------
+        Let's say you have initially used the :obj:`add_model` method to add a model to the staging area.
+
+        >>> project.add_model(
+        ...     model_package_dir="/path/to/model/package",
+        ...     sample_data=df
+        ... )
+
+        You can see the model staged with the :obj:`status` method:
+
+        >>> project.status()
+
+        You can then remove the model from the staging area with the :obj:`restore` method:
+
+        >>> project.restore(resource_name="model")
         """
         project_dir = f"{OPENLAYER_DIR}/{project_id}/staging"
 

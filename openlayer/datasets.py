@@ -2,7 +2,10 @@ from enum import Enum
 
 
 class DatasetType(Enum):
-    """The different dataset types that are supported by Openlayer."""
+    """The different dataset types that are supported by Openlayer.
+
+    Used by the ``dataset_type`` argument of the :meth:`openlayer.OpenlayerClient.add_dataset` and
+    :meth:`openlayer.OpenlayerClient.add_dataframe` methods."""
 
     #: For validation sets.
     Validation = "validation"
