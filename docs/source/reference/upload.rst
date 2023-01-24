@@ -21,9 +21,10 @@ Project creation and loading
    
    OpenlayerClient.create_project
    OpenlayerClient.load_project
+   OpenlayerClient.create_or_load_project
 
-Upload functions
-----------------
+Add models and datasets
+-----------------------
 .. autosummary:: 
    :toctree: api/
    :template: class.rst
@@ -32,21 +33,22 @@ Upload functions
    OpenlayerClient.add_dataset
    OpenlayerClient.add_dataframe
 
-Model / Task types
-------------------
-.. autosummary:: 
-   :toctree: api/
-
-   ModelType
-   TaskType
-
-Objects
--------
+Version control flow
+--------------------
 .. autosummary:: 
    :toctree: api/
    :template: class.rst
    
-   Model
-   Dataset
-   Model.to_dict
-   Dataset.to_dict
+   OpenlayerClient.commit   
+   OpenlayerClient.push
+   OpenlayerClient.status
+   OpenlayerClient.restore
+
+Dataset / Task types
+--------------------
+.. autosummary:: 
+   :toctree: api/
+
+   DatasetType
+   TaskType
+

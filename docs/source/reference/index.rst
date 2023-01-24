@@ -10,6 +10,7 @@ This page gives an overview of all public openlayer objects, functions and metho
    :maxdepth: 2
 
    upload
+   validate
 
 .. meta::
     :description lang=en:
