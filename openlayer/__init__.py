@@ -145,9 +145,13 @@ class OpenlayerClient(object):
         the it. Refer to :obj:`add_model` and :obj:`add_dataset` or
         :obj:`add_dataframe` for detailed examples.
         """
-        endpoint = f"me/projects/{name}"
+        endpoint = f"projects?name={name}"
         project_data = self.api.get_request(endpoint)
-        project = Project(project_data, self.api.upload, self.subscription_plan, self)
+        if len(project_data["items"]) == 0:
+            raise exceptions.OpenlayerResourceNotFound(
+                f"Project with name {name} not found."
+            )
+        project = Project(project_data["items"][0], self.api.upload, self)
 
         # Create the project staging area, if it doesn't yet exist
         project_dir = os.path.join(OPENLAYER_DIR, f"{project.id}/staging")
