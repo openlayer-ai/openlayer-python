@@ -1,7 +1,6 @@
 import os
 import shutil
 from enum import Enum
-from pickle import bytes_types
 
 import requests
 from requests.adapters import HTTPAdapter, Response, Retry

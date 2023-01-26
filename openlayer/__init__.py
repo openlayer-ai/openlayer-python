@@ -36,7 +36,7 @@ class OpenlayerClient(object):
 
     def __init__(self, api_key: str = None):
         self.api = api.Api(api_key)
-        self.subscription_plan = self.api.get_request("me/subscription-plan")
+        # self.subscription_plan = self.api.get_request("me/subscription-plan")
 
         if not os.path.exists(OPENLAYER_DIR):
             os.makedirs(OPENLAYER_DIR)
@@ -104,9 +104,9 @@ class OpenlayerClient(object):
         payload = dict(name=name, description=description, taskType=task_type.value)
         project_data = self.api.post_request(endpoint, body=payload)
 
-        project = Project(project_data, self.api.upload, self.subscription_plan, self)
+        project = Project(project_data, self.api.upload, self)
 
-        # Here, the project is being first created, so no need to check if the staging area exists
+        # Check if the staging area exists
         project_dir = os.path.join(OPENLAYER_DIR, f"{project.id}/staging")
         os.makedirs(project_dir)
 
@@ -835,7 +835,14 @@ class OpenlayerClient(object):
             with tarfile.open(tar_file_path, mode="w:gz") as tar:
                 tar.add(project_dir, arcname=os.path.basename(project_dir))
 
-            # TODO: Upload the tar file
+            # Upload the tar file
+            payload = {"commit": {"message": commit["message"]}}
+            self.api.upload(
+                endpoint=f"projects/{project_id}/versions",
+                file_path=tar_file_path,
+                object_name="tarfile",
+                body=payload,
+            )
 
         # Clean up the staging area
         shutil.rmtree(project_dir)
@@ -956,7 +963,7 @@ class OpenlayerClient(object):
 
         staging_dir = f"{OPENLAYER_DIR}/{project_id}/staging/{resource_name}"
 
-        # Append ' dataset' to the end of the resource name for the prints
+        # Append 'dataset' to the end of the resource name for the prints
         if resource_name in ["training", "validation"]:
             resource_name += " dataset"
 

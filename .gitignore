@@ -19,6 +19,7 @@ examples/*
 !examples/tabular-classification
 !examples/text-classification
 !examples/_static
+model_package/
 
 # Documentation generated files #
 #################################
