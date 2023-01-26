@@ -41,6 +41,9 @@ class DatasetSchema(ma.Schema):
         ),
     )
     sep = ma.fields.Str()
+    predictions_column_name = ma.fields.Str(
+        allow_none=True,
+    )
     feature_names = ma.fields.List(
         ma.fields.Str(),
     )

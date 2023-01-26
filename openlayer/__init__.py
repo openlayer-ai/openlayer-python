@@ -4,6 +4,7 @@ import tarfile
 import tempfile
 import time
 import uuid
+import warnings
 from typing import List, Optional
 
 import pandas as pd
@@ -341,6 +342,7 @@ class OpenlayerClient(object):
         task_type: TaskType,
         feature_names: List[str] = [],
         text_column_name: Optional[str] = None,
+        predictions_column_name: Optional[str] = None,
         categorical_feature_names: List[str] = [],
         language: str = "en",
         sep: str = ",",
@@ -370,6 +372,19 @@ class OpenlayerClient(object):
         text_column_name : str, default None
             Column header in the csv containing the input text. Only applicable if your
             ``task_type`` is :obj:`TaskType.TextClassification`.
+        predictions_column_name : str, default None
+            Column header in the csv containing the predictions. Only applicable if you
+            are uploading the model predictions directly, without model artifacts.
+
+            .. important::
+                Each cell in this column must contain a list of
+                class probabilities. For example, for a binary classification
+                task, the cell values should look like this:
+                .. csv-table::
+                    :header: ..., predictions
+                    ..., "[0.6650292861587155, 0.3349707138412845]"
+                    ..., "[0.8145561636482788, 0.18544383635172124]"
+
         categorical_feature_names : List[str], default []
             A list containing the names of all categorical features in the dataset.
             E.g. `["Gender", "Geography"]`. Only applicable if your ``task_type`` is
@@ -501,6 +516,7 @@ class OpenlayerClient(object):
                 "dataset_type": dataset_type.value,
                 "feature_names": feature_names,
                 "text_column_name": text_column_name,
+                "predictions_column_name": predictions_column_name,
                 "categorical_feature_names": categorical_feature_names,
                 "language": language,
                 "sep": sep,
@@ -545,6 +561,7 @@ class OpenlayerClient(object):
         dataset_type: DatasetType,
         feature_names: List[str] = [],
         text_column_name: Optional[str] = None,
+        predictions_column_name: Optional[str] = None,
         categorical_feature_names: List[str] = [],
         language: str = "en",
         project_id: str = None,
@@ -573,12 +590,23 @@ class OpenlayerClient(object):
         text_column_name : str, default None
             Column header in the dataframe containing the input text. Only applicable if your
             ``task_type`` is :obj:`TaskType.TextClassification`.
+        predictions_column_name : str, default None
+            Column header in the dataframe containing the predictions. Only applicable if you are
+            adding predictions directly without model artifacts.
+
+            .. important::
+                Each cell in this column must contain a list of
+                class probabilities. For example, for a binary classification
+                task, the cell values should look like this:
+                .. csv-table::
+                    :header: ..., predictions
+                    ..., [0.6650292861587155, 0.3349707138412845]
+                    ..., [0.8145561636482788, 0.18544383635172124]
+
         categorical_feature_names : List[str], default []
             A list containing the names of all categorical features in the dataframe.
             E.g. `["Gender", "Geography"]`. Only applicable if your ``task_type`` is
             :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
-        commit_message : str, default None
-            Commit message for this version.
         language : str, default 'en'
             The language of the dataset in ISO 639-1 (alpha-2 code) format.
 
@@ -706,6 +734,7 @@ class OpenlayerClient(object):
                 label_column_name=label_column_name,
                 dataset_type=dataset_type,
                 text_column_name=text_column_name,
+                predictions_column_name=predictions_column_name,
                 language=language,
                 feature_names=feature_names,
                 categorical_feature_names=categorical_feature_names,
@@ -827,6 +856,18 @@ class OpenlayerClient(object):
         with open(f"{project_dir}/commit.yaml", "r") as commit_file:
             commit = yaml.safe_load(commit_file)
 
+        # Validate bundle resources
+        commit_bundle_validator = validators.CommitBundleValidator(
+            commit_bundle_path=project_dir
+        )
+        failed_validations = commit_bundle_validator.validate()
+
+        if failed_validations:
+            raise exceptions.OpenlayerValidationError(
+                "There are issues with the staged resources. \n"
+                "Make sure to fix all of the issues listed above before pushing.",
+            ) from None
+
         print(
             "Pushing changes to the platform with the commit message: \n"
             f"\t - Message: {commit['message']} \n"
@@ -875,6 +916,7 @@ class OpenlayerClient(object):
         Finally, you can have a staging area with resources staged and committed (with the :obj:`commit` method).
         """
         project_dir = f"{OPENLAYER_DIR}/{project_id}/staging"
+        valid_resource_names = ["model", "training", "validation"]
 
         if not os.listdir(project_dir):
             print(
@@ -886,13 +928,14 @@ class OpenlayerClient(object):
         if not os.path.exists(f"{project_dir}/commit.yaml"):
             print("The following resources are staged, waiting to be committed:")
             for file in os.listdir(project_dir):
-                print(f"\t - {file}")
+                if file in valid_resource_names:
+                    print(f"\t - {file}")
             print("Use the `commit` method to add a commit message to your changes.")
             return
 
         with open(f"{project_dir}/commit.yaml", "r") as commit_file:
             commit = yaml.safe_load(commit_file)
-        print(f"The following resources are committed, waiting to be pushed:")
+        print("The following resources are committed, waiting to be pushed:")
         for file in os.listdir(project_dir):
             if file != "commit.yaml":
                 print(f"\t - {file}")
