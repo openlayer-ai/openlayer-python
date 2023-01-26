@@ -1,3 +1,4 @@
+import ast
 import importlib
 import os
 import traceback
@@ -10,6 +11,107 @@ import pkg_resources
 import yaml
 
 from . import schemas, utils
+
+
+class CommitBundleValidator:
+    """Validates the commit bundle prior to push.
+
+    Parameters
+    ----------
+    commit_bundle_path : str
+        The path to the commit bundle (staging area, if for the Python API).
+    """
+
+    def __init__(self, commit_bundle_path: str):
+        self.commit_bundle_path = commit_bundle_path
+        self.failed_validations = []
+
+    def _validate_bundle_state(self):
+        """Checks whether the bundle is in a valid state.
+
+        This includes:
+        - When a "model" is included, you always need to provide predictions for both
+          "validation" and "training" (regardless of artifact or no artifact).
+        - When a "model" is not included, you always need to NOT upload predictions with
+          one exception:
+            - "validation" set only in bundle, which means the predictions are for the previous model version.
+        """
+        bundle_state_failed_validations = []
+
+        bundle_resources = os.listdir(self.commit_bundle_path)
+
+        # Defining which datasets contain predictions
+        training_predictions_column_name = None
+        validation_predictions_column_name = None
+        if "training" in bundle_resources:
+            with open(
+                f"{self.commit_bundle_path}/training/dataset_config.yaml", "r"
+            ) as stream:
+                training_dataset_config = yaml.safe_load(stream)
+
+            training_predictions_column_name = training_dataset_config.get(
+                "predictions_column_name"
+            )
+
+        if "validation" in bundle_resources:
+            with open(
+                f"{self.commit_bundle_path}/validation/dataset_config.yaml", "r"
+            ) as stream:
+                validation_dataset_config = yaml.safe_load(stream)
+
+            validation_predictions_column_name = validation_dataset_config.get(
+                "predictions_column_name"
+            )
+
+        if "model" in bundle_resources:
+            if (
+                training_predictions_column_name is None
+                or validation_predictions_column_name is None
+            ):
+                bundle_state_failed_validations.append(
+                    "To push a model to the platform, you must provide "
+                    "training and a validation sets with predictions in the column "
+                    "`predictions_column_name`."
+                )
+        else:
+            if (
+                "training" in bundle_resources
+                and validation_predictions_column_name is not None
+            ):
+                bundle_state_failed_validations.append(
+                    "A training set was provided alongside with a validation set with predictions. "
+                    "Please either provide only a validation set with predictions, or a model and "
+                    "both datasets with predictions"
+                )
+            elif training_predictions_column_name is not None:
+                bundle_state_failed_validations.append(
+                    "The training dataset contains predictions, but no model was provided. "
+                    "To push a training set with predictions, please provide a model and a validation "
+                    "set with predictions as well."
+                )
+
+        # Print results of the validation
+        if bundle_state_failed_validations:
+            print("Push failed validations: \n")
+            _list_failed_validation_messages(bundle_state_failed_validations)
+
+        # Add the bundle state failed validations to the list of all failed validations
+        self.failed_validations.extend(bundle_state_failed_validations)
+
+    def validate(self) -> List[str]:
+        """Validates the commit bundle.
+
+        Returns
+        -------
+        List[str]
+            A list of failed validations.
+        """
+        self._validate_bundle_state()
+
+        if not self.failed_validations:
+            print("All validations passed!")
+
+        return self.failed_validations
 
 
 class CommitValidator:
@@ -173,6 +275,9 @@ class DatasetValidator:
                         "sep": self.dataset_config.get("sep", ","),
                         "feature_names": self.dataset_config.get("feature_names", []),
                         "text_column_name": self.dataset_config.get("text_column_name"),
+                        "predictions_column_name": self.dataset_config.get(
+                            "predictions_column_name"
+                        ),
                         "categorical_feature_names": self.dataset_config.get(
                             "categorical_feature_names", []
                         ),
@@ -236,6 +341,7 @@ class DatasetValidator:
             label_column_name = self.dataset_config.get("label_column_name")
             feature_names = self.dataset_config.get("feature_names")
             text_column_name = self.dataset_config.get("text_column_name")
+            predictions_column_name = self.dataset_config.get("predictions_column_name")
 
             if self._contains_null_values(dataset_df):
                 dataset_and_config_consistency_failed_validations.append(
@@ -274,6 +380,62 @@ class DatasetValidator:
                                 f"Make sure that the labels in the column `{label_column_name}` "
                                 "are zero-indexed integers that match the list in `class_names`."
                             )
+
+            # Predictions validations
+            if predictions_column_name:
+                if self._column_not_in_dataset_df(dataset_df, predictions_column_name):
+                    dataset_and_config_consistency_failed_validations.append(
+                        f"The predictions column `{predictions_column_name}` specified as `predictions_column_name` "
+                        "is not in the dataset."
+                    )
+                else:
+                    try:
+                        # Getting prediction lists from strings saved in the csv
+                        dataset_df[predictions_column_name] = dataset_df[
+                            predictions_column_name
+                        ].apply(ast.literal_eval)
+                        if self._predictions_not_lists(
+                            dataset_df, predictions_column_name
+                        ):
+                            dataset_and_config_consistency_failed_validations.append(
+                                f"The predictions in the column `{predictions_column_name}` are not lists. "
+                                "Please make sure that the predictions are lists of floats."
+                            )
+                        else:
+                            if self._prediction_lists_not_same_length(
+                                dataset_df, predictions_column_name
+                            ):
+                                dataset_and_config_consistency_failed_validations.append(
+                                    f"The prediction lists in the column `{predictions_column_name}` "
+                                    "are not all of the same length. "
+                                    "Please make sure that all prediction lists are of the same length."
+                                )
+                            else:
+                                if self._predictions_not_class_probabilities(
+                                    dataset_df, predictions_column_name
+                                ):
+                                    dataset_and_config_consistency_failed_validations.append(
+                                        f"The predictions in the column `{predictions_column_name}` "
+                                        "are not class probabilities. "
+                                        "Please make sure that the predictions are lists of floats "
+                                        "that sum to 1."
+                                    )
+                                elif class_names:
+                                    if self._predictions_not_in_class_names(
+                                        dataset_df, predictions_column_name, class_names
+                                    ):
+                                        dataset_and_config_consistency_failed_validations.append(
+                                            f"There are predictions in the column `{predictions_column_name}` "
+                                            "are not in `class_names`. "
+                                            "Please make sure that the predictions are lists of floats "
+                                            "that sum to 1 and that the classes in the predictions "
+                                            "match the classes in `class_names`."
+                                        )
+                    except:
+                        dataset_and_config_consistency_failed_validations.append(
+                            f"The predictions in the column `{predictions_column_name}` are not lists. "
+                            "Please make sure that the predictions are lists of floats."
+                        )
 
             # NLP-specific validations
             if text_column_name:
@@ -367,6 +529,56 @@ class DatasetValidator:
         in the `class_names`."""
         num_classes = len(dataset_df[label_column_name].unique())
         if num_classes > len(class_names):
+            return True
+        return False
+
+    @staticmethod
+    def _predictions_not_lists(
+        dataset_df: pd.DataFrame, predictions_column_name: str
+    ) -> bool:
+        """Checks whether all values in the column `predictions_column_name`
+        are lists."""
+        if not all(
+            isinstance(predictions, list)
+            for predictions in dataset_df[predictions_column_name]
+        ):
+            return True
+        return False
+
+    @staticmethod
+    def _prediction_lists_not_same_length(
+        dataset_df: pd.DataFrame, predictions_column_name: str
+    ) -> bool:
+        """Checks whether all the lists in the `predictions_column_name`
+        have the same length."""
+        if not len(set(dataset_df[predictions_column_name].str.len())) == 1:
+            return True
+        return False
+
+    @staticmethod
+    def _predictions_not_class_probabilities(
+        dataset_df: pd.DataFrame, predictions_column_name: str
+    ) -> bool:
+        """Checks whether the predictions are class probabilities.
+        Tolerate a 10% error margin."""
+        if any(
+            [
+                (sum(predictions) < 0.9 or sum(predictions) > 1.1)
+                for predictions in dataset_df[predictions_column_name]
+            ]
+        ):
+            return True
+        return False
+
+    @staticmethod
+    def _predictions_not_in_class_names(
+        dataset_df: pd.DataFrame,
+        predictions_column_name: str,
+        class_names: List[str],
+    ) -> bool:
+        """Checks if the predictions map 1:1 to the `class_names` list."""
+        num_classes_predicted = len(dataset_df[predictions_column_name].iloc[0])
+        if num_classes_predicted != len(class_names):
             return True
         return False
 
