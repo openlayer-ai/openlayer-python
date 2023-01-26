@@ -1,10 +1,10 @@
-from openlayer import tasks
+from . import tasks
 
 
 class Project:
     """An object containing information about a project on the Openlayer platform."""
 
-    def __init__(self, json, upload, subscription_plan, client):
+    def __init__(self, json, upload, client, subscription_plan=None):
         self._json = json
         self.id = json["id"]
         self.upload = upload
