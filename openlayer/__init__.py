@@ -219,6 +219,7 @@ class OpenlayerClient(object):
         model_package_dir: str,
         task_type: TaskType,
         sample_data: pd.DataFrame = None,
+        force: bool = False,
         project_id: str = None,
     ):
         """Adds a model to a project's staging area.
@@ -234,6 +235,11 @@ class OpenlayerClient(object):
 
             .. important::
                 The sample_data must be a dataframe with at least two rows.
+        force : bool
+            If :obj:`add_model` is called when there is already a model in the staging area,
+            when ``force=True``, the existing staged model will be overwritten by the new
+            one. When ``force=False``, the user will be prompted to confirm the
+            overwrite.
 
         Examples
         --------
@@ -330,7 +336,10 @@ class OpenlayerClient(object):
             ) from None
 
         self._stage_resource(
-            resource_name="model", resource_dir=model_package_dir, project_id=project_id
+            resource_name="model",
+            resource_dir=model_package_dir,
+            project_id=project_id,
+            force=force,
         )
 
     def add_dataset(
@@ -348,6 +357,7 @@ class OpenlayerClient(object):
         sep: str = ",",
         dataset_config_file_path: Optional[str] = None,
         project_id: str = None,
+        force: bool = False,
     ):
         r"""Adds a dataset to a project's staging area (from a csv).
 
@@ -393,6 +403,10 @@ class OpenlayerClient(object):
             The language of the dataset in ISO 639-1 (alpha-2 code) format.
         sep : str, default ','
             Delimiter to use. E.g. `'\\t'`.
+        force : bool
+            If :obj:`add_dataset` is called when there is already a dataset of the same type in the
+            staging area, when ``force=True``, the existing staged dataset will be overwritten by the new
+            one. When ``force=False``, the user will be prompted to confirm the overwrite.
 
         Notes
         -----
@@ -550,6 +564,7 @@ class OpenlayerClient(object):
                 resource_name=dataset_type.value,
                 resource_dir=temp_dir,
                 project_id=project_id,
+                force=force,
             )
 
     def add_dataframe(
@@ -566,6 +581,7 @@ class OpenlayerClient(object):
         language: str = "en",
         project_id: str = None,
         dataset_config_file_path: Optional[str] = None,
+        force: bool = False,
     ):
         r"""Adds a dataset to a project's staging area (from a pandas DataFrame).
 
@@ -609,6 +625,10 @@ class OpenlayerClient(object):
             :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
         language : str, default 'en'
             The language of the dataset in ISO 639-1 (alpha-2 code) format.
+        force : bool
+            If :obj:`add_dataframe` is called when there is already a dataset of the same type in the
+            staging area, when ``force=True``, the existing staged dataset will be overwritten by the new
+            one. When ``force=False``, the user will be prompted to confirm the overwrite.
 
         Notes
         -----
@@ -740,15 +760,20 @@ class OpenlayerClient(object):
                 categorical_feature_names=categorical_feature_names,
                 project_id=project_id,
                 dataset_config_file_path=dataset_config_file_path,
+                force=force,
             )
 
-    def commit(self, message: str, project_id: int):
+    def commit(self, message: str, project_id: int, force: bool = False):
         """Adds a commit message to staged resources.
 
         Parameters
         ----------
         message : str
             The commit message, between 1 and 140 characters.
+        force : bool
+            If :obj:`commit` is called when there is already a commit message,
+            when ``force=True``, the existing message will be overwritten by the new
+            one. When ``force=False``, the user will be prompted to confirm the overwrite.
 
         Notes
         -----
@@ -794,15 +819,18 @@ class OpenlayerClient(object):
 
         if os.path.exists(f"{project_dir}/commit.yaml"):
             print("Found a previous commit that was not pushed to the platform.")
-            with open(f"{project_dir}/commit.yaml", "r") as commit_file:
-                commit = yaml.safe_load(commit_file)
-                print(
-                    f"\t - Commit message: `{commit['message']}` \n \t - Date: {commit['date']}"
+            overwrite = "n"
+
+            if not force:
+                with open(f"{project_dir}/commit.yaml", "r") as commit_file:
+                    commit = yaml.safe_load(commit_file)
+                    print(
+                        f"\t - Commit message: `{commit['message']}` \n \t - Date: {commit['date']}"
+                    )
+                overwrite = input(
+                    "Do you want to overwrite it with the current message? [y/n]: "
                 )
-            overwrite = input(
-                "Do you want to overwrite it with the current message? [y/n]: "
-            )
-            if overwrite.lower() == "y":
+            if overwrite.lower() == "y" or force:
                 print("Overwriting commit message...")
                 os.remove(f"{project_dir}/commit.yaml")
 
@@ -990,7 +1018,9 @@ class OpenlayerClient(object):
         ):
             os.remove(f"{project_dir}/commit.yaml")
 
-    def _stage_resource(self, resource_name: str, resource_dir: str, project_id: int):
+    def _stage_resource(
+        self, resource_name: str, resource_dir: str, project_id: int, force: bool
+    ):
         """Adds the resource specified by `resource_name` to the project's staging directory.
 
         Parameters
@@ -1001,6 +1031,8 @@ class OpenlayerClient(object):
             The path from which to copy the resource.
         project_id : int
             The id of the project to which the resource should be added.
+        force : bool
+            Whether to overwrite the resource if it already exists in the staging area.
         """
         if resource_name not in ["model", "training", "validation"]:
             raise ValueError(
@@ -1016,9 +1048,11 @@ class OpenlayerClient(object):
 
         if os.path.exists(staging_dir):
             print(f"Found an existing {resource_name} staged.")
-            overwrite = input("Do you want to overwrite it? [y/n] ")
+            overwrite = "n"
 
-            if overwrite.lower() == "y":
+            if not force:
+                overwrite = input("Do you want to overwrite it? [y/n] ")
+            if overwrite.lower() == "y" or force:
                 print(f"Overwriting previously staged {resource_name}...")
                 shutil.rmtree(staging_dir)
             else:
