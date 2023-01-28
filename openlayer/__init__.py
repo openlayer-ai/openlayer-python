@@ -4,15 +4,14 @@ import tarfile
 import tempfile
 import time
 import uuid
-import warnings
 from typing import List, Optional
 
 import pandas as pd
 import yaml
 
 from . import api, exceptions, utils, validators
-from .datasets import DatasetType
 from .projects import Project
+from .schemas import DatasetSchema, ModelSchema, ShellModelSchema
 from .tasks import TaskType
 from .version import __version__  # noqa: F401
 
@@ -216,9 +215,10 @@ class OpenlayerClient(object):
 
     def add_model(
         self,
-        model_package_dir: str,
+        model_config_file_path: str,
         task_type: TaskType,
-        sample_data: pd.DataFrame = None,
+        model_package_dir: Optional[str] = None,
+        sample_data: Optional[pd.DataFrame] = None,
         force: bool = False,
         project_id: str = None,
     ):
@@ -226,11 +226,74 @@ class OpenlayerClient(object):
 
         Parameters
         ----------
-        model_package_dir : str
-            Path to the directory containing the model package. For instructions on
-            how to create a model package, refer to the documentation.
-        sample_data : pd.DataFrame
-            Sample data that can be run through the model. This data is used to ensure
+        model_config_file_path : str
+            Path to the model configuration YAML file.
+
+            .. admonition:: What's on the model config file?
+
+                The content of the YAML file depends on whether you are adding a shell
+                model or a model package.
+
+                **If you are adding a shell model**, the model configuration file
+                must contain the following fields:
+
+                - ``name`` : str
+                    Name of the model.
+                - ``architectureType`` : str
+                    The model's framework. Must be one of the supported frameworks
+                    on :obj:`ModelType`.
+                - ``metadata`` : Dict[str, any], default {}
+                    Dictionary containing metadata about the model. This is the
+                    metadata that will be displayed on the Openlayer platform.
+
+                **Alternatively, if you are adding a model package** (i.e., with model
+                artifacts and prediction interface), the model configuration file must
+                contain the following fields:
+
+                - ``name`` : str
+                    Name of the model.
+                - ``architectureType`` : str
+                    The model's framework. Must be one of the supported frameworks
+                    on :obj:`ModelType`.
+                - ``classNames`` : List[str]
+                    List of class names corresponding to the outputs of your predict function.
+                    E.g. ``['positive', 'negative']``.
+                - ``featureNames`` : List[str], default []
+                    List of input feature names. Only applicable if your ``task_type`` is
+                    :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
+                - ``categoricalFeatureNames`` : List[str], default []
+                    A list containing the names of all categorical features used by the model.
+                    E.g. ``["Gender", "Geography"]``. Only applicable if your ``task_type`` is
+                    :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
+                - ``metadata`` : Dict[str, any], default {}
+                    Dictionary containing metadata about the model. This is the metadata that
+                    will be displayed on the Openlayer platform.
+
+
+        model_package_dir : str, default None
+            Path to the directory containing the model package. **Only needed if you are
+            interested in adding the model's artifacts.**
+
+            .. admonition:: What's inside `model_package_dir`?
+
+                The model package directory must contain the following files:
+
+                - ``prediction_interface.py``
+                    The prediction interface file.
+                - ``model artifacts``
+                    The model artifacts. This can be a single file or a directory containing
+                    multiple files. The model artifacts must be compatible with the
+                    prediction interface file.
+                - ``requirements.txt``
+                    The requirements file. This file contains the dependencies needed to run
+                    the prediction interface file.
+
+                For instructions on how to create a model package, refer to
+                the documentation.
+
+        sample_data : pd.DataFrame, default None
+            Sample data that can be run through the model. **Only needed if  model_package_dir
+            is not None**. This data is used to ensure
             the model's prediction interface is compatible with the Openlayer platform.
 
             .. important::
@@ -282,6 +345,7 @@ class OpenlayerClient(object):
         Then, you can add the model to the project with:
 
         >>> project.add_model(
+        ...     model_config_file_path="path/to/model/config",
         ...     model_package_dir="path/to/model/package")
         ...     sample_data=df.iloc[:5, :],
         ... )
@@ -309,6 +373,7 @@ class OpenlayerClient(object):
         Then, you can add the model to the project with:
 
         >>> project.add_model(
+        ...     model_config_file_path="path/to/model/config",
         ...     model_package_dir="path/to/model/package")
         ...     sample_data=df.iloc[:5, :],
         ... )
@@ -322,9 +387,29 @@ class OpenlayerClient(object):
         >>> project.commit("Initial model commit.")
         >>> project.push()
         """
+        # Basic argument combination checks
+        if (model_package_dir is not None and sample_data is None) or (
+            model_package_dir is None and sample_data is not None
+        ):
+            raise ValueError(
+                "Both `model_package_dir` and `sample_data` must be provided together to"
+                " add a model with its artifacts to the platform."
+            )
+        if sample_data is not None:
+            if not isinstance(sample_data, pd.DataFrame):
+                raise ValueError(
+                    "The sample data must be a pandas DataFrame with at least 2 rows."
+                )
+            elif len(sample_data) < 2:
+                raise ValueError(
+                    "The sample data must contain at least 2 rows, but only"
+                    f"{len(sample_data)} rows were provided."
+                )
+
         # Validate model package
         model_package_validator = validators.ModelValidator(
             model_package_dir=model_package_dir,
+            model_config_file_path=model_config_file_path,
             sample_data=sample_data,
         )
         failed_validations = model_package_validator.validate()
@@ -335,27 +420,33 @@ class OpenlayerClient(object):
                 "Make sure to fix all of the issues listed above before the upload.",
             ) from None
 
-        self._stage_resource(
-            resource_name="model",
-            resource_dir=model_package_dir,
-            project_id=project_id,
-            force=force,
-        )
+        # Load model config and augment with defaults
+        model_config = utils.read_yaml(model_config_file_path)
+        if model_package_dir:
+            model_data = ModelSchema().load(model_config)
+        else:
+            model_data = ShellModelSchema().load(model_config)
+
+        # Copy relevant resources to temp directory
+        with tempfile.TemporaryDirectory() as temp_dir:
+            if model_package_dir:
+                shutil.copytree(model_package_dir, temp_dir, dirs_exist_ok=True)
+                utils.write_python_version(temp_dir)
+
+            utils.write_yaml(model_data, f"{temp_dir}/model_config.yaml")
+
+            self._stage_resource(
+                resource_name="model",
+                resource_dir=temp_dir,
+                project_id=project_id,
+                force=force,
+            )
 
     def add_dataset(
         self,
         file_path: str,
-        class_names: List[str],
-        label_column_name: str,
-        dataset_type: DatasetType,
+        dataset_config_file_path: str,
         task_type: TaskType,
-        feature_names: List[str] = [],
-        text_column_name: Optional[str] = None,
-        predictions_column_name: Optional[str] = None,
-        categorical_feature_names: List[str] = [],
-        language: str = "en",
-        sep: str = ",",
-        dataset_config_file_path: Optional[str] = None,
         project_id: str = None,
         force: bool = False,
     ):
@@ -365,48 +456,57 @@ class OpenlayerClient(object):
         ----------
         file_path : str
             Path to the csv file containing the dataset.
-        class_names : List[str]
-            List of class names indexed by label integer in the dataset.
-            E.g. `[negative, positive]` when `[0, 1]` are in your label column.
-        label_column_name : str
-            Column header in the csv containing the labels.
+        dataset_config_file_path : str
+            Path to the dataset configuration YAML file.
 
-            .. important::
-                The labels in this column must be zero-indexed integer values.
-        dataset_type : :obj:`DatasetType`
-            Type of dataset. E.g. :obj:`DatasetType.Validation` or
-             :obj:`DatasetType.Training`.
-        feature_names : List[str], default []
-            List of input feature names. Only applicable if your ``task_type`` is
-            :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
-        text_column_name : str, default None
-            Column header in the csv containing the input text. Only applicable if your
-            ``task_type`` is :obj:`TaskType.TextClassification`.
-        predictions_column_name : str, default None
-            Column header in the csv containing the predictions. Only applicable if you
-            are uploading the model predictions directly, without model artifacts.
+            .. admonition:: What's on the dataset config file?
 
-            .. important::
-                Each cell in this column must contain a list of
-                class probabilities. For example, for a binary classification
-                task, the cell values should look like this:
-                .. csv-table::
-                    :header: ..., predictions
-                    ..., "[0.6650292861587155, 0.3349707138412845]"
-                    ..., "[0.8145561636482788, 0.18544383635172124]"
+                The YAML file with the dataset config must have the following fields:
 
-        categorical_feature_names : List[str], default []
-            A list containing the names of all categorical features in the dataset.
-            E.g. `["Gender", "Geography"]`. Only applicable if your ``task_type`` is
-            :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
-        language : str, default 'en'
-            The language of the dataset in ISO 639-1 (alpha-2 code) format.
-        sep : str, default ','
-            Delimiter to use. E.g. `'\\t'`.
+                - ``columnNames`` : List[str]
+                    List of the dataset's column names.
+                - ``classNames`` : List[str]
+                    List of class names indexed by label integer in the dataset.
+                    E.g. ``[negative, positive]`` when ``[0, 1]`` are in your label column.
+                - ``labelColumnName`` : str
+                    Column header in the csv containing the labels.
+
+                    .. important::
+                        The labels in this column must be zero-indexed integer values.
+                - ``label`` : str
+                    Type of dataset. E.g. ``'training'`` or
+                    ``'validation'``.
+                - ``featureNames`` : List[str], default []
+                    List of input feature names. Only applicable if your ``task_type`` is
+                    :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
+                - ``textColumnName`` : str, default None
+                    Column header in the csv containing the input text. Only applicable if
+                    your ``task_type`` is :obj:`TaskType.TextClassification`.
+                - ``predictionsColumnName`` : str, default None
+                    Column header in the csv containing the predictions. Only applicable if you
+                    are uploading a model as well with the :obj:`add_model` method.
+
+                    .. important::
+                        Each cell in this column must contain a list of
+                        class probabilities. For example, for a binary classification
+                        task, the cell values should look like this:
+                        .. csv-table::
+                            :header: ..., predictions
+                            ..., "[0.6650292861587155, 0.3349707138412845]"
+                            ..., "[0.8145561636482788, 0.18544383635172124]"
+
+                - ``categoricalFeatureNames`` : List[str], default []
+                    A list containing the names of all categorical features in the dataset.
+                    E.g. ``["Gender", "Geography"]``. Only applicable if your ``task_type`` is
+                    :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
+                - ``language`` : str, default 'en'
+                    The language of the dataset in ISO 639-1 (alpha-2 code) format.
+                - ``sep`` : str, default ','
+                    Delimiter to use. E.g. `'\\t'`.
         force : bool
-            If :obj:`add_dataset` is called when there is already a dataset of the same type in the
-            staging area, when ``force=True``, the existing staged dataset will be overwritten by the new
-            one. When ``force=False``, the user will be prompted to confirm the overwrite.
+            If :obj:`add_dataset` is called when there is already a dataset of the same type
+            in the staging area, when ``force=True``, the existing staged dataset will be overwritten
+            by the new one. When ``force=False``, the user will be prompted to confirm the overwrite.
 
         Notes
         -----
@@ -450,25 +550,27 @@ class OpenlayerClient(object):
             ``class_names`` array that you define (as shown below).
             E.g. 0 => 'Retained', 1 => 'Churned'
 
-        The variables are needed by Openlayer are:
+        Write the dataset config YAML file with the variables are needed by Openlayer:
 
-        >>> from openlayer.datasets import DatasetType
+        >>> import yaml
         >>>
-        >>> dataset_type = DatasetType.Training  # or DatasetType.Validation
-        >>> class_names = ['Retained', 'Churned']
-        >>> feature_names = ['CreditScore', 'Geography', 'Balance']
-        >>> label_column_name = 'Churned'
-        >>> categorical_feature_names = ['Geography']
+        >> dataset_config = {
+        ...     'columnNames': ['CreditScore', 'Geography', 'Balance', 'Churned'],
+        ...     'classNames': ['Retained', 'Churned'],
+        ...     'labelColumnName': 'Churned',
+        ...     'label': 'training',  # or 'validation'
+        ...     'featureNames': ['CreditScore', 'Geography', 'Balance'],
+        ...     'categoricalFeatureNames': ['Geography'],
+        ... }
+        >>>
+        >>> with open('/path/to/dataset_config.yaml', 'w') as f:
+        ...     yaml.dump(dataset_config, f)
 
         You can now add this dataset to your project with:
 
         >>> project.add_dataset(
         ...     file_path='/path/to/dataset.csv',
-        ...     dataset_type=dataset_type,
-        ...     class_names=class_names,
-        ...     label_column_name=label_column_name,
-        ...     feature_names=feature_names,
-        ...     categorical_feature_names=categorical_feature_names,
+        ...     dataset_config_file_path='/path/to/dataset_config.yaml',
         ... )
 
         After adding the dataset to the project, it is staged, waiting to
@@ -491,23 +593,26 @@ class OpenlayerClient(object):
             I'm in a fantastic mood today, 1
             Things are looking up, 1
 
-        The variables are needed by Openlayer are:
+        Write the dataset config YAML file with the variables are needed by Openlayer:
 
-        >>> from openlayer.datasets import DatasetType
+        >>> import yaml
         >>>
-        >>> dataset_type = DatasetType.Training  # or DatasetType.Validation
-        >>> class_names = ['Negative', 'Positive']
-        >>> text_column_name = 'Text'
-        >>> label_column_name = 'Sentiment'
+        >> dataset_config = {
+        ...     'columnNames': ['Text', 'Sentiment'],
+        ...     'classNames': ['Negative', 'Positive'],
+        ...     'labelColumnName': 'Sentiment',
+        ...     'label': 'training',  # or 'validation'
+        ...     'textColumnName': 'Text',
+        ... }
+        >>>
+        >>> with open('/path/to/dataset_config.yaml', 'w') as f:
+        ...     yaml.dump(dataset_config, f)
 
         You can now add this dataset to your project with:
 
         >>> project.add_dataset(
         ...     file_path='/path/to/dataset.csv',
-        ...     dataset_type=dataset_type,
-        ...     class_names=class_names,
-        ...     label_column_name=label_column_name,
-        ...     text_column_name=text_column_name,
+        ...     dataset_config_file_path='/path/to/dataset_config.yaml',
         ... )
 
         After adding the dataset to the project, it is staged, waiting to
@@ -520,29 +625,6 @@ class OpenlayerClient(object):
         >>> project.push()
         """
         # Validate dataset
-        # TODO: re-think the way the arguments are passed for the dataset upload
-        dataset_config = None
-        if dataset_config_file_path is None:
-            dataset_config = {
-                "file_path": file_path,
-                "class_names": class_names,
-                "label_column_name": label_column_name,
-                "dataset_type": dataset_type.value,
-                "feature_names": feature_names,
-                "text_column_name": text_column_name,
-                "predictions_column_name": predictions_column_name,
-                "categorical_feature_names": categorical_feature_names,
-                "language": language,
-                "sep": sep,
-            }
-
-            # Save dataset_config to a temporary file
-            dataset_config_file_path = os.path.join(
-                tempfile.gettempdir(), "dataset_config.yaml"
-            )
-            with open(dataset_config_file_path, "w") as dataset_config_file:
-                yaml.dump(dataset_config, dataset_config_file, default_flow_style=False)
-
         dataset_validator = validators.DatasetValidator(
             dataset_config_file_path=dataset_config_file_path,
             dataset_file_path=file_path,
@@ -555,13 +637,17 @@ class OpenlayerClient(object):
                 "Make sure to fix all of the issues listed above before the upload.",
             ) from None
 
+        # Load dataset config and augment with defaults
+        dataset_config = utils.read_yaml(dataset_config_file_path)
+        dataset_data = DatasetSchema().load(dataset_config)
+
         # Copy relevant resources to temp directory
         with tempfile.TemporaryDirectory() as temp_dir:
             shutil.copy(file_path, f"{temp_dir}/dataset.csv")
-            shutil.copy(dataset_config_file_path, temp_dir)
+            utils.write_yaml(dataset_data, f"{temp_dir}/dataset_config.yaml")
 
             self._stage_resource(
-                resource_name=dataset_type.value,
+                resource_name=dataset_data.get("label"),
                 resource_dir=temp_dir,
                 project_id=project_id,
                 force=force,
@@ -569,18 +655,10 @@ class OpenlayerClient(object):
 
     def add_dataframe(
         self,
-        task_type: TaskType,
         df: pd.DataFrame,
-        class_names: List[str],
-        label_column_name: str,
-        dataset_type: DatasetType,
-        feature_names: List[str] = [],
-        text_column_name: Optional[str] = None,
-        predictions_column_name: Optional[str] = None,
-        categorical_feature_names: List[str] = [],
-        language: str = "en",
+        dataset_config_file_path: str,
+        task_type: TaskType,
         project_id: str = None,
-        dataset_config_file_path: Optional[str] = None,
         force: bool = False,
     ):
         r"""Adds a dataset to a project's staging area (from a pandas DataFrame).
@@ -589,46 +667,57 @@ class OpenlayerClient(object):
         ----------
         df : pd.DataFrame
             Dataframe containing your dataset.
-        class_names : List[str]
-            List of class names indexed by label integer in the dataset.
-            E.g. `[negative, positive]` when `[0, 1]` are in your label column.
-        label_column_name : str
-            Column header in the dataframe containing the labels.
+        dataset_config_file_path : str
+            Path to the dataset configuration YAML file.
 
-            .. important::
-                The labels in this column must be zero-indexed integer values.
-        dataset_type : :obj:`DatasetType`
-             Type of dataset. E.g. :obj:`DatasetType.Validation` or
-             :obj:`DatasetType.Training`.
-        feature_names : List[str], default []
-            List of input feature names. Only applicable if your ``task_type`` is
-            :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
-        text_column_name : str, default None
-            Column header in the dataframe containing the input text. Only applicable if your
-            ``task_type`` is :obj:`TaskType.TextClassification`.
-        predictions_column_name : str, default None
-            Column header in the dataframe containing the predictions. Only applicable if you are
-            adding predictions directly without model artifacts.
+            .. admonition:: What's on the dataset config file?
 
-            .. important::
-                Each cell in this column must contain a list of
-                class probabilities. For example, for a binary classification
-                task, the cell values should look like this:
-                .. csv-table::
-                    :header: ..., predictions
-                    ..., [0.6650292861587155, 0.3349707138412845]
-                    ..., [0.8145561636482788, 0.18544383635172124]
+                The YAML file with the dataset config must have the following fields:
 
-        categorical_feature_names : List[str], default []
-            A list containing the names of all categorical features in the dataframe.
-            E.g. `["Gender", "Geography"]`. Only applicable if your ``task_type`` is
-            :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
-        language : str, default 'en'
-            The language of the dataset in ISO 639-1 (alpha-2 code) format.
+                - ``columnNames`` : List[str]
+                    List of the dataset's column names.
+                - ``classNames`` : List[str]
+                    List of class names indexed by label integer in the dataset.
+                    E.g. ``[negative, positive]`` when ``[0, 1]`` are in your label column.
+                - ``labelColumnName`` : str
+                    Column header in the csv containing the labels.
+
+                    .. important::
+                        The labels in this column must be zero-indexed integer values.
+                - ``label`` : str
+                    Type of dataset. E.g. ``'training'`` or
+                    ``'validation'``.
+                - ``featureNames`` : List[str], default []
+                    List of input feature names. Only applicable if your ``task_type`` is
+                    :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
+                - ``textColumnName`` : str, default None
+                    Column header in the csv containing the input text. Only applicable if your
+                    ``task_type`` is :obj:`TaskType.TextClassification`.
+                - ``predictionsColumnName`` : str, default None
+                    Column header in the csv containing the predictions. Only applicable if you
+                    are uploading a model as well with the :obj:`add_model` method.
+
+                    .. important::
+                        Each cell in this column must contain a list of
+                        class probabilities. For example, for a binary classification
+                        task, the cell values should look like this:
+                        .. csv-table::
+                            :header: ..., predictions
+                            ..., "[0.6650292861587155, 0.3349707138412845]"
+                            ..., "[0.8145561636482788, 0.18544383635172124]"
+
+                - ``categoricalFeatureNames`` : List[str], default []
+                    A list containing the names of all categorical features in the dataset.
+                    E.g. ``["Gender", "Geography"]``. Only applicable if your ``task_type`` is
+                    :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
+                - ``language`` : str, default 'en'
+                    The language of the dataset in ISO 639-1 (alpha-2 code) format.
+                - ``sep`` : str, default ','
+                    Delimiter to use. E.g. `'\\t'`.
         force : bool
             If :obj:`add_dataframe` is called when there is already a dataset of the same type in the
-            staging area, when ``force=True``, the existing staged dataset will be overwritten by the new
-            one. When ``force=False``, the user will be prompted to confirm the overwrite.
+            staging area, when ``force=True``, the existing staged dataset will be overwritten
+            by the new one. When ``force=False``, the user will be prompted to confirm the overwrite.
 
         Notes
         -----
@@ -671,25 +760,27 @@ class OpenlayerClient(object):
             the ``class_names`` array that you define (as shown below).
             E.g. 0 => 'Retained', 1 => 'Churned'.
 
-        The variables are needed by Openlayer are:
+        Write the dataset config YAML file with the variables are needed by Openlayer:
 
-        >>> from openlayer.datasets import DatasetType
+        >>> import yaml
         >>>
-        >>> dataset_type = DatasetType.Training # or DatasetType.Validation
-        >>> class_names = ['Retained', 'Churned']
-        >>> feature_names = ['CreditScore', 'Geography', 'Balance']
-        >>> label_column_name = 'Churned'
-        >>> categorical_feature_names = ['Geography']
+        >> dataset_config = {
+        ...     'columnNames': ['CreditScore', 'Geography', 'Balance', 'Churned'],
+        ...     'classNames': ['Retained', 'Churned'],
+        ...     'labelColumnName': 'Churned',
+        ...     'label': 'training',  # or 'validation'
+        ...     'featureNames': ['CreditScore', 'Geography', 'Balance'],
+        ...     'categoricalFeatureNames': ['Geography'],
+        ... }
+        >>>
+        >>> with open('/path/to/dataset_config.yaml', 'w') as f:
+        ...     yaml.dump(dataset_config, f)
 
         You can now add this dataset to your project with:
 
-        >>> project.add_dataset(
+        >>> project.add_dataframe(
         ...     df=df,
-        ...     dataset_type=dataset_type,
-        ...     class_names=class_names,
-        ...     feature_names=feature_names,
-        ...     label_column_name=label_column_name,
-        ...     categorical_feature_names=categorical_feature_names,
+        ...     dataset_config_file_path='/path/to/dataset_config.yaml',
         ... )
 
         After adding the dataset to the project, it is staged, waiting to
@@ -711,23 +802,26 @@ class OpenlayerClient(object):
         1    I'm in a fantastic mood today          1
         2    Things are looking up                  1
 
-        The variables are needed by Openlayer are:
+        Write the dataset config YAML file with the variables are needed by Openlayer:
 
-        >>> from openlayer.datasets import DatasetType
+        >>> import yaml
         >>>
-        >>> dataset_type = DatasetType.Training # or DatasetType.Validation
-        >>> class_names = ['Negative', 'Positive']
-        >>> text_column_name = 'Text'
-        >>> label_column_name = 'Sentiment'
+        >> dataset_config = {
+        ...     'columnNames': ['Text', 'Sentiment'],
+        ...     'classNames': ['Negative', 'Positive'],
+        ...     'labelColumnName': 'Sentiment',
+        ...     'label': 'training',  # or 'validation'
+        ...     'textColumnName': 'Text',
+        ... }
+        >>>
+        >>> with open('/path/to/dataset_config.yaml', 'w') as f:
+        ...     yaml.dump(dataset_config, f)
 
-        You can now upload this dataset to Openlayer:
+        You can now add this dataset to your project with:
 
-        >>> project.add_dataset(
+        >>> project.add_dataframe(
         ...     df=df,
-        ...     dataset_type=dataset_type,
-        ...     class_names=class_names,
-        ...     text_column_name=text_column_name,
-        ...     label_column_name=label_column_name,
+        ...     dataset_config_file_path='/path/to/dataset_config.yaml',
         ... )
 
         After adding the dataset to the project, it is staged, waiting to
@@ -750,14 +844,6 @@ class OpenlayerClient(object):
             return self.add_dataset(
                 file_path=file_path,
                 task_type=task_type,
-                class_names=class_names,
-                label_column_name=label_column_name,
-                dataset_type=dataset_type,
-                text_column_name=text_column_name,
-                predictions_column_name=predictions_column_name,
-                language=language,
-                feature_names=feature_names,
-                categorical_feature_names=categorical_feature_names,
                 project_id=project_id,
                 dataset_config_file_path=dataset_config_file_path,
                 force=force,
@@ -813,7 +899,8 @@ class OpenlayerClient(object):
 
         if not os.listdir(project_dir):
             print(
-                "There is nothing staged to commit. Please add model and/or datasets first before committing."
+                "There is nothing staged to commit. Please add model and/or datasets"
+                " first before committing."
             )
             return
 
@@ -849,13 +936,14 @@ class OpenlayerClient(object):
 
         Notes
         -----
-        - To use this method, you must first have committed your changes with the :obj:`commit` method.
+        - To use this method, you must first have committed your changes with the :obj:`commit`
+        method.
 
         Examples
         --------
 
-        Let's say you have a project with a model and a dataset staged and committed. You can confirm these resources
-        are indeed in the staging area using the :obj:`status` method:
+        Let's say you have a project with a model and a dataset staged and committed. You can
+        confirm these resources are indeed in the staging area using the :obj:`status` method:
 
         >>> project.status()
 
@@ -941,7 +1029,8 @@ class OpenlayerClient(object):
         You can have a staging area with different resources staged (e.g., models and datasets
         added with the :obj:`add_model`, :obj:`add_dataset`, and :obj:`add_dataframe` mehtods).
 
-        Finally, you can have a staging area with resources staged and committed (with the :obj:`commit` method).
+        Finally, you can have a staging area with resources staged and committed (with the
+        :obj:`commit` method).
         """
         project_dir = f"{OPENLAYER_DIR}/{project_id}/staging"
         valid_resource_names = ["model", "training", "validation"]
@@ -977,14 +1066,16 @@ class OpenlayerClient(object):
         Parameters
         ----------
         resource_name : str
-            The name of the resource to restore. Can be one of ``"model"``, ``"training"``, or ``"validation"``.
+            The name of the resource to restore. Can be one of ``"model"``, ``"training"``,
+            or ``"validation"``.
 
             .. important::
                 To see the names of the resources staged, use the :obj:`status` method.
 
         Examples
         --------
-        Let's say you have initially used the :obj:`add_model` method to add a model to the staging area.
+        Let's say you have initially used the :obj:`add_model` method to add a model to the
+        staging area.
 
         >>> project.add_model(
         ...     model_package_dir="/path/to/model/package",
@@ -1026,7 +1117,8 @@ class OpenlayerClient(object):
         Parameters
         ----------
         resource_name : str
-            The name of the resource to stage. Can be one of "model", "training", or "validation".
+            The name of the resource to stage. Can be one of "model", "training",
+            or "validation".
         resource_dir : str
             The path from which to copy the resource.
         project_id : int
@@ -1060,9 +1152,5 @@ class OpenlayerClient(object):
                 return
 
         shutil.copytree(resource_dir, staging_dir)
-
-        # Augment with Python version information for models
-        if resource_name == "model":
-            utils.write_python_version(staging_dir)
 
         print(f"Staged the {resource_name}!")
