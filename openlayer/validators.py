@@ -1,3 +1,15 @@
+"""Implements the series of validations needed to ensure that 
+the objects uploaded to the platform are valid.
+
+Typically, the validator object is created and then the `validate` method is called.
+For example, to validate a model package:
+
+>>> model_validator = ModelValidator(
+...     model_package_dir="/path/to/model/package",
+...     model_config_file_path="/path/to/model/config/file.yaml",
+...     sample_data=df)
+>>> model_validator.validate()
+"""
 import ast
 import importlib
 import os
@@ -34,7 +46,8 @@ class CommitBundleValidator:
           "validation" and "training" (regardless of artifact or no artifact).
         - When a "model" is not included, you always need to NOT upload predictions with
           one exception:
-            - "validation" set only in bundle, which means the predictions are for the previous model version.
+            - "validation" set only in bundle, which means the predictions are for the
+            previous model version.
         """
         bundle_state_failed_validations = []
 
@@ -50,7 +63,7 @@ class CommitBundleValidator:
                 training_dataset_config = yaml.safe_load(stream)
 
             training_predictions_column_name = training_dataset_config.get(
-                "predictions_column_name"
+                "predictionsColumnName"
             )
 
         if "validation" in bundle_resources:
@@ -60,7 +73,7 @@ class CommitBundleValidator:
                 validation_dataset_config = yaml.safe_load(stream)
 
             validation_predictions_column_name = validation_dataset_config.get(
-                "predictions_column_name"
+                "predictionsColumnName"
             )
 
         if "model" in bundle_resources:
@@ -79,15 +92,15 @@ class CommitBundleValidator:
                 and validation_predictions_column_name is not None
             ):
                 bundle_state_failed_validations.append(
-                    "A training set was provided alongside with a validation set with predictions. "
-                    "Please either provide only a validation set with predictions, or a model and "
-                    "both datasets with predictions"
+                    "A training set was provided alongside with a validation set with"
+                    " predictions. Please either provide only a validation set with"
+                    " predictions, or a model and both datasets with predictions"
                 )
             elif training_predictions_column_name is not None:
                 bundle_state_failed_validations.append(
-                    "The training dataset contains predictions, but no model was provided. "
-                    "To push a training set with predictions, please provide a model and a validation "
-                    "set with predictions as well."
+                    "The training dataset contains predictions, but no model was"
+                    " provided. To push a training set with predictions, please provide"
+                    " a model and a validation set with predictions as well."
                 )
 
         # Print results of the validation
@@ -136,7 +149,7 @@ class CommitValidator:
 
         commit_schema = schemas.CommitSchema()
         try:
-            commit_schema.load({"commit_message": self.commit_message})
+            commit_schema.load({"commitMessage": self.commit_message})
         except ma.ValidationError as err:
             commit_message_failed_validations.extend(
                 _format_marshmallow_error_message(err)
@@ -169,9 +182,11 @@ class CommitValidator:
 class DatasetValidator:
     """Validates the dataset and its arguments.
 
-    Either the ``dataset_file_path`` or the ``dataset_df`` must be provided (not both).
+    Either the ``dataset_file_path`` or the ``dataset_df`` must be
+    provided (not both).
 
-    Either the ``dataset_config_file_path`` or the ``dataset_config`` must be provided (not both).
+    Either the ``dataset_config_file_path`` or the ``dataset_config``
+    must be provided (not both).
 
     Parameters
     ----------
@@ -187,10 +202,12 @@ class DatasetValidator:
     Examples
     --------
 
-    Let's say we have a ``dataset_config.yaml`` file and a ``dataset.csv`` file in the current directory.
+    Let's say we have a ``dataset_config.yaml`` file and a ``dataset.csv``
+    file in the current directory.
 
-    To ensure they are in the format the Openlayer platform expects to use the :meth:`openlayer.OpenlayerClient.add_dataset`,
-    we can use the :class:`openlayer.DatasetValidator` class as follows:
+    To ensure they are in the format the Openlayer platform expects to use the
+    :meth:`openlayer.OpenlayerClient.add_dataset`, we can use the
+    :class:`openlayer.DatasetValidator` class as follows:
 
     >>> from openlayer import DatasetValidator
     >>>
@@ -200,8 +217,9 @@ class DatasetValidator:
     ... )
     >>> dataset_validator.validate()
 
-    Alternatively, if we have a ``dataset_config.yaml`` file in the current directory and a ``dataset_df`` DataFrame,
-    we can use the :class:`openlayer.DatasetValidator` class as follows:
+    Alternatively, if we have a ``dataset_config.yaml`` file in the current
+    directory and a ``dataset_df`` DataFrame, we can use the
+    :class:`openlayer.DatasetValidator` class as follows:
 
     >>> from openlayer import DatasetValidator
     >>>
@@ -221,20 +239,24 @@ class DatasetValidator:
     ):
         if dataset_df is not None and dataset_file_path:
             raise ValueError(
-                "Both dataset_df and dataset_file_path are provided. Please provide only one of them."
+                "Both dataset_df and dataset_file_path are provided."
+                " Please provide only one of them."
             )
         elif dataset_df is None and not dataset_file_path:
             raise ValueError(
-                "Neither dataset_df nor dataset_file_path is provided. Please provide one of them."
+                "Neither dataset_df nor dataset_file_path is provided."
+                " Please provide one of them."
             )
 
         if dataset_config_file_path and dataset_config:
             raise ValueError(
-                "Both dataset_config_file_path and dataset_config are provided. Please provide only one of them."
+                "Both dataset_config_file_path and dataset_config are provided."
+                " Please provide only one of them."
             )
         elif not dataset_config_file_path and not dataset_config:
             raise ValueError(
-                "Neither dataset_config_file_path nor dataset_config is provided. Please provide one of them."
+                "Neither dataset_config_file_path nor dataset_config is provided."
+                " Please provide one of them."
             )
 
         self.dataset_file_path = dataset_file_path
@@ -263,26 +285,7 @@ class DatasetValidator:
         if self.dataset_config:
             dataset_schema = schemas.DatasetSchema()
             try:
-                dataset_schema.load(
-                    {
-                        "file_path": self.dataset_config.get("file_path"),
-                        "class_names": self.dataset_config.get("class_names"),
-                        "label_column_name": self.dataset_config.get(
-                            "label_column_name"
-                        ),
-                        "dataset_type": self.dataset_config.get("dataset_type"),
-                        "language": self.dataset_config.get("language", "en"),
-                        "sep": self.dataset_config.get("sep", ","),
-                        "feature_names": self.dataset_config.get("feature_names", []),
-                        "text_column_name": self.dataset_config.get("text_column_name"),
-                        "predictions_column_name": self.dataset_config.get(
-                            "predictions_column_name"
-                        ),
-                        "categorical_feature_names": self.dataset_config.get(
-                            "categorical_feature_names", []
-                        ),
-                    }
-                )
+                dataset_schema.load(self.dataset_config)
             except ma.ValidationError as err:
                 dataset_config_failed_validations.extend(
                     _format_marshmallow_error_message(err)
@@ -299,7 +302,8 @@ class DatasetValidator:
     def _validate_dataset_file(self):
         """Checks whether the dataset file exists and is valid.
 
-        If it is valid, it loads the dataset file into the `self.dataset_df` attribute.
+        If it is valid, it loads the dataset file into the `self.dataset_df`
+        attribute.
 
         Beware of the order of the validations, as it is important.
         """
@@ -337,11 +341,12 @@ class DatasetValidator:
         if self.dataset_config and self.dataset_df is not None:
             # Extract vars
             dataset_df = self.dataset_df
-            class_names = self.dataset_config.get("class_names")
-            label_column_name = self.dataset_config.get("label_column_name")
-            feature_names = self.dataset_config.get("feature_names")
-            text_column_name = self.dataset_config.get("text_column_name")
-            predictions_column_name = self.dataset_config.get("predictions_column_name")
+            class_names = self.dataset_config.get("classNames")
+            column_names = self.dataset_config.get("columnNames")
+            label_column_name = self.dataset_config.get("labelColumnName")
+            feature_names = self.dataset_config.get("featureNames")
+            text_column_name = self.dataset_config.get("textColumnName")
+            predictions_column_name = self.dataset_config.get("predictionsColumnName")
 
             if self._contains_null_values(dataset_df):
                 dataset_and_config_consistency_failed_validations.append(
@@ -352,14 +357,20 @@ class DatasetValidator:
             if self._contains_unsupported_dtypes(dataset_df):
                 dataset_and_config_consistency_failed_validations.append(
                     "The dataset contains unsupported dtypes. The supported dtypes are "
-                    "'float32', 'float64', 'int32', 'int64', 'object'. Please cast the columns "
-                    "in your dataset to conform to these dtypes."
+                    "'float32', 'float64', 'int32', 'int64', 'object'."
+                    " Please cast the columns in your dataset to conform to these dtypes."
+                )
+
+            if self._columns_not_in_dataset_df(dataset_df, column_names):
+                dataset_and_config_consistency_failed_validations.append(
+                    "There are columns specified in the `columnNames` dataset config"
+                    " which are not in the dataset."
                 )
 
             if label_column_name:
                 if self._column_not_in_dataset_df(dataset_df, label_column_name):
                     dataset_and_config_consistency_failed_validations.append(
-                        f"The label column `{label_column_name}` specified as `label_column_name` "
+                        f"The label column `{label_column_name}` specified as `labelColumnName` "
                         "is not in the dataset."
                     )
                 else:
@@ -368,9 +379,9 @@ class DatasetValidator:
                             dataset_df, label_column_name, class_names
                         ):
                             dataset_and_config_consistency_failed_validations.append(
-                                f"There are more labels in the dataset's column `{label_column_name}` "
-                                "than specified in `class_names`. "
-                                "Please specify all possible labels in the `class_names` list."
+                                "There are more labels in the dataset's column"
+                                f" `{label_column_name}` than specified in `classNames`. "
+                                "Please specify all possible labels in the `classNames` list."
                             )
                         if self._labels_not_zero_indexed(
                             dataset_df, label_column_name, class_names
@@ -378,15 +389,15 @@ class DatasetValidator:
                             dataset_and_config_consistency_failed_validations.append(
                                 "The labels in the dataset are not zero-indexed. "
                                 f"Make sure that the labels in the column `{label_column_name}` "
-                                "are zero-indexed integers that match the list in `class_names`."
+                                "are zero-indexed integers that match the list in `classNames`."
                             )
 
             # Predictions validations
             if predictions_column_name:
                 if self._column_not_in_dataset_df(dataset_df, predictions_column_name):
                     dataset_and_config_consistency_failed_validations.append(
-                        f"The predictions column `{predictions_column_name}` specified as `predictions_column_name` "
-                        "is not in the dataset."
+                        f"The predictions column `{predictions_column_name}` specified as"
+                        " `predictionsColumnName` is not in the dataset."
                     )
                 else:
                     try:
@@ -398,8 +409,9 @@ class DatasetValidator:
                             dataset_df, predictions_column_name
                         ):
                             dataset_and_config_consistency_failed_validations.append(
-                                f"The predictions in the column `{predictions_column_name}` are not lists. "
-                                "Please make sure that the predictions are lists of floats."
+                                f"The predictions in the column `{predictions_column_name}` "
+                                "are not lists. Please make sure that the predictions are "
+                                "lists of floats."
                             )
                         else:
                             if self._prediction_lists_not_same_length(
@@ -426,10 +438,10 @@ class DatasetValidator:
                                     ):
                                         dataset_and_config_consistency_failed_validations.append(
                                             f"There are predictions in the column `{predictions_column_name}` "
-                                            "are not in `class_names`. "
+                                            "are not in `classNames`. "
                                             "Please make sure that the predictions are lists of floats "
                                             "that sum to 1 and that the classes in the predictions "
-                                            "match the classes in `class_names`."
+                                            "match the classes in `classNames`."
                                         )
                     except:
                         dataset_and_config_consistency_failed_validations.append(
@@ -441,7 +453,7 @@ class DatasetValidator:
             if text_column_name:
                 if self._column_not_in_dataset_df(dataset_df, text_column_name):
                     dataset_and_config_consistency_failed_validations.append(
-                        f"The text column `{text_column_name}` specified as `text_column_name` "
+                        f"The text column `{text_column_name}` specified as `textColumnName` "
                         "is not in the dataset."
                     )
                 elif self._exceeds_character_limit(dataset_df, text_column_name):
@@ -452,9 +464,9 @@ class DatasetValidator:
 
             # Tabular-specific validations
             if feature_names:
-                if self._features_not_in_dataset_df(dataset_df, feature_names):
+                if self._columns_not_in_dataset_df(dataset_df, feature_names):
                     dataset_and_config_consistency_failed_validations.append(
-                        f"There are features specified in `feature_names` which are "
+                        "There are features specified in `featureNames` which are "
                         "not in the dataset."
                     )
 
@@ -504,11 +516,11 @@ class DatasetValidator:
         return False
 
     @staticmethod
-    def _features_not_in_dataset_df(
-        dataset_df: pd.DataFrame, feature_names: List[str]
+    def _columns_not_in_dataset_df(
+        dataset_df: pd.DataFrame, columns_list: List[str]
     ) -> bool:
-        """Checks whether the features are in the dataset."""
-        if set(feature_names) - set(dataset_df.columns):
+        """Checks whether the columns are in the dataset."""
+        if set(columns_list) - set(dataset_df.columns):
             return True
         return False
 
@@ -619,8 +631,9 @@ class ModelValidator:
     Let's say we have the prepared the model package and have some sample data expected
     by the model in a pandas DataFrame.
 
-    To ensure the model package is in the format the Openlayer platform expects to use the :meth:`openlayer.OpenlayerClient.add_model`
-    method, we can use the :class:`openlayer.ModelValidator` class as follows:,
+    To ensure the model package is in the format the Openlayer platform expects to use the
+    :meth:`openlayer.OpenlayerClient.add_model` method, we can use the
+    :class:`openlayer.ModelValidator` class as follows:,
 
     >>> from openlayer import ModelValidator
     >>>
@@ -634,20 +647,12 @@ class ModelValidator:
 
     def __init__(
         self,
-        model_package_dir: str,
-        sample_data: pd.DataFrame,
+        model_config_file_path: str,
+        model_package_dir: Optional[str] = None,
+        sample_data: Optional[pd.DataFrame] = None,
     ):
+        self.model_config_file_path = model_config_file_path
         self.model_package_dir = model_package_dir
-
-        if not isinstance(sample_data, pd.DataFrame):
-            raise ValueError(
-                "Test data must be a pandas DataFrame with at least 2 rows."
-            )
-        if len(sample_data) < 2:
-            raise ValueError(
-                f"Test data must contain at least 2 rows, but only {len(sample_data)} "
-                "rows were provided."
-            )
         self.sample_data = sample_data
         self.failed_validations = []
 
@@ -658,7 +663,6 @@ class ModelValidator:
 
         model_package
           ├── artifacts.pkl  # potentially different name / format and multiple files
-          ├── model_config.yaml
           ├── prediction_interface.py
           └── requirements.txt
 
@@ -696,14 +700,6 @@ class ModelValidator:
                 "`requirements.txt` file."
             )
 
-        if not os.path.exists(
-            os.path.join(self.model_package_dir, "model_config.yaml")
-        ):
-            model_package_failed_validations.append(
-                f"Model package directory `{self.model_package_dir}` does not contain the "
-                "`model_config.yaml` file."
-            )
-
         # Print results of the validation
         if model_package_failed_validations:
             print("Model package structure failed validations: \n")
@@ -733,8 +729,8 @@ class ModelValidator:
                 f"File `{requirements_txt_file}` does not exist."
             )
         else:
-            with open(requirements_txt_file, "r") as f:
-                lines = f.readlines()
+            with open(requirements_txt_file, "r") as file:
+                lines = file.readlines()
 
             # Parse the requirements file
             requirements = pkg_resources.parse_requirements(lines)
@@ -792,31 +788,21 @@ class ModelValidator:
         """
         model_config_failed_validations = []
 
-        # Path to the model_config.yaml file
-        model_config_file = os.path.join(self.model_package_dir, "model_config.yaml")
-
         # File existence check
-        if not os.path.isfile(os.path.expanduser(model_config_file)):
+        if not os.path.isfile(os.path.expanduser(self.model_config_file_path)):
             model_config_failed_validations.append(
-                f"File `{model_config_file}` does not exist."
+                f"File `{self.model_config_file_path}` does not exist."
             )
         else:
-            with open(model_config_file, "r") as stream:
+            with open(self.model_config_file_path, "r") as stream:
                 model_config = yaml.safe_load(stream)
 
-            model_schema = schemas.ModelSchema()
+            if self.model_package_dir:
+                model_schema = schemas.ModelSchema()
+            else:
+                model_schema = schemas.ShellModelSchema()
             try:
-                model_schema.load(
-                    {
-                        "name": model_config.get("name"),
-                        "model_type": model_config.get("model_type"),
-                        "class_names": model_config.get("class_names"),
-                        "feature_names": model_config.get("feature_names", []),
-                        "categorical_feature_names": model_config.get(
-                            "categorical_feature_names", []
-                        ),
-                    }
-                )
+                model_schema.load(model_config)
             except ma.ValidationError as err:
                 model_config_failed_validations.extend(
                     _format_marshmallow_error_message(err)
@@ -870,9 +856,9 @@ class ModelValidator:
                 ml_model = None
                 try:
                     ml_model = module.load_model()
-                except Exception as e:
+                except Exception as exc:
                     prediction_interface_failed_validations.append(
-                        f"There is an error while loading the model: \n {e}"
+                        f"There is an error while loading the model: \n {exc}"
                     )
 
                 if ml_model is not None:
@@ -886,9 +872,11 @@ class ModelValidator:
                         try:
                             with utils.HidePrints():
                                 ml_model.predict_proba(self.sample_data)
-                        except Exception as e:
+                        except Exception as err:
                             exception_stack = "".join(
-                                traceback.format_exception(type(e), e, e.__traceback__)
+                                traceback.format_exception(
+                                    type(err), err, err.__traceback__
+                                )
                             )
                             prediction_interface_failed_validations.append(
                                 "The `predict_proba` function failed while running the test data. "
@@ -914,10 +902,11 @@ class ModelValidator:
         List[str]
             A list of all failed validations.
         """
-        self._validate_model_package_dir()
-        self._validate_requirements()
+        if self.model_package_dir:
+            self._validate_model_package_dir()
+            self._validate_requirements()
+            self._validate_prediction_interface()
         self._validate_model_config()
-        self._validate_prediction_interface()
 
         if not self.failed_validations:
             print("All validations passed!")
