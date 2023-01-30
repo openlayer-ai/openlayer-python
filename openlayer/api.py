@@ -273,10 +273,11 @@ class Api:
         params = {"storageInterface": "local", "objectName": object_name}
         presigned_json = self.get_request(f"{endpoint}/presigned-url", params=params)
         blob_path = presigned_json["storageUri"].replace("local://", "")
+        dir_path = os.path.dirname(blob_path)
         try:
-            os.makedirs(blob_path, exist_ok=True)
+            os.makedirs(dir_path, exist_ok=True)
         except OSError:
-            raise OpenlayerException(f"Directory {blob_path} cannot be created")
-        shutil.copyfile(file_path, f"{blob_path}/{object_name}")
+            raise OpenlayerException(f"Directory {dir_path} cannot be created")
+        shutil.copyfile(file_path, blob_path)
         body["storageUri"] = presigned_json["storageUri"]
         return self.post_request(f"{endpoint}", body=body)
