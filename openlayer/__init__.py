@@ -527,7 +527,7 @@ class OpenlayerClient(object):
 
         # Copy relevant resources to temp directory
         with tempfile.TemporaryDirectory() as temp_dir:
-            shutil.copy(file_path, temp_dir)
+            shutil.copy(file_path, f"{temp_dir}/dataset.csv")
             shutil.copy(dataset_config_file_path, temp_dir)
 
             self._stage_resource(
