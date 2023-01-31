@@ -12,6 +12,7 @@ server-tests.ipynb
 dependencies/
 *.bin
 *.csv
+*.yaml
 
 # Ignore everything in examples/ except the task dirs
 !examples
