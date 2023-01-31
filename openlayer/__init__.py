@@ -974,7 +974,7 @@ class OpenlayerClient(object):
 
         # Validate bundle resources
         commit_bundle_validator = validators.CommitBundleValidator(
-            commit_bundle_path=project_dir
+            bundle_path=project_dir
         )
         failed_validations = commit_bundle_validator.validate()
 
