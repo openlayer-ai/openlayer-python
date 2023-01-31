@@ -1,5 +1,6 @@
 import os
 import sys
+import traceback
 import warnings
 
 import yaml
@@ -79,3 +80,12 @@ def write_yaml(dictionary: dict, filename: str):
     """
     with open(filename, "w") as stream:
         yaml.dump(dictionary, stream)
+
+
+def get_exception_stacktrace(err: Exception):
+    """Returns the stacktrace of the most recent exception.
+
+    Returns:
+        str: the stacktrace of the most recent exception.
+    """
+    return "".join(traceback.format_exception(type(err), err, err.__traceback__))
