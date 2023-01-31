@@ -13,9 +13,8 @@ For example, to validate a model package:
 import ast
 import importlib
 import os
-import traceback
 import warnings
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import marshmallow as ma
 import pandas as pd
@@ -30,12 +29,13 @@ class CommitBundleValidator:
 
     Parameters
     ----------
-    commit_bundle_path : str
+    bundle_path : str
         The path to the commit bundle (staging area, if for the Python API).
     """
 
-    def __init__(self, commit_bundle_path: str):
-        self.commit_bundle_path = commit_bundle_path
+    def __init__(self, bundle_path: str):
+        self.bundle_path = bundle_path
+        self._bundle_resources = self._list_resources_in_bundle()
         self.failed_validations = []
 
     def _validate_bundle_state(self):
@@ -51,14 +51,12 @@ class CommitBundleValidator:
         """
         bundle_state_failed_validations = []
 
-        bundle_resources = os.listdir(self.commit_bundle_path)
-
         # Defining which datasets contain predictions
         training_predictions_column_name = None
         validation_predictions_column_name = None
-        if "training" in bundle_resources:
+        if "training" in self._bundle_resources:
             with open(
-                f"{self.commit_bundle_path}/training/dataset_config.yaml", "r"
+                f"{self.bundle_path}/training/dataset_config.yaml", "r"
             ) as stream:
                 training_dataset_config = yaml.safe_load(stream)
 
@@ -66,9 +64,9 @@ class CommitBundleValidator:
                 "predictionsColumnName"
             )
 
-        if "validation" in bundle_resources:
+        if "validation" in self._bundle_resources:
             with open(
-                f"{self.commit_bundle_path}/validation/dataset_config.yaml", "r"
+                f"{self.bundle_path}/validation/dataset_config.yaml", "r"
             ) as stream:
                 validation_dataset_config = yaml.safe_load(stream)
 
@@ -76,7 +74,7 @@ class CommitBundleValidator:
                 "predictionsColumnName"
             )
 
-        if "model" in bundle_resources:
+        if "model" in self._bundle_resources:
             if (
                 training_predictions_column_name is None
                 or validation_predictions_column_name is None
@@ -88,7 +86,7 @@ class CommitBundleValidator:
                 )
         else:
             if (
-                "training" in bundle_resources
+                "training" in self._bundle_resources
                 and validation_predictions_column_name is not None
             ):
                 bundle_state_failed_validations.append(
@@ -111,6 +109,120 @@ class CommitBundleValidator:
         # Add the bundle state failed validations to the list of all failed validations
         self.failed_validations.extend(bundle_state_failed_validations)
 
+    def _validate_bundle_resources(self):
+        """Runs the corresponding validations for each resource in the bundle."""
+        bundle_resources_failed_validations = []
+
+        if "training" in self._bundle_resources:
+            training_set_validator = DatasetValidator(
+                dataset_config_file_path=f"{self.bundle_path}/training/dataset_config.yaml",
+                dataset_file_path=f"{self.bundle_path}/training/dataset.csv",
+            )
+            bundle_resources_failed_validations.extend(
+                training_set_validator.validate()
+            )
+
+        if "validation" in self._bundle_resources:
+            validation_set_validator = DatasetValidator(
+                dataset_config_file_path=f"{self.bundle_path}/validation/dataset_config.yaml",
+                dataset_file_path=f"{self.bundle_path}/training/dataset.csv",
+            )
+            bundle_resources_failed_validations.extend(
+                validation_set_validator.validate()
+            )
+
+        if "model" in self._bundle_resources:
+            model_files = os.listdir(f"{self.bundle_path}/model")
+            # Shell model
+            if len(model_files) == 1:
+                model_validator = ModelValidator(
+                    model_config_file_path=f"{self.bundle_path}/model/model_config.yaml"
+                )
+            # Model package
+            else:
+                # Use data from the validation as test data
+                validation_dataset_df = self._load_dataset_from_bundle("validation")
+                validation_dataset_config = self._load_dataset_config_from_bundle(
+                    "validation"
+                )
+
+                sample_data = None
+                if "textColumnName" in validation_dataset_config:
+                    sample_data = validation_dataset_df[
+                        validation_dataset_config["textColumnName"]
+                    ].head()
+
+                else:
+                    sample_data = validation_dataset_df[
+                        validation_dataset_config["featureNames"]
+                    ].head()
+
+                model_validator = ModelValidator(
+                    model_config_file_path=f"{self.bundle_path}/model/model_config.yaml",
+                    model_package_dir=f"{self.bundle_path}/model",
+                    sample_data=sample_data,
+                )
+                bundle_resources_failed_validations.extend(model_validator.validate())
+
+        # Print results of the validation
+        if bundle_resources_failed_validations:
+            print("Push failed validations: \n")
+            _list_failed_validation_messages(bundle_resources_failed_validations)
+
+        # Add the bundle resources failed validations to the list of all failed validations
+        self.failed_validations.extend(bundle_resources_failed_validations)
+
+    def _list_resources_in_bundle(self) -> List[str]:
+        """Lists the resources in a commit bundle."""
+        # TODO: factor out list of valid resources
+        VALID_RESOURCES = ["model", "training", "validation"]
+
+        resources = []
+
+        for resource in os.listdir(self.bundle_path):
+            if resource in VALID_RESOURCES:
+                resources.append(resource)
+        return resources
+
+    def _load_dataset_from_bundle(self, label: str) -> pd.DataFrame:
+        """Loads a dataset from a commit bundle.
+
+        Parameters
+        ----------
+        label : str
+            The type of the dataset. Can be either "training" or "validation".
+
+        Returns
+        -------
+        pd.DataFrame
+            The dataset.
+        """
+        dataset_file_path = f"{self.bundle_path}/{label}/dataset.csv"
+
+        dataset_df = pd.read_csv(dataset_file_path)
+
+        return dataset_df
+
+    def _load_dataset_config_from_bundle(self, label: str) -> Dict[str, Any]:
+        """Loads a dataset config from a commit bundle.
+
+        Parameters
+        ----------
+        label : str
+            The type of the dataset. Can be either "training" or "validation".
+
+        Returns
+        -------
+        Dict[str, Any]
+            The dataset config.
+        """
+        dataset_config_file_path = f"{self.bundle_path}/{label}/dataset_config.yaml"
+
+        with open(dataset_config_file_path, "r") as stream:
+            dataset_config = yaml.safe_load(stream)
+
+        return dataset_config
+
     def validate(self) -> List[str]:
         """Validates the commit bundle.
 
@@ -120,6 +232,7 @@ class CommitBundleValidator:
             A list of failed validations.
         """
         self._validate_bundle_state()
+        self._validate_bundle_resources()
 
         if not self.failed_validations:
             print("All validations passed!")
@@ -873,11 +986,7 @@ class ModelValidator:
                             with utils.HidePrints():
                                 ml_model.predict_proba(self.sample_data)
                         except Exception as err:
-                            exception_stack = "".join(
-                                traceback.format_exception(
-                                    type(err), err, err.__traceback__
-                                )
-                            )
+                            exception_stack = utils.get_exception_stacktrace(err)
                             prediction_interface_failed_validations.append(
                                 "The `predict_proba` function failed while running the test data. "
                                 "It is failing with the following error message: \n"
