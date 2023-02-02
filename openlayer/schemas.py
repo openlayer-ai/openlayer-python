@@ -6,7 +6,18 @@ from .datasets import DatasetType
 from .models import ModelType
 from .tasks import TaskType
 
+# ---------------------------- Regular expressions --------------------------- #
+COLUMN_NAME_REGEX = validate = ma.validate.Regexp(
+    r"^[a-zA-Z0-9_-]+$",
+    error="strings that are not alphanumeric with underscores or hyphens."
+    + " Spaces and special characters are not allowed.",
+)
+LANGUAGE_CODE_REGEX = ma.validate.Regexp(
+    r"^[a-z]{2}(-[A-Z]{2})?$",
+    error="`language` of the dataset is not in the ISO 639-1 (alpha-2 code) format.",
+)
 
+# ---------------------------------- Schemas --------------------------------- #
 class CommitSchema(ma.Schema):
     """Schema for commits."""
 
@@ -23,11 +34,13 @@ class DatasetSchema(ma.Schema):
     """Schema for datasets."""
 
     categoricalFeatureNames = ma.fields.List(
-        ma.fields.Str(), allow_none=True, load_default=[]
+        ma.fields.Str(validate=COLUMN_NAME_REGEX),
+        allow_none=True,
+        load_default=[],
     )
     classNames = ma.fields.List(ma.fields.Str(), required=True)
     columnNames = ma.fields.List(
-        ma.fields.Str(),
+        ma.fields.Str(validate=COLUMN_NAME_REGEX),
         required=True,
     )
     label = ma.fields.Str(
@@ -40,21 +53,26 @@ class DatasetSchema(ma.Schema):
         required=True,
     )
     featureNames = ma.fields.List(
-        ma.fields.Str(),
+        ma.fields.Str(validate=COLUMN_NAME_REGEX),
         load_default=[],
     )
-    labelColumnName = ma.fields.Str(required=True)
+    labelColumnName = ma.fields.Str(
+        validate=COLUMN_NAME_REGEX,
+        required=True,
+    )
     language = ma.fields.Str(
         load_default="en",
-        validate=ma.validate.Regexp(
-            r"^[a-z]{2}(-[A-Z]{2})?$",
-            error="`language` of the dataset is not in the ISO 639-1 (alpha-2 code) format.",
-        ),
+        validate=LANGUAGE_CODE_REGEX,
     )
     metadata = ma.fields.Dict(allow_none=True, load_default={})
-    predictionsColumnName = ma.fields.Str(allow_none=True, load_default=None)
+    predictionsColumnName = ma.fields.Str(
+        validate=COLUMN_NAME_REGEX,
+        allow_none=True,
+        load_default=None,
+    )
     sep = ma.fields.Str(load_default=",")
     textColumnName = ma.fields.Str(
+        validate=COLUMN_NAME_REGEX,
         allow_none=True,
     )
 
@@ -70,7 +88,10 @@ class DatasetSchema(ma.Schema):
 class ModelSchema(ma.Schema):
     """Schema for models with artifacts (i.e., model_package)."""
 
-    categoricalFeatureNames = ma.fields.List(ma.fields.Str(), load_default=[])
+    categoricalFeatureNames = ma.fields.List(
+        ma.fields.Str(validate=COLUMN_NAME_REGEX),
+        load_default=[],
+    )
     classNames = ma.fields.List(
         ma.fields.Str(),
     )
@@ -81,7 +102,11 @@ class ModelSchema(ma.Schema):
             max=64,
         ),
     )
-    featureNames = ma.fields.List(ma.fields.Str(), allow_none=True, load_default=[])
+    featureNames = ma.fields.List(
+        ma.fields.Str(validate=COLUMN_NAME_REGEX),
+        allow_none=True,
+        load_default=[],
+    )
     metadata = ma.fields.Dict(
         allow_none=True,
         load_default={},
