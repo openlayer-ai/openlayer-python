@@ -36,7 +36,6 @@ class OpenlayerClient(object):
 
     def __init__(self, api_key: str = None):
         self.api = api.Api(api_key)
-        # self.subscription_plan = self.api.get_request("me/subscription-plan")
 
         if not os.path.exists(OPENLAYER_DIR):
             os.makedirs(OPENLAYER_DIR)

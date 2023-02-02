@@ -235,7 +235,7 @@ class CommitBundleValidator:
         self._validate_bundle_resources()
 
         if not self.failed_validations:
-            print("All validations passed!")
+            print("All commit bundle validations passed!")
 
         return self.failed_validations
 
@@ -287,7 +287,7 @@ class CommitValidator:
         self._validate_commit_message()
 
         if not self.failed_validations:
-            print("All validations passed!")
+            print("All commit validations passed!")
 
         return self.failed_validations
 
@@ -454,6 +454,9 @@ class DatasetValidator:
         if self.dataset_config and self.dataset_df is not None:
             # Extract vars
             dataset_df = self.dataset_df
+            categorical_feature_names = self.dataset_config.get(
+                "categoricalFeatureNames"
+            )
             class_names = self.dataset_config.get("classNames")
             column_names = self.dataset_config.get("columnNames")
             label_column_name = self.dataset_config.get("labelColumnName")
@@ -582,6 +585,14 @@ class DatasetValidator:
                         "There are features specified in `featureNames` which are "
                         "not in the dataset."
                     )
+                if categorical_feature_names:
+                    if self._columns_not_in_dataset_df(
+                        dataset_df, categorical_feature_names
+                    ):
+                        dataset_and_config_consistency_failed_validations.append(
+                            "There are categorical features specified in `categoricalFeatureNames` "
+                            "which are not in the dataset."
+                        )
 
         # Print results of the validation
         if dataset_and_config_consistency_failed_validations:
@@ -723,7 +734,7 @@ class DatasetValidator:
         self._validate_dataset_and_config_consistency()
 
         if not self.failed_validations:
-            print("All validations passed!")
+            print("All dataset validations passed!")
 
         return self.failed_validations
 
@@ -1070,7 +1081,7 @@ class ProjectValidator:
         self._validate_project_config()
 
         if not self.failed_validations:
-            print("All validations passed!")
+            print("All model validations passed!")
 
         return self.failed_validations
 
