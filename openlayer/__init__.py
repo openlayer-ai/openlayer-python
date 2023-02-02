@@ -1062,14 +1062,14 @@ class OpenlayerClient(object):
         print(f"\t {commit['message']}")
         print("Use the `push` method to push your changes to the platform.")
 
-    def restore(self, resource_name: str, project_id: int):
+    def restore(self, *resource_names: str, project_id: int):
         """Removes the resource specified by ``resource_name`` from the staging area.
 
         Parameters
         ----------
-        resource_name : str
-            The name of the resource to restore. Can be one of ``"model"``, ``"training"``,
-            or ``"validation"``.
+        *resource_names : str
+            The names of the resources to restore, separated by comma. Valid resource names
+            are ``"model"``, ``"training"``, and ``"validation"``.
 
             .. important::
                 To see the names of the resources staged, use the :obj:`status` method.
@@ -1094,22 +1094,23 @@ class OpenlayerClient(object):
         """
         project_dir = f"{OPENLAYER_DIR}/{project_id}/staging"
 
-        if not os.path.exists(f"{project_dir}/{resource_name}"):
-            print(
-                f"There's no resource named `{resource_name}` in the staging area. "
-                "Make sure that you are trying to restore a staged resource. "
-                "To see the names of the resources staged, use the `status` method."
-            )
-            return
+        for resource_name in resource_names:
+            if not os.path.exists(f"{project_dir}/{resource_name}"):
+                print(
+                    f"There's no resource named `{resource_name}` in the staging area. "
+                    "Make sure that you are trying to restore a staged resource. "
+                    "To see the names of the resources staged, use the `status` method."
+                )
+                return
 
-        shutil.rmtree(f"{project_dir}/{resource_name}")
-        print(f"Removed resource `{resource_name}` from the staging area.")
+            shutil.rmtree(f"{project_dir}/{resource_name}")
+            print(f"Removed resource `{resource_name}` from the staging area.")
 
-        # Remove commit if there are no more resources staged
-        if len(os.listdir(project_dir)) == 1 and os.path.exists(
-            f"{project_dir}/commit.yaml"
-        ):
-            os.remove(f"{project_dir}/commit.yaml")
+            # Remove commit if there are no more resources staged
+            if len(os.listdir(project_dir)) == 1 and os.path.exists(
+                f"{project_dir}/commit.yaml"
+            ):
+                os.remove(f"{project_dir}/commit.yaml")
 
     def _stage_resource(
         self, resource_name: str, resource_dir: str, project_id: int, force: bool
