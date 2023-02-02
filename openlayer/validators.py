@@ -31,11 +31,22 @@ class CommitBundleValidator:
     ----------
     bundle_path : str
         The path to the commit bundle (staging area, if for the Python API).
+    skip_model_validation : bool
+        Whether to skip model validation, by default False
+    skip_dataset_validation : bool
+        Whether to skip dataset validation, by default False
     """
 
-    def __init__(self, bundle_path: str):
+    def __init__(
+        self,
+        bundle_path: str,
+        skip_model_validation: bool = False,
+        skip_dataset_validation: bool = False,
+    ):
         self.bundle_path = bundle_path
         self._bundle_resources = self._list_resources_in_bundle()
+        self._skip_model_validation = skip_model_validation
+        self._skip_dataset_validation = skip_dataset_validation
         self.failed_validations = []
 
     def _validate_bundle_state(self):
@@ -113,7 +124,7 @@ class CommitBundleValidator:
         """Runs the corresponding validations for each resource in the bundle."""
         bundle_resources_failed_validations = []
 
-        if "training" in self._bundle_resources:
+        if "training" in self._bundle_resources and not self._skip_dataset_validation:
             training_set_validator = DatasetValidator(
                 dataset_config_file_path=f"{self.bundle_path}/training/dataset_config.yaml",
                 dataset_file_path=f"{self.bundle_path}/training/dataset.csv",
@@ -122,7 +133,7 @@ class CommitBundleValidator:
                 training_set_validator.validate()
             )
 
-        if "validation" in self._bundle_resources:
+        if "validation" in self._bundle_resources and not self._skip_dataset_validation:
             validation_set_validator = DatasetValidator(
                 dataset_config_file_path=f"{self.bundle_path}/validation/dataset_config.yaml",
                 dataset_file_path=f"{self.bundle_path}/training/dataset.csv",
@@ -131,7 +142,7 @@ class CommitBundleValidator:
                 validation_set_validator.validate()
             )
 
-        if "model" in self._bundle_resources:
+        if "model" in self._bundle_resources and not self._skip_model_validation:
             model_files = os.listdir(f"{self.bundle_path}/model")
             # Shell model
             if len(model_files) == 1:
