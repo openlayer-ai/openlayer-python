@@ -89,3 +89,23 @@ def get_exception_stacktrace(err: Exception):
         str: the stacktrace of the most recent exception.
     """
     return "".join(traceback.format_exception(type(err), err, err.__traceback__))
+
+
+def list_resources_in_bundle(bundle_path: str) -> list:
+    """Lists the resources in the bundle.
+
+    Args:
+        bundle_path (str): the path to the bundle.
+
+    Returns:
+        list: the list of resources in the bundle.
+    """
+    # TODO: factor out list of valid resources
+    VALID_RESOURCES = {"baseline-model", "model", "training", "validation"}
+
+    resources = []
+
+    for resource in os.listdir(bundle_path):
+        if resource in VALID_RESOURCES:
+            resources.append(resource)
+    return resources

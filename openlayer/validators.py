@@ -24,6 +24,68 @@ import yaml
 from . import schemas, utils
 
 
+class BaselineModelValidator:
+    """Validates the baseline model.
+
+    Parameters
+    ----------
+    model_config_file_path : Optional[str], optional
+        The path to the model config file, by default None
+    """
+
+    def __init__(self, model_config_file_path: Optional[str] = None):
+        self.model_config_file_path = model_config_file_path
+
+    def _validate_model_config(self):
+        """Validates the model config file."""
+        model_config_failed_validations = []
+
+        # File existence check
+        if self.model_config_file_path:
+            if not os.path.isfile(os.path.expanduser(self.model_config_file_path)):
+                model_config_failed_validations.append(
+                    f"File `{self.model_config_file_path}` does not exist."
+                )
+            else:
+                with open(self.model_config_file_path, "r") as stream:
+                    self.model_config = yaml.safe_load(stream)
+
+        if self.model_config:
+            baseline_model_schema = schemas.BaselineModelSchema()
+            try:
+                baseline_model_schema.load(self.model_config)
+            except ma.ValidationError as err:
+                model_config_failed_validations.extend(
+                    _format_marshmallow_error_message(err)
+                )
+
+        # Print results of the validation
+        if model_config_failed_validations:
+            print("Baseline model config failed validations: \n")
+            _list_failed_validation_messages(model_config_failed_validations)
+
+        # Add the `model_config.yaml` failed validations to the list of all failed validations
+        self.failed_validations.extend(model_config_failed_validations)
+
+    def validate(self) -> List[str]:
+        """Validates the baseline model.
+
+        Returns
+        -------
+        List[str]
+            The list of failed validations.
+        """
+        self.failed_validations = []
+
+        if self.model_config_file_path:
+            self._validate_model_config()
+
+        if not self.failed_validations:
+            print("All baseline model validations passed!")
+
+        return self.failed_validations
+
+
 class CommitBundleValidator:
     """Validates the commit bundle prior to push.
 
@@ -44,7 +106,7 @@ class CommitBundleValidator:
         skip_dataset_validation: bool = False,
     ):
         self.bundle_path = bundle_path
-        self._bundle_resources = self._list_resources_in_bundle()
+        self._bundle_resources = utils.list_resources_in_bundle(bundle_path)
         self._skip_model_validation = skip_model_validation
         self._skip_dataset_validation = skip_dataset_validation
         self.failed_validations = []
@@ -55,8 +117,10 @@ class CommitBundleValidator:
         This includes:
         - When a "model" is included, you always need to provide predictions for both
           "validation" and "training" (regardless of artifact or no artifact).
-        - When a "model" is not included, you always need to NOT upload predictions with
-          one exception:
+        - When a "baseline-model" is included, you always need to provide a "training"
+          and "validation" set without predictions.
+        - When a "model" nor a "baseline-model" are included, you always need to NOT upload predictions
+          with one exception:
             - "validation" set only in bundle, which means the predictions are for the
             previous model version.
         """
@@ -93,6 +157,24 @@ class CommitBundleValidator:
                 bundle_state_failed_validations.append(
                     "To push a model to the platform, you must provide "
                     "training and a validation sets with predictions in the column "
+                    "`predictions_column_name`."
+                )
+        elif "baseline-model" in self._bundle_resources:
+            if (
+                "training" not in self._bundle_resources
+                or "validation" not in self._bundle_resources
+            ):
+                bundle_state_failed_validations.append(
+                    "To push a baseline model to the platform, you must provide "
+                    "training and validation sets."
+                )
+            elif (
+                training_predictions_column_name is not None
+                and validation_predictions_column_name is not None
+            ):
+                bundle_state_failed_validations.append(
+                    "To push a baseline model to the platform, you must not provide "
+                    "training and a validation sets without predictions in the column "
                     "`predictions_column_name`."
                 )
         else:
@@ -142,6 +224,17 @@ class CommitBundleValidator:
                 validation_set_validator.validate()
             )
 
+        if (
+            "baseline-model" in self._bundle_resources
+            and not self._skip_model_validation
+        ):
+            baseline_model_validator = BaselineModelValidator(
+                model_config_file_path=f"{self.bundle_path}/baseline-model/model_config.yaml"
+            )
+            bundle_resources_failed_validations.extend(
+                baseline_model_validator.validate()
+            )
+
         if "model" in self._bundle_resources and not self._skip_model_validation:
             model_files = os.listdir(f"{self.bundle_path}/model")
             # Shell model
@@ -182,18 +275,6 @@ class CommitBundleValidator:
 
         # Add the bundle resources failed validations to the list of all failed validations
         self.failed_validations.extend(bundle_resources_failed_validations)
-
-    def _list_resources_in_bundle(self) -> List[str]:
-        """Lists the resources in a commit bundle."""
-        # TODO: factor out list of valid resources
-        VALID_RESOURCES = ["model", "training", "validation"]
-
-        resources = []
-
-        for resource in os.listdir(self.bundle_path):
-            if resource in VALID_RESOURCES:
-                resources.append(resource)
-        return resources
 
     def _load_dataset_from_bundle(self, label: str) -> pd.DataFrame:
         """Loads a dataset from a commit bundle.
