@@ -563,10 +563,10 @@ class DatasetValidator:
                     " Please cast the columns in your dataset to conform to these dtypes."
                 )
 
-            if self._columns_not_in_dataset_df(dataset_df, column_names):
+            if self._columns_not_specified(dataset_df, column_names):
                 dataset_and_config_consistency_failed_validations.append(
-                    "There are columns specified in the `columnNames` dataset config"
-                    " which are not in the dataset."
+                    "Not all columns in the dataset are specified in `columnNames`."
+                    " Please specify all dataset columns in `columnNames`."
                 )
 
             if label_column_name:
@@ -726,6 +726,15 @@ class DatasetValidator:
     ) -> bool:
         """Checks whether the columns are in the dataset."""
         if set(columns_list) - set(dataset_df.columns):
+            return True
+        return False
+
+    @staticmethod
+    def _columns_not_specified(
+        dataset_df: pd.DataFrame, columns_list: List[str]
+    ) -> bool:
+        """Checks whether the columns are specified."""
+        if set(columns_list) != set(dataset_df.columns):
             return True
         return False
 
