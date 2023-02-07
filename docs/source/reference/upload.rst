@@ -32,6 +32,7 @@ Add models and datasets
    OpenlayerClient.add_model   
    OpenlayerClient.add_dataset
    OpenlayerClient.add_dataframe
+   OpenlayerClient.add_baseline_model
 
 Version control flow
 --------------------
