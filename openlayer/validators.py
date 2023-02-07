@@ -556,12 +556,6 @@ class DatasetValidator:
             text_column_name = self.dataset_config.get("textColumnName")
             predictions_column_name = self.dataset_config.get("predictionsColumnName")
 
-            if self._contains_null_values(dataset_df):
-                dataset_and_config_consistency_failed_validations.append(
-                    "The dataset contains null values, which are currently not supported. "
-                    "Please provide a dataset without null values."
-                )
-
             if self._contains_unsupported_dtypes(dataset_df):
                 dataset_and_config_consistency_failed_validations.append(
                     "The dataset contains unsupported dtypes. The supported dtypes are "
@@ -697,11 +691,6 @@ class DatasetValidator:
         self.failed_validations.extend(
             dataset_and_config_consistency_failed_validations
         )
-
-    @staticmethod
-    def _contains_null_values(dataset_df: pd.DataFrame) -> bool:
-        """Checks whether the dataset contains null values."""
-        return dataset_df.isnull().values.any()
 
     @staticmethod
     def _labels_not_zero_indexed(
