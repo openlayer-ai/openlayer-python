@@ -207,11 +207,11 @@ class OpenlayerClient(object):
         :obj:`add_dataframe` for detailed examples.
         """
         try:
+            return self.load_project(name)
+        except exceptions.OpenlayerResourceNotFound:
             return self.create_project(
                 name=name, task_type=task_type, description=description
             )
-        except exceptions.OpenlayerDuplicateTask:
-            return self.load_project(name)
 
     def add_model(
         self,
