@@ -1,4 +1,4 @@
-"""Implements the series of validations needed to ensure that 
+"""Implements the series of validations needed to ensure that
 the objects uploaded to the platform are valid.
 
 Typically, the validator object is created and then the `validate` method is called.
@@ -35,6 +35,7 @@ class BaselineModelValidator:
 
     def __init__(self, model_config_file_path: Optional[str] = None):
         self.model_config_file_path = model_config_file_path
+        self.failed_validations = []
 
     def _validate_model_config(self):
         """Validates the model config file."""
@@ -47,13 +48,13 @@ class BaselineModelValidator:
                     f"File `{self.model_config_file_path}` does not exist."
                 )
             else:
-                with open(self.model_config_file_path, "r") as stream:
-                    self.model_config = yaml.safe_load(stream)
+                with open(self.model_config_file_path, "r", encoding="UTF-8") as stream:
+                    model_config = yaml.safe_load(stream)
 
-        if self.model_config:
+        if model_config:
             baseline_model_schema = schemas.BaselineModelSchema()
             try:
-                baseline_model_schema.load(self.model_config)
+                baseline_model_schema.load(model_config)
             except ma.ValidationError as err:
                 model_config_failed_validations.extend(
                     _format_marshmallow_error_message(err)
@@ -75,8 +76,6 @@ class BaselineModelValidator:
         List[str]
             The list of failed validations.
         """
-        self.failed_validations = []
-
         if self.model_config_file_path:
             self._validate_model_config()
 
@@ -119,8 +118,8 @@ class CommitBundleValidator:
           "validation" and "training" (regardless of artifact or no artifact).
         - When a "baseline-model" is included, you always need to provide a "training"
           and "validation" set without predictions.
-        - When a "model" nor a "baseline-model" are included, you always need to NOT upload predictions
-          with one exception:
+        - When a "model" nor a "baseline-model" are included, you always need to NOT
+          upload predictions with one exception:
             - "validation" set only in bundle, which means the predictions are for the
             previous model version.
         """
@@ -131,7 +130,9 @@ class CommitBundleValidator:
         validation_predictions_column_name = None
         if "training" in self._bundle_resources:
             with open(
-                f"{self.bundle_path}/training/dataset_config.yaml", "r"
+                f"{self.bundle_path}/training/dataset_config.yaml",
+                "r",
+                encoding="UTF-8",
             ) as stream:
                 training_dataset_config = yaml.safe_load(stream)
 
@@ -141,7 +142,9 @@ class CommitBundleValidator:
 
         if "validation" in self._bundle_resources:
             with open(
-                f"{self.bundle_path}/validation/dataset_config.yaml", "r"
+                f"{self.bundle_path}/validation/dataset_config.yaml",
+                "r",
+                encoding="UTF-8",
             ) as stream:
                 validation_dataset_config = yaml.safe_load(stream)
 
@@ -310,7 +313,7 @@ class CommitBundleValidator:
         """
         dataset_config_file_path = f"{self.bundle_path}/{label}/dataset_config.yaml"
 
-        with open(dataset_config_file_path, "r") as stream:
+        with open(dataset_config_file_path, "r", encoding="UTF-8") as stream:
             dataset_config = yaml.safe_load(stream)
 
         return dataset_config
@@ -484,7 +487,9 @@ class DatasetValidator:
                     f"File `{self.dataset_config_file_path}` does not exist."
                 )
             else:
-                with open(self.dataset_config_file_path, "r") as stream:
+                with open(
+                    self.dataset_config_file_path, "r", encoding="UTF-8"
+                ) as stream:
                     self.dataset_config = yaml.safe_load(stream)
 
         if self.dataset_config:
@@ -523,7 +528,7 @@ class DatasetValidator:
             # File format (csv) check by loading it as a pandas df
             try:
                 self.dataset_df = pd.read_csv(self.dataset_file_path)
-            except Exception as err:
+            except Exception:
                 dataset_file_failed_validations.append(
                     f"File `{self.dataset_file_path}` is not a valid .csv file."
                 )
@@ -620,34 +625,39 @@ class DatasetValidator:
                                 dataset_df, predictions_column_name
                             ):
                                 dataset_and_config_consistency_failed_validations.append(
-                                    f"The prediction lists in the column `{predictions_column_name}` "
+                                    "The prediction lists in the column "
+                                    f"`{predictions_column_name}` "
                                     "are not all of the same length. "
-                                    "Please make sure that all prediction lists are of the same length."
+                                    "Please make sure that all prediction lists "
+                                    "are of the same length."
                                 )
                             else:
                                 if self._predictions_not_class_probabilities(
                                     dataset_df, predictions_column_name
                                 ):
                                     dataset_and_config_consistency_failed_validations.append(
-                                        f"The predictions in the column `{predictions_column_name}` "
+                                        "The predictions in the column "
+                                        f"`{predictions_column_name}` "
                                         "are not class probabilities. "
-                                        "Please make sure that the predictions are lists of floats "
-                                        "that sum to 1."
+                                        "Please make sure that the predictions are lists "
+                                        "of floats that sum to 1."
                                     )
                                 elif class_names:
                                     if self._predictions_not_in_class_names(
                                         dataset_df, predictions_column_name, class_names
                                     ):
                                         dataset_and_config_consistency_failed_validations.append(
-                                            f"There are predictions in the column `{predictions_column_name}` "
+                                            "There are predictions in the column "
+                                            f"`{predictions_column_name}` "
                                             "are not in `classNames`. "
-                                            "Please make sure that the predictions are lists of floats "
-                                            "that sum to 1 and that the classes in the predictions "
-                                            "match the classes in `classNames`."
+                                            "Please make sure that the predictions are lists "
+                                            "of floats that sum to 1 and that the classes in "
+                                            "the predictions match the classes in `classNames`."
                                         )
-                    except:
+                    except Exception:
                         dataset_and_config_consistency_failed_validations.append(
-                            f"The predictions in the column `{predictions_column_name}` are not lists. "
+                            f"The predictions in the column `{predictions_column_name}` "
+                            "are not lists. "
                             "Please make sure that the predictions are lists of floats."
                         )
 
@@ -943,7 +953,7 @@ class ModelValidator:
                 f"File `{requirements_txt_file}` does not exist."
             )
         else:
-            with open(requirements_txt_file, "r") as file:
+            with open(requirements_txt_file, "r", encoding="UTF-8") as file:
                 lines = file.readlines()
 
             # Parse the requirements file
@@ -978,7 +988,7 @@ class ModelValidator:
                             category=Warning,
                         )
                         return None
-                except pkg_resources.DistributionNotFound as err:
+                except pkg_resources.DistributionNotFound:
                     warnings.warn(
                         f"The dependency `{requirement}` specified in the `requirements.txt` "
                         "is not installed in the current environment. \n"
@@ -1008,7 +1018,7 @@ class ModelValidator:
                 f"File `{self.model_config_file_path}` does not exist."
             )
         else:
-            with open(self.model_config_file_path, "r") as stream:
+            with open(self.model_config_file_path, "r", encoding="UTF-8") as stream:
                 model_config = yaml.safe_load(stream)
 
             if self.model_package_dir:
@@ -1086,8 +1096,8 @@ class ModelValidator:
                         try:
                             with utils.HidePrints():
                                 ml_model.predict_proba(self.sample_data)
-                        except Exception as err:
-                            exception_stack = utils.get_exception_stacktrace(err)
+                        except Exception as exc:
+                            exception_stack = utils.get_exception_stacktrace(exc)
                             prediction_interface_failed_validations.append(
                                 "The `predict_proba` function failed while running the test data. "
                                 "It is failing with the following error message: \n"
@@ -1192,16 +1202,16 @@ def _format_marshmallow_error_message(err: ma.ValidationError) -> List[str]:
         A list of strings, where each string is a failed validation.
     """
     error_msg = []
-    for input, msg in err.messages.items():
-        if input == "_schema":
+    for input_data, msg in err.messages.items():
+        if input_data == "_schema":
             temp_msg = "\n".join(msg)
             error_msg.append(f"{temp_msg}")
         elif not isinstance(msg, dict):
             temp_msg = msg[0].lower()
-            error_msg.append(f"`{input}`: {temp_msg}")
+            error_msg.append(f"`{input_data}`: {temp_msg}")
         else:
             temp_msg = list(msg.values())[0][0].lower()
-            error_msg.append(f"`{input}` contains items that are {temp_msg}")
+            error_msg.append(f"`{input_data}` contains items that are {temp_msg}")
 
     return error_msg
 
