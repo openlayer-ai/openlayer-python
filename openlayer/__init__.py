@@ -16,6 +16,7 @@ from .tasks import TaskType
 from .version import __version__  # noqa: F401
 
 OPENLAYER_DIR = os.path.join(os.path.expanduser("~"), ".openlayer")
+VALID_RESOURCE_NAMES = {"baseline-model", "model", "training", "validation"}
 
 
 class OpenlayerClient(object):
@@ -436,6 +437,85 @@ class OpenlayerClient(object):
 
             self._stage_resource(
                 resource_name="model",
+                resource_dir=temp_dir,
+                project_id=project_id,
+                force=force,
+            )
+
+    def add_baseline_model(
+        self,
+        project_id: int,
+        task_type: TaskType,
+        model_config_file_path: Optional[str] = None,
+        force: bool = False,
+    ):
+        """
+        **Coming soon...**
+
+        Add a baseline model to the project.
+
+        Baseline models should be added together with training and validation
+        sets. A model will then be trained on the platform using AutoML, using
+        the parameters provided in the model config file.
+
+        .. important::
+            This feature is experimental and currently under development. Only
+            tabular classification tasks are supported for now.
+
+        Parameters
+        ----------
+        model_config_file_path : str, optional
+            Path to the model configuration YAML file. If not provided, the default
+            model config will be used.
+
+            .. admonition:: What's on the model config file?
+
+                For baseline models, the content of the YAML file should contain:
+
+                - ``ensembleSize`` : int, default 10
+                    Number of models ensembled.
+                - ``randomSeed`` : int, default 42
+                    Random seed to be used for model training.
+                - ``timeout`` : int, default 60
+                    Maximum time (in seconds) to train all the models.
+                - ``perRunLimit`` : int, optional
+                    Maximum time (in seconds) to train each model.
+                - ``metadata`` : Dict[str, any], default {}
+                    Dictionary containing metadata about the model. This is the
+                    metadata that will be displayed on the Openlayer platform.
+        force : bool, optional
+            Whether to force the addition of the baseline model to the project.
+            If set to True, any existing staged baseline model will be overwritten.
+        """
+        if task_type is not TaskType.TabularClassification:
+            raise exceptions.OpenlayerException(
+                "Only tabular classification is supported for model baseline for now."
+            )
+
+        # Validate the baseline model
+        baseline_model_validator = validators.BaselineModelValidator(
+            model_config_file_path=model_config_file_path,
+        )
+        failed_validations = baseline_model_validator.validate()
+
+        if failed_validations:
+            raise exceptions.OpenlayerValidationError(
+                "There are issues with the baseline model. \n"
+                "Make sure to fix all of the issues listed above before the upload.",
+            ) from None
+
+        # Load model config and augment with defaults
+        model_config = {}
+        if model_config_file_path is not None:
+            model_config = utils.read_yaml(model_config_file_path)
+        model_data = schemas.BaselineModelSchema().load(model_config)
+
+        # Copy relevant resources to temp directory
+        with tempfile.TemporaryDirectory() as temp_dir:
+            utils.write_yaml(model_data, f"{temp_dir}/model_config.yaml")
+
+            self._stage_resource(
+                resource_name="baseline-model",
                 resource_dir=temp_dir,
                 project_id=project_id,
                 force=force,
@@ -1034,7 +1114,6 @@ class OpenlayerClient(object):
         :obj:`commit` method).
         """
         project_dir = f"{OPENLAYER_DIR}/{project_id}/staging"
-        valid_resource_names = ["model", "training", "validation"]
 
         if not os.listdir(project_dir):
             print(
@@ -1046,7 +1125,7 @@ class OpenlayerClient(object):
         if not os.path.exists(f"{project_dir}/commit.yaml"):
             print("The following resources are staged, waiting to be committed:")
             for file in os.listdir(project_dir):
-                if file in valid_resource_names:
+                if file in VALID_RESOURCE_NAMES:
                     print(f"\t - {file}")
             print("Use the `commit` method to add a commit message to your changes.")
             return
@@ -1055,7 +1134,7 @@ class OpenlayerClient(object):
             commit = yaml.safe_load(commit_file)
         print("The following resources are committed, waiting to be pushed:")
         for file in os.listdir(project_dir):
-            if file != "commit.yaml":
+            if file in VALID_RESOURCE_NAMES:
                 print(f"\t - {file}")
         print(f"Commit message from {commit['date']}:")
         print(f"\t {commit['message']}")
@@ -1128,31 +1207,43 @@ class OpenlayerClient(object):
         force : bool
             Whether to overwrite the resource if it already exists in the staging area.
         """
-        if resource_name not in ["model", "training", "validation"]:
+        if resource_name not in VALID_RESOURCE_NAMES:
             raise ValueError(
-                f"Resource name must be one of 'model', 'training', or 'validation',"
-                f" but got {resource_name}."
+                f"Resource name must be one of 'baseline-model', 'model', 'training', or 'validation',"
+                f" but got '{resource_name}'."
             )
 
-        staging_dir = f"{OPENLAYER_DIR}/{project_id}/staging/{resource_name}"
+        project_dir = f"{OPENLAYER_DIR}/{project_id}/staging"
 
-        # Append 'dataset' to the end of the resource name for the prints
-        if resource_name in ["training", "validation"]:
-            resource_name += " dataset"
+        resources_staged = utils.list_resources_in_bundle(project_dir)
 
-        if os.path.exists(staging_dir):
-            print(f"Found an existing {resource_name} staged.")
+        if resource_name == "model" and "baseline-model" in resources_staged:
+            raise exceptions.OpenlayerException(
+                "Trying to stage a `model` when there is a `baseline-model` already staged."
+                + " You can either add a `model` or a `baseline-model`, but not both at the same time."
+                + " Please remove one of them from the staging area using the `restore` method."
+            ) from None
+
+        if resource_name == "baseline-model" and "model" in resources_staged:
+            raise exceptions.OpenlayerException(
+                "Trying to stage a `baseline-model` when there is a `model` already staged."
+                + " You can either add a `model` or a `baseline-model`, but not both at the same time."
+                + " Please remove one of them from the staging area using the `restore` method."
+            ) from None
+
+        if resource_name in resources_staged:
+            print(f"Found an existing `{resource_name}` resource staged.")
+
             overwrite = "n"
-
             if not force:
                 overwrite = input("Do you want to overwrite it? [y/n] ")
             if overwrite.lower() == "y" or force:
-                print(f"Overwriting previously staged {resource_name}...")
-                shutil.rmtree(staging_dir)
+                print(f"Overwriting previously staged `{resource_name}` resource...")
+                shutil.rmtree(project_dir + "/" + resource_name)
             else:
-                print(f"Keeping the existing {resource_name} staged.")
+                print(f"Keeping the existing `{resource_name}` resource staged.")
                 return
 
-        shutil.copytree(resource_dir, staging_dir)
+        shutil.copytree(resource_dir, project_dir + "/" + resource_name)
 
-        print(f"Staged the {resource_name}!")
+        print(f"Staged the `{resource_name}` resource!")

@@ -43,6 +43,15 @@ class Project:
             *args, project_id=self.id, task_type=tasks.TaskType(self.taskType), **kwargs
         )
 
+    def add_baseline_model(
+        self,
+        *args,
+        **kwargs,
+    ):
+        return self.client.add_baseline(
+            *args, project_id=self.id, task_type=tasks.TaskType(self.taskType), **kwargs
+        )
+
     def add_dataset(
         self,
         *args,
