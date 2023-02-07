@@ -1,3 +1,10 @@
+"""A collection of the different Openlayer Python client exceptions and their error codes.
+
+Typical usage example:
+
+  if project is None:
+    raise errors.OpenlayerResourceNotFound(f"Project {project_id} does not exist")
+"""
 from typing import Dict
 
 
@@ -21,11 +28,15 @@ class OpenlayerException(Exception):
 
 
 class OpenlayerValidationError(OpenlayerException):
+    """Failed resource validations"""
+
     def __init__(self, message):
         super().__init__(message)
 
 
 class OpenlayerSubscriptionPlanException(OpenlayerException):
+    """Subscription plan exception class"""
+
     def __init__(self, message, context=None, mitigation=None):
         context = context or "You have reached your subscription plan's limits. \n"
         mitigation = mitigation or "To upgrade your plan, visit https://openlayer.com"

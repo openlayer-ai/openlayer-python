@@ -1,3 +1,6 @@
+"""Series of helper functions and classes that are used throughout the
+OpenLayer Python client.
+"""
 import os
 import sys
 import traceback
@@ -38,7 +41,7 @@ def write_python_version(directory: str):
     Args:
         directory (str): the directory to write the file to.
     """
-    with open(f"{directory}/python_version", "w") as file:
+    with open(f"{directory}/python_version", "w", encoding="UTF-8") as file:
         file.write(
             str(sys.version_info.major)
             + "."
@@ -67,7 +70,7 @@ def read_yaml(filename: str) -> dict:
     Returns:
         dict: the dictionary representation of the YAML file.
     """
-    with open(filename, "r") as stream:
+    with open(filename, "r", encoding="UTF-8") as stream:
         return yaml.safe_load(stream)
 
 
@@ -78,7 +81,7 @@ def write_yaml(dictionary: dict, filename: str):
         dictionary (dict): the dictionary to write to a YAML file.
         dir (str): the directory to write the file to.
     """
-    with open(filename, "w") as stream:
+    with open(filename, "w", encoding="UTF-8") as stream:
         yaml.dump(dictionary, stream)
 
 

@@ -11,7 +11,7 @@ import yaml
 
 from . import api, exceptions, utils, validators
 from .projects import Project
-from .schemas import DatasetSchema, ModelSchema, ShellModelSchema
+from .schemas import BaselineModelSchema, DatasetSchema, ModelSchema, ShellModelSchema
 from .tasks import TaskType
 from .version import __version__  # noqa: F401
 
@@ -216,7 +216,6 @@ class OpenlayerClient(object):
     def add_model(
         self,
         model_config_file_path: str,
-        task_type: TaskType,
         model_package_dir: Optional[str] = None,
         sample_data: Optional[pd.DataFrame] = None,
         force: bool = False,
@@ -452,7 +451,7 @@ class OpenlayerClient(object):
         """
         **Coming soon...**
 
-        Add a baseline model to the project.
+        Adds a baseline model to the project.
 
         Baseline models should be added together with training and validation
         sets. A model will then be trained on the platform using AutoML, using
@@ -508,7 +507,7 @@ class OpenlayerClient(object):
         model_config = {}
         if model_config_file_path is not None:
             model_config = utils.read_yaml(model_config_file_path)
-        model_data = schemas.BaselineModelSchema().load(model_config)
+        model_data = BaselineModelSchema().load(model_config)
 
         # Copy relevant resources to temp directory
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -525,7 +524,6 @@ class OpenlayerClient(object):
         self,
         file_path: str,
         dataset_config_file_path: str,
-        task_type: TaskType,
         project_id: str = None,
         force: bool = False,
     ):
@@ -584,8 +582,9 @@ class OpenlayerClient(object):
                     Delimiter to use. E.g. `'\\t'`.
         force : bool
             If :obj:`add_dataset` is called when there is already a dataset of the same type
-            in the staging area, when ``force=True``, the existing staged dataset will be overwritten
-            by the new one. When ``force=False``, the user will be prompted to confirm the overwrite.
+            in the staging area, when ``force=True``, the existing staged dataset will be
+            overwritten by the new one. When ``force=False``, the user will be prompted
+            to confirm the overwrite.
 
         Notes
         -----
@@ -734,9 +733,8 @@ class OpenlayerClient(object):
 
     def add_dataframe(
         self,
-        df: pd.DataFrame,
+        dataset_df: pd.DataFrame,
         dataset_config_file_path: str,
-        task_type: TaskType,
         project_id: str = None,
         force: bool = False,
     ):
@@ -744,7 +742,7 @@ class OpenlayerClient(object):
 
         Parameters
         ----------
-        df : pd.DataFrame
+        dataset_df : pd.DataFrame
             Dataframe containing your dataset.
         dataset_config_file_path : str
             Path to the dataset configuration YAML file.
@@ -794,9 +792,10 @@ class OpenlayerClient(object):
                 - ``sep`` : str, default ','
                     Delimiter to use. E.g. `'\\t'`.
         force : bool
-            If :obj:`add_dataframe` is called when there is already a dataset of the same type in the
-            staging area, when ``force=True``, the existing staged dataset will be overwritten
-            by the new one. When ``force=False``, the user will be prompted to confirm the overwrite.
+            If :obj:`add_dataframe` is called when there is already a dataset of the same
+            type in the staging area, when ``force=True``, the existing staged dataset will
+            be overwritten by the new one. When ``force=False``, the user will be prompted
+            to confirm the overwrite.
 
         Notes
         -----
@@ -858,7 +857,7 @@ class OpenlayerClient(object):
         You can now add this dataset to your project with:
 
         >>> project.add_dataframe(
-        ...     df=df,
+        ...     dataset_df=df,
         ...     dataset_config_file_path='/path/to/dataset_config.yaml',
         ... )
 
@@ -899,7 +898,7 @@ class OpenlayerClient(object):
         You can now add this dataset to your project with:
 
         >>> project.add_dataframe(
-        ...     df=df,
+        ...     dataset_df=df,
         ...     dataset_config_file_path='/path/to/dataset_config.yaml',
         ... )
 
@@ -913,16 +912,16 @@ class OpenlayerClient(object):
         >>> project.push()
         """
         # --------------------------- Resource validations --------------------------- #
-        if not isinstance(df, pd.DataFrame):
+        if not isinstance(dataset_df, pd.DataFrame):
             raise exceptions.OpenlayerValidationError(
-                f"- `df` is a `{type(df)}`, but it must be of type `pd.DataFrame`. \n"
+                f"- `dataset_df` is a `{type(dataset_df)}`, but it must be of type"
+                " `pd.DataFrame`. \n"
             ) from None
         with tempfile.TemporaryDirectory() as tmp_dir:
             file_path = os.path.join(tmp_dir, str(uuid.uuid1()))
-            df.to_csv(file_path, index=False)
+            dataset_df.to_csv(file_path, index=False)
             return self.add_dataset(
                 file_path=file_path,
-                task_type=task_type,
                 project_id=project_id,
                 dataset_config_file_path=dataset_config_file_path,
                 force=force,
@@ -946,12 +945,12 @@ class OpenlayerClient(object):
 
         Examples
         --------
-        A commit message is associated with a project version. We have a new project version every time
-        any of its resources (namely, model and/or dataset) are updated. The commit message is supposed
-        to be a short description of the changes from one version to the next.
+        A commit message is associated with a project version. We have a new project version
+        every time any of its resources (namely, model and/or dataset) are updated. The commit
+        message is supposed to be a short description of the changes from one version to the next.
 
-        Let's say you have a project with a model and a dataset staged. You can confirm these resources
-        are indeed in the staging area using the :obj:`status` method:
+        Let's say you have a project with a model and a dataset staged. You can confirm these
+        resources are indeed in the staging area using the :obj:`status` method:
 
         >>> project.status()
 
@@ -959,8 +958,8 @@ class OpenlayerClient(object):
 
         >>> project.commit("Initial commit.")
 
-        After adding the commit message, the resources are ready to be pushed to the platform. You use
-        the :obj:`push` method to do so:
+        After adding the commit message, the resources are ready to be pushed to the platform.
+        You use the :obj:`push` method to do so:
 
         >>> project.push()
         """
@@ -988,7 +987,9 @@ class OpenlayerClient(object):
             overwrite = "n"
 
             if not force:
-                with open(f"{project_dir}/commit.yaml", "r") as commit_file:
+                with open(
+                    f"{project_dir}/commit.yaml", "r", encoding="UTF-8"
+                ) as commit_file:
                     commit = yaml.safe_load(commit_file)
                     print(
                         f"\t - Commit message: `{commit['message']}` \n \t - Date: {commit['date']}"
@@ -1005,7 +1006,7 @@ class OpenlayerClient(object):
                 return
 
         commit = dict(message=message, date=time.ctime())
-        with open(f"{project_dir}/commit.yaml", "w") as commit_file:
+        with open(f"{project_dir}/commit.yaml", "w", encoding="UTF-8") as commit_file:
             yaml.dump(commit, commit_file)
 
         print("Committed!")
@@ -1048,7 +1049,7 @@ class OpenlayerClient(object):
             )
             return
 
-        with open(f"{project_dir}/commit.yaml", "r") as commit_file:
+        with open(f"{project_dir}/commit.yaml", "r", encoding="UTF-8") as commit_file:
             commit = yaml.safe_load(commit_file)
 
         # Validate bundle resources
@@ -1130,7 +1131,7 @@ class OpenlayerClient(object):
             print("Use the `commit` method to add a commit message to your changes.")
             return
 
-        with open(f"{project_dir}/commit.yaml", "r") as commit_file:
+        with open(f"{project_dir}/commit.yaml", "r", encoding="UTF-8") as commit_file:
             commit = yaml.safe_load(commit_file)
         print("The following resources are committed, waiting to be pushed:")
         for file in os.listdir(project_dir):
@@ -1209,8 +1210,8 @@ class OpenlayerClient(object):
         """
         if resource_name not in VALID_RESOURCE_NAMES:
             raise ValueError(
-                f"Resource name must be one of 'baseline-model', 'model', 'training', or 'validation',"
-                f" but got '{resource_name}'."
+                "Resource name must be one of 'baseline-model', 'model', 'training', or"
+                f" 'validation', but got '{resource_name}'."
             )
 
         project_dir = f"{OPENLAYER_DIR}/{project_id}/staging"
@@ -1220,15 +1221,17 @@ class OpenlayerClient(object):
         if resource_name == "model" and "baseline-model" in resources_staged:
             raise exceptions.OpenlayerException(
                 "Trying to stage a `model` when there is a `baseline-model` already staged."
-                + " You can either add a `model` or a `baseline-model`, but not both at the same time."
-                + " Please remove one of them from the staging area using the `restore` method."
+                + " You can either add a `model` or a `baseline-model`, but not both at the"
+                + " same time. Please remove one of them from the staging area using the"
+                + " `restore` method."
             ) from None
 
         if resource_name == "baseline-model" and "model" in resources_staged:
             raise exceptions.OpenlayerException(
                 "Trying to stage a `baseline-model` when there is a `model` already staged."
-                + " You can either add a `model` or a `baseline-model`, but not both at the same time."
-                + " Please remove one of them from the staging area using the `restore` method."
+                + " You can either add a `model` or a `baseline-model`, but not both at the"
+                + " same time. Please remove one of them from the staging area using the"
+                + " `restore` method."
             ) from None
 
         if resource_name in resources_staged:

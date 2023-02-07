@@ -1,3 +1,7 @@
+"""
+Module for the Project class.
+"""
+
 from . import tasks
 
 
@@ -39,15 +43,15 @@ class Project:
         *args,
         **kwargs,
     ):
-        return self.client.add_model(
-            *args, project_id=self.id, task_type=tasks.TaskType(self.taskType), **kwargs
-        )
+        """Adds a model to a project's staging area."""
+        return self.client.add_model(*args, project_id=self.id, **kwargs)
 
     def add_baseline_model(
         self,
         *args,
         **kwargs,
     ):
+        """Adds a baseline model to the project."""
         return self.client.add_baseline(
             *args, project_id=self.id, task_type=tasks.TaskType(self.taskType), **kwargs
         )
@@ -57,23 +61,25 @@ class Project:
         *args,
         **kwargs,
     ):
-        return self.client.add_dataset(
-            *args, project_id=self.id, task_type=tasks.TaskType(self.taskType), **kwargs
-        )
+        """Adds a dataset to a project's staging area (from a csv)."""
+        return self.client.add_dataset(*args, project_id=self.id, **kwargs)
 
     def add_dataframe(self, *args, **kwargs):
-        return self.client.add_dataframe(
-            *args, project_id=self.id, task_type=tasks.TaskType(self.taskType), **kwargs
-        )
+        """Adds a dataset to a project's staging area (from a pandas DataFrame)."""
+        return self.client.add_dataframe(*args, project_id=self.id, **kwargs)
 
     def commit(self, *args, **kwargs):
+        """Adds a commit message to staged resources."""
         return self.client.commit(*args, project_id=self.id, **kwargs)
 
     def push(self, *args, **kwargs):
+        """Pushes the commited resources to the platform."""
         return self.client.push(*args, project_id=self.id, **kwargs)
 
     def status(self, *args, **kwargs):
+        """Shows the state of the staging area."""
         return self.client.status(*args, project_id=self.id, **kwargs)
 
     def restore(self, *args, **kwargs):
+        """Removes the resource specified by ``resource_name`` from the staging area."""
         return self.client.restore(*args, project_id=self.id, **kwargs)
