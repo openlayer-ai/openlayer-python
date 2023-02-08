@@ -1,5 +1,4 @@
-"""
-Module for the Project class.
+"""Module for the Project class.
 """
 
 from . import tasks
