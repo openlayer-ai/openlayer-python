@@ -51,7 +51,7 @@ class Project:
         **kwargs,
     ):
         """Adds a baseline model to the project."""
-        return self.client.add_baseline(
+        return self.client.add_baseline_model(
             *args, project_id=self.id, task_type=tasks.TaskType(self.taskType), **kwargs
         )
 
