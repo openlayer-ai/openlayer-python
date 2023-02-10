@@ -451,14 +451,6 @@ class OpenlayerClient(object):
 
                 For baseline models, the content of the YAML file should contain:
 
-                - ``ensembleSize`` : int, default 10
-                    Number of models ensembled.
-                - ``randomSeed`` : int, default 42
-                    Random seed to be used for model training.
-                - ``timeout`` : int, default 60
-                    Maximum time (in seconds) to train all the models.
-                - ``perRunLimit`` : int, optional
-                    Maximum time (in seconds) to train each model.
                 - ``metadata`` : Dict[str, any], default {}
                     Dictionary containing metadata about the model. This is the
                     metadata that will be displayed on the Openlayer platform.

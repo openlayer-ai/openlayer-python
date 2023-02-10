@@ -21,11 +21,7 @@ LANGUAGE_CODE_REGEX = ma.validate.Regexp(
 class BaselineModelSchema(ma.Schema):
     """Schema for baseline models."""
 
-    ensembleSize = ma.fields.Int(load_default=10)
     metadata = ma.fields.Dict(allow_none=True, load_default={})
-    perRunLimit = ma.fields.Int(load_default=None, allow_none=True)
-    randomSeed = ma.fields.Int(load_default=42)
-    timeout = ma.fields.Int(load_default=60)
 
 
 class CommitSchema(ma.Schema):
