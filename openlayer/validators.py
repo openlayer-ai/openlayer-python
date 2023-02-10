@@ -1021,10 +1021,7 @@ class ModelValidator:
             with open(self.model_config_file_path, "r", encoding="UTF-8") as stream:
                 model_config = yaml.safe_load(stream)
 
-            if self.model_package_dir:
-                model_schema = schemas.ModelSchema()
-            else:
-                model_schema = schemas.ShellModelSchema()
+            model_schema = schemas.ModelSchema()
             try:
                 model_schema.load(model_config)
             except ma.ValidationError as err:

@@ -104,6 +104,7 @@ class ModelSchema(ma.Schema):
     )
     classNames = ma.fields.List(
         ma.fields.Str(),
+        required=True,
     )
     name = ma.fields.Str(
         required=True,
@@ -155,29 +156,4 @@ class ProjectSchema(ma.Schema):
             + " Check out our API reference for a full list"
             + " https://reference.openlayer.com/reference/api/openlayer.TaskType.html.\n ",
         ),
-    )
-
-
-class ShellModelSchema(ma.Schema):
-    """Schema for models without artifacts (i.e., shell model)."""
-
-    name = ma.fields.Str(
-        required=True,
-        validate=ma.validate.Length(
-            min=1,
-            max=64,
-        ),
-    )
-    metadata = ma.fields.Dict(
-        allow_none=True,
-        load_default={},
-    )
-    architectureType = ma.fields.Str(
-        validate=ma.validate.OneOf(
-            [model_framework.value for model_framework in ModelType],
-            error="`architectureType` must be one of the supported frameworks. "
-            + "Check out our API reference for a full list"
-            + " https://reference.openlayer.com/reference/api/openlayer.ModelType.html.\n ",
-        ),
-        required=True,
     )

@@ -11,7 +11,7 @@ import yaml
 
 from . import api, exceptions, utils, validators
 from .projects import Project
-from .schemas import BaselineModelSchema, DatasetSchema, ModelSchema, ShellModelSchema
+from .schemas import BaselineModelSchema, DatasetSchema, ModelSchema
 from .tasks import TaskType
 from .version import __version__  # noqa: F401
 
@@ -230,24 +230,7 @@ class OpenlayerClient(object):
 
             .. admonition:: What's on the model config file?
 
-                The content of the YAML file depends on whether you are adding a shell
-                model or a model package.
-
-                **If you are adding a shell model**, the model configuration file
-                must contain the following fields:
-
-                - ``name`` : str
-                    Name of the model.
-                - ``architectureType`` : str
-                    The model's framework. Must be one of the supported frameworks
-                    on :obj:`ModelType`.
-                - ``metadata`` : Dict[str, any], default {}
-                    Dictionary containing metadata about the model. This is the
-                    metadata that will be displayed on the Openlayer platform.
-
-                **Alternatively, if you are adding a model package** (i.e., with model
-                artifacts and prediction interface), the model configuration file must
-                contain the following fields:
+                The model configuration YAML file must contain the following fields:
 
                 - ``name`` : str
                     Name of the model.
@@ -421,10 +404,7 @@ class OpenlayerClient(object):
 
         # Load model config and augment with defaults
         model_config = utils.read_yaml(model_config_file_path)
-        if model_package_dir:
-            model_data = ModelSchema().load(model_config)
-        else:
-            model_data = ShellModelSchema().load(model_config)
+        model_data = ModelSchema().load(model_config)
 
         # Copy relevant resources to temp directory
         with tempfile.TemporaryDirectory() as temp_dir:
