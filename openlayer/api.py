@@ -24,7 +24,7 @@ class StorageType(Enum):
     """Storage options for uploads."""
 
     ONPREM = "local"
-    AWS = "aws"
+    AWS = "s3"
     GCP = "gcs"
     AZURE = "azure"
 
