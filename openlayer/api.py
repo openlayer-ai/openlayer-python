@@ -23,10 +23,10 @@ CLIENT_METADATA = {"version": __version__}
 class StorageType(Enum):
     """Storage options for uploads."""
 
-    ONPREM = 1
-    AWS = 2
-    GCP = 3
-    AZURE = 4
+    ONPREM = "local"
+    AWS = "aws"
+    GCP = "gcs"
+    AZURE = "azure"
 
 
 STORAGE = StorageType.AWS
