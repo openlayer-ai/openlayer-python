@@ -834,7 +834,7 @@ class DatasetValidator:
         self._validate_dataset_and_config_consistency()
 
         if not self.failed_validations:
-            print("All dataset validations passed!")
+            print(f"All {self.dataset_config['label']} dataset validations passed!")
 
         return self.failed_validations
 
@@ -1126,7 +1126,7 @@ class ModelValidator:
         self._validate_model_config()
 
         if not self.failed_validations:
-            print("All validations passed!")
+            print("All model validations passed!")
 
         return self.failed_validations
 
