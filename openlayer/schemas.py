@@ -8,9 +8,10 @@ from .tasks import TaskType
 
 # ---------------------------- Regular expressions --------------------------- #
 COLUMN_NAME_REGEX = validate = ma.validate.Regexp(
-    r"^[a-zA-Z0-9_-]+$",
+    r"^(?!openlayer)[a-zA-Z0-9_-]+$",
     error="strings that are not alphanumeric with underscores or hyphens."
-    + " Spaces and special characters are not allowed.",
+    + " Spaces and special characters are not allowed."
+    + " The string cannot start with `openlayer`.",
 )
 LANGUAGE_CODE_REGEX = ma.validate.Regexp(
     r"^[a-z]{2}(-[A-Z]{2})?$",
