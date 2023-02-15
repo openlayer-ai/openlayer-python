@@ -410,11 +410,6 @@ class OpenlayerClient(object):
         with tempfile.TemporaryDirectory() as temp_dir:
             if model_package_dir:
                 shutil.copytree(model_package_dir, temp_dir, dirs_exist_ok=True)
-                current_file_dir = os.path.dirname(os.path.abspath(__file__))
-                shutil.copy(
-                    f"{current_file_dir}/prediction_job.py",
-                    f"{temp_dir}/prediction_job.py",
-                )
                 utils.write_python_version(temp_dir)
 
             utils.write_yaml(model_data, f"{temp_dir}/model_config.yaml")

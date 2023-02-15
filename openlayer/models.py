@@ -1,8 +1,10 @@
 import os
+import shutil
 import subprocess
+import tempfile
 from enum import Enum
 from typing import List, Set
-import tempfile
+
 import pandas as pd
 
 
@@ -284,6 +286,9 @@ class ModelRunner:
             logs_file_path=f"{model_package}/logs.txt",
         )
 
+    def __del__(self):
+        self._conda_environment.delete()
+
     def run(self, input_data: pd.DataFrame) -> pd.DataFrame:
         """Runs the input data through the model in the conda
         environment.
@@ -299,6 +304,13 @@ class ModelRunner:
             Output from the model. The output is a dataframe with a single
             column named 'prediction' and lists of class probabilities as values.
         """
+        # Copy the prediction job script to the model package
+        current_file_dir = os.path.dirname(os.path.abspath(__file__))
+        shutil.copy(
+            f"{current_file_dir}/prediction_job.py",
+            f"{self.model_package}/prediction_job.py",
+        )
+
         with tempfile.TemporaryDirectory() as temp_dir:
             # Save the input data to a csv file
             input_data.to_csv(f"{temp_dir}/input_data.csv", index=False)
