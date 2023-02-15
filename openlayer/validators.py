@@ -221,7 +221,7 @@ class CommitBundleValidator:
         if "validation" in self._bundle_resources and not self._skip_dataset_validation:
             validation_set_validator = DatasetValidator(
                 dataset_config_file_path=f"{self.bundle_path}/validation/dataset_config.yaml",
-                dataset_file_path=f"{self.bundle_path}/training/dataset.csv",
+                dataset_file_path=f"{self.bundle_path}/validation/dataset.csv",
             )
             bundle_resources_failed_validations.extend(
                 validation_set_validator.validate()
