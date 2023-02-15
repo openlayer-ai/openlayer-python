@@ -21,7 +21,7 @@ import pandas as pd
 import pkg_resources
 import yaml
 
-from . import schemas, utils
+from . import models, schemas, utils
 
 
 class BaselineModelValidator:
@@ -96,6 +96,8 @@ class CommitBundleValidator:
         Whether to skip model validation, by default False
     skip_dataset_validation : bool
         Whether to skip dataset validation, by default False
+    use_runner : bool
+        Whether to use the runner to validate the model, by default False.
     """
 
     def __init__(
@@ -103,11 +105,13 @@ class CommitBundleValidator:
         bundle_path: str,
         skip_model_validation: bool = False,
         skip_dataset_validation: bool = False,
+        use_runner: bool = False,
     ):
         self.bundle_path = bundle_path
         self._bundle_resources = utils.list_resources_in_bundle(bundle_path)
         self._skip_model_validation = skip_model_validation
         self._skip_dataset_validation = skip_dataset_validation
+        self._use_runner = use_runner
         self.failed_validations = []
 
     def _validate_bundle_state(self):
@@ -268,6 +272,7 @@ class CommitBundleValidator:
                     model_config_file_path=f"{self.bundle_path}/model/model_config.yaml",
                     model_package_dir=f"{self.bundle_path}/model",
                     sample_data=sample_data,
+                    use_runner=self._use_runner,
                 )
                 bundle_resources_failed_validations.extend(model_validator.validate())
 
@@ -844,6 +849,8 @@ class ModelValidator:
 
     Parameters
     ----------
+    model_config_file_path: str
+        Path to the model config file.
     model_package_dir : str
         Path to the model package directory.
     sample_data : pd.DataFrame
@@ -862,6 +869,7 @@ class ModelValidator:
     >>> from openlayer import ModelValidator
     >>>
     >>> model_validator = ModelValidator(
+    ...     model_config_file_path="/path/to/model/config/file",
     ...     model_package_dir="/path/to/model/package",
     ...     sample_data=df,
     ... )
@@ -872,12 +880,14 @@ class ModelValidator:
     def __init__(
         self,
         model_config_file_path: str,
+        use_runner: bool = False,
         model_package_dir: Optional[str] = None,
         sample_data: Optional[pd.DataFrame] = None,
     ):
         self.model_config_file_path = model_config_file_path
         self.model_package_dir = model_package_dir
         self.sample_data = sample_data
+        self._use_runner = use_runner
         self.failed_validations = []
 
     def _validate_model_package_dir(self):
@@ -932,7 +942,7 @@ class ModelValidator:
         # Add the model package failed validations to the list of all failed validations
         self.failed_validations.extend(model_package_failed_validations)
 
-    def _validate_requirements(self):
+    def _validate_requirements_file(self):
         """Validates the requirements.txt file.
 
         Checks for the existence of the file and parses it to check for
@@ -1109,6 +1119,33 @@ class ModelValidator:
         # Add the `prediction_interface.py` failed validations to the list of all failed validations
         self.failed_validations.extend(prediction_interface_failed_validations)
 
+    def _validate_model_runner(self):
+        """Validates the model using the model runner.
+
+        This is mostly meant to be used by the platform, to validate the model. It will
+        create the model's environment and use it to run the model.
+        """
+        model_runner_failed_validations = []
+
+        model_runner = models.ModelRunner(self.model_package_dir)
+
+        # Try to run some data through the runner
+        # Will create the model environment if it doesn't exist
+        try:
+            model_runner.run(self.sample_data)
+        except Exception as exc:
+            model_runner_failed_validations.append(
+                f"Failed to run the model with the following error: \n {exc}"
+            )
+
+        # Print results of the validation
+        if model_runner_failed_validations:
+            print("Model runner failed validations: \n")
+            _list_failed_validation_messages(model_runner_failed_validations)
+
+        # Add the model runner failed validations to the list of all failed validations
+        self.failed_validations.extend(model_runner_failed_validations)
+
     def validate(self) -> List[str]:
         """Runs all model validations.
 
@@ -1121,8 +1158,11 @@ class ModelValidator:
         """
         if self.model_package_dir:
             self._validate_model_package_dir()
-            self._validate_requirements()
-            self._validate_prediction_interface()
+            if self._use_runner:
+                self._validate_model_runner()
+            else:
+                self._validate_requirements_file()
+                self._validate_prediction_interface()
         self._validate_model_config()
 
         if not self.failed_validations:
