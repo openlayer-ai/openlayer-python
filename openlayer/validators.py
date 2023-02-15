@@ -276,10 +276,11 @@ class CommitBundleValidator:
                 )
                 bundle_resources_failed_validations.extend(model_validator.validate())
 
+        # Skip printing for now, since it's redundant with the other validations
         # Print results of the validation
-        if bundle_resources_failed_validations:
-            print("Push failed validations: \n")
-            _list_failed_validation_messages(bundle_resources_failed_validations)
+        # if bundle_resources_failed_validations:
+        #     print("Bundle resources failed validations: \n")
+        #     _list_failed_validation_messages(bundle_resources_failed_validations)
 
         # Add the bundle resources failed validations to the list of all failed validations
         self.failed_validations.extend(bundle_resources_failed_validations)
@@ -331,11 +332,22 @@ class CommitBundleValidator:
         List[str]
             A list of failed validations.
         """
+        print(
+            "----------------------------------------------------------------------------\n"
+            "                          Validating commit bundle                          \n"
+            "----------------------------------------------------------------------------\n"
+        )
         self._validate_bundle_state()
         self._validate_bundle_resources()
 
         if not self.failed_validations:
-            print("All commit bundle validations passed!")
+            print(
+                "\n----------------------------------------------------------------------------\n"
+                "                     All commit bundle validations passed!                   \n"
+                "----------------------------------------------------------------------------\n"
+            )
+        else:
+            print("Please fix the all the issues above and push again.")
 
         return self.failed_validations
 
@@ -384,6 +396,9 @@ class CommitValidator:
         List[str]
             A list of failed validations.
         """
+        print(
+            "\n------------------------ Commit message validations ------------------------\n"
+        )
         self._validate_commit_message()
 
         if not self.failed_validations:
@@ -833,6 +848,9 @@ class DatasetValidator:
         List[str]
             List of all failed validations.
         """
+        print(
+            "\n---------------------------- Dataset validations ---------------------------\n"
+        )
         self._validate_dataset_config()
         if self.dataset_file_path:
             self._validate_dataset_file()
@@ -1134,9 +1152,7 @@ class ModelValidator:
         try:
             model_runner.run(self.sample_data)
         except Exception as exc:
-            model_runner_failed_validations.append(
-                f"Failed to run the model with the following error: \n {exc}"
-            )
+            model_runner_failed_validations.append(f"{exc}")
 
         # Print results of the validation
         if model_runner_failed_validations:
@@ -1156,6 +1172,9 @@ class ModelValidator:
         List[str]
             A list of all failed validations.
         """
+        print(
+            "\n----------------------------- Model validations ----------------------------\n"
+        )
         if self.model_package_dir:
             self._validate_model_package_dir()
             if self._use_runner:
