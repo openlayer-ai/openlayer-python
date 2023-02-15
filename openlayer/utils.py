@@ -10,6 +10,21 @@ import yaml
 
 
 # -------------------------- Helper context managers ------------------------- #
+class LogStdout:
+    """Helper class that suppresses the prints and writes them to the `log_file_path` file."""
+
+    def __init__(self, log_file_path: str):
+        self.log_file_path = log_file_path
+
+    def __enter__(self):
+        self._original_stdout = sys.stdout
+        sys.stdout = open(self.log_file_path, "w")
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stdout.close()
+        sys.stdout = self._original_stdout
+
+
 class HidePrints:
     """Helper class that suppresses the prints and warnings to stdout and Jupyter's stdout.
 
