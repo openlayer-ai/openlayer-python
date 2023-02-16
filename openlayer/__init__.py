@@ -483,7 +483,6 @@ class OpenlayerClient(object):
 
         # Copy relevant resources to temp directory
         with tempfile.TemporaryDirectory() as temp_dir:
-            shutil.copy("prediction_job.py", f"{temp_dir}/prediction_job.py")
             utils.write_yaml(model_data, f"{temp_dir}/model_config.yaml")
 
             self._stage_resource(

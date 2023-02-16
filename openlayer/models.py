@@ -8,6 +8,8 @@ from typing import List, Optional, Set
 
 import pandas as pd
 
+from . import utils
+
 
 class ModelType(Enum):
     """A selection of machine learning modeling frameworks supported by Openlayer.
@@ -89,7 +91,7 @@ class CondaEnvironment:
         env_name: str,
         requirements_file_path: str,
         python_version_file_path: str,
-        logs_file_path: Optional[str] = None,
+        logger: Optional[logging.Logger] = None,
     ):
         if not self._conda_available():
             raise Exception("Conda is not available on this machine.")
@@ -98,14 +100,12 @@ class CondaEnvironment:
         self.requirements_file_path = requirements_file_path
         self.python_version_file_path = python_version_file_path
         self._conda_prefix = self._get_conda_prefix()
-        self._logs_file_path = logs_file_path
-        self._logs = None
+        self.logger = logger or logging.getLogger("validators")
 
     def __enter__(self):
-        self._logs = open(self._logs_file_path, "w")
         existing_envs = self.get_existing_envs()
         if self.env_name in existing_envs:
-            logging.info("Found existing conda environment '%s'.", self.env_name)
+            self.logger.info("Found existing conda environment '%s'.", self.env_name)
         else:
             self.create()
             self.install_requirements()
@@ -113,7 +113,6 @@ class CondaEnvironment:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.deactivate()
-        self._logs.close()
 
     def _conda_available(self) -> bool:
         """Checks if conda is available on the machine."""
@@ -131,7 +130,7 @@ class CondaEnvironment:
 
     def create(self):
         """Creates a conda environment with the specified name and python version."""
-        logging.info("Creating a new conda environment '%s'...", self.env_name)
+        self.logger.info("Creating a new conda environment '%s'... \n", self.env_name)
 
         with open(
             self.python_version_file_path, "r", encoding="UTF-8"
@@ -139,47 +138,49 @@ class CondaEnvironment:
             python_version = python_version_file.read().split(".")[:2]
             python_version = ".".join(python_version)
 
-        try:
-            subprocess.check_call(
-                [
-                    "conda",
-                    "create",
-                    "-n",
-                    f"{self.env_name}",
-                    f"python={python_version}",
-                    "--yes",
-                ],
-                stdout=self._logs,
-                stderr=subprocess.STDOUT,
-            )
-        except subprocess.CalledProcessError as err:
+        process = subprocess.Popen(
+            [
+                "conda",
+                "create",
+                "-n",
+                f"{self.env_name}",
+                f"python={python_version}",
+                "--yes",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+
+        with process.stdout:
+            utils.log_subprocess_output(self.logger, process.stdout)
+        exitcode = process.wait()
+
+        if exitcode != 0:
             raise Exception(
                 f"Failed to create conda environment '{self.env_name}' with python "
                 f"version {python_version}."
-                " Please check the model logs for details. \n"
-                f"- Error code returned {err.returncode}: {err.output}"
-            ) from None
+            )
 
     def delete(self):
         """Deletes the conda environment with the specified name."""
-        logging.info("Deleting conda environment '%s'...", self.env_name)
+        self.logger.info("Deleting conda environment '%s'...", self.env_name)
 
-        try:
-            subprocess.check_call(
-                ["conda", "env", "remove", "-n", f"{self.env_name}", "--yes"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.STDOUT,
-            )
-        except subprocess.CalledProcessError as err:
-            raise Exception(
-                f"Failed to delete conda environment '{self.env_name}'."
-                " Please check the model logs for details. \n"
-                f"- Error code returned {err.returncode}: {err.output}"
-            ) from None
+        process = subprocess.Popen(
+            ["conda", "env", "remove", "-n", f"{self.env_name}", "--yes"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+
+        with process.stdout:
+            utils.log_subprocess_output(self.logger, process.stdout)
+        exitcode = process.wait()
+
+        if exitcode != 0:
+            raise Exception(f"Failed to delete conda environment '{self.env_name}'.")
 
     def get_existing_envs(self) -> Set[str]:
         """Gets the names of all existing conda environments."""
-        logging.info("Checking existing conda environments...")
+        self.logger.info("Checking existing conda environments...")
 
         list_envs_command = """
         conda env list | awk '{print $1}'
@@ -189,12 +190,11 @@ class CondaEnvironment:
             envs = subprocess.check_output(
                 list_envs_command,
                 shell=True,
-                stderr=self._logs,
+                stderr=subprocess.DEVNULL,
             )
         except subprocess.CalledProcessError as err:
             raise Exception(
                 f"Failed to list conda environments."
-                " Please check the model logs for details. \n"
                 f"- Error code returned {err.returncode}: {err.output}"
             ) from None
         envs = set(envs.decode("UTF-8").split("\n"))
@@ -202,7 +202,7 @@ class CondaEnvironment:
 
     def activate(self):
         """Activates the conda environment with the specified name."""
-        logging.info("Activating conda environment '%s'...", self.env_name)
+        self.logger.info("Activating conda environment '%s'...", self.env_name)
 
         activation_command = f"""
         eval $(conda shell.bash hook)
@@ -212,20 +212,19 @@ class CondaEnvironment:
         try:
             subprocess.check_call(
                 activation_command,
-                stdout=self._logs,
+                stdout=subprocess.DEVNULL,
                 stderr=subprocess.STDOUT,
                 shell=True,
             )
         except subprocess.CalledProcessError as err:
             raise Exception(
                 f"Failed to activate conda environment '{self.env_name}'."
-                " Please check the model logs for details. \n"
                 f"- Error code returned {err.returncode}: {err.output}"
             ) from None
 
     def deactivate(self):
         """Deactivates the conda environment with the specified name."""
-        logging.info("Deactivating conda environment '%s'...", self.env_name)
+        self.logger.info("Deactivating conda environment '%s'...", self.env_name)
 
         deactivation_command = f"""
         eval $(conda shell.bash hook)
@@ -236,7 +235,7 @@ class CondaEnvironment:
             subprocess.check_call(
                 deactivation_command,
                 shell=True,
-                stdout=self._logs,
+                stdout=subprocess.DEVNULL,
                 stderr=subprocess.STDOUT,
             )
         except subprocess.CalledProcessError as err:
@@ -248,20 +247,17 @@ class CondaEnvironment:
 
     def install_requirements(self):
         """Installs the requirements from the specified requirements file."""
-        logging.info(
+        self.logger.info(
             "Installing requirements in conda environment '%s'...", self.env_name
         )
 
-        try:
-            self.run_commands(
-                ["pip", "install", "-r", self.requirements_file_path],
-            )
-        except subprocess.CalledProcessError as err:
+        exitcode = self.run_commands(
+            ["pip", "install", "-r", self.requirements_file_path],
+        )
+        if exitcode != 0:
             raise Exception(
-                f"Failed to install the depencies specified in the requirements.txt file."
-                " Please check the model logs for details. \n"
-                f"- Error code returned {err.returncode}: {err.output}"
-            ) from None
+                "Failed to install the depencies specified in the requirements.txt file."
+            )
 
     def run_commands(self, commands: List[str]):
         """Runs the specified commands inside the conda environment.
@@ -277,34 +273,34 @@ class CondaEnvironment:
         conda activate {self.env_name}
         {" ".join(commands)}
         """
-        subprocess.check_call(
-            full_command, shell=True, stdout=self._logs, stderr=subprocess.STDOUT
+        process = subprocess.Popen(
+            full_command,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
         )
+
+        with process.stdout:
+            utils.log_subprocess_output(self.logger, process.stdout)
+        exitcode = process.wait()
+        return exitcode
 
 
 class ModelRunner:
     """Wraps the model package and provides a uniform run method."""
 
-    def __init__(self, model_package: str, logs: Optional[str] = None):
+    def __init__(self, model_package: str, logger: Optional[logging.Logger] = None):
         self.model_package = model_package
 
-        # Save log to the model package if logs is not specified
-        if logs is None:
-            logs_file_path = f"{model_package}/model_run_logs.txt"
-
-            logging.basicConfig(
-                filename=logs_file_path,
-                format="[%(asctime)s] %(levelname)s - %(message)s",
-                level=logging.INFO,
-                datefmt="%Y-%m-%d %H:%M:%S",
-            )
+        # Use validators logger if no logger is provided
+        self.logger = logger or logging.getLogger("validators")
 
         # TODO: change env name to the model id
         self._conda_environment = CondaEnvironment(
             env_name="new-openlayer",
             requirements_file_path=f"{model_package}/requirements.txt",
             python_version_file_path=f"{model_package}/python_version",
-            logs_file_path=logs_file_path,
+            logger=self.logger,
         )
 
     def __del__(self):
@@ -338,29 +334,28 @@ class ModelRunner:
 
             # Run the model in the conda environment
             with self._conda_environment as env:
-                logging.info("Running %s rows through the model...", len(input_data))
-                try:
-                    env.run_commands(
-                        [
-                            "python",
-                            f"{self.model_package}/prediction_job.py",
-                            "--input",
-                            f"{temp_dir}/input_data.csv",
-                            "--output",
-                            f"{temp_dir}/output_data.csv",
-                        ]
-                    )
-                except subprocess.CalledProcessError as err:
-                    logging.error(
+                self.logger.info(
+                    "Running %s rows through the model...", len(input_data)
+                )
+                exitcode = env.run_commands(
+                    [
+                        "python",
+                        f"{self.model_package}/prediction_job.py",
+                        "--input",
+                        f"{temp_dir}/input_data.csv",
+                        "--output",
+                        f"{temp_dir}/output_data.csv",
+                    ]
+                )
+                if exitcode != 0:
+                    self.logger.error(
                         "Failed to run the model. Check the stacktrace above for details."
                     )
                     raise Exception(
                         "Failed to run the model in the conda environment."
-                        " Please check the model logs for details. \n"
-                        f" Error {err.returncode}: {err.output}"
                     ) from None
 
-            logging.info("Successfully ran data through the model!")
+            self.logger.info("Successfully ran data through the model!")
             # Read the output data from the csv file
             output_data = pd.read_csv(f"{temp_dir}/output_data.csv")
 

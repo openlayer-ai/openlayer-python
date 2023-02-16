@@ -1,6 +1,8 @@
 """Series of helper functions and classes that are used throughout the
 OpenLayer Python client.
 """
+import io
+import logging
 import os
 import sys
 import traceback
@@ -46,6 +48,13 @@ class HidePrints:
 
 
 # ----------------------------- Helper functions ----------------------------- #
+def log_subprocess_output(logger: logging.Logger, pipe: io.BufferedReader):
+    """Logs the output of a subprocess."""
+    for line in iter(pipe.readline, b""):  # b'\n'-separated lines
+        line = line.decode("UTF-8").strip()
+        logger.info("%s", line)
+
+
 def write_python_version(directory: str):
     """Writes the python version to the file `python_version` in the specified
     directory (`directory`).
