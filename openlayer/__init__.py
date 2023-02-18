@@ -16,7 +16,7 @@ from .tasks import TaskType
 from .version import __version__  # noqa: F401
 
 OPENLAYER_DIR = os.path.join(os.path.expanduser("~"), ".openlayer")
-VALID_RESOURCE_NAMES = {"baseline-model", "model", "training", "validation"}
+VALID_RESOURCE_NAMES = {"model", "training", "validation"}
 
 
 class OpenlayerClient(object):
@@ -411,6 +411,9 @@ class OpenlayerClient(object):
             if model_package_dir:
                 shutil.copytree(model_package_dir, temp_dir, dirs_exist_ok=True)
                 utils.write_python_version(temp_dir)
+                model_data["modelType"] = "full"
+            else:
+                model_data["modelType"] = "shell"
 
             utils.write_yaml(model_data, f"{temp_dir}/model_config.yaml")
 
@@ -479,6 +482,7 @@ class OpenlayerClient(object):
         model_config = {}
         if model_config_file_path is not None:
             model_config = utils.read_yaml(model_config_file_path)
+        model_config["modelType"] = "baseline"
         model_data = BaselineModelSchema().load(model_config)
 
         # Copy relevant resources to temp directory
@@ -486,7 +490,7 @@ class OpenlayerClient(object):
             utils.write_yaml(model_data, f"{temp_dir}/model_config.yaml")
 
             self._stage_resource(
-                resource_name="baseline-model",
+                resource_name="model",
                 resource_dir=temp_dir,
                 project_id=project_id,
                 force=force,
@@ -1182,29 +1186,13 @@ class OpenlayerClient(object):
         """
         if resource_name not in VALID_RESOURCE_NAMES:
             raise ValueError(
-                "Resource name must be one of 'baseline-model', 'model', 'training', or"
+                "Resource name must be one of 'model', 'training', or"
                 f" 'validation', but got '{resource_name}'."
             )
 
         project_dir = f"{OPENLAYER_DIR}/{project_id}/staging"
 
         resources_staged = utils.list_resources_in_bundle(project_dir)
-
-        if resource_name == "model" and "baseline-model" in resources_staged:
-            raise exceptions.OpenlayerException(
-                "Trying to stage a `model` when there is a `baseline-model` already staged."
-                + " You can either add a `model` or a `baseline-model`, but not both at the"
-                + " same time. Please remove one of them from the staging area using the"
-                + " `restore` method."
-            ) from None
-
-        if resource_name == "baseline-model" and "model" in resources_staged:
-            raise exceptions.OpenlayerException(
-                "Trying to stage a `baseline-model` when there is a `model` already staged."
-                + " You can either add a `model` or a `baseline-model`, but not both at the"
-                + " same time. Please remove one of them from the staging area using the"
-                + " `restore` method."
-            ) from None
 
         if resource_name in resources_staged:
             print(f"Found an existing `{resource_name}` resource staged.")

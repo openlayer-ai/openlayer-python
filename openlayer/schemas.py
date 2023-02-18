@@ -23,6 +23,7 @@ class BaselineModelSchema(ma.Schema):
     """Schema for baseline models."""
 
     metadata = ma.fields.Dict(allow_none=True, load_default={})
+    modelType = ma.fields.Str()
 
 
 class CommitSchema(ma.Schema):
@@ -119,6 +120,7 @@ class ModelSchema(ma.Schema):
         allow_none=True,
         load_default={},
     )
+    modelType = ma.fields.Str()
     architectureType = ma.fields.Str(
         validate=ma.validate.OneOf(
             [model_framework.value for model_framework in ModelType],
