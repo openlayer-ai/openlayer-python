@@ -147,8 +147,8 @@ class CommitBundleValidator:
         """Checks whether the bundle is in a valid state.
 
         This includes:
-        - When a "model" is included, you always need to provide predictions for both
-          "validation" and "training" (regardless of artifact or no artifact).
+        - When a "model" (shell or full) is included, you always need to provide predictions for both
+          "validation" and "training".
         - When a "baseline-model" is included, you always need to provide a "training"
           and "validation" set without predictions.
         - When a "model" nor a "baseline-model" are included, you always need to NOT
@@ -186,33 +186,35 @@ class CommitBundleValidator:
             )
 
         if "model" in self._bundle_resources:
+            model_config = self._load_model_config_from_bundle()
+            model_type = model_config.get("modelType")
             if (
                 training_predictions_column_name is None
                 or validation_predictions_column_name is None
-            ):
+            ) and model_type != "baseline":
                 bundle_state_failed_validations.append(
                     "To push a model to the platform, you must provide "
                     "training and a validation sets with predictions in the column "
                     "`predictions_column_name`."
                 )
-        elif "baseline-model" in self._bundle_resources:
-            if (
-                "training" not in self._bundle_resources
-                or "validation" not in self._bundle_resources
-            ):
-                bundle_state_failed_validations.append(
-                    "To push a baseline model to the platform, you must provide "
-                    "training and validation sets."
-                )
-            elif (
-                training_predictions_column_name is not None
-                and validation_predictions_column_name is not None
-            ):
-                bundle_state_failed_validations.append(
-                    "To push a baseline model to the platform, you must not provide "
-                    "training and a validation sets without predictions in the column "
-                    "`predictions_column_name`."
-                )
+            if model_type == "baseline":
+                if (
+                    "training" not in self._bundle_resources
+                    or "validation" not in self._bundle_resources
+                ):
+                    bundle_state_failed_validations.append(
+                        "To push a baseline model to the platform, you must provide "
+                        "training and validation sets."
+                    )
+                elif (
+                    training_predictions_column_name is not None
+                    and validation_predictions_column_name is not None
+                ):
+                    bundle_state_failed_validations.append(
+                        "To push a baseline model to the platform, you must provide "
+                        "training and validation sets without predictions in the column "
+                        "`predictions_column_name`."
+                    )
         else:
             if (
                 "training" in self._bundle_resources
@@ -260,26 +262,15 @@ class CommitBundleValidator:
                 validation_set_validator.validate()
             )
 
-        if (
-            "baseline-model" in self._bundle_resources
-            and not self._skip_model_validation
-        ):
-            baseline_model_validator = BaselineModelValidator(
-                model_config_file_path=f"{self.bundle_path}/baseline-model/model_config.yaml"
-            )
-            bundle_resources_failed_validations.extend(
-                baseline_model_validator.validate()
-            )
-
         if "model" in self._bundle_resources and not self._skip_model_validation:
-            model_files = os.listdir(f"{self.bundle_path}/model")
-            # Shell model
-            if len(model_files) == 1:
+            model_config_file_path = f"{self.bundle_path}/model/model_config.yaml"
+            model_config = self._load_model_config_from_bundle()
+
+            if model_config["modelType"] == "shell":
                 model_validator = ModelValidator(
-                    model_config_file_path=f"{self.bundle_path}/model/model_config.yaml"
+                    model_config_file_path=model_config_file_path
                 )
-            # Model package
-            else:
+            elif model_config["modelType"] == "full":
                 # Use data from the validation as test data
                 validation_dataset_df = self._load_dataset_from_bundle("validation")
                 validation_dataset_config = self._load_dataset_config_from_bundle(
@@ -298,12 +289,21 @@ class CommitBundleValidator:
                     ].head()
 
                 model_validator = ModelValidator(
-                    model_config_file_path=f"{self.bundle_path}/model/model_config.yaml",
+                    model_config_file_path=model_config_file_path,
                     model_package_dir=f"{self.bundle_path}/model",
                     sample_data=sample_data,
                     use_runner=self._use_runner,
                 )
-                bundle_resources_failed_validations.extend(model_validator.validate())
+            elif model_config["modelType"] == "baseline":
+                model_validator = BaselineModelValidator(
+                    model_config_file_path=model_config_file_path
+                )
+            else:
+                raise ValueError(
+                    f"Invalid model type: {model_config['modelType']}. "
+                    "The model type must be one of 'shell', 'full' or 'baseline'."
+                )
+            bundle_resources_failed_validations.extend(model_validator.validate())
 
         # Add the bundle resources failed validations to the list of all failed validations
         self.failed_validations.extend(bundle_resources_failed_validations)
@@ -346,6 +346,21 @@ class CommitBundleValidator:
             dataset_config = yaml.safe_load(stream)
 
         return dataset_config
+
+    def _load_model_config_from_bundle(self) -> Dict[str, Any]:
+        """Loads a model config from a commit bundle.
+
+        Returns
+        -------
+        Dict[str, Any]
+            The model config.
+        """
+        model_config_file_path = f"{self.bundle_path}/model/model_config.yaml"
+
+        with open(model_config_file_path, "r", encoding="UTF-8") as stream:
+            model_config = yaml.safe_load(stream)
+
+        return model_config
 
     def validate(self) -> List[str]:
         """Validates the commit bundle.
