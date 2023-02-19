@@ -1,3 +1,4 @@
+import ast
 import logging
 import os
 import shutil
@@ -358,5 +359,10 @@ class ModelRunner:
             self.logger.info("Successfully ran data through the model!")
             # Read the output data from the csv file
             output_data = pd.read_csv(f"{temp_dir}/output_data.csv")
+
+            # Make the items list of floats (and not strings)
+            output_data["predictions"] = output_data["predictions"].apply(
+                ast.literal_eval
+            )
 
         return output_data
