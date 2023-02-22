@@ -48,6 +48,31 @@ class BaselineModelValidator:
         self.model_config_file_path = model_config_file_path
         self.failed_validations = []
 
+    def validate(self) -> List[str]:
+        """Validates the baseline model.
+
+        Returns
+        -------
+        List[str]
+            The list of failed validations.
+        """
+        logger.info(
+            "----------------------------------------------------------------------------"
+        )
+        logger.info(
+            "                          Baseline model validations                          "
+        )
+        logger.info(
+            "----------------------------------------------------------------------------\n"
+        )
+        if self.model_config_file_path:
+            self._validate_model_config()
+
+        if not self.failed_validations:
+            logger.info("✓ All baseline model validations passed! \n")
+
+        return self.failed_validations
+
     def _validate_model_config(self):
         """Validates the model config file."""
         model_config_failed_validations = []
@@ -78,31 +103,6 @@ class BaselineModelValidator:
 
         # Add the `model_config.yaml` failed validations to the list of all failed validations
         self.failed_validations.extend(model_config_failed_validations)
-
-    def validate(self) -> List[str]:
-        """Validates the baseline model.
-
-        Returns
-        -------
-        List[str]
-            The list of failed validations.
-        """
-        logger.info(
-            "----------------------------------------------------------------------------"
-        )
-        logger.info(
-            "                          Baseline model validations                          "
-        )
-        logger.info(
-            "----------------------------------------------------------------------------\n"
-        )
-        if self.model_config_file_path:
-            self._validate_model_config()
-
-        if not self.failed_validations:
-            logger.info("✓ All baseline model validations passed! \n")
-
-        return self.failed_validations
 
 
 class CommitBundleValidator:
@@ -142,6 +142,41 @@ class CommitBundleValidator:
             )
             bundle_file_handler.setFormatter(bundle_formatter)
             logger.addHandler(bundle_file_handler)
+
+    def validate(self) -> List[str]:
+        """Validates the commit bundle.
+
+        Returns
+        -------
+        List[str]
+            A list of failed validations.
+        """
+        logger.info(
+            "----------------------------------------------------------------------------\n"
+        )
+        logger.info(
+            "                          Validating commit bundle                          \n"
+        )
+        logger.info(
+            "----------------------------------------------------------------------------\n"
+        )
+        self._validate_bundle_state()
+        self._validate_bundle_resources()
+
+        if not self.failed_validations:
+            logger.info(
+                "----------------------------------------------------------------------------\n"
+            )
+            logger.info(
+                "                     All commit bundle validations passed!                   \n"
+            )
+            logger.info(
+                "----------------------------------------------------------------------------\n"
+            )
+        else:
+            logger.error("Please fix the all the issues above and push again.")
+
+        return self.failed_validations
 
     def _validate_bundle_state(self):
         """Checks whether the bundle is in a valid state.
@@ -362,41 +397,6 @@ class CommitBundleValidator:
 
         return model_config
 
-    def validate(self) -> List[str]:
-        """Validates the commit bundle.
-
-        Returns
-        -------
-        List[str]
-            A list of failed validations.
-        """
-        logger.info(
-            "----------------------------------------------------------------------------\n"
-        )
-        logger.info(
-            "                          Validating commit bundle                          \n"
-        )
-        logger.info(
-            "----------------------------------------------------------------------------\n"
-        )
-        self._validate_bundle_state()
-        self._validate_bundle_resources()
-
-        if not self.failed_validations:
-            logger.info(
-                "----------------------------------------------------------------------------\n"
-            )
-            logger.info(
-                "                     All commit bundle validations passed!                   \n"
-            )
-            logger.info(
-                "----------------------------------------------------------------------------\n"
-            )
-        else:
-            logger.error("Please fix the all the issues above and push again.")
-
-        return self.failed_validations
-
 
 class CommitValidator:
     """Validates the commit prior to the upload.
@@ -413,26 +413,6 @@ class CommitValidator:
     ):
         self.commit_message = commit_message
         self.failed_validations = []
-
-    def _validate_commit_message(self):
-        """Checks whether the commit message is valid."""
-        commit_message_failed_validations = []
-
-        commit_schema = schemas.CommitSchema()
-        try:
-            commit_schema.load({"commitMessage": self.commit_message})
-        except ma.ValidationError as err:
-            commit_message_failed_validations.extend(
-                _format_marshmallow_error_message(err)
-            )
-
-        # Print results of the validation
-        if commit_message_failed_validations:
-            logger.error("Commit failed validations:")
-            _list_failed_validation_messages(commit_message_failed_validations)
-
-        # Add the commit failed validations to the list of all failed validations
-        self.failed_validations.extend(commit_message_failed_validations)
 
     def validate(self) -> List[str]:
         """Validates the commit.
@@ -457,6 +437,26 @@ class CommitValidator:
             logger.info("✓ All commit validations passed!")
 
         return self.failed_validations
+
+    def _validate_commit_message(self):
+        """Checks whether the commit message is valid."""
+        commit_message_failed_validations = []
+
+        commit_schema = schemas.CommitSchema()
+        try:
+            commit_schema.load({"commitMessage": self.commit_message})
+        except ma.ValidationError as err:
+            commit_message_failed_validations.extend(
+                _format_marshmallow_error_message(err)
+            )
+
+        # Print results of the validation
+        if commit_message_failed_validations:
+            logger.error("Commit failed validations:")
+            _list_failed_validation_messages(commit_message_failed_validations)
+
+        # Add the commit failed validations to the list of all failed validations
+        self.failed_validations.extend(commit_message_failed_validations)
 
 
 class DatasetValidator:
@@ -544,6 +544,37 @@ class DatasetValidator:
         self.dataset_config_file_path = dataset_config_file_path
         self.dataset_config = dataset_config
         self.failed_validations = []
+
+    def validate(self) -> List[str]:
+        """Runs all dataset validations.
+
+        At each stage, prints all the failed validations.
+
+        Returns
+        -------
+        List[str]
+            List of all failed validations.
+        """
+        logger.info(
+            "----------------------------------------------------------------------------"
+        )
+        logger.info(
+            "                             Dataset validations                            "
+        )
+        logger.info(
+            "----------------------------------------------------------------------------\n"
+        )
+        self._validate_dataset_config()
+        if self.dataset_file_path:
+            self._validate_dataset_file()
+        self._validate_dataset_and_config_consistency()
+
+        if not self.failed_validations:
+            logger.info(
+                "✓ All %s dataset validations passed!\n", self.dataset_config["label"]
+            )
+
+        return self.failed_validations
 
     def _validate_dataset_config(self):
         """Checks whether the dataset_config is valid.
@@ -719,12 +750,10 @@ class DatasetValidator:
                                         dataset_df, predictions_column_name, class_names
                                     ):
                                         dataset_and_config_consistency_failed_validations.append(
-                                            "There are predictions in the column "
-                                            f"`{predictions_column_name}` "
-                                            "are not in `classNames`. "
-                                            "Please make sure that the predictions are lists "
-                                            "of floats that sum to 1 and that the classes in "
-                                            "the predictions match the classes in `classNames`."
+                                            f"The predictions in `{predictions_column_name}`"
+                                            f" don't match the classes in `{class_names}`. "
+                                            "Please make sure that the lists with predictions "
+                                            "have the same length as the `classNames` list."
                                         )
                     except Exception:
                         dataset_and_config_consistency_failed_validations.append(
@@ -890,37 +919,6 @@ class DatasetValidator:
             return True
         return False
 
-    def validate(self) -> List[str]:
-        """Runs all dataset validations.
-
-        At each stage, prints all the failed validations.
-
-        Returns
-        -------
-        List[str]
-            List of all failed validations.
-        """
-        logger.info(
-            "----------------------------------------------------------------------------"
-        )
-        logger.info(
-            "                             Dataset validations                            "
-        )
-        logger.info(
-            "----------------------------------------------------------------------------\n"
-        )
-        self._validate_dataset_config()
-        if self.dataset_file_path:
-            self._validate_dataset_file()
-        self._validate_dataset_and_config_consistency()
-
-        if not self.failed_validations:
-            logger.info(
-                "✓ All %s dataset validations passed!\n", self.dataset_config["label"]
-            )
-
-        return self.failed_validations
-
 
 class ModelValidator:
     """Validates the model package's structure and files.
@@ -967,6 +965,39 @@ class ModelValidator:
         self.sample_data = sample_data
         self._use_runner = use_runner
         self.failed_validations = []
+
+    def validate(self) -> List[str]:
+        """Runs all model validations.
+
+        At each stage, prints all the failed validations.
+
+        Returns
+        -------
+        List[str]
+            A list of all failed validations.
+        """
+        logger.info(
+            "----------------------------------------------------------------------------"
+        )
+        logger.info(
+            "                            Model validations                             "
+        )
+        logger.info(
+            "----------------------------------------------------------------------------\n"
+        )
+        if self.model_package_dir:
+            self._validate_model_package_dir()
+            if self._use_runner:
+                self._validate_model_runner()
+            else:
+                self._validate_requirements_file()
+                self._validate_prediction_interface()
+        self._validate_model_config()
+
+        if not self.failed_validations:
+            logger.info("✓ All model validations passed! \n")
+
+        return self.failed_validations
 
     def _validate_model_package_dir(self):
         """Verifies the model package directory structure.
@@ -1222,39 +1253,6 @@ class ModelValidator:
         # Add the model runner failed validations to the list of all failed validations
         self.failed_validations.extend(model_runner_failed_validations)
 
-    def validate(self) -> List[str]:
-        """Runs all model validations.
-
-        At each stage, prints all the failed validations.
-
-        Returns
-        -------
-        List[str]
-            A list of all failed validations.
-        """
-        logger.info(
-            "----------------------------------------------------------------------------"
-        )
-        logger.info(
-            "                            Model validations                             "
-        )
-        logger.info(
-            "----------------------------------------------------------------------------\n"
-        )
-        if self.model_package_dir:
-            self._validate_model_package_dir()
-            if self._use_runner:
-                self._validate_model_runner()
-            else:
-                self._validate_requirements_file()
-                self._validate_prediction_interface()
-        self._validate_model_config()
-
-        if not self.failed_validations:
-            logger.info("✓ All model validations passed! \n")
-
-        return self.failed_validations
-
 
 class ProjectValidator:
     """Validates the project.
@@ -1271,6 +1269,24 @@ class ProjectValidator:
     ):
         self.project_config = project_config
         self.failed_validations = []
+
+    def validate(self):
+        """Validates the project."""
+        logger.info(
+            "----------------------------------------------------------------------------"
+        )
+        logger.info(
+            "                            Project validations                             "
+        )
+        logger.info(
+            "----------------------------------------------------------------------------\n"
+        )
+        self._validate_project_config()
+
+        if not self.failed_validations:
+            logger.info("✓ All project validations passed!")
+
+        return self.failed_validations
 
     def _validate_project_config(self):
         """Checks if the project configuration is valid."""
@@ -1297,24 +1313,6 @@ class ProjectValidator:
 
         # Add the commit failed validations to the list of all failed validations
         self.failed_validations.extend(project_config_failed_validations)
-
-    def validate(self):
-        """Validates the project."""
-        logger.info(
-            "----------------------------------------------------------------------------"
-        )
-        logger.info(
-            "                            Project validations                             "
-        )
-        logger.info(
-            "----------------------------------------------------------------------------\n"
-        )
-        self._validate_project_config()
-
-        if not self.failed_validations:
-            logger.info("✓ All project validations passed!")
-
-        return self.failed_validations
 
 
 # ----------------------------- Helper functions ----------------------------- #
