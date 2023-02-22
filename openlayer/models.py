@@ -94,13 +94,12 @@ class CondaEnvironment:
         python_version_file_path: str,
         logger: Optional[logging.Logger] = None,
     ):
-        if not self._conda_available():
-            raise Exception("Conda is not available on this machine.")
-
+        self._conda_exe = self._get_executable()
+        self._conda_prefix = self._get_conda_prefix()
+        self._bash = self._get_bash()
         self.env_name = env_name
         self.requirements_file_path = requirements_file_path
         self.python_version_file_path = python_version_file_path
-        self._conda_prefix = self._get_conda_prefix()
         self.logger = logger or logging.getLogger("validators")
 
     def __enter__(self):
@@ -115,18 +114,25 @@ class CondaEnvironment:
     def __exit__(self, exc_type, exc_value, traceback):
         self.deactivate()
 
-    def _conda_available(self) -> bool:
-        """Checks if conda is available on the machine."""
-        if os.environ.get("CONDA_EXE") is None:
-            return False
-        return True
+    def _get_executable(self) -> str:
+        conda_exe = os.environ.get("CONDA_EXE")
+        if conda_exe is None:
+            raise Exception("Conda is not available on this machine.")
+        return conda_exe
+
+    def _get_bash(self) -> str:
+        """Gets the bash executable."""
+        shell_path = shutil.which("bash")
+        if shell_path is None:
+            raise Exception("Bash is not available on this machine.")
+        return shell_path
 
     def _get_conda_prefix(self) -> str:
         """Gets the conda base environment prefix.
 
         E.g., '~/miniconda3' or '~/anaconda3'
         """
-        prefix = subprocess.check_output(["conda", "info", "--base"])
+        prefix = subprocess.check_output([self._conda_exe, "info", "--base"])
         return prefix.decode("UTF-8").strip()
 
     def create(self):
@@ -141,7 +147,7 @@ class CondaEnvironment:
 
         process = subprocess.Popen(
             [
-                "conda",
+                self._conda_exe,
                 "create",
                 "-n",
                 f"{self.env_name}",
@@ -167,7 +173,14 @@ class CondaEnvironment:
         self.logger.info("Deleting conda environment '%s'...", self.env_name)
 
         process = subprocess.Popen(
-            ["conda", "env", "remove", "-n", f"{self.env_name}", "--yes"],
+            [
+                self._conda_exe,
+                "env",
+                "remove",
+                "-n",
+                f"{self.env_name}",
+                "--yes",
+            ],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
         )
@@ -183,8 +196,9 @@ class CondaEnvironment:
         """Gets the names of all existing conda environments."""
         self.logger.info("Checking existing conda environments...")
 
-        list_envs_command = """
-        conda env list | awk '{print $1}'
+        awk_command = "awk '{print $1}"
+        list_envs_command = f"""
+        {self._conda_exe} env list | {awk_command}'
         """
 
         try:
@@ -206,9 +220,10 @@ class CondaEnvironment:
         self.logger.info("Activating conda environment '%s'...", self.env_name)
 
         activation_command = f"""
-        eval $(conda shell.bash hook)
         source {self._conda_prefix}/etc/profile.d/conda.sh
-        conda activate {self.env_name}"""
+        eval $(conda shell.bash hook)
+        conda activate {self.env_name}
+        """
 
         try:
             subprocess.check_call(
@@ -228,14 +243,16 @@ class CondaEnvironment:
         self.logger.info("Deactivating conda environment '%s'...", self.env_name)
 
         deactivation_command = f"""
-        eval $(conda shell.bash hook)
         source {self._conda_prefix}/etc/profile.d/conda.sh
-        conda deactivate"""
+        eval $(conda shell.bash hook)
+        conda deactivate
+        """
 
         try:
             subprocess.check_call(
                 deactivation_command,
                 shell=True,
+                executable=self._bash,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.STDOUT,
             )
@@ -269,14 +286,15 @@ class CondaEnvironment:
             List of commands to run.
         """
         full_command = f"""
-        eval $(conda shell.bash hook)
         source {self._conda_prefix}/etc/profile.d/conda.sh
+        eval $(conda shell.bash hook)
         conda activate {self.env_name}
         {" ".join(commands)}
         """
         process = subprocess.Popen(
             full_command,
             shell=True,
+            executable=self._bash,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
         )
