@@ -1,5 +1,5 @@
 <div align="left">
-  <img src="docs/source/_static/logo-blue-text.svg"><br>
+  <img src="docs/source/_static/logo-purple-text.svg"><br>
 </div>
 
 # Openlayer | Python API Library
