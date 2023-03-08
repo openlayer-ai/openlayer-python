@@ -315,7 +315,7 @@ class CommitBundleValidator:
                 sample_data = None
                 if "textColumnName" in validation_dataset_config:
                     sample_data = validation_dataset_df[
-                        validation_dataset_config["textColumnName"]
+                        [validation_dataset_config["textColumnName"]]
                     ].head()
 
                 else:
