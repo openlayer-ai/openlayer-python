@@ -97,8 +97,8 @@ html_theme_options = {
             "name": "Changelog",
         }
     ],
-    "github_url": "https://github.com/openlayer-ai/openlayer-python",
-    "twitter_url": "https://twitter.com/unbox_ai",
+    "github_url": "https://github.com/openlayer-ai/examples-gallery",
+    "twitter_url": "https://twitter.com/openlayerco",
     # "google_analytics_id": "UA-27880019-2",
     "navbar_end": ["version-switcher", "navbar-icon-links"],
     "switcher": {
