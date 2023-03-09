@@ -54,9 +54,8 @@ class DatasetSchema(ma.Schema):
     label = ma.fields.Str(
         validate=ma.validate.OneOf(
             [dataset_type.value for dataset_type in DatasetType],
-            error="`label` must be one of the supported frameworks."
-            + "Check out our API reference for a full list"
-            + " https://reference.openlayer.com/reference/api/openlayer.DatasetType.html.\n ",
+            error="`label` not supported."
+            + "The supported `labels` are 'training' and 'validation'.",
         ),
         required=True,
     )
@@ -125,8 +124,9 @@ class ModelSchema(ma.Schema):
         validate=ma.validate.OneOf(
             [model_framework.value for model_framework in ModelType],
             error="`architectureType` must be one of the supported frameworks."
-            + " Check out our API reference for a full list"
-            + " https://reference.openlayer.com/reference/api/openlayer.ModelType.html.\n ",
+            + " Check out our API reference for a full list."
+            + " If you can't find your framework, specify 'custom' for your model's"
+            + " `architectureType`.",
         ),
         required=True,
     )
