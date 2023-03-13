@@ -18,6 +18,15 @@ LANGUAGE_CODE_REGEX = ma.validate.Regexp(
     error="`language` of the dataset is not in the ISO 639-1 (alpha-2 code) format.",
 )
 
+# -------------------------- Column name validations ------------------------- #
+COLUMN_NAME_VALIDATION_LIST = [
+    ma.validate.Length(
+        min=1,
+        max=60,
+    ),
+    COLUMN_NAME_REGEX,
+]
+
 # ---------------------------------- Schemas --------------------------------- #
 class BaselineModelSchema(ma.Schema):
     """Schema for baseline models."""
@@ -42,13 +51,13 @@ class DatasetSchema(ma.Schema):
     """Schema for datasets."""
 
     categoricalFeatureNames = ma.fields.List(
-        ma.fields.Str(validate=COLUMN_NAME_REGEX),
+        ma.fields.Str(validate=COLUMN_NAME_VALIDATION_LIST),
         allow_none=True,
         load_default=[],
     )
     classNames = ma.fields.List(ma.fields.Str(), required=True)
     columnNames = ma.fields.List(
-        ma.fields.Str(validate=COLUMN_NAME_REGEX),
+        ma.fields.Str(validate=COLUMN_NAME_VALIDATION_LIST),
         required=True,
     )
     label = ma.fields.Str(
@@ -61,11 +70,11 @@ class DatasetSchema(ma.Schema):
         required=True,
     )
     featureNames = ma.fields.List(
-        ma.fields.Str(validate=COLUMN_NAME_REGEX),
+        ma.fields.Str(validate=COLUMN_NAME_VALIDATION_LIST),
         load_default=[],
     )
     labelColumnName = ma.fields.Str(
-        validate=COLUMN_NAME_REGEX,
+        validate=COLUMN_NAME_VALIDATION_LIST,
         required=True,
     )
     language = ma.fields.Str(
@@ -74,13 +83,13 @@ class DatasetSchema(ma.Schema):
     )
     metadata = ma.fields.Dict(allow_none=True, load_default={})
     predictionsColumnName = ma.fields.Str(
-        validate=COLUMN_NAME_REGEX,
+        validate=COLUMN_NAME_VALIDATION_LIST,
         allow_none=True,
         load_default=None,
     )
     sep = ma.fields.Str(load_default=",")
     textColumnName = ma.fields.Str(
-        validate=COLUMN_NAME_REGEX,
+        validate=COLUMN_NAME_VALIDATION_LIST,
         allow_none=True,
     )
 
@@ -97,7 +106,7 @@ class ModelSchema(ma.Schema):
     """Schema for models with artifacts (i.e., model_package)."""
 
     categoricalFeatureNames = ma.fields.List(
-        ma.fields.Str(validate=COLUMN_NAME_REGEX),
+        ma.fields.Str(validate=COLUMN_NAME_VALIDATION_LIST),
         load_default=[],
     )
     classNames = ma.fields.List(
@@ -112,7 +121,7 @@ class ModelSchema(ma.Schema):
         ),
     )
     featureNames = ma.fields.List(
-        ma.fields.Str(validate=COLUMN_NAME_REGEX),
+        ma.fields.Str(validate=COLUMN_NAME_VALIDATION_LIST),
         allow_none=True,
         load_default=[],
     )
