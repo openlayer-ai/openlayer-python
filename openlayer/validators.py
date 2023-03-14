@@ -161,7 +161,11 @@ class CommitBundleValidator:
             "----------------------------------------------------------------------------\n"
         )
         self._validate_bundle_state()
-        self._validate_bundle_resources()
+
+        # Validate individual resources only if the bundle is in a valid state
+        # TODO: improve the logic that determines whether to validate individual resources
+        if not self.failed_validations:
+            self._validate_bundle_resources()
 
         if not self.failed_validations:
             logger.info(
@@ -230,7 +234,7 @@ class CommitBundleValidator:
                 bundle_state_failed_validations.append(
                     "To push a model to the platform, you must provide "
                     "training and a validation sets with predictions in the column "
-                    "`predictions_column_name`."
+                    "specified by `predictionsColumnName`."
                 )
             if model_type == "baseline":
                 if (
@@ -248,7 +252,7 @@ class CommitBundleValidator:
                     bundle_state_failed_validations.append(
                         "To push a baseline model to the platform, you must provide "
                         "training and validation sets without predictions in the column "
-                        "`predictions_column_name`."
+                        "specified by `predictionsColumnName`."
                     )
         else:
             if (
