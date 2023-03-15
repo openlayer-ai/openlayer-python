@@ -139,6 +139,23 @@ class ModelSchema(ma.Schema):
         ),
         required=True,
     )
+    predictionThreshold = ma.fields.Float(
+        allow_none=True,
+        validate=ma.validate.Range(
+            min=0.0,
+            max=1.0,
+        ),
+        load_default=None,
+    )
+
+    @ma.validates_schema
+    def validates_prediction_threshold_and_class_names(self, data, **kwargs):
+        """Validates whether a prediction threshold was specified for a
+        binary classification model."""
+        if data["predictionThreshold"] and len(data["classNames"]) != 2:
+            raise ma.ValidationError(
+                "`predictionThreshold` can only be specified for binary classification models."
+            )
 
 
 class ProjectSchema(ma.Schema):
