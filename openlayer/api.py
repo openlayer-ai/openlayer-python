@@ -31,6 +31,9 @@ class StorageType(Enum):
 
 STORAGE = StorageType.AWS
 OPENLAYER_ENDPOINT = "https://api.openlayer.com/v1"
+# Controls the `verify` parameter on requests in case a custom
+# certificate is needed or needs to be disabled altogether
+VERIFY_REQUESTS = True
 
 
 class Api:
@@ -201,7 +204,7 @@ class Api:
                     e, lambda monitor: t.update(min(t.total, monitor.bytes_read) - t.n)
                 )
                 headers = {"Content-Type": m.content_type}
-                res = requests.post(presigned_json["url"], data=m, headers=headers)
+                res = requests.post(presigned_json["url"], data=m, headers=headers, verify=VERIFY_REQUESTS)
 
         if res.ok:
             body["storageUri"] = presigned_json["storageUri"]
@@ -229,6 +232,7 @@ class Api:
                     presigned_json["url"],
                     data=wrapped_file,
                     headers={"Content-Type": "application/x-gzip"},
+                    verify=VERIFY_REQUESTS
                 )
         if res.ok:
             body["storageUri"] = presigned_json["storageUri"]
@@ -259,6 +263,7 @@ class Api:
                         "Content-Type": "application/x-gzip",
                         "x-ms-blob-type": "BlockBlob",
                     },
+                    verify=VERIFY_REQUESTS
                 )
         if res.ok:
             body["storageUri"] = presigned_json["storageUri"]
