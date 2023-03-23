@@ -7,7 +7,9 @@ import os
 import sys
 import traceback
 import warnings
+from typing import Any, Dict
 
+import pandas as pd
 import yaml
 
 
@@ -136,3 +138,60 @@ def list_resources_in_bundle(bundle_path: str) -> list:
         if resource in VALID_RESOURCES:
             resources.append(resource)
     return resources
+
+
+def load_dataset_from_bundle(bundle_path: str, label: str) -> pd.DataFrame:
+    """Loads a dataset from a commit bundle.
+
+    Parameters
+    ----------
+    label : str
+        The type of the dataset. Can be either "training" or "validation".
+
+    Returns
+    -------
+    pd.DataFrame
+        The dataset.
+    """
+    dataset_file_path = f"{bundle_path}/{label}/dataset.csv"
+
+    dataset_df = pd.read_csv(dataset_file_path)
+
+    return dataset_df
+
+
+def load_dataset_config_from_bundle(bundle_path: str, label: str) -> Dict[str, Any]:
+    """Loads a dataset config from a commit bundle.
+
+    Parameters
+    ----------
+    label : str
+        The type of the dataset. Can be either "training" or "validation".
+
+    Returns
+    -------
+    Dict[str, Any]
+        The dataset config.
+    """
+    dataset_config_file_path = f"{bundle_path}/{label}/dataset_config.yaml"
+
+    with open(dataset_config_file_path, "r", encoding="UTF-8") as stream:
+        dataset_config = yaml.safe_load(stream)
+
+    return dataset_config
+
+
+def load_model_config_from_bundle(bundle_path: str) -> Dict[str, Any]:
+    """Loads a model config from a commit bundle.
+
+    Returns
+    -------
+    Dict[str, Any]
+        The model config.
+    """
+    model_config_file_path = f"{bundle_path}/model/model_config.yaml"
+
+    with open(model_config_file_path, "r", encoding="UTF-8") as stream:
+        model_config = yaml.safe_load(stream)
+
+    return model_config
