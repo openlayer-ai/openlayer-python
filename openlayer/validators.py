@@ -18,6 +18,7 @@ import warnings
 from typing import Any, Dict, List, Optional
 
 import marshmallow as ma
+import numpy as np
 import pandas as pd
 import pkg_resources
 import yaml
@@ -204,31 +205,25 @@ class CommitBundleValidator:
         training_predictions_column_name = None
         validation_predictions_column_name = None
         if "training" in self._bundle_resources:
-            with open(
-                f"{self.bundle_path}/training/dataset_config.yaml",
-                "r",
-                encoding="UTF-8",
-            ) as stream:
-                training_dataset_config = yaml.safe_load(stream)
-
+            training_dataset_config = utils.load_dataset_config_from_bundle(
+                bundle_path=self.bundle_path, label="training"
+            )
             training_predictions_column_name = training_dataset_config.get(
                 "predictionsColumnName"
             )
 
         if "validation" in self._bundle_resources:
-            with open(
-                f"{self.bundle_path}/validation/dataset_config.yaml",
-                "r",
-                encoding="UTF-8",
-            ) as stream:
-                validation_dataset_config = yaml.safe_load(stream)
-
+            validation_dataset_config = utils.load_dataset_config_from_bundle(
+                bundle_path=self.bundle_path, label="validation"
+            )
             validation_predictions_column_name = validation_dataset_config.get(
                 "predictionsColumnName"
             )
 
         if "model" in self._bundle_resources:
-            model_config = self._load_model_config_from_bundle()
+            model_config = utils.load_model_config_from_bundle(
+                bundle_path=self.bundle_path
+            )
             model_type = model_config.get("modelType")
             if (
                 training_predictions_column_name is None
@@ -306,7 +301,9 @@ class CommitBundleValidator:
 
         if "model" in self._bundle_resources and not self._skip_model_validation:
             model_config_file_path = f"{self.bundle_path}/model/model_config.yaml"
-            model_config = self._load_model_config_from_bundle()
+            model_config = utils.load_model_config_from_bundle(
+                bundle_path=self.bundle_path
+            )
 
             if model_config["modelType"] == "shell":
                 model_validator = ModelValidator(
@@ -314,9 +311,11 @@ class CommitBundleValidator:
                 )
             elif model_config["modelType"] == "full":
                 # Use data from the validation as test data
-                validation_dataset_df = self._load_dataset_from_bundle("validation")
-                validation_dataset_config = self._load_dataset_config_from_bundle(
-                    "validation"
+                validation_dataset_df = utils.load_dataset_from_bundle(
+                    bundle_path=self.bundle_path, label="validation"
+                )
+                validation_dataset_config = utils.load_dataset_config_from_bundle(
+                    bundle_path=self.bundle_path, label="validation"
                 )
 
                 sample_data = None
@@ -350,60 +349,6 @@ class CommitBundleValidator:
         # Add the bundle resources failed validations to the list of all failed validations
         self.failed_validations.extend(bundle_resources_failed_validations)
 
-    def _load_dataset_from_bundle(self, label: str) -> pd.DataFrame:
-        """Loads a dataset from a commit bundle.
-
-        Parameters
-        ----------
-        label : str
-            The type of the dataset. Can be either "training" or "validation".
-
-        Returns
-        -------
-        pd.DataFrame
-            The dataset.
-        """
-        dataset_file_path = f"{self.bundle_path}/{label}/dataset.csv"
-
-        dataset_df = pd.read_csv(dataset_file_path)
-
-        return dataset_df
-
-    def _load_dataset_config_from_bundle(self, label: str) -> Dict[str, Any]:
-        """Loads a dataset config from a commit bundle.
-
-        Parameters
-        ----------
-        label : str
-            The type of the dataset. Can be either "training" or "validation".
-
-        Returns
-        -------
-        Dict[str, Any]
-            The dataset config.
-        """
-        dataset_config_file_path = f"{self.bundle_path}/{label}/dataset_config.yaml"
-
-        with open(dataset_config_file_path, "r", encoding="UTF-8") as stream:
-            dataset_config = yaml.safe_load(stream)
-
-        return dataset_config
-
-    def _load_model_config_from_bundle(self) -> Dict[str, Any]:
-        """Loads a model config from a commit bundle.
-
-        Returns
-        -------
-        Dict[str, Any]
-            The model config.
-        """
-        model_config_file_path = f"{self.bundle_path}/model/model_config.yaml"
-
-        with open(model_config_file_path, "r", encoding="UTF-8") as stream:
-            model_config = yaml.safe_load(stream)
-
-        return model_config
-
     def _validate_resource_consistency(self):
         """Validates that the resources in the bundle are consistent with each other.
 
@@ -419,10 +364,14 @@ class CommitBundleValidator:
             # Loading the relevant configs
             model_config = {}
             if "model" in self._bundle_resources:
-                model_config = self._load_model_config_from_bundle()
-            training_dataset_config = self._load_dataset_config_from_bundle("training")
-            validation_dataset_config = self._load_dataset_config_from_bundle(
-                "validation"
+                model_config = utils.load_model_config_from_bundle(
+                    bundle_path=self.bundle_path
+                )
+            training_dataset_config = utils.load_dataset_config_from_bundle(
+                bundle_path=self.bundle_path, label="training"
+            )
+            validation_dataset_config = utils.load_dataset_config_from_bundle(
+                bundle_path=self.bundle_path, label="validation"
             )
             model_feature_names = model_config.get("featureNames")
             model_class_names = model_config.get("classNames")
@@ -1113,6 +1062,8 @@ class ModelValidator:
         self.sample_data = sample_data
         self._use_runner = use_runner
         self.failed_validations = []
+        self.model_config = None
+        self.model_output = None
 
     def validate(self) -> List[str]:
         """Runs all model validations.
@@ -1300,6 +1251,8 @@ class ModelValidator:
         if model_config_failed_validations:
             logger.error("`model_config.yaml` failed validations:")
             _list_failed_validation_messages(model_config_failed_validations)
+        else:
+            self.model_config = model_config
 
         # Add the `model_config.yaml` failed validations to the list of all failed validations
         self.failed_validations.extend(model_config_failed_validations)
@@ -1359,7 +1312,9 @@ class ModelValidator:
                         # Test `predict_proba` function
                         try:
                             with utils.HidePrints():
-                                ml_model.predict_proba(self.sample_data)
+                                self.model_output = ml_model.predict_proba(
+                                    self.sample_data
+                                )
                         except Exception as exc:
                             exception_stack = utils.get_exception_stacktrace(exc)
                             prediction_interface_failed_validations.append(
@@ -1367,6 +1322,9 @@ class ModelValidator:
                                 "It is failing with the following error message: \n"
                                 f"\t {exception_stack}"
                             )
+
+                        if self.model_output is not None:
+                            self._validate_model_output()
 
         # Print results of the validation
         if prediction_interface_failed_validations:
@@ -1400,6 +1358,48 @@ class ModelValidator:
 
         # Add the model runner failed validations to the list of all failed validations
         self.failed_validations.extend(model_runner_failed_validations)
+
+    def _validate_model_output(self):
+        """Validates the model output.
+
+        Checks if the model output is an-array like object with shape (n_samples, n_classes)
+        Also checks if the model output is a probability distribution.
+        """
+        model_output_failed_validations = []
+
+        # Check if the model output is an array-like object
+        if not isinstance(self.model_output, np.ndarray):
+            model_output_failed_validations.append(
+                "The output of the `predict_proba` method in the `prediction_interface.py` "
+                "file is not an array-like object. It should be a numpy array of shape "
+                "(n_samples, n_classes)."
+            )
+        elif self.model_config is not None:
+            # Check if the model output has the correct shape
+            num_rows = len(self.sample_data)
+            num_classes = len(self.model_config.get("classes"))
+            if self.model_output.shape != (num_rows, num_classes):
+                model_output_failed_validations.append(
+                    "The output of the `predict_proba` method in the `prediction_interface.py` "
+                    " has the wrong shape. It should be a numpy array of shape "
+                    f"({num_rows}, {num_classes}). The current output has shape "
+                    f"{self.model_output.shape}"
+                )
+            # Check if the model output is a probability distribution
+            elif not np.allclose(self.model_output.sum(axis=1), 1, atol=0.05):
+                model_output_failed_validations.append(
+                    "The output of the `predict_proba` method in the `prediction_interface.py` "
+                    "file is not a probability distribution. The sum of the probabilities for "
+                    "each sample should be equal to 1."
+                )
+
+        # Print results of the validation
+        if model_output_failed_validations:
+            logger.error("Model output failed validations:")
+            _list_failed_validation_messages(model_output_failed_validations)
+
+        # Add the model output failed validations to the list of all failed validations
+        self.failed_validations.extend(model_output_failed_validations)
 
 
 class ProjectValidator:
