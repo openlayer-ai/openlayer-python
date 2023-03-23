@@ -45,11 +45,10 @@ Version control flow
    OpenlayerClient.status
    OpenlayerClient.restore
 
-Dataset / Task types
---------------------
+Task types
+----------
 .. autosummary:: 
    :toctree: api/
 
-   DatasetType
    TaskType
 

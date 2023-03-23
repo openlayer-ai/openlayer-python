@@ -483,6 +483,11 @@ class DatasetValidator:
     dataset_df : pd.DataFrame, optional
         The dataset to validate.
 
+    Methods
+    -------
+    validate:
+        Runs all dataset validations.
+
     Examples
     --------
 
@@ -935,6 +940,11 @@ class ModelValidator:
         Path to the model package directory.
     sample_data : pd.DataFrame
         Sample data to be used for the model validation.
+
+    Methods
+    -------
+    validate:
+        Runs all model validations.
 
     Examples
     --------

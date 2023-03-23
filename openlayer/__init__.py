@@ -516,46 +516,51 @@ class OpenlayerClient(object):
 
                 The YAML file with the dataset config must have the following fields:
 
-                - ``columnNames`` : List[str]
+                columnNames : List[str]
                     List of the dataset's column names.
-                - ``classNames`` : List[str]
+                classNames : List[str]
                     List of class names indexed by label integer in the dataset.
                     E.g. ``[negative, positive]`` when ``[0, 1]`` are in your label column.
-                - ``labelColumnName`` : str
+                labelColumnName : str
                     Column header in the csv containing the labels.
 
                     .. important::
                         The labels in this column must be zero-indexed integer values.
-                - ``label`` : str
+                label : str
                     Type of dataset. E.g. ``'training'`` or
                     ``'validation'``.
-                - ``featureNames`` : List[str], default []
+                featureNames : List[str], default []
                     List of input feature names. Only applicable if your ``task_type`` is
                     :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
-                - ``textColumnName`` : str, default None
+                textColumnName : str, default None
                     Column header in the csv containing the input text. Only applicable if
                     your ``task_type`` is :obj:`TaskType.TextClassification`.
-                - ``predictionsColumnName`` : str, default None
+                predictionsColumnName : str, default None
                     Column header in the csv containing the predictions. Only applicable if you
                     are uploading a model as well with the :obj:`add_model` method.
 
                     .. important::
                         Each cell in this column must contain a list of
                         class probabilities. For example, for a binary classification
-                        task, the cell values should look like this:
-                        .. csv-table::
-                            :header: ..., predictions
-                            ..., "[0.6650292861587155, 0.3349707138412845]"
-                            ..., "[0.8145561636482788, 0.18544383635172124]"
+                        task, the column with the predictions should look like this:
 
-                - ``categoricalFeatureNames`` : List[str], default []
+                        **predictions**
+
+                        ``[0.1, 0.9]``
+
+                        ``[0.8, 0.2]``
+
+                        ``...``
+
+                categoricalFeatureNames : List[str], default []
                     A list containing the names of all categorical features in the dataset.
                     E.g. ``["Gender", "Geography"]``. Only applicable if your ``task_type`` is
                     :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
-                - ``language`` : str, default 'en'
+                language : str, default 'en'
                     The language of the dataset in ISO 639-1 (alpha-2 code) format.
-                - ``sep`` : str, default ','
+                sep : str, default ','
                     Delimiter to use. E.g. `'\\t'`.
+
         force : bool
             If :obj:`add_dataset` is called when there is already a dataset of the same type
             in the staging area, when ``force=True``, the existing staged dataset will be
@@ -727,46 +732,51 @@ class OpenlayerClient(object):
 
                 The YAML file with the dataset config must have the following fields:
 
-                - ``columnNames`` : List[str]
+                columnNames : List[str]
                     List of the dataset's column names.
-                - ``classNames`` : List[str]
+                classNames : List[str]
                     List of class names indexed by label integer in the dataset.
                     E.g. ``[negative, positive]`` when ``[0, 1]`` are in your label column.
-                - ``labelColumnName`` : str
-                    Column header in the csv containing the labels.
+                labelColumnName : str
+                    Column header in the dataframe containing the labels.
 
                     .. important::
                         The labels in this column must be zero-indexed integer values.
-                - ``label`` : str
+                label : str
                     Type of dataset. E.g. ``'training'`` or
                     ``'validation'``.
-                - ``featureNames`` : List[str], default []
+                featureNames : List[str], default []
                     List of input feature names. Only applicable if your ``task_type`` is
                     :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
-                - ``textColumnName`` : str, default None
-                    Column header in the csv containing the input text. Only applicable if your
-                    ``task_type`` is :obj:`TaskType.TextClassification`.
-                - ``predictionsColumnName`` : str, default None
-                    Column header in the csv containing the predictions. Only applicable if you
+                textColumnName : str, default None
+                    Column header in the dataframe containing the input text. Only applicable if
+                    your ``task_type`` is :obj:`TaskType.TextClassification`.
+                predictionsColumnName : str, default None
+                    Column header in the dataframe containing the predictions. Only applicable if you
                     are uploading a model as well with the :obj:`add_model` method.
 
                     .. important::
                         Each cell in this column must contain a list of
                         class probabilities. For example, for a binary classification
-                        task, the cell values should look like this:
-                        .. csv-table::
-                            :header: ..., predictions
-                            ..., "[0.6650292861587155, 0.3349707138412845]"
-                            ..., "[0.8145561636482788, 0.18544383635172124]"
+                        task, the column with the predictions should look like this:
 
-                - ``categoricalFeatureNames`` : List[str], default []
+                        **predictions**
+
+                        ``[0.1, 0.9]``
+
+                        ``[0.8, 0.2]``
+
+                        ``...``
+
+                categoricalFeatureNames : List[str], default []
                     A list containing the names of all categorical features in the dataset.
                     E.g. ``["Gender", "Geography"]``. Only applicable if your ``task_type`` is
                     :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
-                - ``language`` : str, default 'en'
+                language : str, default 'en'
                     The language of the dataset in ISO 639-1 (alpha-2 code) format.
-                - ``sep`` : str, default ','
+                sep : str, default ','
                     Delimiter to use. E.g. `'\\t'`.
+
         force : bool
             If :obj:`add_dataframe` is called when there is already a dataset of the same
             type in the staging area, when ``force=True``, the existing staged dataset will
@@ -993,7 +1003,7 @@ class OpenlayerClient(object):
         Notes
         -----
         - To use this method, you must first have committed your changes with the :obj:`commit`
-        method.
+            method.
 
         Examples
         --------
