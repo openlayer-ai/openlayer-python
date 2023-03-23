@@ -5,9 +5,9 @@
 
 .. module:: openlayer
 
-*******************
+***********************
 Openlayer Documentation
-*******************
+***********************
 
 **Date**: |today| **Version**: |version|
 
