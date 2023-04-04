@@ -3,3 +3,6 @@ torch==1.13.1
 transformers==4.20.1
 wheel==0.38.1
 setuptools==65.5.1
+pandas==1.1.4
+datasets==2.11.0
+evaluate==0.4.0
