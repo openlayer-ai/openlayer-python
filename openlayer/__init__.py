@@ -9,10 +9,18 @@ from typing import List, Optional
 import pandas as pd
 import yaml
 
-from . import api, exceptions, utils, validators
+from . import api, exceptions, utils
 from .projects import Project
 from .schemas import BaselineModelSchema, DatasetSchema, ModelSchema
 from .tasks import TaskType
+
+# from validators import models as model_validators
+from .validators import (
+    commit_validators,
+    dataset_validators,
+    model_validators,
+    project_validators,
+)
 from .version import __version__  # noqa: F401
 
 OPENLAYER_DIR = os.path.join(os.path.expanduser("~"), ".openlayer")
@@ -91,7 +99,9 @@ class OpenlayerClient(object):
             "description": description,
             "task_type": task_type,
         }
-        project_validator = validators.ProjectValidator(project_config=project_config)
+        project_validator = project_validators.ProjectValidator(
+            project_config=project_config
+        )
         failed_validations = project_validator.validate()
 
         if failed_validations:
@@ -101,7 +111,11 @@ class OpenlayerClient(object):
             ) from None
 
         endpoint = "projects"
-        payload = dict(name=name, description=description, taskType=task_type.value)
+        payload = {
+            "name": name,
+            "description": description,
+            "taskType": task_type.value,
+        }
         project_data = self.api.post_request(endpoint, body=payload)
 
         project = Project(project_data, self.api.upload, self)
@@ -232,22 +246,29 @@ class OpenlayerClient(object):
 
                 The model configuration YAML file must contain the following fields:
 
-                - ``name`` : str
+                name : str
                     Name of the model.
-                - ``architectureType`` : str
+                architectureType : str
                     The model's framework. Must be one of the supported frameworks
                     on :obj:`ModelType`.
-                - ``classNames`` : List[str]
+                classNames : List[str]
                     List of class names corresponding to the outputs of your predict function.
                     E.g. ``['positive', 'negative']``.
-                - ``featureNames`` : List[str], default []
+                featureNames : List[str], default []
                     List of input feature names. Only applicable if your ``task_type`` is
                     :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
-                - ``categoricalFeatureNames`` : List[str], default []
+                categoricalFeatureNames : List[str], default []
                     A list containing the names of all categorical features used by the model.
                     E.g. ``["Gender", "Geography"]``. Only applicable if your ``task_type`` is
                     :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
-                - ``metadata`` : Dict[str, any], default {}
+                predictionThreshold : float, default None
+                    The threshold used to determine the predicted class. Only applicable if you
+                    are using a binary classifier and you provided the ``predictionScoresColumnName``
+                    with the lists of class probabilities in your datasets (refer to :obj:`add_dataframe`).
+
+                    If you provided ``predictionScoresColumnName`` but not ``predictionThreshold``,
+                    the predicted class is defined by the argmax of the lists in ``predictionScoresColumnName``.
+                metadata : Dict[str, any], default {}
                     Dictionary containing metadata about the model. This is the metadata that
                     will be displayed on the Openlayer platform.
 
@@ -263,8 +284,8 @@ class OpenlayerClient(object):
                 - ``prediction_interface.py``
                     The prediction interface file.
                 - ``model artifacts``
-                    The model artifacts. This can be a single file or a directory containing
-                    multiple files. The model artifacts must be compatible with the
+                    The model artifacts. This can be a single file, multiple files or a directory.
+                    The model artifacts must be compatible with the
                     prediction interface file.
                 - ``requirements.txt``
                     The requirements file. This file contains the dependencies needed to run
@@ -389,7 +410,7 @@ class OpenlayerClient(object):
                 )
 
         # Validate model package
-        model_package_validator = validators.ModelValidator(
+        model_package_validator = model_validators.ModelValidator(
             model_package_dir=model_package_dir,
             model_config_file_path=model_config_file_path,
             sample_data=sample_data,
@@ -467,7 +488,8 @@ class OpenlayerClient(object):
             )
 
         # Validate the baseline model
-        baseline_model_validator = validators.BaselineModelValidator(
+
+        baseline_model_validator = model_validators.BaselineModelValidator(
             model_config_file_path=model_config_file_path,
         )
         failed_validations = baseline_model_validator.validate()
@@ -536,15 +558,27 @@ class OpenlayerClient(object):
                     Column header in the csv containing the input text. Only applicable if
                     your ``task_type`` is :obj:`TaskType.TextClassification`.
                 predictionsColumnName : str, default None
-                    Column header in the csv containing the predictions. Only applicable if you
-                    are uploading a model as well with the :obj:`add_model` method.
+                    Column header in the csv containing the model's predictions as **zero-indexed
+                    integers**. Only applicable if you are uploading a model as well with the
+                    :obj:`add_model` method.
+
+                    This is optional if you provide a ``predictionScoresColumnName``.
+
+                    .. important::
+                        The values in this column must be zero-indexed integer values.
+                predictionScoresColumnName : str, default None
+                    Column header in the csv containing the model's predictions as **lists of
+                    class probabilities**. Only applicable if you are uploading a model as well with
+                    the :obj:`add_model` method.
+
+                    This is optional if you provide a ``predictionsColumnName``.
 
                     .. important::
                         Each cell in this column must contain a list of
                         class probabilities. For example, for a binary classification
                         task, the column with the predictions should look like this:
 
-                        **predictions**
+                        **prediction_scores**
 
                         ``[0.1, 0.9]``
 
@@ -684,7 +718,7 @@ class OpenlayerClient(object):
         >>> project.push()
         """
         # Validate dataset
-        dataset_validator = validators.DatasetValidator(
+        dataset_validator = dataset_validators.DatasetValidator(
             dataset_config_file_path=dataset_config_file_path,
             dataset_file_path=file_path,
         )
@@ -752,15 +786,27 @@ class OpenlayerClient(object):
                     Column header in the dataframe containing the input text. Only applicable if
                     your ``task_type`` is :obj:`TaskType.TextClassification`.
                 predictionsColumnName : str, default None
-                    Column header in the dataframe containing the predictions. Only applicable if you
-                    are uploading a model as well with the :obj:`add_model` method.
+                    Column header in the dataframe containing the model's predictions as **zero-indexed
+                    integers**. Only applicable if you are uploading a model as well with the
+                    :obj:`add_model` method.
+
+                    This is optional if you provide a ``predictionScoresColumnName``.
+
+                    .. important::
+                        The values in this column must be zero-indexed integer values.
+                predictionScoresColumnName : str, default None
+                    Column header in the dataframe containing the model's predictions as **lists of
+                    class probabilities**. Only applicable if you are uploading a model as well with
+                    the :obj:`add_model` method.
+
+                    This is optional if you provide a ``predictionsColumnName``.
 
                     .. important::
                         Each cell in this column must contain a list of
                         class probabilities. For example, for a binary classification
                         task, the column with the predictions should look like this:
 
-                        **predictions**
+                        **prediction_scores**
 
                         ``[0.1, 0.9]``
 
@@ -950,7 +996,7 @@ class OpenlayerClient(object):
         >>> project.push()
         """
         # Validate commit
-        commit_validator = validators.CommitValidator(commit_message=message)
+        commit_validator = commit_validators.CommitValidator(commit_message=message)
         failed_validations = commit_validator.validate()
 
         if failed_validations:
@@ -1039,7 +1085,7 @@ class OpenlayerClient(object):
             commit = yaml.safe_load(commit_file)
 
         # Validate bundle resources
-        commit_bundle_validator = validators.CommitBundleValidator(
+        commit_bundle_validator = commit_validators.CommitBundleValidator(
             bundle_path=project_dir,
             skip_dataset_validation=True,
             skip_model_validation=False,  # Don't skip because the sample data is different

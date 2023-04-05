@@ -27,6 +27,7 @@ COLUMN_NAME_VALIDATION_LIST = [
     COLUMN_NAME_REGEX,
 ]
 
+
 # ---------------------------------- Schemas --------------------------------- #
 class BaselineModelSchema(ma.Schema):
     """Schema for baseline models."""
@@ -82,6 +83,11 @@ class DatasetSchema(ma.Schema):
     )
     metadata = ma.fields.Dict(allow_none=True, load_default={})
     predictionsColumnName = ma.fields.Str(
+        validate=COLUMN_NAME_VALIDATION_LIST,
+        allow_none=True,
+        load_default=None,
+    )
+    predictionScoresColumnName = ma.fields.Str(
         validate=COLUMN_NAME_VALIDATION_LIST,
         allow_none=True,
         load_default=None,

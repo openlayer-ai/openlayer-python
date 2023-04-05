@@ -97,7 +97,6 @@ class Api:
 
     @staticmethod
     def _raise_on_respose(res: Response):
-
         try:
             message = res.json().get("error", res.text)
         except ValueError:
@@ -204,7 +203,12 @@ class Api:
                     e, lambda monitor: t.update(min(t.total, monitor.bytes_read) - t.n)
                 )
                 headers = {"Content-Type": m.content_type}
-                res = requests.post(presigned_json["url"], data=m, headers=headers, verify=VERIFY_REQUESTS)
+                res = requests.post(
+                    presigned_json["url"],
+                    data=m,
+                    headers=headers,
+                    verify=VERIFY_REQUESTS,
+                )
 
         if res.ok:
             body["storageUri"] = presigned_json["storageUri"]
@@ -232,7 +236,7 @@ class Api:
                     presigned_json["url"],
                     data=wrapped_file,
                     headers={"Content-Type": "application/x-gzip"},
-                    verify=VERIFY_REQUESTS
+                    verify=VERIFY_REQUESTS,
                 )
         if res.ok:
             body["storageUri"] = presigned_json["storageUri"]
@@ -263,7 +267,7 @@ class Api:
                         "Content-Type": "application/x-gzip",
                         "x-ms-blob-type": "BlockBlob",
                     },
-                    verify=VERIFY_REQUESTS
+                    verify=VERIFY_REQUESTS,
                 )
         if res.ok:
             body["storageUri"] = presigned_json["storageUri"]
