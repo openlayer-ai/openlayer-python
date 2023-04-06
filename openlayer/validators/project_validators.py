@@ -24,13 +24,9 @@ class ProjectValidator(BaseValidator):
         super().__init__(resource_display_name="project")
         self.project_config = project_config
 
-    def validate(self):
+    def _validate(self):
         """Validates the project."""
-        self._display_opening_message()
         self._validate_project_config()
-        self._display_closing_message()
-
-        return self.failed_validations
 
     def _validate_project_config(self):
         """Checks if the project configuration is valid."""
