@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 
+* Modified the zero-index integer checks for `predictionsColumnName` and `labelColumnName` to support dataset uploads with only a sample of the classes.
 * Renamed `predictionsColumnName` argument from the datasets' configuration YAML to `predictionScoresColumnName`. 
 * Migrated package name from [openlayer](https://pypi.org/project/openlayer/) to [openlayer](https://pypi.org/project/openlayer/) due to a company name change.
 * Required Python version `>=3.7` and `<3.9`.
