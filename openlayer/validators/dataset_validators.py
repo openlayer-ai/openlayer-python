@@ -264,34 +264,35 @@ class DatasetValidator(BaseValidator):
             )
         else:
             if self.class_names:
-                self._validate_all_categories_in_class_names(
-                    column_name=self.label_column_name
-                )
                 self._validate_categories_zero_indexed(
                     column_name=self.label_column_name
                 )
 
-    def _validate_all_categories_in_class_names(self, column_name: str):
-        """Checks whether there are categories in the dataset's `column_name` which are not
-        in the `class_names`."""
-        num_classes = len(self.dataset_df[column_name].unique())
-        if num_classes > len(self.class_names):
-            self.failed_validations.append(
-                "There are more classes in the dataset's column"
-                f" `{column_name}` than specified in `classNames`. "
-                "Please specify all possible labels in the `classNames` list."
-            )
-
     def _validate_categories_zero_indexed(self, column_name: str):
         """Checks whether the categories are zero-indexed in the dataset's `column_name`."""
-        unique_labels = set(self.dataset_df[column_name].unique())
-        zero_indexed_set = set(range(len(self.class_names)))
-        if unique_labels != zero_indexed_set:
+        if (
+            self.dataset_df[column_name].dtype.name != "int64"
+            and self.dataset_df[column_name].dtype.name != "int32"
+        ):
             self.failed_validations.append(
-                "The classes in the dataset are not zero-indexed. "
-                f"Make sure that the classes in the column `{column_name}` "
-                "are zero-indexed integers that match the list in `classNames`."
+                f"The classes in the dataset column `{column_name}` must be integers. "
+                f"Make sure that the column `{column_name}` is of dtype `int32` or `int64`."
             )
+        else:
+            max_class = self.dataset_df[column_name].max()
+
+            if max_class > len(self.class_names) - 1:
+                self.failed_validations.append(
+                    "The classes in the dataset are not zero-indexed. "
+                    f"The column `{column_name}` contains classes up to {max_class}, "
+                    f"but the list of classes provided in `classNames` contains only "
+                    f"{len(self.class_names)} elements. "
+                    f"Make sure that the classes in the column `{column_name}` "
+                    "are zero-indexed integers that match the list in `classNames`. "
+                    "Note that the index of the first class should be 0, not 1, so "
+                    f"if the maximum class is {max_class}, the `classNames` list "
+                    f"should contain {max_class + 1} elements."
+                )
 
     def _validate_predictions(self):
         """Validates the data in the predictions column."""
@@ -302,9 +303,6 @@ class DatasetValidator(BaseValidator):
             )
         else:
             if self.class_names:
-                self._validate_all_categories_in_class_names(
-                    column_name=self.predictions_column_name
-                )
                 self._validate_categories_zero_indexed(
                     column_name=self.predictions_column_name
                 )
