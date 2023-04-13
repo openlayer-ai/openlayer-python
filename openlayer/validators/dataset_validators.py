@@ -267,6 +267,11 @@ class DatasetValidator(BaseValidator):
                 self._validate_categories_zero_indexed(
                     column_name=self.label_column_name
                 )
+            if self.predictions_column_name:
+                self._validate_label_and_predictions_columns_different()
+            if self.feature_names:
+                self._validate_label_not_in_features_columns()
+            # No need to check for text column as the dtypes are different and checked for
 
     def _validate_categories_zero_indexed(self, column_name: str):
         """Checks whether the categories are zero-indexed in the dataset's `column_name`."""
@@ -293,6 +298,23 @@ class DatasetValidator(BaseValidator):
                     f"if the maximum class is {max_class}, the `classNames` list "
                     f"should contain {max_class + 1} elements."
                 )
+
+    def _validate_label_and_predictions_columns_different(self):
+        """Checks whether the predictions and label columns are different."""
+        if self.label_column_name == self.predictions_column_name:
+            self.failed_validations.append(
+                "The predictions column and the label column are the same. "
+                "Please specify different columns for the predictions and the label."
+            )
+
+    def _validate_label_not_in_features_columns(self):
+        """Checks whether the features and label columns are different."""
+        if self.label_column_name in self.feature_names:
+            self.failed_validations.append(
+                f"The feature `{self.label_column_name}` specified in `featureNames` is "
+                "the same as the label column. "
+                "Please specify different columns for the features and the label."
+            )
 
     def _validate_predictions(self):
         """Validates the data in the predictions column."""
@@ -325,8 +347,8 @@ class DatasetValidator(BaseValidator):
                     self.dataset_df, self.prediction_scores_column_name
                 ):
                     self.failed_validations.append(
-                        f"The predictions in the column `{self.prediction_scores_column_name}` "
-                        "are not lists. Please make sure that the predictions are "
+                        f"There are predictions in the column `{self.prediction_scores_column_name}` "
+                        " that are not lists. Please make sure that all the predictions are "
                         "lists of floats."
                     )
                 else:
@@ -334,9 +356,9 @@ class DatasetValidator(BaseValidator):
                         self.dataset_df, self.prediction_scores_column_name
                     ):
                         self.failed_validations.append(
-                            "The prediction lists in the column "
+                            "There are prediction lists in the column "
                             f"`{self.prediction_scores_column_name}` "
-                            "are not all of the same length. "
+                            "that are not all of the same length. "
                             "Please make sure that all prediction lists "
                             "are of the same length."
                         )
@@ -345,9 +367,9 @@ class DatasetValidator(BaseValidator):
                             self.dataset_df, self.prediction_scores_column_name
                         ):
                             self.failed_validations.append(
-                                "The predictions in the column "
+                                "There are predictions in the column "
                                 f"`{self.prediction_scores_column_name}` "
-                                "are not class probabilities. "
+                                "that are not class probabilities. "
                                 "Please make sure that the predictions are lists "
                                 "of floats that sum to 1."
                             )
@@ -358,9 +380,9 @@ class DatasetValidator(BaseValidator):
                                 self.class_names,
                             ):
                                 self.failed_validations.append(
-                                    f"The predictions in `{self.prediction_scores_column_name}`"
-                                    f" don't match the classes in `{self.class_names}`. "
-                                    "Please make sure that the lists with predictions "
+                                    f"There are predictions in `{self.prediction_scores_column_name}`"
+                                    f" that don't match the classes in `{self.class_names}`. "
+                                    "Please make sure that all the lists with predictions "
                                     "have the same length as the `classNames` list."
                                 )
 
@@ -377,6 +399,14 @@ class DatasetValidator(BaseValidator):
             self.failed_validations.append(
                 f"The text column `{self.text_column_name}` specified as `textColumnName` "
                 "is not in the dataset."
+            )
+        elif self._text_column_not_string_or_nans(
+            self.dataset_df, self.text_column_name
+        ):
+            self.failed_validations.append(
+                f"The column `{self.text_column_name}` specified as `textColumnName` "
+                "contains values  that are not strings.  "
+                "Please make sure that the column contains only strings or NaNs."
             )
         elif self._exceeds_character_limit(self.dataset_df, self.text_column_name):
             self.failed_validations.append(
@@ -399,6 +429,17 @@ class DatasetValidator(BaseValidator):
                     "There are categorical features specified in `categoricalFeatureNames` "
                     "which are not in the dataset."
                 )
+
+    @staticmethod
+    def _text_column_not_string_or_nans(
+        dataset_df: pd.DataFrame, text_column_name: str
+    ) -> bool:
+        """Checks whether the text column contains only strings
+        and NaNs."""
+        for text in dataset_df[text_column_name]:
+            if not isinstance(text, str) and not pd.isna(text):
+                return True
+        return False
 
     @staticmethod
     def _exceeds_character_limit(
