@@ -26,6 +26,8 @@ class ModelType(Enum):
     fasttext = "fasttext"
     #: For models built with `Keras <https://keras.io/>`_.
     keras = "keras"
+    #: For large language models (LLMs), such as GPT
+    llm = "llm"
     #: For models built with `PyTorch <https://pytorch.org/>`_.
     pytorch = "pytorch"
     #: For models built with `rasa <https://rasa.com/>`_.
