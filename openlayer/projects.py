@@ -43,7 +43,9 @@ class Project:
         **kwargs,
     ):
         """Adds a model to a project's staging area."""
-        return self.client.add_model(*args, project_id=self.id, **kwargs)
+        return self.client.add_model(
+            *args, project_id=self.id, task_type=tasks.TaskType(self.taskType), **kwargs
+        )
 
     def add_baseline_model(
         self,
@@ -61,11 +63,15 @@ class Project:
         **kwargs,
     ):
         """Adds a dataset to a project's staging area (from a csv)."""
-        return self.client.add_dataset(*args, project_id=self.id, **kwargs)
+        return self.client.add_dataset(
+            *args, project_id=self.id, task_type=tasks.TaskType(self.taskType), **kwargs
+        )
 
     def add_dataframe(self, *args, **kwargs):
         """Adds a dataset to a project's staging area (from a pandas DataFrame)."""
-        return self.client.add_dataframe(*args, project_id=self.id, **kwargs)
+        return self.client.add_dataframe(
+            *args, project_id=self.id, task_type=tasks.TaskType(self.taskType), **kwargs
+        )
 
     def commit(self, *args, **kwargs):
         """Adds a commit message to staged resources."""
@@ -73,7 +79,9 @@ class Project:
 
     def push(self, *args, **kwargs):
         """Pushes the commited resources to the platform."""
-        return self.client.push(*args, project_id=self.id, **kwargs)
+        return self.client.push(
+            *args, project_id=self.id, task_type=tasks.TaskType(self.taskType), **kwargs
+        )
 
     def export(self, *args, **kwargs):
         """Exports the commited resources to a specified location."""
