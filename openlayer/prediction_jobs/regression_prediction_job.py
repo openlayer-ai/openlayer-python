@@ -1,4 +1,4 @@
-"""Script that runs the prediction job.
+"""Script that runs a regression prediction job.
 
 This file will get copied into the model package when the user uploads a model.
 
@@ -6,7 +6,7 @@ The input and output are written to csv files in
 the path specified by the --input and --output flags.
 
 Example usage:
-    python prediction_job.py --input /path/to/input.csv --output /path/to/output.csv
+    python regression_prediction_job.py --input /path/to/input.csv --output /path/to/output.csv
 """
 import argparse
 import logging
@@ -34,9 +34,7 @@ if __name__ == "__main__":
 
     # Run model
     logger.debug("Running model...")
-    output_data = pd.DataFrame(
-        {"predictions": ml_model.predict_proba(input_data).tolist()}
-    )
+    output_data = pd.DataFrame({"predictions": ml_model.predict(input_data)})
 
     # Save output data
     logger.debug("Saving output data...")

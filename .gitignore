@@ -18,6 +18,7 @@ dependencies/
 !examples
 examples/*
 !examples/tabular-classification
+!examples/tabular-regression
 !examples/text-classification
 !examples/_static
 model_package/

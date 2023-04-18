@@ -1,19 +1,13 @@
 # pylint: disable=broad-exception-caught
-"""Implements the model specific validation class.
-
-For example, to validate a model package:
-
->>> model_validator = ModelValidator(
-...     model_package_dir="/path/to/model/package",
-...     model_config_file_path="/path/to/model/config/file.yaml",
-...     sample_data=df)
->>> model_validator.validate()
+"""Implements the model specific validation classes.
 """
+
 import importlib
 import logging
 import os
 import warnings
-from typing import Dict, List, Optional
+from abc import ABC, abstractmethod
+from typing import Dict, Optional
 
 import marshmallow as ma
 import numpy as np
@@ -21,99 +15,31 @@ import pandas as pd
 import pkg_resources
 import yaml
 
-from .. import models, schemas, utils
+from .. import models, schemas, tasks, utils
 from .base_validator import BaseValidator
 
 logger = logging.getLogger("validators")
 
 
-class BaselineModelValidator(BaseValidator):
-    """Validates the baseline model.
-
-    Parameters
-    ----------
-    model_config_file_path : Optional[str], optional
-        The path to the model config file, by default None
-    """
-
-    def __init__(self, model_config_file_path: Optional[str] = None):
-        super().__init__(resource_display_name="baseline model")
-        self.model_config_file_path = model_config_file_path
-
-    def _validate(self) -> List[str]:
-        """Validates the baseline model.
-
-        Returns
-        -------
-        List[str]
-            The list of failed validations.
-        """
-        if self.model_config_file_path:
-            self._validate_model_config()
-
-    def _validate_model_config(self):
-        """Validates the model config file."""
-        # File existence check
-        if self.model_config_file_path:
-            if not os.path.isfile(os.path.expanduser(self.model_config_file_path)):
-                self.failed_validations.append(
-                    f"File `{self.model_config_file_path}` does not exist."
-                )
-            else:
-                with open(self.model_config_file_path, "r", encoding="UTF-8") as stream:
-                    model_config = yaml.safe_load(stream)
-
-        if model_config:
-            baseline_model_schema = schemas.BaselineModelSchema()
-            try:
-                baseline_model_schema.load(model_config)
-            except ma.ValidationError as err:
-                self.failed_validations.extend(
-                    self._format_marshmallow_error_message(err)
-                )
-
-
-class ModelValidator(BaseValidator):
-    """Validates the model package's structure and files.
+class BaseModelValidator(BaseValidator, ABC):
+    """Base model validator.
 
     Parameters
     ----------
     model_config_file_path: str
         Path to the model config file.
+    task_type : tasks.TaskType
+        Task type of the model.
     model_package_dir : str
         Path to the model package directory.
     sample_data : pd.DataFrame
         Sample data to be used for the model validation.
-
-    Methods
-    -------
-    validate:
-        Runs all model validations.
-
-    Examples
-    --------
-
-    Let's say we have the prepared the model package and have some sample data expected
-    by the model in a pandas DataFrame.
-
-    To ensure the model package is in the format the Openlayer platform expects to use the
-    :meth:`openlayer.OpenlayerClient.add_model` method, we can use the
-    :class:`ModelValidator` class as follows:,
-
-    >>> from openlayer.validators import model_validators
-    >>>
-    >>> model_validator = model_validators.ModelValidator(
-    ...     model_config_file_path="/path/to/model/config/file",
-    ...     model_package_dir="/path/to/model/package",
-    ...     sample_data=df,
-    ... )
-    >>> model_validator.validate()
-
     """
 
     def __init__(
         self,
         model_config_file_path: str,
+        task_type: tasks.TaskType,
         use_runner: bool = False,
         model_package_dir: Optional[str] = None,
         sample_data: Optional[pd.DataFrame] = None,
@@ -123,10 +49,13 @@ class ModelValidator(BaseValidator):
         self.model_package_dir = model_package_dir
         self.sample_data = sample_data
         self._use_runner = use_runner
+        self.task_type = task_type
+
+        # Attributes to be set during validation
         self.model_config: Optional[Dict[str, any]] = None
         self.model_output: Optional[np.ndarray] = None
 
-    def _validate(self) -> List[str]:
+    def _validate(self) -> None:
         """Runs all model validations.
 
         At each stage, prints all the failed validations.
@@ -268,7 +197,7 @@ class ModelValidator(BaseValidator):
 
             model_schema = schemas.ModelSchema()
             try:
-                model_schema.load(model_config)
+                model_schema.load({"task_type": self.task_type.value, **model_config})
             except ma.ValidationError as err:
                 model_config_failed_validations.extend(
                     self._format_marshmallow_error_message(err)
@@ -280,6 +209,41 @@ class ModelValidator(BaseValidator):
 
         # Add the `model_config.yaml` failed validations to the list of all failed validations
         self.failed_validations.extend(model_config_failed_validations)
+
+    def _validate_model_runner(self):
+        """Validates the model using the model runner.
+
+        This is mostly meant to be used by the platform, to validate the model. It will
+        create the model's environment and use it to run the model.
+        """
+        model_runner = models.get_model_runner(
+            task_type=self.task_type, model_package=self.model_package_dir
+        )
+
+        # Try to run some data through the runner
+        # Will create the model environment if it doesn't exist
+        try:
+            model_runner.run(self.sample_data)
+        except Exception as exc:
+            self.failed_validations.append(f"{exc}")
+
+    @abstractmethod
+    def _validate_prediction_interface(self):
+        """Validates the prediction interface.
+
+        This method should be implemented by the child classes,
+        since each task type has a different prediction interface.
+        """
+        pass
+
+
+class ClassificationModelValidator(BaseModelValidator):
+    """Implements specific validations for classification models,
+    such as the prediction interface, model runner, etc.
+
+    This is not a complete implementation of the abstract class. This is a
+    partial implementation used to compose the full classes.
+    """
 
     def _validate_prediction_interface(self):
         """Validates the implementation of the prediction interface.
@@ -328,7 +292,8 @@ class ModelValidator(BaseValidator):
                     # Check if the `predict_proba` method is part of the model object
                     if not hasattr(ml_model, "predict_proba"):
                         self.failed_validations.append(
-                            "The `predict_proba` function is not defined in the model class."
+                            "A `predict_proba` function is not defined in the model class "
+                            "in the `prediction_interface.py` file."
                         )
                     else:
                         # Test `predict_proba` function
@@ -370,7 +335,7 @@ class ModelValidator(BaseValidator):
                     "The output of the `predict_proba` method in the `prediction_interface.py` "
                     " has the wrong shape. It should be a numpy array of shape "
                     f"({num_rows}, {num_classes}). The current output has shape "
-                    f"{self.model_output.shape}"
+                    f"{self.model_output.shape}."
                 )
             # Check if the model output is a probability distribution
             elif not np.allclose(self.model_output.sum(axis=1), 1, atol=0.05):
@@ -380,17 +345,203 @@ class ModelValidator(BaseValidator):
                     "each sample should be equal to 1."
                 )
 
-    def _validate_model_runner(self):
-        """Validates the model using the model runner.
 
-        This is mostly meant to be used by the platform, to validate the model. It will
-        create the model's environment and use it to run the model.
+class RegressionModelValidator(BaseModelValidator):
+    """Implements specific validations for classification models,
+    such as the prediction interface, model runner, etc.
+
+    This is not a complete implementation of the abstract class. This is a
+    partial implementation used to compose the full classes.
+    """
+
+    def _validate_prediction_interface(self):
+        """Validates the implementation of the prediction interface.
+
+        Checks for the existence of the file, the required functions, and
+        runs test data through the model to ensure there are no implementation
+        errors.
+
+        Beware of the order of the validations, as it is important.
         """
-        model_runner = models.ModelRunner(self.model_package_dir)
+        # Path to the prediction_interface.py file
+        prediction_interface_file = os.path.join(
+            self.model_package_dir, "prediction_interface.py"
+        )
 
-        # Try to run some data through the runner
-        # Will create the model environment if it doesn't exist
-        try:
-            model_runner.run(self.sample_data)
-        except Exception as exc:
-            self.failed_validations.append(f"{exc}")
+        # File existence check
+        if not os.path.isfile(os.path.expanduser(prediction_interface_file)):
+            self.failed_validations.append(
+                f"File `{prediction_interface_file}` does not exist."
+            )
+        else:
+            # Loading the module defined in the prediction_interface.py file
+            module_spec = importlib.util.spec_from_file_location(
+                "model_module", prediction_interface_file
+            )
+            module = importlib.util.module_from_spec(module_spec)
+            module_spec.loader.exec_module(module)
+
+            # Check if the module contains the required functions
+            if not hasattr(module, "load_model"):
+                self.failed_validations.append(
+                    "The `load_model` function is not defined in the `prediction_interface.py` "
+                    "file."
+                )
+            else:
+                # Test `load_model` function
+                ml_model = None
+                try:
+                    ml_model = module.load_model()
+                except Exception as exc:
+                    self.failed_validations.append(
+                        f"There is an error while loading the model: \n {exc}"
+                    )
+
+                if ml_model is not None:
+                    # Check if the `predict` method is part of the model object
+                    if not hasattr(ml_model, "predict"):
+                        self.failed_validations.append(
+                            "A `predict` function is not defined in the model class "
+                            "in the `prediction_interface.py` file."
+                        )
+                    else:
+                        # Test `predict_proba` function
+                        try:
+                            with utils.HidePrints():
+                                self.model_output = ml_model.predict(self.sample_data)
+                        except Exception as exc:
+                            exception_stack = utils.get_exception_stacktrace(exc)
+                            self.failed_validations.append(
+                                "The `predict` function failed while running the test data. "
+                                "It is failing with the following error message: \n"
+                                f"\t {exception_stack}"
+                            )
+
+                        if self.model_output is not None:
+                            self._validate_model_output()
+
+    def _validate_model_output(self):
+        """Validates the model output.
+
+        Checks if the model output is an-array like object with shape (n_samples,).
+        """
+        # Check if the model output is an array-like object
+        if not isinstance(self.model_output, np.ndarray):
+            self.failed_validations.append(
+                "The output of the `predict` method in the `prediction_interface.py` "
+                "file is not an array-like object. It should be a numpy array of shape "
+                "(n_samples,)."
+            )
+
+        # Check if the model output has the correct shape
+        num_rows = len(self.sample_data)
+        if self.model_output.shape != (num_rows,):
+            self.failed_validations.append(
+                "The output of the `predict` method in the `prediction_interface.py` "
+                " has the wrong shape. It should be a numpy array of shape "
+                f"({num_rows},). The current output has shape "
+                f"{self.model_output.shape}. "
+                "If your array has one column, you can reshape it using "
+                "`np.squeeze(arr, axis=1)` to remove the singleton dimension along "
+                "the column axis."
+            )
+
+
+class TabularClassificationModelValidator(ClassificationModelValidator):
+    """Tabular classification model validator."""
+
+    pass
+
+
+class TabularRegressionModelValidator(RegressionModelValidator):
+    """Tabular regression model validator."""
+
+    pass
+
+
+class TextClassificationModelValidator(ClassificationModelValidator):
+    """Text classification model validator."""
+
+    pass
+
+
+# ----------------------------- Factory function ----------------------------- #
+def get_validator(
+    task_type: tasks.TaskType,
+    model_config_file_path: str,
+    use_runner: bool = False,
+    model_package_dir: Optional[str] = None,
+    sample_data: Optional[pd.DataFrame] = None,
+) -> BaseModelValidator:
+    """Factory function to get the correct model validator.
+
+    Parameters
+    ----------
+    task_type : :obj:`TaskType`
+        The task type of the model.
+    model_config_file_path : str
+        The path to the model config file.
+    model_package_dir : Optional[str], optional
+        The path to the model package directory, by default None.
+    sample_data : Optional[pd.DataFrame], optional
+        The sample data to use for validation, by default None.
+
+    Returns
+    -------
+    ModelValidator
+        The correct model validator for the ``task_type`` specified.
+
+
+    Examples
+    --------
+
+    For example, to get the tabular model validator, you can do the following:
+
+    >>> from openlayer.validators import model_validator
+    >>> from openlayer.tasks import TaskType
+    >>>
+    >>> validator = model_validator.get_validator(
+    >>>     task_type=TaskType.TabularClassification,
+    >>>     model_config_file_path="model_config.yaml",
+    >>>     model_package_dir="model_package",
+    >>>     sample_data=x_val.iloc[:10, :]
+    >>> )
+
+    The ``validator`` object will be an instance of the
+    :obj:`TabularClassificationModelValidator` class.
+
+    Then, you can run the validations by calling the :obj:`validate` method:
+
+    >>> validator.validate()
+
+    If there are failed validations, they will be shown on the screen and a list
+    of all failed validations will be returned.
+
+    The same logic applies to the other task types.
+    """
+    if task_type == tasks.TaskType.TabularClassification:
+        return TabularClassificationModelValidator(
+            model_config_file_path=model_config_file_path,
+            use_runner=use_runner,
+            model_package_dir=model_package_dir,
+            sample_data=sample_data,
+            task_type=task_type,
+        )
+    elif task_type == tasks.TaskType.TabularRegression:
+        return TabularRegressionModelValidator(
+            model_config_file_path=model_config_file_path,
+            use_runner=use_runner,
+            model_package_dir=model_package_dir,
+            sample_data=sample_data,
+            task_type=task_type,
+        )
+    elif task_type == tasks.TaskType.TextClassification:
+        return TextClassificationModelValidator(
+            model_config_file_path=model_config_file_path,
+            use_runner=use_runner,
+            model_package_dir=model_package_dir,
+            sample_data=sample_data,
+            task_type=task_type,
+        )
+    else:
+        raise ValueError(f"Task type `{task_type}` is not supported.")
