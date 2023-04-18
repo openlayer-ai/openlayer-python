@@ -1,24 +1,28 @@
 """Implements the commit bundle specific validation class.
 """
 import logging
-from typing import List, Optional
+from abc import ABC, abstractmethod
+from typing import Dict, List, Optional
 
 import marshmallow as ma
+import pandas as pd
 
-from .. import schemas, utils
-from . import dataset_validators, model_validators
+from .. import schemas, tasks, utils
+from . import baseline_model_validators, dataset_validators, model_validators
 from .base_validator import BaseValidator
 
 logger = logging.getLogger("validators")
 
 
-class CommitBundleValidator(BaseValidator):
+class BaseCommitBundleValidator(BaseValidator, ABC):
     """Validates the commit bundle prior to push.
 
     Parameters
     ----------
     bundle_path : str
         The path to the commit bundle (staging area, if for the Python API).
+    task_type : tasks.TaskType
+        The task type.
     skip_model_validation : bool
         Whether to skip model validation, by default False
     skip_dataset_validation : bool
@@ -30,6 +34,7 @@ class CommitBundleValidator(BaseValidator):
     def __init__(
         self,
         bundle_path: str,
+        task_type: tasks.TaskType,
         skip_model_validation: bool = False,
         skip_dataset_validation: bool = False,
         use_runner: bool = False,
@@ -37,6 +42,7 @@ class CommitBundleValidator(BaseValidator):
     ):
         super().__init__(resource_display_name="commit bundle")
         self.bundle_path = bundle_path
+        self.task_type = task_type
         self._bundle_resources = utils.list_resources_in_bundle(bundle_path)
         self._skip_model_validation = skip_model_validation
         self._skip_dataset_validation = skip_dataset_validation
@@ -49,6 +55,26 @@ class CommitBundleValidator(BaseValidator):
             )
             bundle_file_handler.setFormatter(bundle_formatter)
             logger.addHandler(bundle_file_handler)
+
+        self.model_config: Dict[str, any] = (
+            utils.load_model_config_from_bundle(bundle_path=bundle_path)
+            if "model" in self._bundle_resources
+            else {}
+        )
+        self.training_dataset_config: Dict[str, any] = (
+            utils.load_dataset_config_from_bundle(
+                bundle_path=bundle_path, label="training"
+            )
+            if "training" in self._bundle_resources
+            else {}
+        )
+        self.validation_dataset_config: Dict[str, any] = (
+            utils.load_dataset_config_from_bundle(
+                bundle_path=bundle_path, label="validation"
+            )
+            if "validation" in self._bundle_resources
+            else {}
+        )
 
     def _validate(self) -> List[str]:
         """Validates the commit bundle.
@@ -82,24 +108,21 @@ class CommitBundleValidator(BaseValidator):
             previous model version.
         """
 
-        # Defining which datasets contain predictions
-        preds_in_training_set = False
-        preds_in_validation_set = False
+        # Defining which datasets contain outputs
+        outputs_in_training_set = False
+        outputs_in_validation_set = False
         if "training" in self._bundle_resources:
-            preds_in_training_set = self._dataset_contains_predictions(label="training")
+            outputs_in_training_set = self._dataset_contains_output(label="training")
 
         if "validation" in self._bundle_resources:
-            preds_in_validation_set = self._dataset_contains_predictions(
+            outputs_in_validation_set = self._dataset_contains_output(
                 label="validation"
             )
 
         if "model" in self._bundle_resources:
-            model_config = utils.load_model_config_from_bundle(
-                bundle_path=self.bundle_path
-            )
-            model_type = model_config.get("modelType")
+            model_type = self.model_config.get("modelType")
             if (
-                not preds_in_training_set or not preds_in_validation_set
+                not outputs_in_training_set or not outputs_in_validation_set
             ) and model_type != "baseline":
                 self.failed_validations.append(
                     "To push a model to the platform, you must provide "
@@ -117,60 +140,39 @@ class CommitBundleValidator(BaseValidator):
                         "To push a baseline model to the platform, you must provide "
                         "training and validation sets."
                     )
-                elif preds_in_training_set and preds_in_validation_set:
+                elif outputs_in_training_set and outputs_in_validation_set:
                     self.failed_validations.append(
                         "To push a baseline model to the platform, you must provide "
                         "training and validation sets without predictions in the columns "
                         "`predictionsColumnName` or  `predictionScoresColumnName`."
                     )
         else:
-            if "training" in self._bundle_resources and preds_in_validation_set:
+            if "training" in self._bundle_resources and outputs_in_validation_set:
                 self.failed_validations.append(
                     "A training set was provided alongside with a validation set with"
                     " predictions. Please either provide only a validation set with"
                     " predictions, or a model and both datasets with predictions."
                 )
-            elif preds_in_training_set:
+            elif outputs_in_training_set:
                 self.failed_validations.append(
                     "The training dataset contains predictions, but no model was"
                     " provided. To push a training set with predictions, please provide"
                     " a model and a validation set with predictions as well."
                 )
 
-    def _dataset_contains_predictions(self, label: str) -> bool:
-        """Checks whether the dataset contains predictions.
-
-        Parameters
-        ----------
-        label : str
-            The label of the dataset to check.
-
-        Returns
-        -------
-        bool
-            Whether the dataset contains predictions.
-        """
-        dataset_config = utils.load_dataset_config_from_bundle(
-            bundle_path=self.bundle_path, label=label
-        )
-        predictions_column_name = dataset_config.get("predictionsColumnName")
-        prediction_scores_column_name = dataset_config.get("predictionScoresColumnName")
-        return (
-            predictions_column_name is not None
-            or prediction_scores_column_name is not None
-        )
-
     def _validate_bundle_resources(self):
         """Runs the corresponding validations for each resource in the bundle."""
         if "training" in self._bundle_resources and not self._skip_dataset_validation:
-            training_set_validator = dataset_validators.DatasetValidator(
+            training_set_validator = dataset_validators.get_validator(
+                task_type=self.task_type,
                 dataset_config_file_path=f"{self.bundle_path}/training/dataset_config.yaml",
                 dataset_file_path=f"{self.bundle_path}/training/dataset.csv",
             )
             self.failed_validations.extend(training_set_validator.validate())
 
         if "validation" in self._bundle_resources and not self._skip_dataset_validation:
-            validation_set_validator = dataset_validators.DatasetValidator(
+            validation_set_validator = dataset_validators.get_validator(
+                task_type=self.task_type,
                 dataset_config_file_path=f"{self.bundle_path}/validation/dataset_config.yaml",
                 dataset_file_path=f"{self.bundle_path}/validation/dataset.csv",
             )
@@ -178,47 +180,30 @@ class CommitBundleValidator(BaseValidator):
 
         if "model" in self._bundle_resources and not self._skip_model_validation:
             model_config_file_path = f"{self.bundle_path}/model/model_config.yaml"
-            model_config = utils.load_model_config_from_bundle(
-                bundle_path=self.bundle_path
-            )
-
-            if model_config["modelType"] == "shell":
-                model_validator = model_validators.ModelValidator(
-                    model_config_file_path=model_config_file_path
+            model_type = self.model_config.get("modelType")
+            if model_type == "shell":
+                model_validator = model_validators.get_validator(
+                    task_type=self.task_type,
+                    model_config_file_path=model_config_file_path,
                 )
-            elif model_config["modelType"] == "full":
-                # Use data from the validation as test data
-                validation_dataset_df = utils.load_dataset_from_bundle(
-                    bundle_path=self.bundle_path, label="validation"
-                )
-                validation_dataset_config = utils.load_dataset_config_from_bundle(
-                    bundle_path=self.bundle_path, label="validation"
-                )
+            elif model_type == "full":
+                sample_data = self._get_sample_input_data()
 
-                sample_data = None
-                if "textColumnName" in validation_dataset_config:
-                    sample_data = validation_dataset_df[
-                        [validation_dataset_config["textColumnName"]]
-                    ].head()
-
-                else:
-                    sample_data = validation_dataset_df[
-                        validation_dataset_config["featureNames"]
-                    ].head()
-
-                model_validator = model_validators.ModelValidator(
+                model_validator = model_validators.get_validator(
+                    task_type=self.task_type,
                     model_config_file_path=model_config_file_path,
                     model_package_dir=f"{self.bundle_path}/model",
                     sample_data=sample_data,
                     use_runner=self._use_runner,
                 )
-            elif model_config["modelType"] == "baseline":
-                model_validator = model_validators.BaselineModelValidator(
-                    model_config_file_path=model_config_file_path
+            elif model_type == "baseline":
+                model_validator = baseline_model_validators.get_validator(
+                    task_type=self.task_type,
+                    model_config_file_path=model_config_file_path,
                 )
             else:
                 raise ValueError(
-                    f"Invalid model type: {model_config['modelType']}. "
+                    f"Invalid model type: {model_type}. "
                     "The model type must be one of 'shell', 'full' or 'baseline'."
                 )
             self.failed_validations.extend(model_validator.validate())
@@ -233,51 +218,78 @@ class CommitBundleValidator(BaseValidator):
             "training" in self._bundle_resources
             and "validation" in self._bundle_resources
         ):
-            # Loading the relevant configs
-            model_config = {}
-            if "model" in self._bundle_resources:
-                model_config = utils.load_model_config_from_bundle(
-                    bundle_path=self.bundle_path
-                )
-            training_dataset_config = utils.load_dataset_config_from_bundle(
-                bundle_path=self.bundle_path, label="training"
-            )
-            validation_dataset_config = utils.load_dataset_config_from_bundle(
-                bundle_path=self.bundle_path, label="validation"
-            )
-            model_feature_names = model_config.get("featureNames")
-            model_class_names = model_config.get("classNames")
-            training_feature_names = training_dataset_config.get("featureNames")
-            training_class_names = training_dataset_config.get("classNames")
-            validation_feature_names = validation_dataset_config.get("featureNames")
-            validation_class_names = validation_dataset_config.get("classNames")
+            self._validate_input_consistency()
+            self._validate_output_consistency()
 
-            # Validating the `featureNames` field
-            if training_feature_names or validation_feature_names:
-                if not self._feature_names_consistent(
-                    model_feature_names=model_feature_names,
-                    training_feature_names=training_feature_names,
-                    validation_feature_names=validation_feature_names,
-                ):
-                    self.failed_validations.append(
-                        "The `featureNames` in the provided resources are inconsistent."
-                        " The training and validation set feature names must have some overlap."
-                        " Furthermore, if a model is provided, its feature names must be a subset"
-                        " of the feature names in the training and validation sets."
-                    )
+    @abstractmethod
+    def _dataset_contains_output(self, label: str) -> bool:
+        """Checks whether the dataset contains output.
 
-            # Validating the `classNames` field
-            if not self._class_names_consistent(
-                model_class_names=model_class_names,
-                training_class_names=training_class_names,
-                validation_class_names=validation_class_names,
+        I.e., predictions, for classification, sequences, for s2s, etc.
+        """
+        pass
+
+    @abstractmethod
+    def _get_sample_input_data(self) -> Optional[pd.DataFrame]:
+        """Gets a sample of the input data from the bundle.
+
+        This is the data that will be used to validate the model.
+        """
+        pass
+
+    @abstractmethod
+    def _validate_input_consistency(self):
+        """Verifies that the input data is consistent across the bundle."""
+        pass
+
+    @abstractmethod
+    def _validate_output_consistency(self):
+        """Verifies that the output data is consistent across the bundle."""
+        pass
+
+
+class TabularCommitBundleValidator(BaseCommitBundleValidator):
+    """Tabular commit bundle validator.
+
+    This is not a complete implementation of the abstract class. This is a
+    partial implementation used to compose the full classes.
+    """
+
+    def _get_sample_input_data(self) -> Optional[pd.DataFrame]:
+        """Gets a sample of tabular data input."""
+        # Use data from the validation as test data
+        sample_data = None
+        validation_dataset_df = utils.load_dataset_from_bundle(
+            bundle_path=self.bundle_path, label="validation"
+        )
+        if validation_dataset_df is not None:
+            sample_data = validation_dataset_df[
+                self.validation_dataset_config["featureNames"]
+            ].head()
+
+        return sample_data
+
+    def _validate_input_consistency(self):
+        """Verifies that the feature names across the bundle are consistent."""
+        # Extracting the relevant vars
+        model_feature_names = self.model_config.get("featureNames", [])
+        training_feature_names = self.training_dataset_config.get("featureNames", [])
+        validation_feature_names = self.validation_dataset_config.get(
+            "featureNames", []
+        )
+
+        # Validating the `featureNames` field
+        if training_feature_names or validation_feature_names:
+            if not self._feature_names_consistent(
+                model_feature_names=model_feature_names,
+                training_feature_names=training_feature_names,
+                validation_feature_names=validation_feature_names,
             ):
                 self.failed_validations.append(
-                    "The `classNames` in the provided resources are inconsistent."
-                    " The validation set's class names need to contain the training set's."
-                    " Furthermore, if a model is provided, its class names must be contained"
-                    " in the training and validation sets' class names."
-                    " Note that the order of the items in the `classNames` list matters."
+                    "The `featureNames` in the provided resources are inconsistent."
+                    " The training and validation set feature names must have some overlap."
+                    " Furthermore, if a model is provided, its feature names must be a subset"
+                    " of the feature names in the training and validation sets."
                 )
 
     @staticmethod
@@ -309,6 +321,86 @@ class CommitBundleValidator(BaseValidator):
         if model_feature_names is None:
             return len(train_val_intersection) != 0
         return set(model_feature_names).issubset(train_val_intersection)
+
+
+class TextCommitBundleValidator(BaseCommitBundleValidator):
+    """Text commit bundle validator.
+
+    This is not a complete implementation of the abstract class. This is a
+    partial implementation used to compose the full classes.
+    """
+
+    def _get_sample_input_data(self) -> Optional[pd.DataFrame]:
+        """Gets a sample of text data input."""
+        # Use data from the validation as test data
+        sample_data = None
+        validation_dataset_df = utils.load_dataset_from_bundle(
+            bundle_path=self.bundle_path, label="validation"
+        )
+        if validation_dataset_df is not None:
+            sample_data = validation_dataset_df[
+                self.validation_dataset_config["textColumnName"]
+            ].head()
+
+        return sample_data
+
+    def _validate_input_consistency(self):
+        """Currently, there are no input consistency checks for text
+        bundles."""
+        pass
+
+
+class ClassificationCommitBundleValidator(BaseCommitBundleValidator):
+    """Classification commit bundle validator.
+
+    This is not a complete implementation of the abstract class. This is a
+    partial implementation used to compose the full classes.
+    """
+
+    def _dataset_contains_output(self, label: str) -> bool:
+        """Checks whether the dataset contains predictions.
+
+        Parameters
+        ----------
+        label : str
+            The label of the dataset to check.
+
+        Returns
+        -------
+        bool
+            Whether the dataset contains predictions.
+        """
+        dataset_config = utils.load_dataset_config_from_bundle(
+            bundle_path=self.bundle_path, label=label
+        )
+        predictions_column_name = dataset_config.get("predictionsColumnName")
+        prediction_scores_column_name = dataset_config.get("predictionScoresColumnName")
+        return (
+            predictions_column_name is not None
+            or prediction_scores_column_name is not None
+        )
+
+    def _validate_output_consistency(self):
+        """Verifies that the output data (class names) is consistent across the bundle."""
+
+        # Extracting the relevant vars
+        model_class_names = self.model_config.get("classNames", [])
+        training_class_names = self.training_dataset_config.get("classNames", [])
+        validation_class_names = self.validation_dataset_config.get("classNames", [])
+
+        # Validating the `classNames` field
+        if not self._class_names_consistent(
+            model_class_names=model_class_names,
+            training_class_names=training_class_names,
+            validation_class_names=validation_class_names,
+        ):
+            self.failed_validations.append(
+                "The `classNames` in the provided resources are inconsistent."
+                " The validation set's class names need to contain the training set's."
+                " Furthermore, if a model is provided, its class names must be contained"
+                " in the training and validation sets' class names."
+                " Note that the order of the items in the `classNames` list matters."
+            )
 
     @staticmethod
     def _class_names_consistent(
@@ -347,6 +439,124 @@ class CommitBundleValidator(BaseValidator):
             return validation_class_names[:num_training_classes] == training_class_names
         except IndexError:
             return False
+
+
+class RegressionCommitBundleValidator(BaseCommitBundleValidator):
+    """Regression commit bundle validator.
+
+    This is not a complete implementation of the abstract class. This is a
+    partial implementation used to compose the full classes.
+    """
+
+    def _dataset_contains_output(self, label: str) -> bool:
+        """Checks whether the dataset contains predictions.
+
+        Parameters
+        ----------
+        label : str
+            The label of the dataset to check.
+
+        Returns
+        -------
+        bool
+            Whether the dataset contains predictions.
+        """
+        dataset_config = utils.load_dataset_config_from_bundle(
+            bundle_path=self.bundle_path, label=label
+        )
+        predictions_column_name = dataset_config.get("predictionsColumnName")
+        return predictions_column_name is not None
+
+    def _validate_output_consistency(self):
+        """Currently, there are no output consistency checks for regression
+        bundles."""
+        pass
+
+
+class TabularClassificationCommitBundleValidator(
+    TabularCommitBundleValidator, ClassificationCommitBundleValidator
+):
+    """Tabular classification commit bundle validator."""
+
+    pass
+
+
+class TabularRegressionCommitBundleValidator(
+    TabularCommitBundleValidator, RegressionCommitBundleValidator
+):
+    """Tabular regression commit bundle validator."""
+
+    pass
+
+
+class TextClassificationCommitBundleValidator(
+    TextCommitBundleValidator, ClassificationCommitBundleValidator
+):
+    """Text classification commit bundle validator."""
+
+    pass
+
+
+# ----------------------------- Factory function ----------------------------- #
+def get_validator(
+    bundle_path: str,
+    task_type: tasks.TaskType,
+    skip_model_validation: bool = False,
+    skip_dataset_validation: bool = False,
+    use_runner: bool = False,
+    log_file_path: Optional[str] = None,
+):
+    """Returns a commit bundle validator based on the task type.
+
+    Parameters
+    ----------
+    bundle_path : str
+        The path to the bundle.
+    task_type : tasks.TaskType
+        The task type.
+    skip_model_validation : bool, optional
+        Whether to skip model validation, by default False
+    skip_dataset_validation : bool, optional
+        Whether to skip dataset validation, by default False
+    use_runner : bool, optional
+        Whether to use the runner to validate the model, by default False
+    log_file_path : Optional[str], optional
+        The path to the log file, by default None
+
+    Returns
+    -------
+    BaseCommitBundleValidator
+        The commit bundle validator.
+    """
+    if task_type == tasks.TaskType.TabularClassification:
+        return TabularClassificationCommitBundleValidator(
+            task_type=task_type,
+            bundle_path=bundle_path,
+            skip_model_validation=skip_model_validation,
+            skip_dataset_validation=skip_dataset_validation,
+            use_runner=use_runner,
+            log_file_path=log_file_path,
+        )
+    elif task_type == tasks.TaskType.TabularRegression:
+        return TabularRegressionCommitBundleValidator(
+            task_type=task_type,
+            bundle_path=bundle_path,
+            skip_model_validation=skip_model_validation,
+            skip_dataset_validation=skip_dataset_validation,
+            use_runner=use_runner,
+            log_file_path=log_file_path,
+        )
+    elif task_type == tasks.TaskType.TextClassification:
+        return TextClassificationCommitBundleValidator(
+            task_type=task_type,
+            bundle_path=bundle_path,
+            skip_model_validation=skip_model_validation,
+            skip_dataset_validation=skip_dataset_validation,
+            use_runner=use_runner,
+            log_file_path=log_file_path,
+        )
+    else:
+        raise ValueError(f"Invalid task type: {task_type}")
 
 
 class CommitValidator(BaseValidator):

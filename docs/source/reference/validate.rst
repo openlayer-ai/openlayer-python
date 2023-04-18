@@ -16,7 +16,7 @@ Models
    :toctree: api/
    :template: class.rst
    
-   validators.model_validators.ModelValidator
+   validators.model_validators.get_validator
 
 Datasets
 --------
@@ -24,5 +24,5 @@ Datasets
    :toctree: api/
    :template: class.rst
    
-   validators.dataset_validators.DatasetValidator
+   validators.dataset_validators.get_validator
 

@@ -4,12 +4,13 @@ import os
 import shutil
 import subprocess
 import tempfile
+from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List, Optional, Set
 
 import pandas as pd
 
-from . import utils
+from . import tasks, utils
 
 
 class ModelType(Enum):
@@ -305,7 +306,7 @@ class CondaEnvironment:
         return exitcode
 
 
-class ModelRunner:
+class BaseModelRunner(ABC):
     """Wraps the model package and provides a uniform run method."""
 
     def __init__(self, model_package: str, logger: Optional[logging.Logger] = None):
@@ -342,10 +343,8 @@ class ModelRunner:
         """
         # Copy the prediction job script to the model package
         current_file_dir = os.path.dirname(os.path.abspath(__file__))
-        shutil.copy(
-            f"{current_file_dir}/prediction_job.py",
-            f"{self.model_package}/prediction_job.py",
-        )
+
+        self._copy_prediction_job_script(current_file_dir)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             # Save the input data to a csv file
@@ -378,9 +377,81 @@ class ModelRunner:
             # Read the output data from the csv file
             output_data = pd.read_csv(f"{temp_dir}/output_data.csv")
 
-            # Make the items list of floats (and not strings)
-            output_data["predictions"] = output_data["predictions"].apply(
-                ast.literal_eval
-            )
+            output_data = self._post_process_output(output_data)
 
         return output_data
+
+    @abstractmethod
+    def _copy_prediction_job_script(self, current_file_dir: str):
+        """Copies the correct prediction job script to the model package."""
+        pass
+
+    @abstractmethod
+    def _post_process_output(self, output_data: pd.DataFrame) -> pd.DataFrame:
+        """Performs any post-processing on the output data."""
+        pass
+
+
+class ClassificationModelRunner(BaseModelRunner):
+    """ "Wraps classification models."""
+
+    def _copy_prediction_job_script(self, current_file_dir: str):
+        """Copies the classification prediction job script to the model package."""
+        shutil.copy(
+            f"{current_file_dir}/prediction_jobs/classification_prediction_job.py",
+            f"{self.model_package}/prediction_job.py",
+        )
+
+    def _post_process_output(self, output_data: pd.DataFrame) -> pd.DataFrame:
+        """Post-processes the output data."""
+        processed_output_data = output_data.copy()
+
+        # Make the items list of floats (and not strings)
+        processed_output_data["predictions"] = processed_output_data[
+            "predictions"
+        ].apply(ast.literal_eval)
+
+        return processed_output_data
+
+
+class RegressionModelRunner(BaseModelRunner):
+    """Wraps regression models."""
+
+    def _copy_prediction_job_script(self, current_file_dir: str):
+        """Copies the regression prediction job script to the model package."""
+        shutil.copy(
+            f"{current_file_dir}/prediction_jobs/regression_prediction_job.py",
+            f"{self.model_package}/prediction_job.py",
+        )
+
+    def _post_process_output(self, output_data: pd.DataFrame) -> pd.DataFrame:
+        """Post-processes the output data."""
+        return output_data
+
+
+# ----------------------------- Factory function ----------------------------- #
+def get_model_runner(
+    task_type: tasks.TaskType,
+    model_package: str,
+    logger: Optional[logging.Logger] = None,
+) -> BaseModelRunner:
+    """Factory function to get the correct model runner for the specified task type.
+
+    Parameters
+    ----------
+    task_type : tasks.TaskType
+        Task type of the model.
+    model_package : str
+        Path to the model package.
+    logger : Optional[logging.Logger], optional
+        Logger to use, by default None
+    """
+    if (
+        task_type == tasks.TaskType.TabularClassification
+        or task_type == tasks.TaskType.TextClassification
+    ):
+        return ClassificationModelRunner(model_package, logger)
+    elif task_type == tasks.TaskType.TabularRegression:
+        return RegressionModelRunner(model_package, logger)
+    else:
+        raise ValueError(f"Task type `{task_type}` is not supported.")

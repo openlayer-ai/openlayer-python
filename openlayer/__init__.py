@@ -16,6 +16,7 @@ from .tasks import TaskType
 
 # from validators import models as model_validators
 from .validators import (
+    baseline_model_validators,
     commit_validators,
     dataset_validators,
     model_validators,
@@ -230,6 +231,7 @@ class OpenlayerClient(object):
     def add_model(
         self,
         model_config_file_path: str,
+        task_type: TaskType,
         model_package_dir: Optional[str] = None,
         sample_data: Optional[pd.DataFrame] = None,
         force: bool = False,
@@ -410,12 +412,13 @@ class OpenlayerClient(object):
                 )
 
         # Validate model package
-        model_package_validator = model_validators.ModelValidator(
+        model_validator = model_validators.get_validator(
+            task_type=task_type,
             model_package_dir=model_package_dir,
             model_config_file_path=model_config_file_path,
             sample_data=sample_data,
         )
-        failed_validations = model_package_validator.validate()
+        failed_validations = model_validator.validate()
 
         if failed_validations:
             raise exceptions.OpenlayerValidationError(
@@ -425,7 +428,7 @@ class OpenlayerClient(object):
 
         # Load model config and augment with defaults
         model_config = utils.read_yaml(model_config_file_path)
-        model_data = ModelSchema().load(model_config)
+        model_data = ModelSchema().load({"task_type": task_type.value, **model_config})
 
         # Copy relevant resources to temp directory
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -489,7 +492,8 @@ class OpenlayerClient(object):
 
         # Validate the baseline model
 
-        baseline_model_validator = model_validators.BaselineModelValidator(
+        baseline_model_validator = baseline_model_validators.get_validator(
+            task_type=task_type,
             model_config_file_path=model_config_file_path,
         )
         failed_validations = baseline_model_validator.validate()
@@ -505,7 +509,9 @@ class OpenlayerClient(object):
         if model_config_file_path is not None:
             model_config = utils.read_yaml(model_config_file_path)
         model_config["modelType"] = "baseline"
-        model_data = BaselineModelSchema().load(model_config)
+        model_data = BaselineModelSchema().load(
+            {"task_type": task_type.value, **model_config}
+        )
 
         # Copy relevant resources to temp directory
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -521,6 +527,7 @@ class OpenlayerClient(object):
     def add_dataset(
         self,
         file_path: str,
+        task_type: TaskType,
         dataset_config_file_path: str,
         project_id: str = None,
         force: bool = False,
@@ -718,7 +725,8 @@ class OpenlayerClient(object):
         >>> project.push()
         """
         # Validate dataset
-        dataset_validator = dataset_validators.DatasetValidator(
+        dataset_validator = dataset_validators.get_validator(
+            task_type=task_type,
             dataset_config_file_path=dataset_config_file_path,
             dataset_file_path=file_path,
         )
@@ -732,7 +740,9 @@ class OpenlayerClient(object):
 
         # Load dataset config and augment with defaults
         dataset_config = utils.read_yaml(dataset_config_file_path)
-        dataset_data = DatasetSchema().load(dataset_config)
+        dataset_data = DatasetSchema().load(
+            {"task_type": task_type.value, **dataset_config}
+        )
 
         # Copy relevant resources to temp directory
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -749,6 +759,7 @@ class OpenlayerClient(object):
     def add_dataframe(
         self,
         dataset_df: pd.DataFrame,
+        task_type: TaskType,
         dataset_config_file_path: str,
         project_id: str = None,
         force: bool = False,
@@ -957,6 +968,7 @@ class OpenlayerClient(object):
                 project_id=project_id,
                 dataset_config_file_path=dataset_config_file_path,
                 force=force,
+                task_type=task_type,
             )
 
     def commit(self, message: str, project_id: int, force: bool = False):
@@ -1043,7 +1055,7 @@ class OpenlayerClient(object):
 
         print("Committed!")
 
-    def push(self, project_id: int):
+    def push(self, project_id: int, task_type: TaskType):
         """Pushes the commited resources to the platform.
 
         Notes
@@ -1085,7 +1097,8 @@ class OpenlayerClient(object):
             commit = yaml.safe_load(commit_file)
 
         # Validate bundle resources
-        commit_bundle_validator = commit_validators.CommitBundleValidator(
+        commit_bundle_validator = commit_validators.get_validator(
+            task_type=task_type,
             bundle_path=project_dir,
             skip_dataset_validation=True,
             skip_model_validation=False,  # Don't skip because the sample data is different
