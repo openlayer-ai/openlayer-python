@@ -113,7 +113,6 @@ class BaseCommitBundleValidator(BaseValidator, ABC):
         outputs_in_validation_set = False
         if "training" in self._bundle_resources:
             outputs_in_training_set = self._dataset_contains_output(label="training")
-
         if "validation" in self._bundle_resources:
             outputs_in_validation_set = self._dataset_contains_output(
                 label="validation"
@@ -121,16 +120,7 @@ class BaseCommitBundleValidator(BaseValidator, ABC):
 
         if "model" in self._bundle_resources:
             model_type = self.model_config.get("modelType")
-            if (
-                not outputs_in_training_set or not outputs_in_validation_set
-            ) and model_type != "baseline":
-                self.failed_validations.append(
-                    "To push a model to the platform, you must provide "
-                    "training and a validation sets with predictions. "
-                    "The predictions can be specified in the column `predictionsColumnName` "
-                    "as integers and/or in the column `predictionScoresColumnName` as "
-                    "lists of class probabilities."
-                )
+
             if model_type == "baseline":
                 if (
                     "training" not in self._bundle_resources
@@ -146,19 +136,81 @@ class BaseCommitBundleValidator(BaseValidator, ABC):
                         "training and validation sets without predictions in the columns "
                         "`predictionsColumnName` or  `predictionScoresColumnName`."
                     )
+            else:
+                if (
+                    "training" not in self._bundle_resources
+                    and "validation" not in self._bundle_resources
+                ):
+                    self.failed_validations.append(
+                        "You are trying to push a model to the platform, but "
+                        "you did not provide a training or validation set. "
+                        "To push a model to the platform, you must provide "
+                        "either: \n"
+                        "- training and validation sets; or \n"
+                        "- a validation set. \n"
+                        "In any case, ensure that the predictions are provided in the "
+                        "datasets."
+                    )
+                elif ("training" not in self._bundle_resources) and (
+                    "validation" in self._bundle_resources
+                ):
+                    if not outputs_in_validation_set:
+                        self.failed_validations.append(
+                            "You are trying to push a model and a validation set to the platform. "
+                            "However, the validation set does not contain predictions. "
+                            "Please provide predictions for the validation set. "
+                        )
+                elif (
+                    "training" in self._bundle_resources
+                    and "validation" not in self._bundle_resources
+                ):
+                    self.failed_validations.append(
+                        "You are trying to push a model and a training set to the platform. "
+                        "To push a model to the platform, you must provide "
+                        "either: \n"
+                        "- training and validation sets; or \n"
+                        "- a validation set. \n"
+                        "In any case, ensure that the predictions are provided in the "
+                        "datasets."
+                    )
+                elif ("training" in self._bundle_resources) and (
+                    "validation" in self._bundle_resources
+                ):
+                    if not outputs_in_training_set or not outputs_in_validation_set:
+                        self.failed_validations.append(
+                            "You are trying to push a model, a training set and a validation "
+                            "set to the platform. "
+                            "However, the training or the validation set do not contain predictions. "
+                            "Please provide predictions for both the training and the validation sets."
+                        )
+
         else:
-            if "training" in self._bundle_resources and outputs_in_validation_set:
-                self.failed_validations.append(
-                    "A training set was provided alongside with a validation set with"
-                    " predictions. Please either provide only a validation set with"
-                    " predictions, or a model and both datasets with predictions."
-                )
-            elif outputs_in_training_set:
-                self.failed_validations.append(
-                    "The training dataset contains predictions, but no model was"
-                    " provided. To push a training set with predictions, please provide"
-                    " a model and a validation set with predictions as well."
-                )
+            if (
+                "training" in self._bundle_resources
+                and "validation" not in self._bundle_resources
+            ):
+                if outputs_in_training_set:
+                    self.failed_validations.append(
+                        "The training dataset contains predictions, but no model was"
+                        " provided. To push a training set with predictions, please provide"
+                        " a model and a validation set with predictions as well."
+                    )
+            elif (
+                "training" not in self._bundle_resources
+                and "validation" in self._bundle_resources
+            ):
+                # This is allowed -- listed just for completeness
+                pass
+            elif (
+                "training" in self._bundle_resources
+                and "validation" in self._bundle_resources
+            ):
+                if outputs_in_training_set or outputs_in_validation_set:
+                    self.failed_validations.append(
+                        "You are trying to push a training set and a validation set to the platform. "
+                        "However, the training or the validation set contain predictions. "
+                        "To push datasets with predictions, please provide a model as well."
+                    )
 
     def _validate_bundle_resources(self):
         """Runs the corresponding validations for each resource in the bundle."""
