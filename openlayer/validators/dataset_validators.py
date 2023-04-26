@@ -207,16 +207,16 @@ class TabularInputValidator(BaseDatasetValidator):
     partial implementation used to compose the full classes.
     """
 
-    categorical_feature_names: Optional[List[str]] = None
-    feature_names: Optional[List[str]] = None
+    categorical_feature_names: List[str] = []
+    feature_names: List[str] = []
 
     def _validate_inputs(self):
         """Validates tabular inputs."""
         # Setting the attributes needed for the validations
         self.categorical_feature_names = self.dataset_config.get(
-            "categoricalFeatureNames"
+            "categoricalFeatureNames", []
         )
-        self.feature_names = self.dataset_config.get("featureNames")
+        self.feature_names = self.dataset_config.get("featureNames", [])
 
         if self.feature_names:
             self._validate_features()
@@ -228,6 +228,9 @@ class TabularInputValidator(BaseDatasetValidator):
                 "There are features specified in `featureNames` which are "
                 "not in the dataset."
             )
+        else:
+            self._validate_numeric_feature_dtypes()
+
         if self.categorical_feature_names:
             if self._columns_not_in_dataset_df(
                 self.dataset_df, self.categorical_feature_names
@@ -236,6 +239,9 @@ class TabularInputValidator(BaseDatasetValidator):
                     "There are categorical features specified in `categoricalFeatureNames` "
                     "which are not in the dataset."
                 )
+            else:
+                self._validate_numeric_and_categorical_consistency()
+                self._validate_categorical_feature_dtypes()
 
     @staticmethod
     def _columns_not_in_dataset_df(
@@ -245,6 +251,52 @@ class TabularInputValidator(BaseDatasetValidator):
         if set(columns_list) - set(dataset_df.columns):
             return True
         return False
+
+    def _validate_numeric_feature_dtypes(self):
+        """Checks whether the numeric features have the correct dtypes."""
+        numeric_features = set(self.feature_names) - set(self.categorical_feature_names)
+
+        for feature in numeric_features:
+            feature_dtype = self.dataset_df[feature].dtype.name
+            if feature_dtype not in {"float32", "float64", "int32", "int64"}:
+                self.failed_validations.append(
+                    f"The feature `{feature}` was specified in `featureNames` and not "
+                    "in `categoricalFeatureNames`, but it does not seem to be numeric. "
+                    f"The feature `{feature}` has the following dtype: {feature_dtype}. "
+                    "The supported dtypes for numeric features in are 'float32', 'float64', "
+                    "'int32', 'int64'. "
+                    "Please cast the feature to conform to these dtypes. Alternatively, if "
+                    "the feature is categorical, specify it in `categoricalFeatureNames`."
+                )
+
+    def _validate_numeric_and_categorical_consistency(self):
+        """Checks if all categorical features are also specified as features."""
+        categorical_features = set(self.categorical_feature_names)
+        features = set(self.feature_names)
+        if categorical_features - features:
+            self.failed_validations.append(
+                "There are categorical features specified in `categoricalFeatureNames` "
+                "which are not specified in `featureNames`. Please specify all categorical "
+                "features in `featureNames`."
+            )
+
+    def _validate_categorical_feature_dtypes(self):
+        """Checks whether the categorical features have the correct dtypes."""
+        for categorical_feature_name in self.categorical_feature_names:
+            categorical_feature_dtype = self.dataset_df[
+                categorical_feature_name
+            ].dtype.name
+            if categorical_feature_dtype not in {"object", "int32", "int64"}:
+                self.failed_validations.append(
+                    f"The feature `{categorical_feature_name}` specified in "
+                    "`categoricalFeatureNames` has an unsupported dtype. "
+                    f"The feature `{categorical_feature_name}` has the following dtype: "
+                    f"{categorical_feature_dtype}. "
+                    "The supported dtypes for categorical features in `categoricalFeatureNames` "
+                    "are 'object', 'int32', 'int64'. "
+                    "Please cast the categorical feature to conform to this dtype. Alternatively, "
+                    "if the feature is not categorical, specify it only in `featureNames`."
+                )
 
 
 class TextInputValidator(BaseDatasetValidator):
