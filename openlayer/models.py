@@ -1,4 +1,5 @@
 import ast
+import datetime
 import logging
 import os
 import shutil
@@ -318,7 +319,7 @@ class ModelRunner:
 
         # TODO: change env name to the model id
         self._conda_environment = CondaEnvironment(
-            env_name="new-openlayer",
+            env_name=f"model-runner-env-{datetime.datetime.now().strftime('%m-%d-%H-%M-%S-%f')}",
             requirements_file_path=f"{model_package}/requirements.txt",
             python_version_file_path=f"{model_package}/python_version",
             logger=self.logger,
