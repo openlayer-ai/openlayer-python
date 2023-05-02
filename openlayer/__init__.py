@@ -1067,22 +1067,61 @@ class OpenlayerClient(object):
         """
         project_dir = f"{OPENLAYER_DIR}/{project_id}/staging"
 
+        if self._ready_for_push(project_dir=project_dir):
+            with open(
+                f"{project_dir}/commit.yaml", "r", encoding="UTF-8"
+            ) as commit_file:
+                commit = yaml.safe_load(commit_file)
+
+            # Tar the project's staging area
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                tar_file_path = os.path.join(tmp_dir, "tarfile")
+                with tarfile.open(tar_file_path, mode="w:gz") as tar:
+                    tar.add(project_dir, arcname=os.path.basename(project_dir))
+
+                # Upload the tar file
+                print(
+                    "Pushing changes to the platform with the commit message: \n"
+                    f"\t - Message: {commit['message']} \n"
+                    f"\t - Date: {commit['date']}"
+                )
+                payload = {"commit": {"message": commit["message"]}}
+                self.api.upload(
+                    endpoint=f"projects/{project_id}/versions",
+                    file_path=tar_file_path,
+                    object_name="tarfile",
+                    body=payload,
+                )
+
+            self._post_push_cleanup(project_dir=project_dir)
+            print("Pushed!")
+
+    def _ready_for_push(self, project_dir: str) -> bool:
+        """Checks if the project's staging area is ready to be pushed to the platform.
+
+        Parameters
+        ----------
+        project_dir : str
+            Directory path to the project's staging area.
+
+        Returns
+        -------
+        bool
+            Indicates whether the project's staging area is ready to be pushed to the platform.
+        """
         if not os.listdir(project_dir):
             print(
                 "The staging area is clean and there is nothing committed to push. "
                 "Please add model and/or datasets first, and then commit before pushing."
             )
-            return
+            return False
 
         if not os.path.exists(f"{project_dir}/commit.yaml"):
             print(
                 "There are resources staged, but you haven't committed them yet. "
                 "Please commit before pushing"
             )
-            return
-
-        with open(f"{project_dir}/commit.yaml", "r", encoding="UTF-8") as commit_file:
-            commit = yaml.safe_load(commit_file)
+            return False
 
         # Validate bundle resources
         commit_bundle_validator = commit_validators.CommitBundleValidator(
@@ -1098,32 +1137,58 @@ class OpenlayerClient(object):
                 "Make sure to fix all of the issues listed above before pushing.",
             ) from None
 
-        print(
-            "Pushing changes to the platform with the commit message: \n"
-            f"\t - Message: {commit['message']} \n"
-            f"\t - Date: {commit['date']}"
-        )
+        return True
 
-        # Tar the project's staging area
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            tar_file_path = os.path.join(tmp_dir, "staging")
-            with tarfile.open(tar_file_path, mode="w:gz") as tar:
-                tar.add(project_dir, arcname=os.path.basename(project_dir))
-
-            # Upload the tar file
-            payload = {"commit": {"message": commit["message"]}}
-            self.api.upload(
-                endpoint=f"projects/{project_id}/versions",
-                file_path=tar_file_path,
-                object_name="tarfile",
-                body=payload,
-            )
-
-        # Clean up the staging area
+    def _post_push_cleanup(self, project_dir: str) -> None:
+        """Cleans up and re-creates the project's staging area after a push."""
         shutil.rmtree(project_dir)
         os.makedirs(project_dir, exist_ok=True)
 
-        print("Pushed!")
+    def export(self, destination_dir: str, project_id: int):
+        """Exports the commited resources as a tarfile to the location specified
+        by ``destination_dir``.
+
+        This is useful if you want to drag and drop the tarfile into the platform's
+        UI to upload it instead of using the :obj:`push` method.
+
+        Parameters
+        ----------
+        destination_dir : str
+            Directory path to where the project's staging area should be exported.
+
+        Notes
+        -----
+        - To use this method, you must first have committed your changes with the :obj:`commit`
+            method.
+
+        Examples
+        --------
+
+        Let's say you have a project with a model and a dataset staged and committed. You can
+        confirm these resources are indeed in the staging area using the :obj:`status` method:
+
+        >>> project.status()
+
+        You should see the staged resources as well as the commit message associated with them.
+
+        Now, you can export the resources to a speficied location with:
+
+        >>> project.export(destination_dir="/path/to/destination")
+        """
+        project_dir = f"{OPENLAYER_DIR}/{project_id}/staging"
+
+        if self._ready_for_push(project_dir=project_dir):
+            # Tar the project's staging area
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                tar_file_path = os.path.join(tmp_dir, "tarfile")
+                with tarfile.open(tar_file_path, mode="w:gz") as tar:
+                    tar.add(project_dir, arcname=os.path.basename(project_dir))
+
+                print(f"Exporting staging area to {destination_dir}.")
+                shutil.copy(tar_file_path, os.path.expanduser(destination_dir))
+
+            self._post_push_cleanup(project_dir=project_dir)
+            print("Exported tarfile!")
 
     def status(self, project_id: int):
         """Shows the state of the staging area.

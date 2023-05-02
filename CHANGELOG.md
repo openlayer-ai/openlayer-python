@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 
+* Added the project's `export` method, which exports the resources in the project's staging area to a specified location.
 * Added `llm` as a supported `architectureType` for models.
 * Added `protobuf<3.20` to requirements to fix compatibility issue with Tensorflow.
 * Warnings if the dependencies from the `requirement_txt_file` and current environment are inconsistent.
