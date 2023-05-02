@@ -75,6 +75,10 @@ class Project:
         """Pushes the commited resources to the platform."""
         return self.client.push(*args, project_id=self.id, **kwargs)
 
+    def export(self, *args, **kwargs):
+        """Exports the commited resources to a specified location."""
+        return self.client.export(*args, project_id=self.id, **kwargs)
+
     def status(self, *args, **kwargs):
         """Shows the state of the staging area."""
         return self.client.status(*args, project_id=self.id, **kwargs)

@@ -44,6 +44,7 @@ Version control flow
    OpenlayerClient.push
    OpenlayerClient.status
    OpenlayerClient.restore
+   OpenlayerClient.export
 
 Task types
 ----------
