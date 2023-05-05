@@ -1,3 +1,4 @@
+# pylint: disable=broad-exception-caught
 """Implements the model specific validation class.
 
 For example, to validate a model package:

@@ -22,7 +22,7 @@ class LogStdout:
 
     def __enter__(self):
         self._original_stdout = sys.stdout
-        sys.stdout = open(self.log_file_path, "w")
+        sys.stdout = open(self.log_file_path, "w", encoding="utf-8")
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         sys.stdout.close()
@@ -38,7 +38,7 @@ class HidePrints:
 
     def __enter__(self):
         self._original_stdout = sys.stdout
-        sys.stdout = open(os.devnull, "w")
+        sys.stdout = open(os.devnull, "w", encoding="utf-8")
         sys._jupyter_stdout = sys.stdout
         warnings.filterwarnings("ignore")
 
@@ -130,6 +130,7 @@ def list_resources_in_bundle(bundle_path: str) -> list:
         list: the list of resources in the bundle.
     """
     # TODO: factor out list of valid resources
+    # pylint: disable=invalid-name
     VALID_RESOURCES = {"baseline-model", "model", "training", "validation"}
 
     resources = []

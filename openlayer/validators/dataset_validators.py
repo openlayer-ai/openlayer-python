@@ -180,6 +180,7 @@ class DatasetValidator(BaseValidator):
             # File format (csv) check by loading it as a pandas df
             try:
                 self.dataset_df = pd.read_csv(self.dataset_file_path)
+            # pylint: disable=broad-exception-caught
             except Exception:
                 self.failed_validations.append(
                     f"File `{self.dataset_file_path}` is not a valid .csv file."
@@ -270,10 +271,7 @@ class DatasetValidator(BaseValidator):
 
     def _validate_categories_zero_indexed(self, column_name: str):
         """Checks whether the categories are zero-indexed in the dataset's `column_name`."""
-        if (
-            self.dataset_df[column_name].dtype.name != "int64"
-            and self.dataset_df[column_name].dtype.name != "int32"
-        ):
+        if self.dataset_df[column_name].dtype.name not in ("int64", "int32"):
             self.failed_validations.append(
                 f"The classes in the dataset column `{column_name}` must be integers. "
                 f"Make sure that the column `{column_name}` is of dtype `int32` or `int64`."
@@ -363,7 +361,7 @@ class DatasetValidator(BaseValidator):
                                     "Please make sure that the lists with predictions "
                                     "have the same length as the `classNames` list."
                                 )
-
+            # pylint: disable=broad-exception-caught
             except Exception:
                 self.failed_validations.append(
                     f"The predictions in the column `{self.prediction_scores_column_name}` "
@@ -439,10 +437,8 @@ class DatasetValidator(BaseValidator):
         """Checks whether the predictions are class probabilities.
         Tolerate a 10% error margin."""
         if any(
-            [
-                (sum(predictions) < 0.9 or sum(predictions) > 1.1)
-                for predictions in dataset_df[predictions_column_name]
-            ]
+            sum(predictions) < 0.9 or sum(predictions) > 1.1
+            for predictions in dataset_df[predictions_column_name]
         ):
             return True
         return False
