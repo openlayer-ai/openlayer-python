@@ -1,3 +1,24 @@
+"""Module that contains the core functionality of the Openlayer Python SDK.
+
+This module mainly defines the Api class, which is used by the OpenlayerClient
+to make requests to the Openlayer API.
+The StorageType enum is also defined here, which is used to specify what kind
+of storage the OpenlayerClient should use for uploads.
+
+Typical usage example:
+
+    from . import api
+
+    self.api = api.Api(api_key)
+    endpoint = "projects"
+    payload = {
+        "name": name,
+        "description": description,
+        "taskType": task_type.value,
+    }
+    project_data = self.api.post_request(endpoint, body=payload)
+
+"""
 import os
 import shutil
 from enum import Enum
@@ -18,6 +39,7 @@ HTTP_STATUS_FORCE_LIST = [408, 429] + list(range(500, 504)) + list(range(506, 53
 HTTP_RETRY_ALLOWED_METHODS = frozenset({"GET", "PUT", "POST"})
 
 CLIENT_METADATA = {"version": __version__}
+REQUESTS_TIMEOUT = 60 * 60 * 3  # 3 hours
 
 
 class StorageType(Enum):
@@ -197,7 +219,7 @@ class Api:
             with open(file_path, "rb") as f:
                 # Avoid logging here as it will break the progress bar
                 fields = presigned_json["fields"]
-                fields["file"] = (presigned_json["id"], f)
+                fields["file"] = (presigned_json["id"], f, "application/x-tar")
                 e = MultipartEncoder(fields=fields)
                 m = MultipartEncoderMonitor(
                     e, lambda monitor: t.update(min(t.total, monitor.bytes_read) - t.n)
@@ -208,6 +230,7 @@ class Api:
                     data=m,
                     headers=headers,
                     verify=VERIFY_REQUESTS,
+                    timeout=REQUESTS_TIMEOUT,
                 )
 
         if res.ok:
@@ -237,6 +260,7 @@ class Api:
                     data=wrapped_file,
                     headers={"Content-Type": "application/x-gzip"},
                     verify=VERIFY_REQUESTS,
+                    timeout=REQUESTS_TIMEOUT,
                 )
         if res.ok:
             body["storageUri"] = presigned_json["storageUri"]
@@ -268,6 +292,7 @@ class Api:
                         "x-ms-blob-type": "BlockBlob",
                     },
                     verify=VERIFY_REQUESTS,
+                    timeout=REQUESTS_TIMEOUT,
                 )
         if res.ok:
             body["storageUri"] = presigned_json["storageUri"]
@@ -285,8 +310,8 @@ class Api:
         dir_path = os.path.dirname(blob_path)
         try:
             os.makedirs(dir_path, exist_ok=True)
-        except OSError:
-            raise OpenlayerException(f"Directory {dir_path} cannot be created")
+        except OSError as exc:
+            raise OpenlayerException(f"Directory {dir_path} cannot be created") from exc
         shutil.copyfile(file_path, blob_path)
         body["storageUri"] = presigned_json["storageUri"]
         return self.post_request(f"{endpoint}", body=body)

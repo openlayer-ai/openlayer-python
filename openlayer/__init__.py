@@ -1,10 +1,33 @@
+"""
+Openlayer Python SDK.
+
+Defines the core OpenlayerClient class that users can use to interact
+with the Openlayer platform.
+
+Typical usage example:
+
+    import openlayer
+
+    client = openlayer.OpenlayerClient("YOUR_API_KEY")
+    project = client.create_project("My Project")
+    project.add_dataframe(
+        dataset_df=training_set,
+        dataset_config_file_path="training_dataset_config.yaml",
+    )
+    project.add_dataframe(
+        dataset_df=validation_set,
+        dataset_config_file_path="validation_dataset_config.yaml",
+    )
+    project.status()
+    project.push()
+"""
 import os
 import shutil
 import tarfile
 import tempfile
 import time
 import uuid
-from typing import List, Optional
+from typing import Optional
 
 import pandas as pd
 import yaml
@@ -1037,7 +1060,10 @@ class OpenlayerClient(object):
                 print("Keeping the existing commit message.")
                 return
 
-        commit = dict(message=message, date=time.ctime())
+        commit = {
+            "message": message,
+            "date": time.ctime(),
+        }
         with open(f"{project_dir}/commit.yaml", "w", encoding="UTF-8") as commit_file:
             yaml.dump(commit, commit_file)
 

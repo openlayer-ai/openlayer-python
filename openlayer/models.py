@@ -1,3 +1,21 @@
+# pylint: disable=invalid-name,broad-exception-raised, consider-using-with
+"""
+Module that contains structures relevant to interfacing models with Openlayer.
+
+The ModelType enum chooses between different machine learning modeling frameworks.
+The Model object contains information about a model on the Openlayer platform.
+The CondaEnv object contains conda environment metadata relevant to the
+Openlayer platform.
+The ModelRunner runs input data through the model in a consistent Conda environment.
+
+Typical usage example:
+
+    validate=validate.OneOf(
+        [model_framework.value for model_framework in ModelType],
+        error=f"`model_type` must be one of the supported frameworks.",
+    )
+
+"""
 import ast
 import datetime
 import logging

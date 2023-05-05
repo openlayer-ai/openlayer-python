@@ -1,3 +1,4 @@
+# pylint: disable=invalid-name, unused-argument
 """Schemas for the objects that shall be created on the Openlayer platform.
 """
 import marshmallow as ma
