@@ -75,7 +75,7 @@ class Project:
 
     def commit(self, *args, **kwargs):
         """Adds a commit message to staged resources."""
-        return self.client.commit(*args, project_id=self.id, **kwargs)
+        return self.client.commit(*args, project_id=self.id, task_type=tasks.TaskType(self.taskType), **kwargs)
 
     def push(self, *args, **kwargs):
         """Pushes the commited resources to the platform."""

@@ -994,7 +994,7 @@ class OpenlayerClient(object):
                 task_type=task_type,
             )
 
-    def commit(self, message: str, project_id: int, force: bool = False):
+    def commit(self, message: str, project_id: int, task_type: TaskType, force: bool = False):
         """Adds a commit message to staged resources.
 
         Parameters
@@ -1075,6 +1075,8 @@ class OpenlayerClient(object):
         commit = {
             "message": message,
             "date": time.ctime(),
+            "taskType": task_type.value,
+            "version": __version__
         }
         with open(f"{project_dir}/commit.yaml", "w", encoding="UTF-8") as commit_file:
             yaml.dump(commit, commit_file)
@@ -1105,7 +1107,7 @@ class OpenlayerClient(object):
         """
         project_dir = f"{OPENLAYER_DIR}/{project_id}/staging"
 
-        if self._ready_for_push(project_dir=project_dir):
+        if self._ready_for_push(project_dir=project_dir, task_type=task_type):
             with open(
                 f"{project_dir}/commit.yaml", "r", encoding="UTF-8"
             ) as commit_file:
@@ -1134,13 +1136,15 @@ class OpenlayerClient(object):
             self._post_push_cleanup(project_dir=project_dir)
             print("Pushed!")
 
-    def _ready_for_push(self, project_dir: str) -> bool:
+    def _ready_for_push(self, project_dir: str, task_type: TaskType) -> bool:
         """Checks if the project's staging area is ready to be pushed to the platform.
 
         Parameters
         ----------
         project_dir : str
             Directory path to the project's staging area.
+        task_type : TaskType
+            The type of task the project is associated with.
 
         Returns
         -------
