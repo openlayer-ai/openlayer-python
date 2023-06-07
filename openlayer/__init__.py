@@ -1105,7 +1105,7 @@ class OpenlayerClient(object):
         """
         project_dir = f"{OPENLAYER_DIR}/{project_id}/staging"
 
-        if self._ready_for_push(project_dir=project_dir):
+        if self._ready_for_push(project_dir=project_dir, task_type=task_type):
             with open(
                 f"{project_dir}/commit.yaml", "r", encoding="UTF-8"
             ) as commit_file:
@@ -1134,7 +1134,7 @@ class OpenlayerClient(object):
             self._post_push_cleanup(project_dir=project_dir)
             print("Pushed!")
 
-    def _ready_for_push(self, project_dir: str) -> bool:
+    def _ready_for_push(self, project_dir: str, task_type: TaskType) -> bool:
         """Checks if the project's staging area is ready to be pushed to the platform.
 
         Parameters
