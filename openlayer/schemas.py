@@ -86,6 +86,10 @@ class BaseDatasetSchema(ma.Schema):
         ),
         required=True,
     )
+    language = ma.fields.Str(
+        load_default="en",
+        validate=LANGUAGE_CODE_REGEX,
+    )
     metadata = ma.fields.Dict(allow_none=True, load_default={})
     sep = ma.fields.Str(load_default=",")
 
@@ -107,10 +111,6 @@ class TabularInputSchema(BaseDatasetSchema):
 class TextInputSchema(BaseDatasetSchema):
     """Specific schema for text datasets."""
 
-    language = ma.fields.Str(
-        load_default="en",
-        validate=LANGUAGE_CODE_REGEX,
-    )
     textColumnName = ma.fields.Str(
         validate=COLUMN_NAME_VALIDATION_LIST,
         allow_none=True,
