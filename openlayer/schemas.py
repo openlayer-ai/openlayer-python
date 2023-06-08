@@ -53,7 +53,7 @@ class BaselineModelSchema(maos.OneOfSchema):
 
     def get_obj_type(self, obj):
         if obj != "tabular-classification":
-            raise Exception(f"Unknown object type: {obj.__class__.__name__}")
+            raise ma.ValidationError(f"Unknown object type: {obj.__class__.__name__}")
         return obj
 
 
@@ -187,7 +187,7 @@ class DatasetSchema(maos.OneOfSchema):
             "text-classification",
             "tabular-regression",
         }:
-            raise Exception(f"Unknown object type: {obj.__class__.__name__}")
+            raise ma.ValidationError(f"Unknown object type: {obj.__class__.__name__}")
         return obj
 
 
@@ -299,7 +299,7 @@ class ModelSchema(maos.OneOfSchema):
             "text-classification",
             "tabular-regression",
         }:
-            raise Exception(f"Unknown object type: {obj.__class__.__name__}")
+            raise ma.ValidationError(f"Unknown object type: {obj.__class__.__name__}")
         return obj
 
 

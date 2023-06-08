@@ -467,10 +467,10 @@ def get_model_runner(
     logger : Optional[logging.Logger], optional
         Logger to use, by default None
     """
-    if (
-        task_type == tasks.TaskType.TabularClassification
-        or task_type == tasks.TaskType.TextClassification
-    ):
+    if task_type in [
+        tasks.TaskType.TabularClassification,
+        tasks.TaskType.TextClassification,
+    ]:
         return ClassificationModelRunner(model_package, logger)
     elif task_type == tasks.TaskType.TabularRegression:
         return RegressionModelRunner(model_package, logger)
