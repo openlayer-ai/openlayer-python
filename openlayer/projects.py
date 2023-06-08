@@ -85,7 +85,9 @@ class Project:
 
     def export(self, *args, **kwargs):
         """Exports the commited resources to a specified location."""
-        return self.client.export(*args, project_id=self.id, **kwargs)
+        return self.client.export(
+            *args, project_id=self.id, task_type=tasks.TaskType(self.taskType), **kwargs
+        )
 
     def status(self, *args, **kwargs):
         """Shows the state of the staging area."""

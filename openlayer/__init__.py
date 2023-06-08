@@ -1183,7 +1183,7 @@ class OpenlayerClient(object):
         shutil.rmtree(project_dir)
         os.makedirs(project_dir, exist_ok=True)
 
-    def export(self, destination_dir: str, project_id: int):
+    def export(self, destination_dir: str, project_id: int, task_type: TaskType):
         """Exports the commited resources as a tarfile to the location specified
         by ``destination_dir``.
 
@@ -1216,7 +1216,7 @@ class OpenlayerClient(object):
         """
         project_dir = f"{OPENLAYER_DIR}/{project_id}/staging"
 
-        if self._ready_for_push(project_dir=project_dir):
+        if self._ready_for_push(project_dir=project_dir, task_type=task_type):
             # Tar the project's staging area
             with tempfile.TemporaryDirectory() as tmp_dir:
                 tar_file_path = os.path.join(tmp_dir, "tarfile")
