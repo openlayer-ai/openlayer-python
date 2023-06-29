@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 * Added `protobuf<3.20` to requirements to fix compatibility issue with Tensorflow.
 * Warnings if the dependencies from the `requirement_txt_file` and current environment are inconsistent.
 * Paths to custom SSL certificates can now be modified by altering `openlayer.api.VERIFY_REQUESTS`. The value can either be True (default), False, or a path to a certificate.
+* Ability to check for goal statuses through the API.
 
 ### Changed
 
