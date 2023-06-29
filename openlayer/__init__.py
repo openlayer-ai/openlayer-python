@@ -33,6 +33,7 @@ import pandas as pd
 import yaml
 
 from . import api, exceptions, utils
+from .project_versions import ProjectVersion
 from .projects import Project
 from .schemas import BaselineModelSchema, DatasetSchema, ModelSchema
 from .tasks import TaskType
@@ -473,7 +474,7 @@ class OpenlayerClient(object):
 
     def add_baseline_model(
         self,
-        project_id: int,
+        project_id: str,
         task_type: TaskType,
         model_config_file_path: Optional[str] = None,
         force: bool = False,
@@ -994,7 +995,7 @@ class OpenlayerClient(object):
                 task_type=task_type,
             )
 
-    def commit(self, message: str, project_id: int, force: bool = False):
+    def commit(self, message: str, project_id: str, force: bool = False):
         """Adds a commit message to staged resources.
 
         Parameters
@@ -1081,7 +1082,7 @@ class OpenlayerClient(object):
 
         print("Committed!")
 
-    def push(self, project_id: int, task_type: TaskType):
+    def push(self, project_id: str, task_type: TaskType) -> Optional[ProjectVersion]:
         """Pushes the commited resources to the platform.
 
         Notes
@@ -1124,15 +1125,17 @@ class OpenlayerClient(object):
                     f"\t - Date: {commit['date']}"
                 )
                 payload = {"commit": {"message": commit["message"]}}
-                self.api.upload(
+                response_body = self.api.upload(
                     endpoint=f"projects/{project_id}/versions",
                     file_path=tar_file_path,
                     object_name="tarfile",
                     body=payload,
                 )
+                project_version = ProjectVersion(json=response_body, client=self)
 
             self._post_push_cleanup(project_dir=project_dir)
             print("Pushed!")
+            return project_version
 
     def _ready_for_push(self, project_dir: str, task_type: TaskType) -> bool:
         """Checks if the project's staging area is ready to be pushed to the platform.
@@ -1183,7 +1186,7 @@ class OpenlayerClient(object):
         shutil.rmtree(project_dir)
         os.makedirs(project_dir, exist_ok=True)
 
-    def export(self, destination_dir: str, project_id: int, task_type: TaskType):
+    def export(self, destination_dir: str, project_id: str, task_type: TaskType):
         """Exports the commited resources as a tarfile to the location specified
         by ``destination_dir``.
 
@@ -1229,7 +1232,7 @@ class OpenlayerClient(object):
             self._post_push_cleanup(project_dir=project_dir)
             print("Exported tarfile!")
 
-    def status(self, project_id: int):
+    def status(self, project_id: str):
         """Shows the state of the staging area.
 
         Examples
@@ -1277,7 +1280,7 @@ class OpenlayerClient(object):
         print(f"\t {commit['message']}")
         print("Use the `push` method to push your changes to the platform.")
 
-    def restore(self, *resource_names: str, project_id: int):
+    def restore(self, *resource_names: str, project_id: str):
         """Removes the resource specified by ``resource_name`` from the staging area.
 
         Parameters
@@ -1328,7 +1331,7 @@ class OpenlayerClient(object):
                 os.remove(f"{project_dir}/commit.yaml")
 
     def _stage_resource(
-        self, resource_name: str, resource_dir: str, project_id: int, force: bool
+        self, resource_name: str, resource_dir: str, project_id: str, force: bool
     ):
         """Adds the resource specified by `resource_name` to the project's staging directory.
 
@@ -1370,3 +1373,43 @@ class OpenlayerClient(object):
         shutil.copytree(resource_dir, project_dir + "/" + resource_name)
 
         print(f"Staged the `{resource_name}` resource!")
+
+    def load_project_version(self, version_id: str) -> Project:
+        """Loads an existing project version from the Openlayer platform. Can be used
+        to check the status of the project version and the number of passing, failing
+        and skipped goals.
+
+        Parameters
+        ----------
+        id : str
+            UUID of the project to be loaded. You can find the UUID of a project by
+            navigating to the project's page on the Openlayer platform.
+
+            .. note::
+                When you run :obj:`push`, it will return the project version object,
+                which you can use to check your goal statuses.
+
+        Returns
+        -------
+        ProjectVersion
+            An object that is used to check for upload progress and goal statuses.
+            Also contains other useful information about a project version.
+
+        Examples
+        --------
+        Instantiate the client and load the project version:
+
+        >>> import openlayer
+        >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
+        >>>
+        >>> version = client.load_project_version(id='YOUR_PROJECT_ID_HERE')
+        >>> version.wait_for_completion()
+        >>> version.print_goal_report()
+
+        With the ProjectVersion object loaded, you are able to check progress and
+        goal statuses.
+        """
+        endpoint = f"versions/{version_id}"
+        version_data = self.api.get_request(endpoint)
+        version = ProjectVersion(version_data, self)
+        return version
