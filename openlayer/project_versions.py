@@ -99,8 +99,12 @@ class ProjectVersion:
         ProjectVersion
             The project version object.
         """
+        self.print_status_report()
         while self.status not in [TaskStatus.COMPLETED, TaskStatus.FAILED]:
+            prev_status_msg = self.status_message
             self.refresh()
+            if self.status_message != prev_status_msg:
+                self.print_status_report()
             time.sleep(1)
             if timeout:
                 timeout -= 1
@@ -119,6 +123,10 @@ class ProjectVersion:
         """Refreshes the project version object with the latest
         information from the server."""
         self._json = self.client.load_project_version(self.id).to_dict()
+
+    def print_status_report(self):
+        """Prints the status report along with its status message."""
+        print("Status:", self.status.value, "(" + self.status_message + ")")
 
     def print_goal_report(self):
         """Prints the goal results of the project version."""
