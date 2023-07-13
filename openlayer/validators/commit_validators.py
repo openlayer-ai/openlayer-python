@@ -391,7 +391,7 @@ class TextCommitBundleValidator(BaseCommitBundleValidator):
         )
         if validation_dataset_df is not None:
             sample_data = validation_dataset_df[
-                self.validation_dataset_config["textColumnName"]
+                [self.validation_dataset_config["textColumnName"]]
             ].head()
 
         return sample_data
