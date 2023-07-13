@@ -126,7 +126,7 @@ class ProjectVersion:
 
     def print_status_report(self):
         """Prints the status report along with its status message."""
-        print("Status:", self.status.value, "(" + self.status_message + ")")
+        print("Status:", self.status.value, "(" + f"{self.status_message}" + ")")
 
     def print_goal_report(self):
         """Prints the goal results of the project version."""
