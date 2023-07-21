@@ -10,7 +10,7 @@ import marshmallow as ma
 import pandas as pd
 import yaml
 
-from .. import schemas, tasks
+from .. import constants, schemas, tasks
 from .base_validator import BaseValidator
 
 logger = logging.getLogger("validators")
@@ -201,6 +201,64 @@ class BaseDatasetValidator(BaseValidator, ABC):
         pass
 
 
+# ----------------------------- Input validators ----------------------------- #
+class LLInputValidator(BaseDatasetValidator):
+    """Validates LLM inputs.
+
+    This is not a complete implementation of the abstract class. This is a
+    partial implementation used to compose the full classes.
+    """
+
+    input_variable_names: Optional[List[str]] = None
+
+    def _validate_inputs(self):
+        """Validates LLM inputs."""
+        # Setting the attributes needed for the validations
+        self.input_variable_names = self.dataset_config.get("inputVariableNames")
+
+        if self.input_variable_names:
+            self._validate_input_variables()
+
+    def _validate_input_variables(self):
+        """Validates the data in the input variables columns."""
+        if columns_not_in_df(self.dataset_df, self.input_variable_names):
+            self.failed_validations.append(
+                "Not all input variables specified in `inputVariableNames` are in "
+                "the dataset. Please make sure that the dataset contains one column "
+                "for each input variable specified in `inputVariableNames`."
+            )
+        elif self._input_variables_not_castable_to_str(
+            dataset_df=self.dataset_df, input_variable_names=self.input_variable_names
+        ):
+            self.failed_validations.append(
+                "Not all input variables are castable to string. Please make sure that "
+                "all input variables specified in `inputVariableNames` can be "
+                "cast to string."
+            )
+        else:
+            for input_variable in self.input_variable_names:
+                if exceeds_character_limit(self.dataset_df, input_variable):
+                    self.failed_validations.append(
+                        f"Input variable `{input_variable}` exceeds the maximum "
+                        f"character limit of {constants.MAXIMUM_CHARACTER_LIMIT} characters. "
+                        "Please make sure that all input variables specified in "
+                        "`inputVariableNames` do not exceed the maximum character limit."
+                    )
+
+    @staticmethod
+    def _input_variables_not_castable_to_str(
+        dataset_df: pd.DataFrame,
+        input_variable_names: List[str],
+    ) -> bool:
+        """Checks whether the input variables can be cast to string."""
+        for input_variable in input_variable_names:
+            try:
+                dataset_df[input_variable].astype(str)
+            except ValueError:
+                return True
+        return False
+
+
 class TabularInputValidator(BaseDatasetValidator):
     """Validates tabular inputs.
 
@@ -224,28 +282,17 @@ class TabularInputValidator(BaseDatasetValidator):
 
     def _validate_features(self):
         """Validates the data in the features and categorical features columns."""
-        if self._columns_not_in_dataset_df(self.dataset_df, self.feature_names):
+        if columns_not_in_df(self.dataset_df, self.feature_names):
             self.failed_validations.append(
                 "There are features specified in `featureNames` which are "
                 "not in the dataset."
             )
         if self.categorical_feature_names:
-            if self._columns_not_in_dataset_df(
-                self.dataset_df, self.categorical_feature_names
-            ):
+            if columns_not_in_df(self.dataset_df, self.categorical_feature_names):
                 self.failed_validations.append(
                     "There are categorical features specified in `categoricalFeatureNames` "
                     "which are not in the dataset."
                 )
-
-    @staticmethod
-    def _columns_not_in_dataset_df(
-        dataset_df: pd.DataFrame, columns_list: List[str]
-    ) -> bool:
-        """Checks whether the columns are in the dataset."""
-        if set(columns_list) - set(dataset_df.columns):
-            return True
-        return False
 
 
 class TextInputValidator(BaseDatasetValidator):
@@ -280,10 +327,10 @@ class TextInputValidator(BaseDatasetValidator):
                 "contains values  that are not strings.  "
                 "Please make sure that the column contains only strings or NaNs."
             )
-        elif self._exceeds_character_limit(self.dataset_df, self.text_column_name):
+        elif exceeds_character_limit(self.dataset_df, self.text_column_name):
             self.failed_validations.append(
                 f"The column `{self.text_column_name}` of the dataset contains rows that "
-                "exceed the 1000 character limit."
+                f"exceed the {constants.MAXIMUM_CHARACTER_LIMIT} character limit."
             )
 
     @staticmethod
@@ -297,16 +344,8 @@ class TextInputValidator(BaseDatasetValidator):
                 return True
         return False
 
-    @staticmethod
-    def _exceeds_character_limit(
-        dataset_df: pd.DataFrame, text_column_name: str
-    ) -> bool:
-        """Checks whether the text column exceeds the character limit."""
-        if dataset_df[text_column_name].str.len().max() > 1000:
-            return True
-        return False
 
-
+# ----------------------------- Output validators ---------------------------- #
 class ClassificationOutputValidator(BaseDatasetValidator):
     """Validates classification outputs.
 
@@ -511,6 +550,77 @@ class ClassificationOutputValidator(BaseDatasetValidator):
         return False
 
 
+class LLMOutputValidator(BaseDatasetValidator):
+    """Validates LLM outputs.
+
+    This is not a complete implementation of the abstract class. This is a
+    partial implementation used to compose the full classes.
+    """
+
+    ground_truth_column_name: Optional[str] = None
+    output_column_name: Optional[str] = None
+
+    def _validate_outputs(self):
+        """Validates the LLM outputs (i.e., ground truth and output)."""
+        self.ground_truth_column_name = self.dataset_config.get("groundTruthColumnName")
+        self.output_column_name = self.dataset_config.get("outputColumnName")
+
+        if self.ground_truth_column_name:
+            self._validate_ground_truth()
+
+        if self.output_column_name:
+            self._validate_output()
+
+        if self.ground_truth_column_name and self.output_column_name:
+            self._validate_ground_truth_and_output_columns_different()
+
+    def _validate_ground_truth(self):
+        """Validations on the ground truth column."""
+        if self.ground_truth_column_name not in self.dataset_df.columns:
+            self.failed_validations.append(
+                f"The ground truth column `{self.ground_truth_column_name}` specified as"
+                " `groundTruthColumnName` is not in the dataset."
+            )
+        elif not hasattr(self.dataset_df[self.ground_truth_column_name], "str"):
+            self.failed_validations.append(
+                f"The ground truth column `{self.ground_truth_column_name}` specified as"
+                " `groundTruthColumnName` is not a string column."
+            )
+        elif exceeds_character_limit(self.dataset_df, self.ground_truth_column_name):
+            self.failed_validations.append(
+                f"The ground truth column `{self.ground_truth_column_name}` specified as"
+                " `groundTruthColumnName` contains strings that exceed the "
+                f" {constants.MAXIMUM_CHARACTER_LIMIT} character limit."
+            )
+
+    def _validate_output(self):
+        """Validations on the output column."""
+        if self.output_column_name not in self.dataset_df.columns:
+            self.failed_validations.append(
+                f"The output column `{self.output_column_name}` specified as"
+                " `outputColumnName` is not in the dataset."
+            )
+        elif not hasattr(self.dataset_df[self.output_column_name], "str"):
+            self.failed_validations.append(
+                f"The output column `{self.output_column_name}` specified as"
+                " `outputColumnName` is not a string column."
+            )
+        elif exceeds_character_limit(self.dataset_df, self.output_column_name):
+            self.failed_validations.append(
+                f"The output column `{self.output_column_name}` specified as"
+                " `outputColumnName` contains strings that exceed the "
+                f" {constants.MAXIMUM_CHARACTER_LIMIT} character limit."
+            )
+
+    def _validate_ground_truth_and_output_columns_different(self):
+        """Validates that the ground truth and output columns are different."""
+        if self.ground_truth_column_name == self.output_column_name:
+            self.failed_validations.append(
+                "The output column and the ground truth column are the same. "
+                "Please specify different columns for the output and the ground truths."
+            )
+
+
 class RegressionOutputValidator(BaseDatasetValidator):
     """Validates regression outputs.
 
@@ -573,6 +683,13 @@ class RegressionOutputValidator(BaseDatasetValidator):
                 "The target column and the predictions column are the same. "
                 "Please specify different columns for the predictions and the target."
             )
+
+
+# ------------------------ Complete dataset validators ----------------------- #
+class LLMDatasetValidator(LLInputValidator, LLMOutputValidator):
+    """Validates an LLM dataset."""
+
+    pass
 
 
 class TabularClassificationDatasetValidator(
@@ -678,5 +795,36 @@ def get_validator(
             dataset_df=dataset_df,
             task_type=task_type,
         )
+    elif task_type in [
+        tasks.TaskType.LLM,
+        tasks.TaskType.LLMNER,
+        tasks.TaskType.LLMQuestionAnswering,
+        tasks.TaskType.LLMSummarization,
+        tasks.TaskType.LLMTranslation,
+    ]:
+        return LLMDatasetValidator(
+            dataset_config_file_path=dataset_config_file_path,
+            dataset_config=dataset_config,
+            dataset_file_path=dataset_file_path,
+            dataset_df=dataset_df,
+            task_type=task_type,
+        )
     else:
         raise ValueError(f"Task type `{task_type}` is not supported.")
+
+
+# --------------- Helper functions used by multiple validators --------------- #
+def columns_not_in_df(df: pd.DataFrame, columns_list: List[str]) -> bool:
+    """Checks whether the columns are in the dataset."""
+    if set(columns_list) - set(df.columns):
+        return True
+    return False
+
+
+def exceeds_character_limit(df: pd.DataFrame, column: str) -> bool:
+    """Checks whether the column exceeds the character limit."""
+    if not hasattr(df[column], "str"):
+        return False
+    if df[column].str.len().max() > constants.MAXIMUM_CHARACTER_LIMIT:
+        return True
+    return False

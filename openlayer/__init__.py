@@ -32,7 +32,7 @@ from typing import Optional
 import pandas as pd
 import yaml
 
-from . import api, exceptions, utils
+from . import api, constants, exceptions, utils
 from .project_versions import ProjectVersion
 from .projects import Project
 from .schemas import BaselineModelSchema, DatasetSchema, ModelSchema
@@ -47,9 +47,6 @@ from .validators import (
     project_validators,
 )
 from .version import __version__  # noqa: F401
-
-OPENLAYER_DIR = os.path.join(os.path.expanduser("~"), ".openlayer")
-VALID_RESOURCE_NAMES = {"model", "training", "validation"}
 
 
 class OpenlayerClient(object):
@@ -71,8 +68,8 @@ class OpenlayerClient(object):
     def __init__(self, api_key: str = None):
         self.api = api.Api(api_key)
 
-        if not os.path.exists(OPENLAYER_DIR):
-            os.makedirs(OPENLAYER_DIR)
+        if not os.path.exists(constants.OPENLAYER_DIR):
+            os.makedirs(constants.OPENLAYER_DIR)
 
     def create_project(
         self, name: str, task_type: TaskType, description: Optional[str] = None
@@ -146,7 +143,7 @@ class OpenlayerClient(object):
         project = Project(project_data, self.api.upload, self)
 
         # Check if the staging area exists
-        project_dir = os.path.join(OPENLAYER_DIR, f"{project.id}/staging")
+        project_dir = os.path.join(constants.OPENLAYER_DIR, f"{project.id}/staging")
         os.makedirs(project_dir)
 
         print(f"Created your project. Navigate to {project.links['app']} to see it.")
@@ -193,7 +190,7 @@ class OpenlayerClient(object):
         project = Project(project_data["items"][0], self.api.upload, self)
 
         # Create the project staging area, if it doesn't yet exist
-        project_dir = os.path.join(OPENLAYER_DIR, f"{project.id}/staging")
+        project_dir = os.path.join(constants.OPENLAYER_DIR, f"{project.id}/staging")
         if not os.path.exists(project_dir):
             os.makedirs(project_dir)
 
@@ -410,6 +407,10 @@ class OpenlayerClient(object):
                     f"{len(sample_data)} rows were provided."
                 )
 
+        # hack ---------------------------------------------------------------
+        task_type = TaskType.LLM
+        # hack ---------------------------------------------------------------
+
         # Validate model package
         model_validator = model_validators.get_validator(
             task_type=task_type,
@@ -434,9 +435,11 @@ class OpenlayerClient(object):
             if model_package_dir:
                 shutil.copytree(model_package_dir, temp_dir, dirs_exist_ok=True)
                 utils.write_python_version(temp_dir)
-                model_data["modelType"] = "full"
+                model_type = model_data.get("modelType", "full")
+                model_data["modelType"] = model_type
             else:
-                model_data["modelType"] = "shell"
+                model_type = model_data.get("modelType", "shell")
+                model_data["modelType"] = model_type
 
             utils.write_yaml(model_data, f"{temp_dir}/model_config.yaml")
 
@@ -668,6 +671,10 @@ class OpenlayerClient(object):
         >>> project.commit("Initial dataset commit.")
         >>> project.push()
         """
+        # hack ---------------------------------------------------------------
+        task_type = TaskType.LLM
+        # hack ---------------------------------------------------------------
+
         # Validate dataset
         dataset_validator = dataset_validators.get_validator(
             task_type=task_type,
@@ -906,7 +913,7 @@ class OpenlayerClient(object):
                 "Make sure to fix all of the issues listed above before committing.",
             ) from None
 
-        project_dir = f"{OPENLAYER_DIR}/{project_id}/staging"
+        project_dir = f"{constants.OPENLAYER_DIR}/{project_id}/staging"
 
         if not os.listdir(project_dir):
             print(
@@ -975,7 +982,11 @@ class OpenlayerClient(object):
 
         >>> project.push()
         """
-        project_dir = f"{OPENLAYER_DIR}/{project_id}/staging"
+        project_dir = f"{constants.OPENLAYER_DIR}/{project_id}/staging"
+
+        # hack ---------------------------------------------------------------
+        task_type = TaskType.LLM
+        # hack ---------------------------------------------------------------
 
         if self._ready_for_push(project_dir=project_dir, task_type=task_type):
             with open(
@@ -1088,7 +1099,7 @@ class OpenlayerClient(object):
 
         >>> project.export(destination_dir="/path/to/destination")
         """
-        project_dir = f"{OPENLAYER_DIR}/{project_id}/staging"
+        project_dir = f"{constants.OPENLAYER_DIR}/{project_id}/staging"
 
         if self._ready_for_push(project_dir=project_dir, task_type=task_type):
             # Tar the project's staging area
@@ -1124,7 +1135,7 @@ class OpenlayerClient(object):
         Finally, you can have a staging area with resources staged and committed (with the
         :obj:`commit` method).
         """
-        project_dir = f"{OPENLAYER_DIR}/{project_id}/staging"
+        project_dir = f"{constants.OPENLAYER_DIR}/{project_id}/staging"
 
         if not os.listdir(project_dir):
             print(
@@ -1136,7 +1147,7 @@ class OpenlayerClient(object):
         if not os.path.exists(f"{project_dir}/commit.yaml"):
             print("The following resources are staged, waiting to be committed:")
             for file in os.listdir(project_dir):
-                if file in VALID_RESOURCE_NAMES:
+                if file in constants.VALID_RESOURCE_NAMES:
                     print(f"\t - {file}")
             print("Use the `commit` method to add a commit message to your changes.")
             return
@@ -1145,7 +1156,7 @@ class OpenlayerClient(object):
             commit = yaml.safe_load(commit_file)
         print("The following resources are committed, waiting to be pushed:")
         for file in os.listdir(project_dir):
-            if file in VALID_RESOURCE_NAMES:
+            if file in constants.VALID_RESOURCE_NAMES:
                 print(f"\t - {file}")
         print(f"Commit message from {commit['date']}:")
         print(f"\t {commit['message']}")
@@ -1181,7 +1192,7 @@ class OpenlayerClient(object):
 
         >>> project.restore(resource_name="model")
         """
-        project_dir = f"{OPENLAYER_DIR}/{project_id}/staging"
+        project_dir = f"{constants.OPENLAYER_DIR}/{project_id}/staging"
 
         for resource_name in resource_names:
             if not os.path.exists(f"{project_dir}/{resource_name}"):
@@ -1218,13 +1229,13 @@ class OpenlayerClient(object):
         force : bool
             Whether to overwrite the resource if it already exists in the staging area.
         """
-        if resource_name not in VALID_RESOURCE_NAMES:
+        if resource_name not in constants.VALID_RESOURCE_NAMES:
             raise ValueError(
                 "Resource name must be one of 'model', 'training', or"
                 f" 'validation', but got '{resource_name}'."
             )
 
-        project_dir = f"{OPENLAYER_DIR}/{project_id}/staging"
+        project_dir = f"{constants.OPENLAYER_DIR}/{project_id}/staging"
 
         resources_staged = utils.list_resources_in_bundle(project_dir)
 

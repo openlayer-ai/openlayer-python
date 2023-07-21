@@ -5,6 +5,8 @@
 import importlib
 import logging
 import os
+import tarfile
+import tempfile
 import warnings
 from abc import ABC, abstractmethod
 from typing import Dict, Optional
@@ -15,7 +17,7 @@ import pandas as pd
 import pkg_resources
 import yaml
 
-from .. import models, schemas, tasks, utils
+from .. import constants, models, schemas, tasks, utils
 from .base_validator import BaseValidator
 
 logger = logging.getLogger("validators")
@@ -465,6 +467,64 @@ class TextClassificationModelValidator(ClassificationModelValidator):
     pass
 
 
+class LLMValidator(BaseModelValidator):
+    """Agent validator.
+
+    Parameters
+    ----------
+    model_config_file_path: str
+        Path to the model config file.
+    task_type : tasks.TaskType
+        Task type of the model.
+    model_package_dir : str
+        Path to the model package directory.
+    sample_data : pd.DataFrame
+        Sample data to be used for the model validation.
+    """
+
+    def _validate(self) -> None:
+        """Runs all agent validations.
+
+        At each stage, prints all the failed validations.
+
+        Returns
+        -------
+        List[str]
+            A list of all failed validations.
+        """
+        if self.model_package_dir:
+            self._validate_model_package_dir()
+        self._validate_model_config()
+
+    def _validate_model_package_dir(self):
+        """Verifies that the agent directory is valid."""
+        if not os.path.exists(self.model_package_dir):
+            self.failed_validations.append(
+                f"The agent directory `{self.model_package_dir}` does not exist."
+            )
+
+        if not os.path.isdir(self.model_package_dir):
+            self.failed_validations.append(
+                f"The agent directory `{self.model_package_dir}` is not a directory."
+            )
+
+        if self.model_package_dir == os.getcwd():
+            self.failed_validations.append(
+                f"The agent directory `{self.model_package_dir}` is the current "
+                "working directory."
+            )
+
+        if dir_exceeds_size_limit(self.model_package_dir):
+            self.failed_validations.append(
+                f"The agent directory `{self.model_package_dir}` exceeds the size limit "
+                f"of {constants.MAX_model_package_dir_SIZE_MB} MB."
+            )
+
+    def _validate_prediction_interface(self):
+        """Validates the prediction interface for LLMs."""
+        pass
+
+
 # ----------------------------- Factory function ----------------------------- #
 def get_validator(
     task_type: tasks.TaskType,
@@ -543,5 +603,31 @@ def get_validator(
             sample_data=sample_data,
             task_type=task_type,
         )
+    elif task_type in [
+        tasks.TaskType.LLM,
+        tasks.TaskType.LLMNER,
+        tasks.TaskType.LLMQuestionAnswering,
+        tasks.TaskType.LLMSummarization,
+        tasks.TaskType.LLMTranslation,
+    ]:
+        return LLMValidator(
+            model_config_file_path=model_config_file_path,
+            task_type=task_type,
+        )
     else:
         raise ValueError(f"Task type `{task_type}` is not supported.")
+
+
+# --------------- Helper functions used by multiple validators --------------- #
+def dir_exceeds_size_limit(dir: str) -> bool:
+    """Checks whether the tar version of the directory exceeds the maximim limit."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tar_file_path = os.path.join(tmp_dir, "tarfile")
+        with tarfile.open(tar_file_path, mode="w:gz") as tar:
+            tar.add(dir, arcname=os.path.basename(dir))
+        tar_file_size = os.path.getsize(tar_file_path)
+
+        if tar_file_size > constants.MAXIMUM_TAR_FILE_SIZE * 1024 * 1024:
+            return True
+        else:
+            return False
