@@ -233,7 +233,7 @@ class BaseCommitBundleValidator(BaseValidator, ABC):
         if "model" in self._bundle_resources and not self._skip_model_validation:
             model_config_file_path = f"{self.bundle_path}/model/model_config.yaml"
             model_type = self.model_config.get("modelType")
-            if model_type == "shell":
+            if model_type == "shell" or model_type == "api":
                 model_validator = model_validators.get_validator(
                     task_type=self.task_type,
                     model_config_file_path=model_config_file_path,
@@ -256,7 +256,7 @@ class BaseCommitBundleValidator(BaseValidator, ABC):
             else:
                 raise ValueError(
                     f"Invalid model type: {model_type}. "
-                    "The model type must be one of 'shell', 'full' or 'baseline'."
+                    "The model type must be one of 'api', 'shell', 'full' or 'baseline'."
                 )
             self.failed_validations.extend(model_validator.validate())
 
@@ -525,6 +525,44 @@ class RegressionCommitBundleValidator(BaseCommitBundleValidator):
         pass
 
 
+class LLMCommitBundleValidator(BaseCommitBundleValidator):
+    """LLM commit bundle validator."""
+
+    def _dataset_contains_output(self, label: str) -> bool:
+        """Checks whether the dataset contains predictions.
+
+        Parameters
+        ----------
+        label : str
+            The label of the dataset to check.
+
+        Returns
+        -------
+        bool
+            Whether the dataset contains predictions.
+        """
+        dataset_config = utils.load_dataset_config_from_bundle(
+            bundle_path=self.bundle_path, label=label
+        )
+        output_column_name = dataset_config.get("outputColumnName")
+        return output_column_name is not None
+
+    def _get_sample_input_data(self) -> Optional[pd.DataFrame]:
+        """Gets a sample of the input data from the bundle.
+
+        This is the data that will be used to validate the model.
+        """
+        pass
+
+    def _validate_input_consistency(self):
+        """Verifies that the input data is consistent across the bundle."""
+        pass
+
+    def _validate_output_consistency(self):
+        """Verifies that the output data is consistent across the bundle."""
+        pass
+
+
 class TabularClassificationCommitBundleValidator(
     TabularCommitBundleValidator, ClassificationCommitBundleValidator
 ):
@@ -600,6 +638,21 @@ def get_validator(
         )
     elif task_type == tasks.TaskType.TextClassification:
         return TextClassificationCommitBundleValidator(
+            task_type=task_type,
+            bundle_path=bundle_path,
+            skip_model_validation=skip_model_validation,
+            skip_dataset_validation=skip_dataset_validation,
+            use_runner=use_runner,
+            log_file_path=log_file_path,
+        )
+    elif task_type in [
+        tasks.TaskType.LLM,
+        tasks.TaskType.LLMNER,
+        tasks.TaskType.LLMQuestionAnswering,
+        tasks.TaskType.LLMSummarization,
+        tasks.TaskType.LLMTranslation,
+    ]:
+        return LLMCommitBundleValidator(
             task_type=task_type,
             bundle_path=bundle_path,
             skip_model_validation=skip_model_validation,

@@ -94,6 +94,14 @@ class BaseDatasetSchema(ma.Schema):
     sep = ma.fields.Str(load_default=",")
 
 
+class LLMInputSchema(BaseDatasetSchema):
+    """Specific schema for the input part of LLM datasets."""
+
+    inputVariableNames = ma.fields.List(
+        ma.fields.Str(validate=COLUMN_NAME_VALIDATION_LIST), required=True
+    )
+
+
 class TabularInputSchema(BaseDatasetSchema):
     """Specific schema for tabular datasets."""
 
@@ -137,6 +145,18 @@ class ClassificationOutputSchema(BaseDatasetSchema):
     )
 
 
+class LLMOutputSchema(BaseDatasetSchema):
+    """Specific schema for the output part of LLM datasets."""
+
+    groundTruthColumnName = ma.fields.Str(
+        validate=COLUMN_NAME_VALIDATION_LIST, allow_none=True, load_default=None
+    )
+    outputColumnName = ma.fields.Str(
+        validate=COLUMN_NAME_VALIDATION_LIST,
+        required=True,
+    )
+
+
 class RegressionOutputSchema(BaseDatasetSchema):
     """Specific schema for regression datasets."""
 
@@ -149,6 +169,12 @@ class RegressionOutputSchema(BaseDatasetSchema):
         allow_none=True,
         load_default=None,
     )
+
+
+class LLMDatasetSchema(LLMInputSchema, LLMOutputSchema):
+    """LLM dataset schema."""
+
+    pass
 
 
 class TabularClassificationDatasetSchema(
@@ -176,17 +202,18 @@ class DatasetSchema(maos.OneOfSchema):
 
     type_field = "task_type"
     type_schemas = {
-        "tabular-classification": TabularClassificationDatasetSchema,
-        "tabular-regression": TabularRegressionDatasetSchema,
-        "text-classification": TextClassificationDatasetSchema,
+        TaskType.TabularClassification.value: TabularClassificationDatasetSchema,
+        TaskType.TabularRegression.value: TabularRegressionDatasetSchema,
+        TaskType.TextClassification.value: TextClassificationDatasetSchema,
+        TaskType.LLM.value: LLMDatasetSchema,
+        TaskType.LLMNER.value: LLMDatasetSchema,
+        TaskType.LLMQuestionAnswering.value: LLMDatasetSchema,
+        TaskType.LLMSummarization.value: LLMDatasetSchema,
+        TaskType.LLMTranslation.value: LLMDatasetSchema,
     }
 
     def get_obj_type(self, obj):
-        if obj not in {
-            "tabular-classification",
-            "text-classification",
-            "tabular-regression",
-        }:
+        if obj not in [task_type.value for task_type in TaskType]:
             raise ma.ValidationError(f"Unknown object type: {obj.__class__.__name__}")
         return obj
 
@@ -259,6 +286,30 @@ class ClassificationModelSchema(BaseModelSchema):
             )
 
 
+class LLMModelSchema(BaseModelSchema):
+    """Specific schema for LLM models."""
+
+    promptTemplate = ma.fields.Str()
+    modelProvider = ma.fields.Str()
+    modelParameters = ma.fields.Dict()
+    inputVariableNames = ma.fields.List(
+        ma.fields.Str(validate=COLUMN_NAME_VALIDATION_LIST),
+        load_default=[],
+    )
+
+    @ma.validates_schema
+    def validates_model_type_fields(self, data, **kwargs):
+        """Validates the required fields depending on the modelType."""
+        if data["modelType"] == "api":
+            if data.get("promptTemplate") is None or data.get("modelProvider") is None:
+                # TODO: rename "direct to API"
+                raise ma.ValidationError(
+                    "To use the direct to API approach for LLMs, you must "
+                    "provide at least the `promptTemplate` and specify the "
+                    "`modelProvider`."
+                )
+
+
 class RegressionModelSchema(BaseModelSchema):
     """Specific schema for regression models."""
 
@@ -288,17 +339,18 @@ class ModelSchema(maos.OneOfSchema):
 
     type_field = "task_type"
     type_schemas = {
-        "tabular-classification": TabularClassificationModelSchema,
-        "tabular-regression": TabularRegressionModelSchema,
-        "text-classification": TextClassificationModelSchema,
+        TaskType.TabularClassification.value: TabularClassificationModelSchema,
+        TaskType.TabularRegression.value: TabularRegressionModelSchema,
+        TaskType.TextClassification.value: TextClassificationModelSchema,
+        TaskType.LLM.value: LLMModelSchema,
+        TaskType.LLMNER.value: LLMModelSchema,
+        TaskType.LLMQuestionAnswering.value: LLMModelSchema,
+        TaskType.LLMSummarization.value: LLMModelSchema,
+        TaskType.LLMTranslation.value: LLMModelSchema,
     }
 
     def get_obj_type(self, obj):
-        if obj not in {
-            "tabular-classification",
-            "text-classification",
-            "tabular-regression",
-        }:
+        if obj not in [task_type.value for task_type in TaskType]:
             raise ma.ValidationError(f"Unknown object type: {obj.__class__.__name__}")
         return obj
 

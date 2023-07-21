@@ -24,9 +24,19 @@ class TaskType(Enum):
         show you how to use each one of these task types with Openlayer.
     """
 
-    #: For sequence classification tasks.
-    TextClassification = "text-classification"
+    #: For entity recognition tasks with LLMs.
+    LLMNER = "llm-ner"
+    #: For question answering tasks with LLMs.
+    LLMQuestionAnswering = "llm-question-answering"
+    #: For summarization tasks with LLMs.
+    LLMSummarization = "llm-summarization"
+    #: For translation tasks with LLMs.
+    LLMTranslation = "llm-translation"
+    # For general LLM tasks (none of the above).
+    LLM = "llm-base"
     #: For tabular classification tasks.
     TabularClassification = "tabular-classification"
-    #: Coming soon!
+    #: For tabular regression tasks.
     TabularRegression = "tabular-regression"
+    #: For text classification tasks.
+    TextClassification = "text-classification"
