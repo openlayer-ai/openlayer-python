@@ -11,6 +11,7 @@ This page gives an overview of all public openlayer objects, functions and metho
 
    upload
    validate
+   objects
 
 .. meta::
     :description lang=en:

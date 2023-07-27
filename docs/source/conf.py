@@ -48,6 +48,7 @@ extensions = [
     "numpydoc",
 ]
 numpydoc_attributes_as_param_list = False
+numpydoc_class_members_toctree = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]

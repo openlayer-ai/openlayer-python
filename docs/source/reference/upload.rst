@@ -46,6 +46,14 @@ Version control flow
    OpenlayerClient.restore
    OpenlayerClient.export
 
+Checking a project version's goal statuses
+------------------------------------------
+.. autosummary:: 
+   :toctree: api/
+   :template: class.rst
+   
+   OpenlayerClient.load_project_version
+
 Task types
 ----------
 .. autosummary:: 
