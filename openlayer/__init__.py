@@ -268,42 +268,17 @@ class OpenlayerClient(object):
         model_config_file_path : str
             Path to the model configuration YAML file.
 
-            .. admonition:: What's on the model config file?
+            .. admonition:: What's in the model config file?
 
-                The model configuration YAML file must contain the following fields:
-
-                name : str
-                    Name of the model.
-                architectureType : str
-                    The model's framework. Must be one of the supported frameworks
-                    on :obj:`ModelType`.
-                classNames : List[str]
-                    List of class names corresponding to the outputs of your predict function.
-                    E.g. ``['positive', 'negative']``.
-                featureNames : List[str], default []
-                    List of input feature names. Only applicable if your ``task_type`` is
-                    :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
-                categoricalFeatureNames : List[str], default []
-                    A list containing the names of all categorical features used by the model.
-                    E.g. ``["Gender", "Geography"]``. Only applicable if your ``task_type`` is
-                    :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
-                predictionThreshold : float, default None
-                    The threshold used to determine the predicted class. Only applicable if you
-                    are using a binary classifier and you provided the ``predictionScoresColumnName``
-                    with the lists of class probabilities in your datasets (refer to :obj:`add_dataframe`).
-
-                    If you provided ``predictionScoresColumnName`` but not ``predictionThreshold``,
-                    the predicted class is defined by the argmax of the lists in ``predictionScoresColumnName``.
-                metadata : Dict[str, any], default {}
-                    Dictionary containing metadata about the model. This is the metadata that
-                    will be displayed on the Openlayer platform.
-
+                The model configuration YAML depends on the :obj:`TaskType`.
+                Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-model-config>`_
+                for examples.
 
         model_package_dir : str, default None
             Path to the directory containing the model package. **Only needed if you are
             interested in adding the model's artifacts.**
 
-            .. admonition:: What's inside `model_package_dir`?
+            .. admonition:: What's in the `model_package_dir`?
 
                 The model package directory must contain the following files:
 
@@ -565,66 +540,11 @@ class OpenlayerClient(object):
         dataset_config_file_path : str
             Path to the dataset configuration YAML file.
 
-            .. admonition:: What's on the dataset config file?
+            .. admonition:: What's in the dataset config file?
 
-                The YAML file with the dataset config must have the following fields:
-
-                columnNames : List[str]
-                    List of the dataset's column names.
-                classNames : List[str]
-                    List of class names indexed by label integer in the dataset.
-                    E.g. ``[negative, positive]`` when ``[0, 1]`` are in your label column.
-                labelColumnName : str
-                    Column header in the csv containing the labels.
-
-                    .. important::
-                        The labels in this column must be zero-indexed integer values.
-                label : str
-                    Type of dataset. E.g. ``'training'`` or
-                    ``'validation'``.
-                featureNames : List[str], default []
-                    List of input feature names. Only applicable if your ``task_type`` is
-                    :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
-                textColumnName : str, default None
-                    Column header in the csv containing the input text. Only applicable if
-                    your ``task_type`` is :obj:`TaskType.TextClassification`.
-                predictionsColumnName : str, default None
-                    Column header in the csv containing the model's predictions as **zero-indexed
-                    integers**. Only applicable if you are uploading a model as well with the
-                    :obj:`add_model` method.
-
-                    This is optional if you provide a ``predictionScoresColumnName``.
-
-                    .. important::
-                        The values in this column must be zero-indexed integer values.
-                predictionScoresColumnName : str, default None
-                    Column header in the csv containing the model's predictions as **lists of
-                    class probabilities**. Only applicable if you are uploading a model as well with
-                    the :obj:`add_model` method.
-
-                    This is optional if you provide a ``predictionsColumnName``.
-
-                    .. important::
-                        Each cell in this column must contain a list of
-                        class probabilities. For example, for a binary classification
-                        task, the column with the predictions should look like this:
-
-                        **prediction_scores**
-
-                        ``[0.1, 0.9]``
-
-                        ``[0.8, 0.2]``
-
-                        ``...``
-
-                categoricalFeatureNames : List[str], default []
-                    A list containing the names of all categorical features in the dataset.
-                    E.g. ``["Gender", "Geography"]``. Only applicable if your ``task_type`` is
-                    :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
-                language : str, default 'en'
-                    The language of the dataset in ISO 639-1 (alpha-2 code) format.
-                sep : str, default ','
-                    Delimiter to use. E.g. `'\\t'`.
+                The dataset configuration YAML depends on the :obj:`TaskType`.
+                Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
+                for examples.
 
         force : bool
             If :obj:`add_dataset` is called when there is already a dataset of the same type
@@ -797,66 +717,11 @@ class OpenlayerClient(object):
         dataset_config_file_path : str
             Path to the dataset configuration YAML file.
 
-            .. admonition:: What's on the dataset config file?
+            .. admonition:: What's in the dataset config file?
 
-                The YAML file with the dataset config must have the following fields:
-
-                columnNames : List[str]
-                    List of the dataset's column names.
-                classNames : List[str]
-                    List of class names indexed by label integer in the dataset.
-                    E.g. ``[negative, positive]`` when ``[0, 1]`` are in your label column.
-                labelColumnName : str
-                    Column header in the dataframe containing the labels.
-
-                    .. important::
-                        The labels in this column must be zero-indexed integer values.
-                label : str
-                    Type of dataset. E.g. ``'training'`` or
-                    ``'validation'``.
-                featureNames : List[str], default []
-                    List of input feature names. Only applicable if your ``task_type`` is
-                    :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
-                textColumnName : str, default None
-                    Column header in the dataframe containing the input text. Only applicable if
-                    your ``task_type`` is :obj:`TaskType.TextClassification`.
-                predictionsColumnName : str, default None
-                    Column header in the dataframe containing the model's predictions as **zero-indexed
-                    integers**. Only applicable if you are uploading a model as well with the
-                    :obj:`add_model` method.
-
-                    This is optional if you provide a ``predictionScoresColumnName``.
-
-                    .. important::
-                        The values in this column must be zero-indexed integer values.
-                predictionScoresColumnName : str, default None
-                    Column header in the dataframe containing the model's predictions as **lists of
-                    class probabilities**. Only applicable if you are uploading a model as well with
-                    the :obj:`add_model` method.
-
-                    This is optional if you provide a ``predictionsColumnName``.
-
-                    .. important::
-                        Each cell in this column must contain a list of
-                        class probabilities. For example, for a binary classification
-                        task, the column with the predictions should look like this:
-
-                        **prediction_scores**
-
-                        ``[0.1, 0.9]``
-
-                        ``[0.8, 0.2]``
-
-                        ``...``
-
-                categoricalFeatureNames : List[str], default []
-                    A list containing the names of all categorical features in the dataset.
-                    E.g. ``["Gender", "Geography"]``. Only applicable if your ``task_type`` is
-                    :obj:`TaskType.TabularClassification` or :obj:`TaskType.TabularRegression`.
-                language : str, default 'en'
-                    The language of the dataset in ISO 639-1 (alpha-2 code) format.
-                sep : str, default ','
-                    Delimiter to use. E.g. `'\\t'`.
+                The dataset configuration YAML depends on the :obj:`TaskType`.
+                Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
+                for examples.
 
         force : bool
             If :obj:`add_dataframe` is called when there is already a dataset of the same
@@ -1084,6 +949,12 @@ class OpenlayerClient(object):
 
     def push(self, project_id: str, task_type: TaskType) -> Optional[ProjectVersion]:
         """Pushes the commited resources to the platform.
+
+        Returns
+        -------
+        :obj:`project_versions.ProjectVersion`
+            An object that is used to check for upload progress and goal statuses.
+            Also contains other useful information about a project version.
 
         Notes
         -----
@@ -1391,7 +1262,7 @@ class OpenlayerClient(object):
 
         Returns
         -------
-        ProjectVersion
+        :obj:`project_versions.ProjectVersion`
             An object that is used to check for upload progress and goal statuses.
             Also contains other useful information about a project version.
 
@@ -1406,7 +1277,7 @@ class OpenlayerClient(object):
         >>> version.wait_for_completion()
         >>> version.print_goal_report()
 
-        With the ProjectVersion object loaded, you are able to check progress and
+        With the :obj:`project_versions.ProjectVersion` object loaded, you are able to check progress and
         goal statuses.
         """
         endpoint = f"versions/{version_id}"

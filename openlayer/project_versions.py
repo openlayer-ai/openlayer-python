@@ -21,6 +21,12 @@ class TaskStatus(enum.Enum):
 class ProjectVersion:
     """An object containing information about a project version on the
     Openlayer platform.
+
+    This object is returned by the :meth:`openlayer.OpenlayerClient.push` and
+    :meth:`openlayer.OpenlayerClient.load_project_version` methods.
+
+    Refer to :meth:`openlayer.OpenlayerClient.load_project_version` for an example
+    of how to use the object.
     """
 
     def __init__(self, json, client):
