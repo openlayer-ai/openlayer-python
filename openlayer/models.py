@@ -27,7 +27,9 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List, Optional, Set
 
+import openai
 import pandas as pd
+import pybars
 
 from . import tasks, utils
 
@@ -413,8 +415,110 @@ class BaseModelRunner(ABC):
         pass
 
 
+class LLModelRunner(ABC):
+    """Base LLM model runner.
+
+    The run method gets the LLM's predictions one by one. Child classes
+    should implement the _initialize_llm method to initialize the LLM (i.e.
+    handle API keys, etc.) and the _get_llm_prediction method to get the
+    LLM's prediction for a single input row.
+    """
+
+    def __init__(self, model_package: str, logger: Optional[logging.Logger] = None):
+        self.model_config = utils.read_yaml(f"{model_package}/model_config.yaml")
+
+        # Use validators logger if no logger is provided
+        self.logger = logger or logging.getLogger("validators")
+
+    @abstractmethod
+    def _initialize_llm(self):
+        """Initializes the LLM. E.g. sets API keys, loads the model, etc."""
+        pass
+
+    def run(self, input_data_df: pd.DataFrame) -> pd.DataFrame:
+        """Runs the input data through the model in the conda
+        environment.
+        """
+        model_outputs = []
+
+        for input_data_row in input_data_df.iterrows():
+            input_variables_dict = input_data_row[1][
+                self.model_config["inputVariableNames"]
+            ].to_dict()
+            input_text = self._inject_prompt_template(
+                input_variables_dict=input_variables_dict
+            )
+
+            try:
+                model_outputs.append(self._get_llm_output(input_text=input_text))
+            except Exception as exc:
+                model_outputs.append(
+                    f"[Error] Could not get predictions for row: {exc}"
+                )
+
+        self.logger.info("Successfully ran data through the model!")
+        return pd.DataFrame({"predictions": model_outputs})
+
+    def _inject_prompt_template(self, input_variables_dict: dict) -> str:
+        """Injects the input variables into the prompt template.
+
+        The prompt template must contain handlebar expressions.
+
+        Parameters
+        ----------
+        input_variables_dict : dict
+            Dictionary of input variables to be injected into the prompt template.
+            E.g. {"input_variable_1": "value_1", "input_variable_2": "value_2"}
+        """
+        self.logger.info("Injecting input variables into the prompt template...")
+        compiler = pybars.Compiler()
+        formatter = compiler.compile(self.model_config["promptTemplate"].strip())
+        return formatter(input_variables_dict)
+
+    @abstractmethod
+    def _get_llm_output(self, input_text: str) -> str:
+        """Implements the logic to get the output from the language model for
+        a given input text."""
+        pass
+
+
+class OpenAIChatCompletionRunner(LLModelRunner):
+    """Wraps OpenAI's chat completion model."""
+
+    def __init__(
+        self,
+        model_package: str,
+        logger: Optional[logging.Logger] = None,
+        openai_api_key: str = None,
+    ):
+        super().__init__(model_package, logger)
+        if openai_api_key is None:
+            raise ValueError(
+                "OpenAI API key must be provided. Please pass it as a parameter "
+                "named 'openai_api_key'"
+            )
+
+        self.openai_api_key = openai_api_key
+        self._initialize_llm()
+
+    def _initialize_llm(self):
+        """Initializes the OpenAI chat completion model."""
+        openai.api_key = (
+            self.openai_api_key  # "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"
+        )
+
+    def _get_llm_output(self, input_text: str) -> str:
+        """Gets the output from the OpenAI's chat completion model
+        for a given input text."""
+        return openai.ChatCompletion.create(
+            model=self.model_config["model"],
+            messages=[{"role": "user", "content": input_text}],
+            **self.model_config.get("modelParameters", {}),
+        )["choices"][0]["message"]["content"]
+
+
 class ClassificationModelRunner(BaseModelRunner):
-    """ "Wraps classification models."""
+    """Wraps classification models."""
 
     def _copy_prediction_job_script(self, current_file_dir: str):
         """Copies the classification prediction job script to the model package."""
@@ -455,6 +559,7 @@ def get_model_runner(
     task_type: tasks.TaskType,
     model_package: str,
     logger: Optional[logging.Logger] = None,
+    **kwargs,
 ) -> BaseModelRunner:
     """Factory function to get the correct model runner for the specified task type.
 
@@ -474,5 +579,21 @@ def get_model_runner(
         return ClassificationModelRunner(model_package, logger)
     elif task_type == tasks.TaskType.TabularRegression:
         return RegressionModelRunner(model_package, logger)
+    elif task_type in [
+        tasks.TaskType.LLM,
+        tasks.TaskType.LLMNER,
+        tasks.TaskType.LLMQuestionAnswering,
+        tasks.TaskType.LLMSummarization,
+        tasks.TaskType.LLMTranslation,
+    ]:
+        model_provider = utils.read_yaml(f"{model_package}/model_config.yaml").get(
+            "modelProvider"
+        )
+        if model_provider == "OpenAI":
+            return OpenAIChatCompletionRunner(
+                model_package, logger, kwargs.get("openai_api_key")
+            )
+        else:
+            raise ValueError(f"Model provider `{model_provider}` is not supported.")
     else:
         raise ValueError(f"Task type `{task_type}` is not supported.")
