@@ -1231,8 +1231,8 @@ class OpenlayerClient(object):
         """
         if resource_name not in constants.VALID_RESOURCE_NAMES:
             raise ValueError(
-                "Resource name must be one of 'model', 'training', or"
-                f" 'validation', but got '{resource_name}'."
+                "Resource name must be one of 'model', 'training',"
+                f" 'validation', or 'fine-tuning' but got '{resource_name}'."
             )
 
         project_dir = f"{constants.OPENLAYER_DIR}/{project_id}/staging"
