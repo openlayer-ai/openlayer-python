@@ -174,7 +174,16 @@ class RegressionOutputSchema(BaseDatasetSchema):
 class LLMDatasetSchema(LLMInputSchema, LLMOutputSchema):
     """LLM dataset schema."""
 
-    pass
+    # Override the label to allow for a 'fine-tuning' label instead
+    # of the 'training' label
+    label = ma.fields.Str(
+        validate=ma.validate.OneOf(
+            ["fine-tuning", DatasetType.Validation.value],
+            error="`label` not supported."
+            + "The supported `labels` are 'fine-tuning' and 'validation'.",
+        ),
+        required=True,
+    )
 
 
 class TabularClassificationDatasetSchema(

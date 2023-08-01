@@ -12,6 +12,8 @@ from typing import Any, Dict
 import pandas as pd
 import yaml
 
+from . import constants
+
 
 # -------------------------- Helper context managers ------------------------- #
 class LogStdout:
@@ -131,7 +133,7 @@ def list_resources_in_bundle(bundle_path: str) -> list:
     """
     # TODO: factor out list of valid resources
     # pylint: disable=invalid-name
-    VALID_RESOURCES = {"baseline-model", "model", "training", "validation"}
+    VALID_RESOURCES = constants.VALID_RESOURCE_NAMES
 
     resources = []
 

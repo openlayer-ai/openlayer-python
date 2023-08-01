@@ -61,13 +61,20 @@ class BaseCommitBundleValidator(BaseValidator, ABC):
             if "model" in self._bundle_resources
             else {}
         )
-        self.training_dataset_config: Dict[str, any] = (
-            utils.load_dataset_config_from_bundle(
+        if "training" in self._bundle_resources:
+            self.training_dataset_config: Dict[
+                str, any
+            ] = utils.load_dataset_config_from_bundle(
                 bundle_path=bundle_path, label="training"
             )
-            if "training" in self._bundle_resources
-            else {}
-        )
+        elif "fine-tuning" in self._bundle_resources:
+            self.training_dataset_config: Dict[
+                str, any
+            ] = utils.load_dataset_config_from_bundle(
+                bundle_path=bundle_path, label="fine-tuning"
+            )
+        else:
+            self.training_dataset_config = {}
         self.validation_dataset_config: Dict[str, any] = (
             utils.load_dataset_config_from_bundle(
                 bundle_path=bundle_path, label="validation"
@@ -113,6 +120,8 @@ class BaseCommitBundleValidator(BaseValidator, ABC):
         outputs_in_validation_set = False
         if "training" in self._bundle_resources:
             outputs_in_training_set = self._dataset_contains_output(label="training")
+        elif "fine-tuning" in self._bundle_resources:
+            outputs_in_training_set = self._dataset_contains_output(label="fine-tuning")
         if "validation" in self._bundle_resources:
             outputs_in_validation_set = self._dataset_contains_output(
                 label="validation"
@@ -124,8 +133,7 @@ class BaseCommitBundleValidator(BaseValidator, ABC):
             if model_type == "baseline":
                 if (
                     "training" not in self._bundle_resources
-                    or "validation" not in self._bundle_resources
-                ):
+                ) or "validation" not in self._bundle_resources:
                     self.failed_validations.append(
                         "To push a baseline model to the platform, you must provide "
                         "training and validation sets."
@@ -139,21 +147,22 @@ class BaseCommitBundleValidator(BaseValidator, ABC):
             else:
                 if (
                     "training" not in self._bundle_resources
-                    and "validation" not in self._bundle_resources
-                ):
+                    or "fine-tuning" not in self._bundle_resources
+                ) and "validation" not in self._bundle_resources:
                     self.failed_validations.append(
                         "You are trying to push a model to the platform, but "
-                        "you did not provide a training or validation set. "
+                        "you did not provide a training/fine-tuning or validation set. "
                         "To push a model to the platform, you must provide "
                         "either: \n"
-                        "- training and validation sets; or \n"
+                        "- training/fine-tuning and validation sets; or \n"
                         "- a validation set. \n"
-                        "In any case, ensure that the predictions are provided in the "
+                        "In any case, ensure that the model predictions are provided in the "
                         "datasets."
                     )
-                elif ("training" not in self._bundle_resources) and (
-                    "validation" in self._bundle_resources
-                ):
+                elif (
+                    "training" not in self._bundle_resources
+                    or "fine-tuning" not in self._bundle_resources
+                ) and ("validation" in self._bundle_resources):
                     if not outputs_in_validation_set:
                         self.failed_validations.append(
                             "You are trying to push a model and a validation set to the platform. "
@@ -162,53 +171,54 @@ class BaseCommitBundleValidator(BaseValidator, ABC):
                         )
                 elif (
                     "training" in self._bundle_resources
-                    and "validation" not in self._bundle_resources
-                ):
+                    or "fine-tuning" in self._bundle_resources
+                ) and "validation" not in self._bundle_resources:
                     self.failed_validations.append(
-                        "You are trying to push a model and a training set to the platform. "
+                        "You are trying to push a model and a training/fine-tuning set to the platform. "
                         "To push a model to the platform, you must provide "
                         "either: \n"
-                        "- training and validation sets; or \n"
+                        "- training/fine-tuning and validation sets; or \n"
                         "- a validation set. \n"
-                        "In any case, ensure that the predictions are provided in the "
+                        "In any case, ensure that the model predictions are provided in the "
                         "datasets."
                     )
-                elif ("training" in self._bundle_resources) and (
-                    "validation" in self._bundle_resources
-                ):
+                elif (
+                    "training" in self._bundle_resources
+                    or "fine-tuning" in self._bundle_resources
+                ) and ("validation" in self._bundle_resources):
                     if not outputs_in_training_set or not outputs_in_validation_set:
                         self.failed_validations.append(
-                            "You are trying to push a model, a training set and a validation "
+                            "You are trying to push a model, a training/fine-tuning set and a validation "
                             "set to the platform. "
-                            "However, the training or the validation set do not contain predictions. "
-                            "Please provide predictions for both the training and the validation sets."
+                            "However, the training/fine-tuning or the validation set do not contain model "
+                            "predictions. Please provide predictions for both datasets."
                         )
 
         else:
             if (
                 "training" in self._bundle_resources
-                and "validation" not in self._bundle_resources
-            ):
+                or "fine-tuning" in self._bundle_resources
+            ) and "validation" not in self._bundle_resources:
                 if outputs_in_training_set:
                     self.failed_validations.append(
-                        "The training dataset contains predictions, but no model was"
-                        " provided. To push a training set with predictions, please provide"
+                        "The training/fine-tuning dataset contains predictions, but no model was"
+                        " provided. To push a training/fine-tuning set with predictions, please provide"
                         " a model and a validation set with predictions as well."
                     )
             elif (
                 "training" not in self._bundle_resources
-                and "validation" in self._bundle_resources
-            ):
+                or "fine-tuning" not in self._bundle_resources
+            ) and "validation" in self._bundle_resources:
                 # This is allowed -- listed just for completeness
                 pass
             elif (
                 "training" in self._bundle_resources
-                and "validation" in self._bundle_resources
-            ):
+                or "fine-tuning" in self._bundle_resources
+            ) and "validation" in self._bundle_resources:
                 if outputs_in_training_set or outputs_in_validation_set:
                     self.failed_validations.append(
-                        "You are trying to push a training set and a validation set to the platform. "
-                        "However, the training or the validation set contain predictions. "
+                        "You are trying to push a training/fine-tuning set and a validation set to the platform. "
+                        "However, the training/fine-tuning or the validation set contain predictions. "
                         "To push datasets with predictions, please provide a model as well."
                     )
 
@@ -221,6 +231,17 @@ class BaseCommitBundleValidator(BaseValidator, ABC):
                 dataset_file_path=f"{self.bundle_path}/training/dataset.csv",
             )
             self.failed_validations.extend(training_set_validator.validate())
+
+        if (
+            "fine-tuning" in self._bundle_resources
+            and not self._skip_dataset_validation
+        ):
+            fine_tuning_set_validator = dataset_validators.get_validator(
+                task_type=self.task_type,
+                dataset_config_file_path=f"{self.bundle_path}/fine-tuning/dataset_config.yaml",
+                dataset_file_path=f"{self.bundle_path}/fine-tuning/dataset.csv",
+            )
+            self.failed_validations.extend(fine_tuning_set_validator.validate())
 
         if "validation" in self._bundle_resources and not self._skip_dataset_validation:
             validation_set_validator = dataset_validators.get_validator(
