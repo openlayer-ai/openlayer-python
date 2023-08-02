@@ -299,6 +299,7 @@ class LLMModelSchema(BaseModelSchema):
     """Specific schema for LLM models."""
 
     promptTemplate = ma.fields.Str()
+    model = ma.fields.Str()
     modelProvider = ma.fields.Str()
     modelParameters = ma.fields.Dict()
     inputVariableNames = ma.fields.List(
@@ -310,12 +311,16 @@ class LLMModelSchema(BaseModelSchema):
     def validates_model_type_fields(self, data, **kwargs):
         """Validates the required fields depending on the modelType."""
         if data["modelType"] == "api":
-            if data.get("promptTemplate") is None or data.get("modelProvider") is None:
+            if (
+                data.get("promptTemplate") is None
+                or data.get("modelProvider") is None
+                or data.get("model") is None
+            ):
                 # TODO: rename "direct to API"
                 raise ma.ValidationError(
                     "To use the direct to API approach for LLMs, you must "
                     "provide at least the `promptTemplate` and specify the "
-                    "`modelProvider`."
+                    "`modelProvider`, and `model`."
                 )
 
 
