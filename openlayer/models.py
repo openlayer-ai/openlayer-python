@@ -28,6 +28,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List, Optional, Set
 
+import anthropic
 import cohere
 import openai
 import pandas as pd
@@ -670,6 +671,50 @@ class CohereGenerateModelRunner(LLModelRunner):
         )[0].text
 
 
+class AnthropicModelRunner(LLModelRunner):
+    """Wraps Anthropic's models."""
+
+    def __init__(
+        self,
+        logger: Optional[logging.Logger] = None,
+        **kwargs,
+    ):
+        super().__init__(logger, **kwargs)
+        if kwargs.get("anthropic_api_key") is None:
+            raise ValueError(
+                "Anthropic API key must be provided. Please pass it as the "
+                "keyword argument 'anthropic_api_key'"
+            )
+
+        self.anthropic_api_key = kwargs["anthropic_api_key"]
+        self._initialize_llm()
+
+    def _initialize_llm(self):
+        """Initializes Cohere's Generate model."""
+        self.anthropic_client = anthropic.Anthropic(
+            api_key=self.anthropic_api_key,
+        )
+        if self.model_config.get("model") is None:
+            warnings.warn("No model specified. Defaulting to model 'claude-2'.")
+        if self.model_config.get("model_parameters") is None:
+            warnings.warn("No model parameters specified. Using default parameters.")
+            self.model_config["model_parameters"]["max_tokens_to_sample"] = 200
+        elif "max_tokens_to_sample" not in self.model_config.get("model_parameters"):
+            warnings.warn(
+                "max_tokens_to_sample not specified. Using default max_tokens_to_sample of 200.",
+            )
+            self.model_config["model_parameters"]["max_tokens_to_sample"] = 200
+
+    def _get_llm_output(self, input_text: str) -> str:
+        """Gets the output from Cohere's generate model
+        for a given input text."""
+        return self.anthropic_client.completions.create(
+            model=self.model_config.get("model", "claude-2"),
+            prompt=f"{anthropic.HUMAN_PROMPT} {input_text} {anthropic.AI_PROMPT}",
+            **self.model_config.get("model_parameters", {}),
+        )["completion"]
+
+
 # ----------------------------- Factory function ----------------------------- #
 def get_model_runner(
     **kwargs,
@@ -731,6 +776,8 @@ def get_model_runner(
             return OpenAIChatCompletionRunner(logger=logger, **kwargs)
         elif model_provider == "Cohere":
             return CohereGenerateModelRunner(logger=logger, **kwargs)
+        elif model_provider == "Anthropic":
+            return AnthropicModelRunner(logger=logger, **kwargs)
         else:
             raise ValueError(f"Model provider `{model_provider}` is not supported.")
     else:
