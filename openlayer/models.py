@@ -28,6 +28,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List, Optional, Set
 
+import cohere
 import openai
 import pandas as pd
 import pybars
@@ -633,6 +634,42 @@ class OpenAIChatCompletionRunner(LLModelRunner):
         )["choices"][0]["message"]["content"]
 
 
+class CohereGenerateModelRunner(LLModelRunner):
+    """Wraps Cohere's Generate model."""
+
+    def __init__(
+        self,
+        logger: Optional[logging.Logger] = None,
+        **kwargs,
+    ):
+        super().__init__(logger, **kwargs)
+        if kwargs.get("cohere_api_key") is None:
+            raise ValueError(
+                "Cohere API key must be provided. Please pass it as the "
+                "keyword argument 'cohere_api_key'"
+            )
+
+        self.cohere_api_key = kwargs["cohere_api_key"]
+        self._initialize_llm()
+
+    def _initialize_llm(self):
+        """Initializes Cohere's Generate model."""
+        self.cohere_client = cohere.Client(self.cohere_api_key)
+        if self.model_config.get("model") is None:
+            warnings.warn("No model specified. Defaulting to model 'command'.")
+        if self.model_config.get("model_parameters") is None:
+            warnings.warn("No model parameters specified. Using default parameters.")
+
+    def _get_llm_output(self, input_text: str) -> str:
+        """Gets the output from Cohere's generate model
+        for a given input text."""
+        return self.cohere_client.generate(
+            model=self.model_config.get("model", "command"),
+            prompt=input_text,
+            **self.model_config.get("model_parameters", {}),
+        )[0].text
+
+
 # ----------------------------- Factory function ----------------------------- #
 def get_model_runner(
     **kwargs,
@@ -692,6 +729,8 @@ def get_model_runner(
 
         if model_provider == "OpenAI":
             return OpenAIChatCompletionRunner(logger=logger, **kwargs)
+        elif model_provider == "Cohere":
+            return CohereGenerateModelRunner(logger=logger, **kwargs)
         else:
             raise ValueError(f"Model provider `{model_provider}` is not supported.")
     else:
