@@ -23,6 +23,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import warnings
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List, Optional, Set
@@ -329,41 +330,107 @@ class CondaEnvironment:
         return exitcode
 
 
-class BaseModelRunner(ABC):
-    """Wraps the model package and provides a uniform run method."""
+# -------------------------- Abstract model runners -------------------------- #
+class ModelRunnerInterface(ABC):
+    """Interface for model runners."""
 
-    def __init__(self, model_package: str, logger: Optional[logging.Logger] = None):
+    def __init__(self, logger: Optional[logging.Logger] = None, **kwargs):
+        self.logger = logger
+
+        model_package = kwargs.get("model_package")
+        if model_package is not None:
+            self.init_from_model_package(model_package)
+        else:
+            self.init_from_kwargs(**kwargs)
+
+        self.validate_minimum_viable_config()
+
+    def init_from_model_package(self, model_package: str) -> None:
+        """Initializes the model runner from the model package.
+
+        I.e., using the model_config.yaml file located in the model package
+        directory.
+        """
         self.model_package = model_package
 
-        # Use validators logger if no logger is provided
-        self.logger = logger or logging.getLogger("validators")
-
-        # TODO: change env name to the model id
-        self._conda_environment = CondaEnvironment(
-            env_name=f"model-runner-env-{datetime.datetime.now().strftime('%m-%d-%H-%M-%S-%f')}",
-            requirements_file_path=f"{model_package}/requirements.txt",
-            python_version_file_path=f"{model_package}/python_version",
-            logger=self.logger,
+        # Model config is originally a dict with camelCase keys
+        self.model_config = utils.camel_to_snake_dict(
+            utils.read_yaml(f"{model_package}/model_config.yaml")
         )
 
-    def __del__(self):
-        self._conda_environment.delete()
+        self._conda_environment = None
+        self.in_memory = True
+        python_version_file_path = f"{model_package}/python_version"
+        requirements_file_path = f"{model_package}/requirements.txt"
+        if os.path.isfile(python_version_file_path) and os.path.isfile(
+            requirements_file_path
+        ):
+            self.in_memory = False
+            self._conda_environment = CondaEnvironment(
+                env_name=f"model-runner-env-{datetime.datetime.now().strftime('%m-%d-%H-%M-%S-%f')}",
+                requirements_file_path=python_version_file_path,
+                python_version_file_path=requirements_file_path,
+                logger=self.logger,
+            )
+
+    def init_from_kwargs(self, **kwargs) -> None:
+        """Initializes the model runner from the kwargs."""
+        self.model_package = None
+        self._conda_environment = None
+        self.in_memory = True
+        self.model_config = kwargs
+
+    @abstractmethod
+    def validate_minimum_viable_config(self) -> None:
+        """Superficial validation of the minimum viable config needed to use
+        the model runner.
+
+        Each concrete model runner must implement this method.
+        """
+        pass
 
     def run(self, input_data: pd.DataFrame) -> pd.DataFrame:
+        """Runs the input data through the model."""
+        if self.in_memory:
+            return self._run_in_memory(input_data)
+        else:
+            return self._run_in_conda(input_data)
+
+    @abstractmethod
+    def _run_in_memory(self, input_data: pd.DataFrame) -> pd.DataFrame:
+        """Runs the model in memory."""
+        pass
+
+    @abstractmethod
+    def _run_in_conda(self, input_data: pd.DataFrame) -> pd.DataFrame:
+        """Runs the model in a conda environment."""
+        pass
+
+    def __del__(self):
+        if self._conda_environment is not None:
+            self._conda_environment.delete()
+
+
+class TraditionalMLModelRunner(ModelRunnerInterface):
+    """Model runner for traditional ML models."""
+
+    @abstractmethod
+    def validate_minimum_viable_config(self) -> None:
+        pass
+
+    def _run_in_memory(self, input_data: pd.DataFrame) -> pd.DataFrame:
+        """Runs the input data through the model in memory."""
+        raise NotImplementedError(
+            "Running traditional ML in memory is not implemented yet. "
+            "Please use the runner in a conda environment."
+        )
+
+    def _run_in_conda(self, input_data: pd.DataFrame) -> pd.DataFrame:
         """Runs the input data through the model in the conda
         environment.
-
-        Parameters
-        ----------
-        input_data : pd.DataFrame
-            Input data to run the model on.
-
-        Returns
-        -------
-        pd.DataFrame
-            Output from the model. The output is a dataframe with a single
-            column named 'prediction' and lists of class probabilities as values.
         """
+        self.logger.info("Running traditional ML model in conda environment...")
+
         # Copy the prediction job script to the model package
         current_file_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -390,7 +457,7 @@ class BaseModelRunner(ABC):
                 )
                 if exitcode != 0:
                     self.logger.error(
-                        "Failed to run the model. Check the stacktrace above for details."
+                        "Failed to run the model. Check the stack trace above for details."
                     )
                     raise Exception(
                         "Failed to run the model in the conda environment."
@@ -406,44 +473,47 @@ class BaseModelRunner(ABC):
 
     @abstractmethod
     def _copy_prediction_job_script(self, current_file_dir: str):
-        """Copies the correct prediction job script to the model package."""
+        """Copies the correct prediction job script to the model package.
+
+        Needed if the model is intended to be run in a conda environment."""
         pass
 
     @abstractmethod
     def _post_process_output(self, output_data: pd.DataFrame) -> pd.DataFrame:
-        """Performs any post-processing on the output data."""
+        """Performs any post-processing on the output data.
+
+        Needed if the model is intended to be run in a conda environment."""
         pass
 
 
-class LLModelRunner(ABC):
-    """Base LLM model runner.
-
-    The run method gets the LLM's predictions one by one. Child classes
-    should implement the _initialize_llm method to initialize the LLM (i.e.
-    handle API keys, etc.) and the _get_llm_prediction method to get the
-    LLM's prediction for a single input row.
-    """
-
-    def __init__(self, model_package: str, logger: Optional[logging.Logger] = None):
-        self.model_config = utils.read_yaml(f"{model_package}/model_config.yaml")
-
-        # Use validators logger if no logger is provided
-        self.logger = logger or logging.getLogger("validators")
+class LLModelRunner(ModelRunnerInterface):
+    """Model runner for LLMs."""
 
     @abstractmethod
     def _initialize_llm(self):
         """Initializes the LLM. E.g. sets API keys, loads the model, etc."""
         pass
 
-    def run(self, input_data_df: pd.DataFrame) -> pd.DataFrame:
-        """Runs the input data through the model in the conda
-        environment.
+    def validate_minimum_viable_config(self) -> None:
+        """Validates the minimum viable config needed to use the LLM model
+        runner.
         """
+        if (
+            self.model_config.get("input_variable_names") is None
+            or self.model_config.get("prompt_template") is None
+        ):
+            raise ValueError(
+                "Input variable names and prompt template must be provided."
+            )
+
+    def _run_in_memory(self, input_data_df: pd.DataFrame) -> pd.DataFrame:
+        """Runs the input data through the model in memory."""
+        self.logger.info("Running LLM in memory...")
         model_outputs = []
 
         for input_data_row in input_data_df.iterrows():
             input_variables_dict = input_data_row[1][
-                self.model_config["inputVariableNames"]
+                self.model_config["input_variable_names"]
             ].to_dict()
             input_text = self._inject_prompt_template(
                 input_variables_dict=input_variables_dict
@@ -472,7 +542,7 @@ class LLModelRunner(ABC):
         """
         self.logger.info("Injecting input variables into the prompt template...")
         compiler = pybars.Compiler()
-        formatter = compiler.compile(self.model_config["promptTemplate"].strip())
+        formatter = compiler.compile(self.model_config["prompt_template"].strip())
         return formatter(input_variables_dict)
 
     @abstractmethod
@@ -481,43 +551,16 @@ class LLModelRunner(ABC):
         a given input text."""
         pass
 
-
-class OpenAIChatCompletionRunner(LLModelRunner):
-    """Wraps OpenAI's chat completion model."""
-
-    def __init__(
-        self,
-        model_package: str,
-        logger: Optional[logging.Logger] = None,
-        openai_api_key: str = None,
-    ):
-        super().__init__(model_package, logger)
-        if openai_api_key is None:
-            raise ValueError(
-                "OpenAI API key must be provided. Please pass it as a parameter "
-                "named 'openai_api_key'"
-            )
-
-        self.openai_api_key = openai_api_key
-        self._initialize_llm()
-
-    def _initialize_llm(self):
-        """Initializes the OpenAI chat completion model."""
-        openai.api_key = (
-            self.openai_api_key  # "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"
+    def _run_in_conda(self, input_data: pd.DataFrame) -> pd.DataFrame:
+        """Runs LLM prediction job in a conda environment."""
+        raise NotImplementedError(
+            "Running LLM in conda environment is not implemented yet. "
+            "Please use the in-memory runner."
         )
 
-    def _get_llm_output(self, input_text: str) -> str:
-        """Gets the output from the OpenAI's chat completion model
-        for a given input text."""
-        return openai.ChatCompletion.create(
-            model=self.model_config["model"],
-            messages=[{"role": "user", "content": input_text}],
-            **self.model_config.get("modelParameters", {}),
-        )["choices"][0]["message"]["content"]
 
-
-class ClassificationModelRunner(BaseModelRunner):
+# -------------------------- Concrete model runners -------------------------- #
+class ClassificationModelRunner(TraditionalMLModelRunner):
     """Wraps classification models."""
 
     def _copy_prediction_job_script(self, current_file_dir: str):
@@ -539,7 +582,7 @@ class ClassificationModelRunner(BaseModelRunner):
         return processed_output_data
 
 
-class RegressionModelRunner(BaseModelRunner):
+class RegressionModelRunner(TraditionalMLModelRunner):
     """Wraps regression models."""
 
     def _copy_prediction_job_script(self, current_file_dir: str):
@@ -554,31 +597,87 @@ class RegressionModelRunner(BaseModelRunner):
         return output_data
 
 
+class OpenAIChatCompletionRunner(LLModelRunner):
+    """Wraps OpenAI's chat completion model."""
+
+    def __init__(
+        self,
+        logger: Optional[logging.Logger] = None,
+        **kwargs,
+    ):
+        super().__init__(logger, **kwargs)
+        if kwargs.get("openai_api_key") is None:
+            raise ValueError(
+                "OpenAI API key must be provided. Please pass it as the "
+                "keyword argument 'openai_api_key'"
+            )
+
+        self.openai_api_key = kwargs["openai_api_key"]
+        self._initialize_llm()
+
+    def _initialize_llm(self):
+        """Initializes the OpenAI chat completion model."""
+        openai.api_key = self.openai_api_key
+        if self.model_config.get("model") is None:
+            warnings.warn("No model specified. Defaulting to model 'gpt-3.5-turbo'.")
+        if self.model_config.get("model_parameters") is None:
+            warnings.warn("No model parameters specified. Using default parameters.")
+
+    def _get_llm_output(self, input_text: str) -> str:
+        """Gets the output from the OpenAI's chat completion model
+        for a given input text."""
+        return openai.ChatCompletion.create(
+            model=self.model_config.get("model", "gpt-3.5-turbo"),
+            messages=[{"role": "user", "content": input_text}],
+            **self.model_config.get("model_parameters", {}),
+        )["choices"][0]["message"]["content"]
+
+
 # ----------------------------- Factory function ----------------------------- #
 def get_model_runner(
-    task_type: tasks.TaskType,
-    model_package: str,
-    logger: Optional[logging.Logger] = None,
     **kwargs,
-) -> BaseModelRunner:
-    """Factory function to get the correct model runner for the specified task type.
+) -> ModelRunnerInterface:
+    """Factory function to get the correct model runner for the specified task type."""
+    task_type = kwargs.get("task_type")
+    model_package = kwargs.get("model_package")
+    logger = kwargs.get("logger") or logging.getLogger("validators")
 
-    Parameters
-    ----------
-    task_type : tasks.TaskType
-        Task type of the model.
-    model_package : str
-        Path to the model package.
-    logger : Optional[logging.Logger], optional
-        Logger to use, by default None
-    """
+    # Try to infer task type if not provided
+    if task_type is None and model_package is None:
+        raise ValueError(
+            "Task type could not be inferred. "
+            "You must provide either the task type (task_type) as a keyword argument "
+            "or the model package (model_package) with a model_config.yaml file that "
+            "contains the task type written (taskType)."
+        )
+    elif task_type is None and model_package is not None:
+        # Model config keys are originally camelCase, but we want to use snake_case
+        model_config = utils.camel_to_snake_dict(
+            utils.read_yaml(f"{model_package}/model_config.yaml")
+        )
+        task_type = tasks.TaskType(model_config.get("task_type"))
+    elif task_type is not None and model_package is None:
+        model_config = kwargs
+    else:
+        model_config = utils.camel_to_snake_dict(
+            utils.read_yaml(f"{model_package}/model_config.yaml")
+        )
+
+    if task_type is None:
+        raise ValueError(
+            "Task type could not be inferred. "
+            "You must provide either the task type (task_type) as a keyword argument "
+            "or the model package (model_package) with a model_config.yaml file that "
+            "contains the task type written (taskType)."
+        )
+
     if task_type in [
         tasks.TaskType.TabularClassification,
         tasks.TaskType.TextClassification,
     ]:
-        return ClassificationModelRunner(model_package, logger)
+        return ClassificationModelRunner(logger=logger, **kwargs)
     elif task_type == tasks.TaskType.TabularRegression:
-        return RegressionModelRunner(model_package, logger)
+        return RegressionModelRunner(logger=logger, **kwargs)
     elif task_type in [
         tasks.TaskType.LLM,
         tasks.TaskType.LLMNER,
@@ -586,13 +685,13 @@ def get_model_runner(
         tasks.TaskType.LLMSummarization,
         tasks.TaskType.LLMTranslation,
     ]:
-        model_provider = utils.read_yaml(f"{model_package}/model_config.yaml").get(
-            "modelProvider"
-        )
+        if model_package is not None:
+            model_provider = model_config.get("model_provider")
+        else:
+            model_provider = kwargs.get("model_provider")
+
         if model_provider == "OpenAI":
-            return OpenAIChatCompletionRunner(
-                model_package, logger, kwargs.get("openai_api_key")
-            )
+            return OpenAIChatCompletionRunner(logger=logger, **kwargs)
         else:
             raise ValueError(f"Model provider `{model_provider}` is not supported.")
     else:
