@@ -4,6 +4,7 @@ OpenLayer Python client.
 import io
 import logging
 import os
+import re
 import sys
 import traceback
 import warnings
@@ -52,65 +53,28 @@ class HidePrints:
 
 
 # ----------------------------- Helper functions ----------------------------- #
-def log_subprocess_output(logger: logging.Logger, pipe: io.BufferedReader):
-    """Logs the output of a subprocess."""
-    for line in iter(pipe.readline, b""):  # b'\n'-separated lines
-        line = line.decode("UTF-8").strip()
-        logger.info("%s", line)
-
-
-def write_python_version(directory: str):
-    """Writes the python version to the file `python_version` in the specified
-    directory (`directory`).
-
-    This is used to register the Python version of the user's environment in the
-    when they are uploading a model package.
+def camel_to_snake_dict(dictionary: dict) -> dict:
+    """Converts a dictionary with camelCase keys to snake_case.
 
     Args:
-        directory (str): the directory to write the file to.
-    """
-    with open(f"{directory}/python_version", "w", encoding="UTF-8") as file:
-        file.write(
-            str(sys.version_info.major)
-            + "."
-            + str(sys.version_info.minor)
-            + "."
-            + str(sys.version_info.micro)
-        )
-
-
-def remove_python_version(directory: str):
-    """Removes the file `python_version` from the specified directory
-    (`directory`).
-
-    Args:
-        directory (str): the directory to remove the file from.
-    """
-    os.remove(f"{directory}/python_version")
-
-
-def read_yaml(filename: str) -> dict:
-    """Reads a YAML file and returns it as a dictionary.
-
-    Args:
-        filename (str): the path to the YAML file.
+        dictionary (dict): the dictionary with camelCase keys.
 
     Returns:
-        dict: the dictionary representation of the YAML file.
+        dict: the dictionary with snake_case keys.
     """
-    with open(filename, "r", encoding="UTF-8") as stream:
-        return yaml.safe_load(stream)
+    return {camel_to_snake_str(key): value for key, value in dictionary.items()}
 
 
-def write_yaml(dictionary: dict, filename: str):
-    """Writes the dictionary to a YAML file in the specified directory (`dir`).
+def camel_to_snake_str(name: str) -> str:
+    """Converts a camelCase string to snake_case.
 
     Args:
-        dictionary (dict): the dictionary to write to a YAML file.
-        dir (str): the directory to write the file to.
+        name (str): the camelCase string.
+
+    Returns:
+        str: the snake_case string.
     """
-    with open(filename, "w", encoding="UTF-8") as stream:
-        yaml.dump(dictionary, stream)
+    return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
 
 
 def get_exception_stacktrace(err: Exception):
@@ -198,3 +162,64 @@ def load_model_config_from_bundle(bundle_path: str) -> Dict[str, Any]:
         model_config = yaml.safe_load(stream)
 
     return model_config
+
+
+def log_subprocess_output(logger: logging.Logger, pipe: io.BufferedReader):
+    """Logs the output of a subprocess."""
+    for line in iter(pipe.readline, b""):  # b'\n'-separated lines
+        line = line.decode("UTF-8").strip()
+        logger.info("%s", line)
+
+
+def remove_python_version(directory: str):
+    """Removes the file `python_version` from the specified directory
+    (`directory`).
+
+    Args:
+        directory (str): the directory to remove the file from.
+    """
+    os.remove(f"{directory}/python_version")
+
+
+def read_yaml(filename: str) -> dict:
+    """Reads a YAML file and returns it as a dictionary.
+
+    Args:
+        filename (str): the path to the YAML file.
+
+    Returns:
+        dict: the dictionary representation of the YAML file.
+    """
+    with open(filename, "r", encoding="UTF-8") as stream:
+        return yaml.safe_load(stream)
+
+
+def write_python_version(directory: str):
+    """Writes the python version to the file `python_version` in the specified
+    directory (`directory`).
+
+    This is used to register the Python version of the user's environment in the
+    when they are uploading a model package.
+
+    Args:
+        directory (str): the directory to write the file to.
+    """
+    with open(f"{directory}/python_version", "w", encoding="UTF-8") as file:
+        file.write(
+            str(sys.version_info.major)
+            + "."
+            + str(sys.version_info.minor)
+            + "."
+            + str(sys.version_info.micro)
+        )
+
+
+def write_yaml(dictionary: dict, filename: str):
+    """Writes the dictionary to a YAML file in the specified directory (`dir`).
+
+    Args:
+        dictionary (dict): the dictionary to write to a YAML file.
+        dir (str): the directory to write the file to.
+    """
+    with open(filename, "w", encoding="UTF-8") as stream:
+        yaml.dump(dictionary, stream)
