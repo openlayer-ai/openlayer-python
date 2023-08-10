@@ -298,7 +298,7 @@ class ClassificationModelSchema(BaseModelSchema):
 class LLMModelSchema(BaseModelSchema):
     """Specific schema for LLM models."""
 
-    promptTemplate = ma.fields.Str()
+    prompt = ma.fields.List(ma.fields.Dict())
     model = ma.fields.Str()
     modelProvider = ma.fields.Str()
     modelParameters = ma.fields.Dict()
@@ -312,16 +312,41 @@ class LLMModelSchema(BaseModelSchema):
         """Validates the required fields depending on the modelType."""
         if data["modelType"] == "api":
             if (
-                data.get("promptTemplate") is None
+                data.get("prompt") is None
                 or data.get("modelProvider") is None
                 or data.get("model") is None
             ):
                 # TODO: rename "direct to API"
                 raise ma.ValidationError(
                     "To use the direct to API approach for LLMs, you must "
-                    "provide at least the `promptTemplate` and specify the "
+                    "provide at least the `prompt` and specify the "
                     "`modelProvider`, and `model`."
                 )
+
+    @ma.validates_schema
+    def validates_prompt(self, data, **kwargs):
+        """Validates the prompt structure."""
+        if data.get("prompt") is not None:
+            for message in data.get("prompt"):
+                if message.get("role") is None:
+                    raise ma.ValidationError(
+                        "Each message in the prompt must have a `role`."
+                    )
+                else:
+                    if message.get("role") not in ["system", "user", "assistant"]:
+                        raise ma.ValidationError(
+                            "The `role` of each message in the prompt must be one of "
+                            "'system', 'user', or 'assistant'."
+                        )
+                if message.get("content") is None:
+                    raise ma.ValidationError(
+                        "Each message in the prompt must have a `content`."
+                    )
+                else:
+                    if not isinstance(message.get("content"), str):
+                        raise ma.ValidationError(
+                            "The `content` of each message in the prompt must be a string."
+                        )
 
 
 class RegressionModelSchema(BaseModelSchema):

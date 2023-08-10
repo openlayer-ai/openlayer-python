@@ -18,7 +18,7 @@ class ModelRunnerInterface(ABC):
     """Interface for model runners."""
 
     def __init__(self, logger: Optional[logging.Logger] = None, **kwargs):
-        self.logger = logger
+        self.logger = logger or logging.getLogger(__name__)
 
         model_package = kwargs.get("model_package")
         if model_package is not None:
