@@ -193,7 +193,16 @@ class CohereGenerateModelRunner(LLModelRunner):
 
     def _initialize_llm(self):
         """Initializes Cohere's Generate model."""
-        self.cohere_client = cohere.Client(self.cohere_api_key)
+        # Check if API key is valid -- Cohere's validation seems to be very shallow
+        try:
+            self.cohere_client = cohere.Client(
+                api_key=self.cohere_api_key, check_api_key=True
+            )
+        except Exception as e:
+            raise ValueError(
+                "Cohere API key is invalid. Please pass a valid API key as the "
+                f"keyword argument 'cohere_api_key' \n Error message: {e}"
+            )
         if self.model_config.get("model") is None:
             warnings.warn("No model specified. Defaulting to model 'command'.")
         if self.model_config.get("model_parameters") is None:
@@ -248,6 +257,15 @@ class OpenAIChatCompletionRunner(LLModelRunner):
     def _initialize_llm(self):
         """Initializes the OpenAI chat completion model."""
         openai.api_key = self.openai_api_key
+
+        # Check if API key is valid
+        try:
+            openai.Model.list()
+        except Exception as e:
+            raise ValueError(
+                "OpenAI API key is invalid. Please pass a valid API key as the "
+                f"keyword argument 'openai_api_key' \n Error message: {e}"
+            )
         if self.model_config.get("model") is None:
             warnings.warn("No model specified. Defaulting to model 'gpt-3.5-turbo'.")
         if self.model_config.get("model_parameters") is None:
