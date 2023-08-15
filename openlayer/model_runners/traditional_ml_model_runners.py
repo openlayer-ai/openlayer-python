@@ -7,6 +7,7 @@ import ast
 import os
 import shutil
 import tempfile
+import time
 from abc import ABC, abstractmethod
 
 import pandas as pd
@@ -71,6 +72,7 @@ class TraditionalMLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
             output_data = pd.read_csv(f"{temp_dir}/output_data.csv")
 
             output_data = self._post_process_output(output_data)
+            output_data["timestamps"] = time.time()
 
         return output_data
 

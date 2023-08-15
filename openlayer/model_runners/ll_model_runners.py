@@ -4,6 +4,7 @@ Module with the concrete LLM runners.
 """
 
 import logging
+import time
 import warnings
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Union
@@ -67,10 +68,11 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
     ) -> pd.DataFrame:
         """Runs the input data through the model in memory."""
         self.logger.info("Running LLM in memory...")
+
         model_outputs = []
+        timestamps = []
         run_exceptions = set()
         run_cost = 0
-
         for input_data_row in input_data_df.iterrows():
             # Check if output column already has a value to avoid re-running
             if (
@@ -96,6 +98,7 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
             except Exception as exc:
                 model_outputs.append(None)
                 run_exceptions.add(exc)
+            timestamps.append(time.time())
 
         self.logger.info("Successfully ran data through the model!")
 
@@ -110,7 +113,7 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
             )
         self.cost_estimates.append(run_cost)
 
-        return pd.DataFrame({"predictions": model_outputs})
+        return pd.DataFrame({"predictions": model_outputs, "timestamps": timestamps})
 
     def _inject_prompt(self, input_variables_dict: dict) -> List[Dict[str, str]]:
         """Injects the input variables into the prompt template.
