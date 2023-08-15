@@ -49,13 +49,38 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
                     "'system', 'user', or 'assistant'."
                 )
 
-    def _run_in_memory(self, input_data_df: pd.DataFrame) -> pd.DataFrame:
+    def run(
+        self, input_data: pd.DataFrame, output_column_name: Optional[str] = None
+    ) -> pd.DataFrame:
+        """Runs the input data through the model."""
+        if self.in_memory:
+            return self._run_in_memory(
+                input_data_df=input_data, output_column_name=output_column_name
+            )
+        else:
+            return self._run_in_conda(
+                input_data_df=input_data, output_column_name=output_column_name
+            )
+
+    def _run_in_memory(
+        self, input_data_df: pd.DataFrame, output_column_name: Optional[str] = None
+    ) -> pd.DataFrame:
         """Runs the input data through the model in memory."""
         self.logger.info("Running LLM in memory...")
         model_outputs = []
-
+        run_exceptions = set()
         run_cost = 0
+
         for input_data_row in input_data_df.iterrows():
+            # Check if output column already has a value to avoid re-running
+            if (
+                output_column_name is not None
+                and output_column_name in input_data_row[1]
+            ):
+                if input_data_row[1][output_column_name] is not None:
+                    model_outputs.append(input_data_row[1][output_column_name])
+                    continue
+
             input_variables_dict = input_data_row[1][
                 self.model_config["input_variable_names"]
             ].to_dict()
@@ -69,12 +94,22 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
                 model_outputs.append(result["output"])
                 run_cost += result["cost"]
             except Exception as exc:
-                model_outputs.append(
-                    f"[Error] Could not get predictions for row: {exc}"
-                )
+                model_outputs.append(None)
+                run_exceptions.add(exc)
 
         self.logger.info("Successfully ran data through the model!")
+
+        if run_exceptions:
+            warnings.warn(
+                f"We couldn't get the outputs for all rows.\n"
+                "Encountered the following exceptions while running the model: \n"
+                f"{run_exceptions}\n"
+                "After you fix the issues, you can call the `run` method again and provide "
+                "the `output_column_name` argument to avoid re-running the model on rows "
+                "that already have an output value."
+            )
         self.cost_estimates.append(run_cost)
+
         return pd.DataFrame({"predictions": model_outputs})
 
     def _inject_prompt(self, input_variables_dict: dict) -> List[Dict[str, str]]:
@@ -136,7 +171,9 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
         """Extracts the cost from the response."""
         pass
 
-    def _run_in_conda(self, input_data: pd.DataFrame) -> pd.DataFrame:
+    def _run_in_conda(
+        self, input_data_df: pd.DataFrame, output_column_name: Optional[str] = None
+    ) -> pd.DataFrame:
         """Runs LLM prediction job in a conda environment."""
         raise NotImplementedError(
             "Running LLM in conda environment is not implemented yet. "
