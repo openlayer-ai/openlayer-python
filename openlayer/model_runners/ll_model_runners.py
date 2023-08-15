@@ -6,7 +6,7 @@ Module with the concrete LLM runners.
 import logging
 import warnings
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import anthropic
 import cohere
@@ -19,6 +19,8 @@ from . import base_model_runner
 
 class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
     """Extends the base model runner for LLMs."""
+
+    cost_estimates: List[float] = []
 
     @abstractmethod
     def _initialize_llm(self):
@@ -52,6 +54,7 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
         self.logger.info("Running LLM in memory...")
         model_outputs = []
 
+        run_cost = 0
         for input_data_row in input_data_df.iterrows():
             input_variables_dict = input_data_row[1][
                 self.model_config["input_variable_names"]
@@ -62,13 +65,16 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
             llm_input = self._get_llm_input(injected_prompt)
 
             try:
-                model_outputs.append(self._get_llm_output(llm_input))
+                result = self._get_llm_output(llm_input)
+                model_outputs.append(result["output"])
+                run_cost += result["cost"]
             except Exception as exc:
                 model_outputs.append(
                     f"[Error] Could not get predictions for row: {exc}"
                 )
 
         self.logger.info("Successfully ran data through the model!")
+        self.cost_estimates.append(run_cost)
         return pd.DataFrame({"predictions": model_outputs})
 
     def _inject_prompt(self, input_variables_dict: dict) -> List[Dict[str, str]]:
@@ -98,10 +104,36 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
         """Implements the logic to prepare the input for the language model."""
         pass
 
-    @abstractmethod
-    def _get_llm_output(self, llm_input: Union[List, str]) -> str:
+    def _get_llm_output(
+        self, llm_input: Union[List, str]
+    ) -> Dict[str, Union[float, str]]:
         """Implements the logic to get the output from the language model for
         a given input text."""
+        response = self._make_request(llm_input)
+        return self._parse_response(response)
+
+    @abstractmethod
+    def _make_request(self, llm_input: Union[List, str]) -> Dict[str, Any]:
+        """Makes a request to the language model."""
+        pass
+
+    def _parse_response(self, response: Dict[str, Any]) -> str:
+        """Parses the response from the LLM, extracting the cost and the output."""
+        output = self._get_output(response)
+        cost = self._get_cost_estimate(response)
+        return {
+            "output": output,
+            "cost": cost,
+        }
+
+    @abstractmethod
+    def _get_output(self, response: Dict[str, Any]) -> str:
+        """Extracts the output from the response."""
+        pass
+
+    @abstractmethod
+    def _get_cost_estimate(self, response: Dict[str, Any]) -> float:
+        """Extracts the cost from the response."""
         pass
 
     def _run_in_conda(self, input_data: pd.DataFrame) -> pd.DataFrame:
@@ -111,10 +143,38 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
             "Please use the in-memory runner."
         )
 
+    def get_cost_estimate(self, num_of_runs: Optional[int] = None) -> float:
+        """Returns the cost estimate of the last num_of_runs."""
+        if len(self.cost_estimates) == 0:
+            return 0
+        if num_of_runs is not None:
+            if num_of_runs > len(self.cost):
+                warnings.warn(
+                    f"Number of runs ({num_of_runs}) is greater than the number of "
+                    f"runs that have been executed with this runner ({len(self.cost_estimates)}). "
+                    "Returning the cost of all runs so far."
+                )
+                return sum(self.cost_estimates)
+            else:
+                return sum(self.cost_estimates[-num_of_runs:])
+        return self.cost_estimates[-1]
+
 
 # -------------------------- Concrete model runners -------------------------- #
 class AnthropicModelRunner(LLModelRunner):
     """Wraps Anthropic's models."""
+
+    # Last update: 2023-08-15
+    COST_PER_TOKEN = {
+        "claude-2": {
+            "input": 11.02e-6,
+            "output": 32.68e-6,
+        },
+        "claude-instant": {
+            "input": 1.63e-6,
+            "output": 5.51e-6,
+        },
+    }
 
     def __init__(
         self,
@@ -163,18 +223,29 @@ class AnthropicModelRunner(LLModelRunner):
         llm_input += f"{anthropic.AI_PROMPT}"
         return llm_input
 
-    def _get_llm_output(self, llm_input: str) -> str:
-        """Gets the output from Cohere's generate model
-        for a given input text."""
+    def _make_request(self, llm_input: str) -> Dict[str, Any]:
+        """Make the request to Anthropic's model
+        for a given input."""
         return self.anthropic_client.completions.create(
             model=self.model_config.get("model", "claude-2"),
             prompt=llm_input,
             **self.model_config.get("model_parameters", {}),
-        )["completion"]
+        )
+
+    def _get_output(self, response: Dict[str, Any]) -> str:
+        """Gets the output from the response."""
+        return response["completion"]
+
+    def _get_cost_estimate(self, response: Dict[str, Any]) -> float:
+        """Estimates the cost from the response."""
+        return -1
 
 
 class CohereGenerateModelRunner(LLModelRunner):
     """Wraps Cohere's Generate model."""
+
+    # Last update: 2023-08-15
+    COST_PER_TOKEN = 0.000015
 
     def __init__(
         self,
@@ -226,18 +297,38 @@ class CohereGenerateModelRunner(LLModelRunner):
         llm_input += "A:"
         return llm_input
 
-    def _get_llm_output(self, llm_input: str) -> str:
-        """Gets the output from Cohere's generate model
-        for a given input text."""
+    def _make_request(self, llm_input: str) -> Dict[str, Any]:
+        """Make the request to Cohere's Generate model
+        for a given input."""
         return self.cohere_client.generate(
             model=self.model_config.get("model", "command"),
             prompt=llm_input,
             **self.model_config.get("model_parameters", {}),
-        )[0].text
+        )
+
+    def _get_output(self, response: Dict[str, Any]) -> str:
+        """Gets the output from the response."""
+        return response[0].text
+
+    def _get_cost_estimate(self, response: Dict[str, Any]) -> float:
+        """Estimates the cost from the response."""
+        return -1
 
 
 class OpenAIChatCompletionRunner(LLModelRunner):
     """Wraps OpenAI's chat completion model."""
+
+    # Last update: 2023-08-15
+    COST_PER_TOKEN = {
+        "gpt-3.5-turbo": {
+            "input": 0.0015e-3,
+            "output": 0.002e-3,
+        },
+        "gpt-4": {
+            "input": 0.03e-3,
+            "output": 0.06e-3,
+        },
+    }
 
     def __init__(
         self,
@@ -253,6 +344,8 @@ class OpenAIChatCompletionRunner(LLModelRunner):
 
         self.openai_api_key = kwargs["openai_api_key"]
         self._initialize_llm()
+
+        self.cost: List[float] = []
 
     def _initialize_llm(self):
         """Initializes the OpenAI chat completion model."""
@@ -277,11 +370,28 @@ class OpenAIChatCompletionRunner(LLModelRunner):
         """Prepares the input for OpenAI's chat completion model."""
         return injected_prompt
 
-    def _get_llm_output(self, llm_input: List[Dict[str, str]]) -> str:
-        """Gets the output from the OpenAI's chat completion model
-        for a given input text."""
+    def _make_request(self, llm_input: List[Dict[str, str]]) -> Dict[str, Any]:
+        """Make the request to OpenAI's chat completion model
+        for a given input."""
         return openai.ChatCompletion.create(
             model=self.model_config.get("model", "gpt-3.5-turbo"),
             messages=llm_input,
             **self.model_config.get("model_parameters", {}),
-        )["choices"][0]["message"]["content"]
+        )
+
+    def _get_output(self, response: Dict[str, Any]) -> str:
+        """Gets the output from the response."""
+        return response["choices"][0]["message"]["content"]
+
+    def _get_cost_estimate(self, response: Dict[str, Any]) -> None:
+        """Estimates the cost from the response."""
+        model = self.model_config.get("model", "gpt-3.5-turbo")
+        if model not in self.COST_PER_TOKEN:
+            return -1
+        else:
+            num_input_tokens = response["usage"]["prompt_tokens"]
+            num_output_tokens = response["usage"]["completion_tokens"]
+            return (
+                num_input_tokens * self.COST_PER_TOKEN[model]["input"]
+                + num_output_tokens * self.COST_PER_TOKEN[model]["output"]
+            )
