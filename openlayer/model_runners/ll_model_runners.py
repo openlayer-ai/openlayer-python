@@ -7,13 +7,14 @@ import logging
 import time
 import warnings
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 import anthropic
 import cohere
 import openai
 import pandas as pd
 import pybars
+from tqdm import tqdm
 
 from . import base_model_runner
 
@@ -56,7 +57,8 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
         """Runs the input data through the model."""
         if self.in_memory:
             return self._run_in_memory(
-                input_data_df=input_data, output_column_name=output_column_name
+                input_data_df=input_data,
+                output_column_name=output_column_name,
             )
         else:
             return self._run_in_conda(
@@ -64,56 +66,85 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
             )
 
     def _run_in_memory(
-        self, input_data_df: pd.DataFrame, output_column_name: Optional[str] = None
+        self,
+        input_data_df: pd.DataFrame,
+        output_column_name: Optional[str] = None,
     ) -> pd.DataFrame:
-        """Runs the input data through the model in memory."""
+        """Runs the input data through the model in memory and returns a pandas
+        dataframe."""
+        for output_df, _ in tqdm(
+            self._run_in_memory_and_yield_progress(input_data_df, output_column_name),
+            total=len(input_data_df),
+            colour="BLUE",
+        ):
+            pass
+        return output_df
+
+    def _run_in_memory_and_yield_progress(
+        self,
+        input_data_df: pd.DataFrame,
+        output_column_name: Optional[str] = None,
+    ) -> Generator[Tuple[pd.DataFrame, float], None, None]:
+        """Runs the input data through the model in memory and yields the results
+        and the progress."""
         self.logger.info("Running LLM in memory...")
 
         model_outputs = []
         timestamps = []
         run_exceptions = set()
         run_cost = 0
-        for input_data_row in input_data_df.iterrows():
+        total_rows = len(input_data_df)
+        current_row = 0
+
+        for _, input_data_row in input_data_df.iterrows():
             # Check if output column already has a value to avoid re-running
-            if (
-                output_column_name is not None
-                and output_column_name in input_data_row[1]
-            ):
-                if input_data_row[1][output_column_name] is not None:
-                    model_outputs.append(input_data_row[1][output_column_name])
+            if output_column_name and output_column_name in input_data_row:
+                output_value = input_data_row[output_column_name]
+                if output_value is not None:
+                    model_outputs.append(output_value)
+                    current_row += 1
+                    yield pd.DataFrame(
+                        {"predictions": model_outputs, "timestamps": timestamps}
+                    ), current_row / total_rows
                     continue
 
-            input_variables_dict = input_data_row[1][
-                self.model_config["input_variable_names"]
-            ].to_dict()
-            injected_prompt = self._inject_prompt(
-                input_variables_dict=input_variables_dict
-            )
-            llm_input = self._get_llm_input(injected_prompt)
+            output, cost, exceptions = self._run_single_input(input_data_row)
 
-            try:
-                result = self._get_llm_output(llm_input)
-                model_outputs.append(result["output"])
-                run_cost += result["cost"]
-            except Exception as exc:
-                model_outputs.append(None)
-                run_exceptions.add(exc)
+            model_outputs.append(output)
+            run_cost += cost
+            run_exceptions.update(exceptions)
             timestamps.append(time.time())
+            current_row += 1
+
+            yield pd.DataFrame(
+                {"predictions": model_outputs, "timestamps": timestamps}
+            ), current_row / total_rows
 
         self.logger.info("Successfully ran data through the model!")
 
-        if run_exceptions:
-            warnings.warn(
-                f"We couldn't get the outputs for all rows.\n"
-                "Encountered the following exceptions while running the model: \n"
-                f"{run_exceptions}\n"
-                "After you fix the issues, you can call the `run` method again and provide "
-                "the `output_column_name` argument to avoid re-running the model on rows "
-                "that already have an output value."
-            )
+        self._report_exceptions(run_exceptions)
         self.cost_estimates.append(run_cost)
 
-        return pd.DataFrame({"predictions": model_outputs, "timestamps": timestamps})
+        yield pd.DataFrame(
+            {"predictions": model_outputs, "timestamps": timestamps}
+        ), 1.0
+
+    def _run_single_input(self, input_data_row: pd.Series) -> Tuple[str, float, set]:
+        """Runs the LLM on a single row of input data.
+
+        Returns a tuple of the output, cost, and exceptions encountered.
+        """
+        input_variables_dict = input_data_row[
+            self.model_config["input_variable_names"]
+        ].to_dict()
+        injected_prompt = self._inject_prompt(input_variables_dict=input_variables_dict)
+        llm_input = self._get_llm_input(injected_prompt)
+
+        try:
+            outputs = self._get_llm_output(llm_input)
+            return outputs["output"], outputs["cost"], set()
+        except Exception as exc:
+            return None, 0, {exc}
 
     def _inject_prompt(self, input_variables_dict: dict) -> List[Dict[str, str]]:
         """Injects the input variables into the prompt template.
@@ -174,6 +205,17 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
         """Extracts the cost from the response."""
         pass
 
+    def _report_exceptions(self, exceptions: set) -> None:
+        if exceptions:
+            warnings.warn(
+                f"We couldn't get the outputs for all rows.\n"
+                "Encountered the following exceptions while running the model: \n"
+                f"{exceptions}\n"
+                "After you fix the issues, you can call the `run` method again and provide "
+                "the `output_column_name` argument to avoid re-running the model on rows "
+                "that already have an output value."
+            )
+
     def _run_in_conda(
         self, input_data_df: pd.DataFrame, output_column_name: Optional[str] = None
     ) -> pd.DataFrame:
@@ -198,6 +240,21 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
             else:
                 return sum(self.cost_estimates[-num_of_runs:])
         return self.cost_estimates[-1]
+
+    def run_and_yield_progress(
+        self, input_data: pd.DataFrame, output_column_name: Optional[str] = None
+    ) -> Generator[Tuple[pd.DataFrame, float], None, None]:
+        """Runs the input data through the model and yields progress."""
+        if self.in_memory:
+            yield from self._run_in_memory_and_yield_progress(
+                input_data_df=input_data,
+                output_column_name=output_column_name,
+            )
+        else:
+            raise NotImplementedError(
+                "Running LLM in conda environment is not implemented yet. "
+                "Please use the in-memory runner."
+            )
 
 
 # -------------------------- Concrete model runners -------------------------- #
