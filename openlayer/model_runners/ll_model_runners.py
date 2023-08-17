@@ -104,7 +104,7 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
                     model_outputs.append(output_value)
                     current_row += 1
                     yield pd.DataFrame(
-                        {"predictions": model_outputs, "output_time_utc": timestamps}
+                        {"output": model_outputs, "output_time_utc": timestamps}
                     ), current_row / total_rows
                     continue
 
@@ -117,7 +117,7 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
             current_row += 1
 
             yield pd.DataFrame(
-                {"predictions": model_outputs, "output_time_utc": timestamps}
+                {"output": model_outputs, "output_time_utc": timestamps}
             ), current_row / total_rows
 
         self.logger.info("Successfully ran data through the model!")
@@ -126,7 +126,7 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
         self.cost_estimates.append(run_cost)
 
         yield pd.DataFrame(
-            {"predictions": model_outputs, "output_time_utc": timestamps}
+            {"output": model_outputs, "output_time_utc": timestamps}
         ), 1.0
 
     def _run_single_input(self, input_data_row: pd.Series) -> Tuple[str, float, set]:

@@ -34,9 +34,7 @@ if __name__ == "__main__":
 
     # Run model
     logger.debug("Running model...")
-    output_data = pd.DataFrame(
-        {"predictions": ml_model.predict_proba(input_data).tolist()}
-    )
+    output_data = pd.DataFrame({"output": ml_model.predict_proba(input_data).tolist()})
 
     # Save output data
     logger.debug("Saving output data...")
