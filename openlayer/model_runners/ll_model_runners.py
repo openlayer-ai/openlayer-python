@@ -4,6 +4,7 @@ Module with the concrete LLM runners.
 """
 
 import datetime
+import json
 import logging
 import warnings
 from abc import ABC, abstractmethod
@@ -14,6 +15,7 @@ import cohere
 import openai
 import pandas as pd
 import pybars
+import requests
 from tqdm import tqdm
 
 from . import base_model_runner
@@ -335,7 +337,7 @@ class AnthropicModelRunner(LLModelRunner):
 
     def _get_cost_estimate(self, response: Dict[str, Any]) -> float:
         """Estimates the cost from the response."""
-        return -1
+        return 0
 
 
 class CohereGenerateModelRunner(LLModelRunner):
@@ -409,7 +411,7 @@ class CohereGenerateModelRunner(LLModelRunner):
 
     def _get_cost_estimate(self, response: Dict[str, Any]) -> float:
         """Estimates the cost from the response."""
-        return -1
+        return 0
 
 
 class OpenAIChatCompletionRunner(LLModelRunner):
@@ -492,3 +494,81 @@ class OpenAIChatCompletionRunner(LLModelRunner):
                 num_input_tokens * self.COST_PER_TOKEN[model]["input"]
                 + num_output_tokens * self.COST_PER_TOKEN[model]["output"]
             )
+
+
+class SelfHostedLLModelRunner(LLModelRunner):
+    """Wraps a self-hosted LLM."""
+
+    def __init__(
+        self,
+        logger: Optional[logging.Logger] = None,
+        **kwargs,
+    ):
+        super().__init__(logger, **kwargs)
+        if kwargs.get("url") is None:
+            raise ValueError(
+                "URL must be provided. Please pass it as the keyword argument 'url'"
+            )
+        if kwargs.get("api_key") is None:
+            raise ValueError(
+                "API key must be provided for self-hosted LLMs. "
+                "Please pass it as the keyword argument 'api_key'"
+            )
+
+        self.url = kwargs["url"]
+        self.api_key = kwargs["api_key"]
+        self._initialize_llm()
+
+    def _initialize_llm(self):
+        """Initializes the self-hosted LL model."""
+        # Check if API key is valid
+        try:
+            requests.get(self.url)
+        except Exception as e:
+            raise ValueError(
+                "URL is invalid. Please pass a valid URL as the "
+                f"keyword argument 'url' \n Error message: {e}"
+            )
+
+    def _get_llm_input(self, injected_prompt: List[Dict[str, str]]) -> str:
+        """Prepares the input for the self-hosted LLM."""
+        llm_input = ""
+        for message in injected_prompt:
+            if message["role"] == "system":
+                llm_input += f"S: {message['content']} \n"
+            elif message["role"] == "assistant":
+                llm_input += f"A: {message['content']} \n"
+            elif message["role"] == "user":
+                llm_input += f"U: {message['content']} \n"
+            else:
+                raise ValueError(
+                    "Message role must be either 'system', 'assistant' or 'user'. "
+                    f"Got: {message['role']}"
+                )
+        llm_input += "A:"
+        return llm_input
+
+    def _make_request(self, llm_input: str) -> Dict[str, Any]:
+        """Make the request to the self-hosted LL model
+        for a given input."""
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        # TODO: use correct input key
+        data = {"inputs": llm_input}
+        response = requests.post(self.url, headers=headers, json=data)
+        if response.status_code == 200:
+            response_data = response.json()[0]
+            return response_data
+        else:
+            raise ValueError(f"Request failed with status code {response.status_code}")
+
+    def _get_output(self, response: Dict[str, Any]) -> str:
+        """Gets the output from the response."""
+        # TODO: use correct output key
+        return response["generated_text"]
+
+    def _get_cost_estimate(self, response: Dict[str, Any]) -> float:
+        """Estimates the cost from the response."""
+        return 0
