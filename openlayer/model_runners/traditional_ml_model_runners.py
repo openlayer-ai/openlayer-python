@@ -110,9 +110,9 @@ class ClassificationModelRunner(TraditionalMLModelRunner):
         processed_output_data = output_data.copy()
 
         # Make the items list of floats (and not strings)
-        processed_output_data["predictions"] = processed_output_data[
-            "predictions"
-        ].apply(ast.literal_eval)
+        processed_output_data["output"] = processed_output_data["output"].apply(
+            ast.literal_eval
+        )
 
         return processed_output_data
 
