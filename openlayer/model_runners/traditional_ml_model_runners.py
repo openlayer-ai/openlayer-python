@@ -4,10 +4,10 @@ Module with the concrete traditional ML model runners.
 
 """
 import ast
+import datetime
 import os
 import shutil
 import tempfile
-import time
 from abc import ABC, abstractmethod
 
 import pandas as pd
@@ -72,7 +72,7 @@ class TraditionalMLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
             output_data = pd.read_csv(f"{temp_dir}/output_data.csv")
 
             output_data = self._post_process_output(output_data)
-            output_data["timestamps"] = time.time()
+            output_data["output_time_utc"] = datetime.datetime.utcnow().isoformat()
 
         return output_data
 
