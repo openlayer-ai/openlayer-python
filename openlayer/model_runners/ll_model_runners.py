@@ -104,6 +104,10 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
                 output_value = input_data_row[output_column_name]
                 if output_value is not None:
                     model_outputs.append(output_value)
+                    if "output_time_utc" in input_data_row:
+                        timestamps.append(input_data_row["output_time_utc"])
+                    else:
+                        timestamps.append(datetime.datetime.utcnow().isoformat())
                     current_row += 1
                     yield pd.DataFrame(
                         {"output": model_outputs, "output_time_utc": timestamps}
