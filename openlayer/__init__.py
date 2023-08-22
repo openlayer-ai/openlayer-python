@@ -407,10 +407,6 @@ class OpenlayerClient(object):
                     f"{len(sample_data)} rows were provided."
                 )
 
-        # hack ---------------------------------------------------------------
-        task_type = TaskType.LLM
-        # hack ---------------------------------------------------------------
-
         # Validate model package
         model_validator = model_validators.get_validator(
             task_type=task_type,
@@ -671,10 +667,6 @@ class OpenlayerClient(object):
         >>> project.commit("Initial dataset commit.")
         >>> project.push()
         """
-        # hack ---------------------------------------------------------------
-        task_type = TaskType.LLM
-        # hack ---------------------------------------------------------------
-
         # Validate dataset
         dataset_validator = dataset_validators.get_validator(
             task_type=task_type,
@@ -983,10 +975,6 @@ class OpenlayerClient(object):
         >>> project.push()
         """
         project_dir = f"{constants.OPENLAYER_DIR}/{project_id}/staging"
-
-        # hack ---------------------------------------------------------------
-        task_type = TaskType.LLM
-        # hack ---------------------------------------------------------------
 
         if self._ready_for_push(project_dir=project_dir, task_type=task_type):
             with open(
