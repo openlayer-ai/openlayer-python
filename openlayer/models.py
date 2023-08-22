@@ -110,6 +110,7 @@ class ModelRunnerFactory:
         "Cohere": ll_model_runners.CohereGenerateModelRunner,
         "OpenAI": ll_model_runners.OpenAIChatCompletionRunner,
         "SelfHosted": ll_model_runners.SelfHostedLLModelRunner,
+        "HuggingFace": ll_model_runners.HuggingFaceModelRunner,
     }
     _MODEL_RUNNERS = {
         tasks.TaskType.TabularClassification.value: traditional_ml_model_runners.ClassificationModelRunner,
