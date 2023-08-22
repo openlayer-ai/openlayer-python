@@ -518,9 +518,21 @@ class SelfHostedLLModelRunner(LLModelRunner):
                 "API key must be provided for self-hosted LLMs. "
                 "Please pass it as the keyword argument 'api_key'"
             )
+        if kwargs.get("input_key") is None:
+            raise ValueError(
+                "Input key must be provided for self-hosted LLMs. "
+                "Please pass it as the keyword argument 'input_key'"
+            )
+        if kwargs.get("output_key") is None:
+            raise ValueError(
+                "Output key must be provided for self-hosted LLMs. "
+                "Please pass it as the keyword argument 'output_key'"
+            )
 
         self.url = kwargs["url"]
         self.api_key = kwargs["api_key"]
+        self.input_key = kwargs["input_key"]
+        self.output_key = kwargs["output_key"]
         self._initialize_llm()
 
     def _initialize_llm(self):
@@ -559,8 +571,7 @@ class SelfHostedLLModelRunner(LLModelRunner):
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
-        # TODO: use correct input key
-        data = {"inputs": llm_input}
+        data = {self.input_key: llm_input}
         response = requests.post(self.url, headers=headers, json=data)
         if response.status_code == 200:
             response_data = response.json()[0]
@@ -570,9 +581,15 @@ class SelfHostedLLModelRunner(LLModelRunner):
 
     def _get_output(self, response: Dict[str, Any]) -> str:
         """Gets the output from the response."""
-        # TODO: use correct output key
-        return response["generated_text"]
+        return response[self.output_key]
 
     def _get_cost_estimate(self, response: Dict[str, Any]) -> float:
         """Estimates the cost from the response."""
         return 0
+
+
+class HuggingFaceModelRunner(SelfHostedLLModelRunner):
+    """Wraps LLMs hosted in HuggingFace."""
+
+    def __init__(self, url, api_key):
+        super().__init__(url, api_key, input_key="inputs", output_key="generated_text")
