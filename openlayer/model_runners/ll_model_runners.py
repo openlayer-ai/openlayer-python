@@ -4,7 +4,6 @@ Module with the concrete LLM runners.
 """
 
 import datetime
-import json
 import logging
 import warnings
 from abc import ABC, abstractmethod
@@ -59,32 +58,33 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
         """Runs the input data through the model."""
         if self.in_memory:
             return self._run_in_memory(
-                input_data_df=input_data,
+                input_data=input_data,
                 output_column_name=output_column_name,
             )
         else:
             return self._run_in_conda(
-                input_data_df=input_data, output_column_name=output_column_name
+                input_data=input_data, output_column_name=output_column_name
             )
 
     def _run_in_memory(
         self,
-        input_data_df: pd.DataFrame,
+        input_data: pd.DataFrame,
         output_column_name: Optional[str] = None,
     ) -> pd.DataFrame:
         """Runs the input data through the model in memory and returns a pandas
         dataframe."""
         for output_df, _ in tqdm(
-            self._run_in_memory_and_yield_progress(input_data_df, output_column_name),
-            total=len(input_data_df),
+            self._run_in_memory_and_yield_progress(input_data, output_column_name),
+            total=len(input_data),
             colour="BLUE",
         ):
             pass
+        # pylint: disable=undefined-loop-variable
         return output_df
 
     def _run_in_memory_and_yield_progress(
         self,
-        input_data_df: pd.DataFrame,
+        input_data: pd.DataFrame,
         output_column_name: Optional[str] = None,
     ) -> Generator[Tuple[pd.DataFrame, float], None, None]:
         """Runs the input data through the model in memory and yields the results
@@ -95,10 +95,10 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
         timestamps = []
         run_exceptions = set()
         run_cost = 0
-        total_rows = len(input_data_df)
+        total_rows = len(input_data)
         current_row = 0
 
-        for _, input_data_row in input_data_df.iterrows():
+        for _, input_data_row in input_data.iterrows():
             # Check if output column already has a value to avoid re-running
             if output_column_name and output_column_name in input_data_row:
                 output_value = input_data_row[output_column_name]
@@ -149,6 +149,7 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
         try:
             outputs = self._get_llm_output(llm_input)
             return outputs["output"], outputs["cost"], set()
+        # pylint: disable=broad-except
         except Exception as exc:
             return None, 0, {exc}
 
@@ -223,7 +224,7 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
             )
 
     def _run_in_conda(
-        self, input_data_df: pd.DataFrame, output_column_name: Optional[str] = None
+        self, input_data: pd.DataFrame, output_column_name: Optional[str] = None
     ) -> pd.DataFrame:
         """Runs LLM prediction job in a conda environment."""
         raise NotImplementedError(
@@ -253,7 +254,7 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
         """Runs the input data through the model and yields progress."""
         if self.in_memory:
             yield from self._run_in_memory_and_yield_progress(
-                input_data_df=input_data,
+                input_data=input_data,
                 output_column_name=output_column_name,
             )
         else:
@@ -376,7 +377,7 @@ class CohereGenerateModelRunner(LLModelRunner):
             raise ValueError(
                 "Cohere API key is invalid. Please pass a valid API key as the "
                 f"keyword argument 'cohere_api_key' \n Error message: {e}"
-            )
+            ) from e
         if self.model_config.get("model") is None:
             warnings.warn("No model specified. Defaulting to model 'command'.")
         if self.model_config.get("model_parameters") is None:
@@ -461,7 +462,7 @@ class OpenAIChatCompletionRunner(LLModelRunner):
             raise ValueError(
                 "OpenAI API key is invalid. Please pass a valid API key as the "
                 f"keyword argument 'openai_api_key' \n Error message: {e}"
-            )
+            ) from e
         if self.model_config.get("model") is None:
             warnings.warn("No model specified. Defaulting to model 'gpt-3.5-turbo'.")
         if self.model_config.get("model_parameters") is None:
@@ -539,12 +540,13 @@ class SelfHostedLLModelRunner(LLModelRunner):
         """Initializes the self-hosted LL model."""
         # Check if API key is valid
         try:
-            requests.get(self.url)
+            # TODO: move request timeout to constants.py
+            requests.get(self.url, timeout=10800)
         except Exception as e:
             raise ValueError(
                 "URL is invalid. Please pass a valid URL as the "
                 f"keyword argument 'url' \n Error message: {e}"
-            )
+            ) from e
 
     def _get_llm_input(self, injected_prompt: List[Dict[str, str]]) -> str:
         """Prepares the input for the self-hosted LLM."""
@@ -572,7 +574,8 @@ class SelfHostedLLModelRunner(LLModelRunner):
             "Content-Type": "application/json",
         }
         data = {self.input_key: llm_input}
-        response = requests.post(self.url, headers=headers, json=data)
+        # TODO: move request timeout to constants.py
+        response = requests.post(self.url, headers=headers, json=data, timeout=10800)
         if response.status_code == 200:
             response_data = response.json()[0]
             return response_data
@@ -592,4 +595,6 @@ class HuggingFaceModelRunner(SelfHostedLLModelRunner):
     """Wraps LLMs hosted in HuggingFace."""
 
     def __init__(self, url, api_key):
-        super().__init__(url, api_key, input_key="inputs", output_key="generated_text")
+        super().__init__(
+            url=url, ali_key=api_key, input_key="inputs", output_key="generated_text"
+        )

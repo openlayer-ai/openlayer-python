@@ -619,15 +619,12 @@ def get_validator(
 
 
 # --------------- Helper functions used by multiple validators --------------- #
-def dir_exceeds_size_limit(dir: str) -> bool:
+def dir_exceeds_size_limit(dir_path: str) -> bool:
     """Checks whether the tar version of the directory exceeds the maximim limit."""
     with tempfile.TemporaryDirectory() as tmp_dir:
         tar_file_path = os.path.join(tmp_dir, "tarfile")
         with tarfile.open(tar_file_path, mode="w:gz") as tar:
-            tar.add(dir, arcname=os.path.basename(dir))
+            tar.add(dir_path, arcname=os.path.basename(dir_path))
         tar_file_size = os.path.getsize(tar_file_path)
 
-        if tar_file_size > constants.MAXIMUM_TAR_FILE_SIZE * 1024 * 1024:
-            return True
-        else:
-            return False
+        return tar_file_size > constants.MAXIMUM_TAR_FILE_SIZE * 1024 * 1024
