@@ -54,6 +54,7 @@ DATA = pd.DataFrame(
 )
 
 # ----------------------------- Expected results ----------------------------- #
+# flake8: noqa: E501
 OPENAI_PROMPT = [
     *PROMPT[:-1],
     {
@@ -61,19 +62,22 @@ OPENAI_PROMPT = [
         "content": """description: A smartwatch with fitness tracking capabilities \n\nseed words: smart, fitness, health""",
     },
 ]
-COHERE_PROMPT = """S: You are a helpful assistant. 
+
+# flake8: noqa: E501
+COHERE_PROMPT = """S: You are a helpful assistant.
 U: You will be provided with a product description and seed words, and your task is to generate a list
 of product names and provide a short description of the target customer for such product. The output
-must be a valid JSON with attributes `names` and `target_custommer`. 
-A: Let\'s get started! 
-U: Product description: \n description: A home milkshake maker \n seed words: fast, healthy, compact 
-A: {\n    "names": ["QuickBlend", "FitShake", "MiniMix"]\n    "target_custommer": "College students that are into fitness and healthy living"\n} 
-U: description: A smartwatch with fitness tracking capabilities \n\nseed words: smart, fitness, health 
+must be a valid JSON with attributes `names` and `target_custommer`.
+A: Let\'s get started!
+U: Product description: \n description: A home milkshake maker \n seed words: fast, healthy, compact
+A: {\n    "names": ["QuickBlend", "FitShake", "MiniMix"]\n    "target_custommer": "College students that are into fitness and healthy living"\n}
+U: description: A smartwatch with fitness tracking capabilities \n\nseed words: smart, fitness, health
 A:"""
 
+# flake8: noqa: E501
 ANTHROPIC_PROMPT = f"""{anthropic.HUMAN_PROMPT} You are a helpful assistant. {anthropic.HUMAN_PROMPT} You will be provided with a product description and seed words, and your task is to generate a list
 of product names and provide a short description of the target customer for such product. The output
-must be a valid JSON with attributes `names` and `target_custommer`. {anthropic.AI_PROMPT} Let\'s get started! {anthropic.HUMAN_PROMPT} Product description: 
+must be a valid JSON with attributes `names` and `target_custommer`. {anthropic.AI_PROMPT} Let\'s get started! {anthropic.HUMAN_PROMPT} Product description:
  description: A home milkshake maker \n seed words: fast, healthy, compact {anthropic.AI_PROMPT} {{\n    "names": ["QuickBlend", "FitShake", "MiniMix"]\n    "target_custommer": "College students that are into fitness and healthy living"\n}} {anthropic.HUMAN_PROMPT} description: A smartwatch with fitness tracking capabilities \n\nseed words: smart, fitness, health {anthropic.AI_PROMPT}"""
 
 

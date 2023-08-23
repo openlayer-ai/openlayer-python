@@ -129,7 +129,9 @@ class BaseCommitBundleValidator(BaseValidator, ABC):
             )
 
         # Check if flagged to compute the model outputs
-        with open(f"{self.bundle_path}/commit.yaml", "r") as commit_file:
+        with open(
+            f"{self.bundle_path}/commit.yaml", "r", encoding="UTF-8"
+        ) as commit_file:
             commit = yaml.safe_load(commit_file)
         compute_outputs = commit.get("computeOutputs", False)
 
@@ -262,7 +264,7 @@ class BaseCommitBundleValidator(BaseValidator, ABC):
         if "model" in self._bundle_resources and not self._skip_model_validation:
             model_config_file_path = f"{self.bundle_path}/model/model_config.yaml"
             model_type = self.model_config.get("modelType")
-            if model_type == "shell" or model_type == "api":
+            if model_type in ("shell", "api"):
                 model_validator = model_validators.get_validator(
                     task_type=self.task_type,
                     model_config_file_path=model_config_file_path,
