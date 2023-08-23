@@ -27,6 +27,7 @@ import tarfile
 import tempfile
 import time
 import uuid
+import warnings
 from typing import Optional
 
 import pandas as pd
@@ -937,14 +938,46 @@ class OpenlayerClient(object):
                 print("Keeping the existing commit message.")
                 return
 
+        llm_and_no_outputs = self._check_llm_and_no_outputs(project_dir=project_dir)
+        if llm_and_no_outputs:
+            warnings.warn(
+                "You are committing an LLM without validation outputs computed "
+                "in the validation set. This means that the platform will try to "
+                "compute the validation outputs for you. This may take a while and "
+                "there are costs associated with it."
+            )
         commit = {
             "message": message,
             "date": time.ctime(),
+            "computeOutputs": llm_and_no_outputs,
         }
         with open(f"{project_dir}/commit.yaml", "w", encoding="UTF-8") as commit_file:
             yaml.dump(commit, commit_file)
 
         print("Committed!")
+
+    def _check_llm_and_no_outputs(self, project_dir: str) -> bool:
+        """Checks if the project's staging area contains an LLM and no outputs."""
+        # Check if validation set has outputs
+        validation_has_no_outputs = False
+        if os.path.exists(f"{project_dir}/validation"):
+            validation_dataset_config = utils.load_dataset_config_from_bundle(
+                bundle_path=project_dir, label="validation"
+            )
+            output_column_name = validation_dataset_config.get("outputColumnName")
+            validation_has_no_outputs = output_column_name is None
+
+        # Check if the model is an LLM
+        model_is_llm = False
+        if os.path.exists(f"{project_dir}/model"):
+            model_config = utils.read_yaml(f"{project_dir}/model/model_config.yaml")
+            architecture_type = model_config.get("architectureType")
+            model_type = model_config.get("modelType")
+
+            if architecture_type == "llm" and model_type != "shell":
+                model_is_llm = True
+
+        return validation_has_no_outputs and model_is_llm
 
     def push(self, project_id: str, task_type: TaskType) -> Optional[ProjectVersion]:
         """Pushes the commited resources to the platform.
