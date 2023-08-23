@@ -6,15 +6,14 @@ The ModelType enum chooses between different machine learning modeling framework
 The Model object contains information about a model on the Openlayer platform.
 """
 import logging
-
 from enum import Enum
 from typing import Any, Dict
 
 from . import tasks, utils
 from .model_runners import (
     base_model_runner,
-    traditional_ml_model_runners,
     ll_model_runners,
+    traditional_ml_model_runners,
 )
 
 
