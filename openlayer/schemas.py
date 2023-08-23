@@ -153,7 +153,8 @@ class LLMOutputSchema(BaseDatasetSchema):
     )
     outputColumnName = ma.fields.Str(
         validate=COLUMN_NAME_VALIDATION_LIST,
-        required=True,
+        allow_none=True,
+        load_default=None,
     )
 
 

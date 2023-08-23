@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 
 import marshmallow as ma
 import pandas as pd
+import yaml
 
 from .. import schemas, tasks, utils
 from . import baseline_model_validators, dataset_validators, model_validators
@@ -127,6 +128,11 @@ class BaseCommitBundleValidator(BaseValidator, ABC):
                 label="validation"
             )
 
+        # Check if flagged to compute the model outputs
+        with open(f"{self.bundle_path}/commit.yaml", "r") as commit_file:
+            commit = yaml.safe_load(commit_file)
+        compute_outputs = commit.get("computeOutputs", False)
+
         if "model" in self._bundle_resources:
             model_type = self.model_config.get("modelType")
 
@@ -163,7 +169,7 @@ class BaseCommitBundleValidator(BaseValidator, ABC):
                     "training" not in self._bundle_resources
                     or "fine-tuning" not in self._bundle_resources
                 ) and ("validation" in self._bundle_resources):
-                    if not outputs_in_validation_set:
+                    if not outputs_in_validation_set and not compute_outputs:
                         self.failed_validations.append(
                             "You are trying to push a model and a validation set to the platform. "
                             "However, the validation set does not contain predictions. "
@@ -186,7 +192,9 @@ class BaseCommitBundleValidator(BaseValidator, ABC):
                     "training" in self._bundle_resources
                     or "fine-tuning" in self._bundle_resources
                 ) and ("validation" in self._bundle_resources):
-                    if not outputs_in_training_set or not outputs_in_validation_set:
+                    if (
+                        not outputs_in_training_set or not outputs_in_validation_set
+                    ) and not compute_outputs:
                         self.failed_validations.append(
                             "You are trying to push a model, a training/fine-tuning set and a validation "
                             "set to the platform. "
