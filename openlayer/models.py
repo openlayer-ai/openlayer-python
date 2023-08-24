@@ -9,7 +9,7 @@ import logging
 from enum import Enum
 from typing import Any, Dict
 
-from . import tasks, utils
+from . import exceptions, tasks, utils
 from .model_runners import (
     base_model_runner,
     ll_model_runners,
@@ -172,7 +172,12 @@ class ModelRunnerFactory:
             raise ValueError("Model provider is required for LLM task types.")
 
         if model_provider not in ModelRunnerFactory._LLM_PROVIDERS:
-            raise ValueError(f"Model provider `{model_provider}` is not supported.")
+            raise exceptions.OpenlayerUnsupportedLlmProvider(
+                provider=model_provider,
+                message="\nCurrently, the supported providers are: 'OpenAI', 'Cohere',"
+                " 'Anthropic', 'SelfHosted', 'HuggingFace'. Reach out if you'd like us"
+                " to support your use case.",
+            )
 
         model_runner_class = ModelRunnerFactory._LL_MODEL_RUNNERS[task_type.value][
             model_provider

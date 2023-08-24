@@ -17,6 +17,8 @@ import pybars
 import requests
 from tqdm import tqdm
 
+from .. import constants
+from .. import exceptions as openlayer_exceptions
 from . import base_model_runner
 
 
@@ -287,8 +289,8 @@ class AnthropicModelRunner(LLModelRunner):
     ):
         super().__init__(logger, **kwargs)
         if kwargs.get("anthropic_api_key") is None:
-            raise ValueError(
-                "Anthropic API key must be provided. Please pass it as the "
+            raise openlayer_exceptions.OpenlayerMissingLlmApiKey(
+                "Please pass your Anthropic API key as the "
                 "keyword argument 'anthropic_api_key'"
             )
 
@@ -358,8 +360,8 @@ class CohereGenerateModelRunner(LLModelRunner):
     ):
         super().__init__(logger, **kwargs)
         if kwargs.get("cohere_api_key") is None:
-            raise ValueError(
-                "Cohere API key must be provided. Please pass it as the "
+            raise openlayer_exceptions.OpenlayerMissingLlmApiKey(
+                "Please pass your Cohere API key as the "
                 "keyword argument 'cohere_api_key'"
             )
 
@@ -374,8 +376,8 @@ class CohereGenerateModelRunner(LLModelRunner):
                 api_key=self.cohere_api_key, check_api_key=True
             )
         except Exception as e:
-            raise ValueError(
-                "Cohere API key is invalid. Please pass a valid API key as the "
+            raise openlayer_exceptions.OpenlayerInvalidLlmApiKey(
+                "Please pass a valid Cohere API key as the "
                 f"keyword argument 'cohere_api_key' \n Error message: {e}"
             ) from e
         if self.model_config.get("model") is None:
@@ -441,8 +443,8 @@ class OpenAIChatCompletionRunner(LLModelRunner):
     ):
         super().__init__(logger, **kwargs)
         if kwargs.get("openai_api_key") is None:
-            raise ValueError(
-                "OpenAI API key must be provided. Please pass it as the "
+            raise openlayer_exceptions.OpenlayerMissingLlmApiKey(
+                "Please pass your OpenAI API key as the "
                 "keyword argument 'openai_api_key'"
             )
 
@@ -459,8 +461,8 @@ class OpenAIChatCompletionRunner(LLModelRunner):
         try:
             openai.Model.list()
         except Exception as e:
-            raise ValueError(
-                "OpenAI API key is invalid. Please pass a valid API key as the "
+            raise openlayer_exceptions.OpenlayerInvalidLlmApiKey(
+                "Please pass a valid OpenAI API key as the "
                 f"keyword argument 'openai_api_key' \n Error message: {e}"
             ) from e
         if self.model_config.get("model") is None:
@@ -540,8 +542,7 @@ class SelfHostedLLModelRunner(LLModelRunner):
         """Initializes the self-hosted LL model."""
         # Check if API key is valid
         try:
-            # TODO: move request timeout to constants.py
-            requests.get(self.url, timeout=10800)
+            requests.get(self.url, timeout=constants.REQUESTS_TIMEOUT)
         except Exception as e:
             raise ValueError(
                 "URL is invalid. Please pass a valid URL as the "
@@ -574,8 +575,9 @@ class SelfHostedLLModelRunner(LLModelRunner):
             "Content-Type": "application/json",
         }
         data = {self.input_key: llm_input}
-        # TODO: move request timeout to constants.py
-        response = requests.post(self.url, headers=headers, json=data, timeout=10800)
+        response = requests.post(
+            self.url, headers=headers, json=data, timeout=constants.REQUESTS_TIMEOUT
+        )
         if response.status_code == 200:
             response_data = response.json()[0]
             return response_data
