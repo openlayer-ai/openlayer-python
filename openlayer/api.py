@@ -29,6 +29,7 @@ from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm
 from tqdm.utils import CallbackIOWrapper
 
+from . import constants
 from .exceptions import ExceptionMap, OpenlayerException
 from .version import __version__
 
@@ -39,7 +40,6 @@ HTTP_STATUS_FORCE_LIST = [408, 429] + list(range(500, 504)) + list(range(506, 53
 HTTP_RETRY_ALLOWED_METHODS = frozenset({"GET", "PUT", "POST"})
 
 CLIENT_METADATA = {"version": __version__}
-REQUESTS_TIMEOUT = 60 * 60 * 3  # 3 hours
 
 
 class StorageType(Enum):
@@ -230,7 +230,7 @@ class Api:
                     data=m,
                     headers=headers,
                     verify=VERIFY_REQUESTS,
-                    timeout=REQUESTS_TIMEOUT,
+                    timeout=constants.REQUESTS_TIMEOUT,
                 )
 
         if res.ok:
@@ -260,7 +260,7 @@ class Api:
                     data=wrapped_file,
                     headers={"Content-Type": "application/x-gzip"},
                     verify=VERIFY_REQUESTS,
-                    timeout=REQUESTS_TIMEOUT,
+                    timeout=constants.REQUESTS_TIMEOUT,
                 )
         if res.ok:
             body["storageUri"] = presigned_json["storageUri"]
@@ -292,7 +292,7 @@ class Api:
                         "x-ms-blob-type": "BlockBlob",
                     },
                     verify=VERIFY_REQUESTS,
-                    timeout=REQUESTS_TIMEOUT,
+                    timeout=constants.REQUESTS_TIMEOUT,
                 )
         if res.ok:
             body["storageUri"] = presigned_json["storageUri"]

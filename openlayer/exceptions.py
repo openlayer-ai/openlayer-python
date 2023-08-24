@@ -107,6 +107,38 @@ class OpenlayerTimeoutError(OpenlayerException):
     code = 504
 
 
+# -------------------------- LLM-specific exceptions ------------------------- #
+class OpenlayerLlmException(OpenlayerException):
+    """Generic LLM exception class"""
+
+    def __init__(self, message):
+        super().__init__(message)
+
+
+class OpenlayerUnsupportedLlmProvider(OpenlayerLlmException):
+    """Unsupported provider exception class"""
+
+    def __init__(self, message, provider):
+        message = f"Unsupported LLM provider '{provider}'. " + message
+        super().__init__(message)
+
+
+class OpenlayerMissingLlmApiKey(OpenlayerLlmException):
+    """Missing LLM API key exception class"""
+
+    def __init__(self, message):
+        message = "Missing API key for the LLM provider. " + message
+        super().__init__(message)
+
+
+class OpenlayerInvalidLlmApiKey(OpenlayerLlmException):
+    """Invalid LLM API key exception class"""
+
+    def __init__(self, message):
+        message = "Invalid API key for the LLM provider. " + message
+        super().__init__(message)
+
+
 ExceptionMap: Dict[int, OpenlayerException] = {
     OpenlayerInvalidRequest.code: OpenlayerInvalidRequest,
     OpenlayerUnauthorized.code: OpenlayerUnauthorized,
