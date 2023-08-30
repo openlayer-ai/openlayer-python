@@ -34,6 +34,7 @@ import pandas as pd
 import yaml
 
 from . import api, constants, exceptions, utils
+from .inference_pipelines import InferencePipeline
 from .project_versions import ProjectVersion
 from .projects import Project
 from .schemas import BaselineModelSchema, DatasetSchema, ModelSchema
@@ -44,6 +45,7 @@ from .validators import (
     baseline_model_validators,
     commit_validators,
     dataset_validators,
+    inference_pipeline_validators,
     model_validators,
     project_validators,
 )
@@ -1384,3 +1386,89 @@ class OpenlayerClient(object):
         version_data = self.api.get_request(endpoint)
         version = ProjectVersion(version_data, self)
         return version
+
+    def create_inference_pipeline(
+        self,
+        project_id: str,
+        name: str,
+        description: Optional[str] = None,
+    ) -> Project:
+        """Creates an inference pipeline in an Openlayer project.
+
+        An inference pipeline represents a model that has been deployed in production.
+
+        Parameters
+        ----------
+        name : str
+            Name of your inference pipeline.
+
+            .. important::
+                The inference pipeline name must be unique within a project.
+
+        description : str
+            Inference pipeline description.
+
+        Returns
+        -------
+        InferencePipeline
+            An object that is used to publish production data the Openlayer platform
+            and that contains information about the inference pipeline.
+
+        Examples
+        --------
+        Instantiate the client and retrieve an existing project:
+
+        >>> import openlayer
+        >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
+        >>>
+        >>> project = client.load_project(
+        ...     name="Churn prediction"
+        ... )
+
+        With the Project object retrieved, you are able to create an inference pipeline:
+
+        >>> inference_pipeline = project.create_inference_pipeline(
+        ...     name="XGBoost model inference pipeline",
+        ...     description="Online model deployed to SageMaker endpoint.",
+        ... )
+
+
+        With the InferencePipeline object created, you are able to add a reference dataset
+        (used to monitor drift) and to publish production data to the Openlayer platform.
+        Refer to :obj:`upload_reference_dataset` and :obj:`publish_batch_data` for
+        detailed examples.
+        """
+        # Validate inference pipeline
+        inference_pipeline_config = {
+            "name": name,
+            "description": description,
+        }
+        inference_pipeline_validator = (
+            inference_pipeline_validators.InferencePipelineValidator(
+                inference_pipeline_config=inference_pipeline_config
+            )
+        )
+        failed_validations = inference_pipeline_validator.validate()
+
+        if failed_validations:
+            raise exceptions.OpenlayerValidationError(
+                "There are issues with the inference pipeline. \n"
+                "Make sure to fix all of the issues listed above before creating it.",
+            ) from None
+
+        endpoint = "inference-pipeline"
+        payload = {
+            "name": name,
+            "description": description,
+        }
+        inference_pipeline_data = self.api.post_request(endpoint, body=payload)
+
+        inference_pipeline = InferencePipeline(
+            inference_pipeline_data, self.api.upload, self
+        )
+
+        print(
+            "Created your inference pipeline. Navigate to"
+            f" {inference_pipeline.links['app']} to see it."
+        )
+        return inference_pipeline

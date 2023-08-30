@@ -235,6 +235,25 @@ class DatasetSchema(maos.OneOfSchema):
         return obj
 
 
+# ---------------------------- Inference pipeline ---------------------------- #
+class InferencePipelineSchema(ma.Schema):
+    """Schema for inference pipelines."""
+
+    description = ma.fields.Str(
+        validate=ma.validate.Length(
+            min=1,
+            max=140,
+        ),
+    )
+    name = ma.fields.Str(
+        required=True,
+        validate=ma.validate.Length(
+            min=1,
+            max=64,
+        ),
+    )
+
+
 # ---------------------------------- Models ---------------------------------- #
 class BaseModelSchema(ma.Schema):
     """Common schema for models for all task types."""
