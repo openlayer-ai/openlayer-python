@@ -1392,7 +1392,7 @@ class OpenlayerClient(object):
         project_id: str,
         name: str,
         description: Optional[str] = None,
-    ) -> Project:
+    ) -> InferencePipeline:
         """Creates an inference pipeline in an Openlayer project.
 
         An inference pipeline represents a model that has been deployed in production.
@@ -1433,8 +1433,8 @@ class OpenlayerClient(object):
         ... )
 
 
-        With the InferencePipeline object created, you are able to add a reference
-        dataset (used to monitor drift) and to publish production data to the Openlayer
+        With the InferencePipeline object created, you are able to upload a reference
+        dataset (used to measure drift) and to publish production data to the Openlayer
         platform. Refer to :obj:`upload_reference_dataset` and
         :obj:`publish_batch_data` for detailed examples.
         """
@@ -1462,7 +1462,6 @@ class OpenlayerClient(object):
             "description": description,
         }
         inference_pipeline_data = self.api.post_request(endpoint, body=payload)
-
         inference_pipeline = InferencePipeline(
             inference_pipeline_data, self.api.upload, self
         )
@@ -1473,7 +1472,7 @@ class OpenlayerClient(object):
         )
         return inference_pipeline
 
-    def load_inference_pipeline(self, project_id: str, name: str) -> Project:
+    def load_inference_pipeline(self, project_id: str, name: str) -> InferencePipeline:
         """Loads an existing inference pipeline from an Openlayer project.
 
         Parameters
@@ -1508,8 +1507,8 @@ class OpenlayerClient(object):
         ...     name="XGBoost model inference pipeline",
         ... )
 
-        With the InferencePipeline object created, you are able to add a reference
-        dataset (used to monitor drift) and to publish production data to the Openlayer
+        With the InferencePipeline object created, you are able to upload a reference
+        dataset (used to measure drift) and to publish production data to the Openlayer
         platform. Refer to :obj:`upload_reference_dataset` and
         :obj:`publish_batch_data` for detailed examples.
         """
@@ -1528,3 +1527,220 @@ class OpenlayerClient(object):
             f" Navigate to {inference_pipeline.links['app']} to see it."
         )
         return inference_pipeline
+
+    def upload_reference_dataset(
+        self,
+        inference_pipeline_id: str,
+        task_type: TaskType,
+        file_path: str,
+        dataset_config_file_path: str,
+    ) -> None:
+        r"""Uploads a reference dataset saved as a csv file to an inference pipeline.
+
+        The reference dataset is used to measure drift in the inference pipeline.
+        The different types of drift are measured by comparing the production data
+        published to the platform with the reference dataset.
+
+        Ideally, the reference dataset should be a representative sample of the
+        training set used to train the deployed model.
+
+        Parameters
+        ----------
+        file_path : str
+            Path to the csv file containing the reference dataset.
+        dataset_config_file_path : str
+            Path to the dataset configuration YAML file.
+
+            .. admonition:: What's in the dataset config file?
+
+                The dataset configuration YAML depends on the :obj:`TaskType`.
+                Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
+                for examples.
+        Notes
+        -----
+        - Please ensure your input features are strings, ints or floats.
+        - Please ensure your label column name is not contained in ``feature_names``.
+
+        Examples
+        --------
+
+        First, instantiate the client and retrieve an existing inference pipeline:
+
+        >>> import openlayer
+        >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
+        >>>
+        >>> project = client.load_project(name="Churn prediction")
+        >>>
+        >>> inference_pipeline = project.load_inference_pipeline(
+        ...     name="XGBoost model inference pipeline",
+        ... )
+
+        With the InferencePipeline object retrieved, you are able to upload a reference
+        dataset.
+
+        For example, if your project's task type is tabular classification and
+        your dataset looks like the following:
+
+        .. csv-table::
+            :header: CreditScore, Geography, Balance, Churned
+
+            618, France, 321.92, 1
+            714, Germany, 102001.22, 0
+            604, Spain, 12333.15, 0
+
+        .. important::
+            The labels in your csv **must** be integers that correctly index into the
+            ``class_names`` array that you define (as shown below).
+            E.g. 0 => 'Retained', 1 => 'Churned'
+
+        Write the dataset config YAML file with the variables are needed by Openlayer:
+
+        >>> import yaml
+        >>>
+        >> dataset_config = {
+        ...     'columnNames': ['CreditScore', 'Geography', 'Balance', 'Churned'],
+        ...     'classNames': ['Retained', 'Churned'],
+        ...     'labelColumnName': 'Churned',
+        ...     'label': 'training',  # or 'validation'
+        ...     'featureNames': ['CreditScore', 'Geography', 'Balance'],
+        ...     'categoricalFeatureNames': ['Geography'],
+        ... }
+        >>>
+        >>> with open('/path/to/dataset_config.yaml', 'w') as f:
+        ...     yaml.dump(dataset_config, f)
+
+        You can now upload this reference dataset to your project with:
+
+        >>> inference_pipeline.upload_reference_dataset(
+        ...     file_path='/path/to/dataset.csv',
+        ...     dataset_config_file_path='/path/to/dataset_config.yaml',
+        ... )
+        """
+        # Validate dataset
+        dataset_validator = dataset_validators.get_validator(
+            task_type=task_type,
+            dataset_config_file_path=dataset_config_file_path,
+            dataset_file_path=file_path,
+        )
+        failed_validations = dataset_validator.validate()
+
+        if failed_validations:
+            raise exceptions.OpenlayerValidationError(
+                "There are issues with the reference dataset and its config. \n"
+                "Make sure to fix all of the issues listed above before the upload.",
+            ) from None
+
+        # Load dataset config and augment with defaults
+        dataset_config = utils.read_yaml(dataset_config_file_path)
+        dataset_data = DatasetSchema().load(
+            {"task_type": task_type.value, **dataset_config}
+        )
+
+        # TODO: Make POST request to upload dataset
+        print("Uploading reference dataset...")
+        print(dataset_data)
+
+    def upload_reference_dataframe(
+        self,
+        inference_pipeline_id: str,
+        task_type: TaskType,
+        dataset_df: pd.DataFrame,
+        dataset_config_file_path: str,
+    ) -> None:
+        r"""Uploads a reference dataset (a pandas dataframe) to an inference pipeline.
+
+        The reference dataset is used to measure drift in the inference pipeline.
+        The different types of drift are measured by comparing the production data
+        published to the platform with the reference dataset.
+
+        Ideally, the reference dataset should be a representative sample of the
+        training set used to train the deployed model.
+
+        Parameters
+        ----------
+        dataset_df : pd.DataFrame
+            Dataframe containing the reference dataset.
+        dataset_config_file_path : str
+            Path to the dataset configuration YAML file.
+
+            .. admonition:: What's in the dataset config file?
+
+                The dataset configuration YAML depends on the :obj:`TaskType`.
+                Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
+                for examples.
+        Notes
+        -----
+        - Please ensure your input features are strings, ints or floats.
+        - Please ensure your label column name is not contained in ``feature_names``.
+
+        Examples
+        --------
+
+        First, instantiate the client and retrieve an existing inference pipeline:
+
+        >>> import openlayer
+        >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
+        >>>
+        >>> project = client.load_project(name="Churn prediction")
+        >>>
+        >>> inference_pipeline = project.load_inference_pipeline(
+        ...     name="XGBoost model inference pipeline",
+        ... )
+
+        With the InferencePipeline object retrieved, you are able to upload a reference
+        dataset.
+
+        For example, if your project's task type is tabular classification, your
+        dataset looks like the following (stored in a pandas dataframe
+        called ``dataset_df``):
+
+        .. csv-table::
+            :header: CreditScore, Geography, Balance, Churned
+
+            618, France, 321.92, 1
+            714, Germany, 102001.22, 0
+            604, Spain, 12333.15, 0
+
+        .. important::
+            The labels in your csv **must** be integers that correctly index into the
+            ``class_names`` array that you define (as shown below).
+            E.g. 0 => 'Retained', 1 => 'Churned'
+
+        Write the dataset config YAML file with the variables are needed by Openlayer:
+
+        >>> import yaml
+        >>>
+        >> dataset_config = {
+        ...     'columnNames': ['CreditScore', 'Geography', 'Balance', 'Churned'],
+        ...     'classNames': ['Retained', 'Churned'],
+        ...     'labelColumnName': 'Churned',
+        ...     'label': 'training',  # or 'validation'
+        ...     'featureNames': ['CreditScore', 'Geography', 'Balance'],
+        ...     'categoricalFeatureNames': ['Geography'],
+        ... }
+        >>>
+        >>> with open('/path/to/dataset_config.yaml', 'w') as f:
+        ...     yaml.dump(dataset_config, f)
+
+        You can now upload this reference dataset to your project with:
+
+        >>> inference_pipeline.upload_reference_dataframe(
+        ...     dataset_df=dataset_df,
+        ...     dataset_config_file_path='/path/to/dataset_config.yaml',
+        ... )
+        """
+        # --------------------------- Resource validations --------------------------- #
+        if not isinstance(dataset_df, pd.DataFrame):
+            raise exceptions.OpenlayerValidationError(
+                f"- `dataset_df` is a `{type(dataset_df)}`, but it must be of type"
+                " `pd.DataFrame`. \n"
+            ) from None
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            file_path = os.path.join(tmp_dir, str(uuid.uuid1()))
+            dataset_df.to_csv(file_path, index=False)
+            return self.upload_reference_dataset(
+                file_path=file_path,
+                inference_pipeline_id=inference_pipeline_id,
+                dataset_config_file_path=dataset_config_file_path,
+                task_type=task_type,
+            )
