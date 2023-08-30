@@ -102,3 +102,7 @@ class Project:
         return self.client.create_inference_pipeline(
             *args, project_id=self.id, **kwargs
         )
+
+    def load_inference_pipeline(self, *args, **kwargs):
+        """Loads an existing inference pipeline."""
+        return self.client.load_inference_pipeline(*args, project_id=self.id, **kwargs)
