@@ -38,6 +38,7 @@ from .project_versions import ProjectVersion
 from .projects import Project
 from .schemas import BaselineModelSchema, DatasetSchema, ModelSchema
 from .tasks import TaskType
+from .decorator import Collector
 
 # from validators import models as model_validators
 from .validators import (
@@ -859,6 +860,166 @@ class OpenlayerClient(object):
                 force=force,
                 task_type=task_type,
             )
+
+    def upload_llm_data(self, dataset, input_names, output_name, metadata=None, project_name=None, project_description=None):
+        """
+        Uploads data for LLM tasks to the platform.
+
+        The function takes care of uploading the dataset, generating configurations, and staging the model to a project.
+        If no project name or description is provided, default ones are generated based on a hash of UUID to ensure uniqueness.
+
+        Parameters
+        ----------
+        dataset : pd.DataFrame
+            The dataset to be uploaded. The dataset columns include both the input variables and the output variables.
+
+        input_names : List[str]
+            Names of the columns in the dataset that serve as the input variables for the LLM.
+
+        output_names : List[str]
+            Names of the columns in the dataset that serve as the output variables/targets for the LLM.
+
+        metadata : dict, optional (default=None)
+            Additional metadata information to be associated with the model. If not provided, an empty dictionary will be used.
+
+        project_name : str, optional (default=None)
+            Name of the project. If not provided, a default name is generated using a hash to ensure uniqueness.
+
+        project_description : str, optional (default=None)
+            Description for the project. If not provided, a default description is generated.
+
+        Returns
+        -------
+        project : Project
+            The created or loaded project instance after uploading the dataset and adding the model.
+
+        Notes
+        -----
+        1. The function first checks if a `project_name` and `project_description` are provided. If not, it generates default values.
+        2. It checks for provided metadata and initializes it as an empty dictionary if none is given.
+        3. The function will then create or load a project based on the `project_name`.
+        4. Dataset configurations are generated and written to a YAML file. This includes column names, input variable names, and output column names.
+        5. The dataset is added to the project using the generated configuration.
+        6. Model configurations are generated and written to a YAML file. This includes input variable names, the type of model, its name, architecture type, and associated metadata.
+        7. The model is added to the project using the generated configuration.
+        8. Finally, the project instance is returned.
+
+        Examples
+        --------
+        >>> client = OpenlayerClient()  # assuming the function is within a client or similar class
+        >>> df = pd.DataFrame({
+        ...     'input_text': ["Hello world", "I am learning"],
+        ...     'output_translation': ["Bonjour le monde", "J'apprends"]
+        ... })
+        >>> input_names = ['input_text']
+        >>> output_names = 'output_translation'
+        >>> project = client.upload_llm_data(df, input_names, output_name)
+        """
+
+        # Generate a small hash based on UUID
+        small_hash = str(uuid.uuid4())[:8]
+
+        # If project_name isn't provided, generate one using the hash
+        if not project_name:
+            project_name = f"project_{small_hash}"
+
+        # Similarly for project_description
+        if not project_description:
+            project_description = f"Evaluation of {small_hash}"
+
+        # Model name based on the hash
+        model_name = f"model for {small_hash}"
+
+        # If metadata isn't provided, set it to an empty dictionary
+        if metadata is None:
+            metadata = {}
+
+        # Create or load project
+        project = self.create_or_load_project(
+            name=project_name,
+            task_type=TaskType.LLM,
+            description=project_description
+        )
+
+        # Configuration for validation dataset
+        column_names = list(dataset.columns)
+
+        validation_dataset_config = {
+            "columnNames": column_names,
+            "inputVariableNames": input_names,
+            "label": "validation",
+            "outputColumnName": output_name,
+        }
+
+        with open("validation_dataset_config.yaml", "w") as dataset_config_file:
+            yaml.dump(validation_dataset_config, dataset_config_file, default_flow_style=False)
+
+        project.add_dataframe(
+            dataset_df=dataset,
+            dataset_config_file_path="validation_dataset_config.yaml",
+        )
+
+        # Configuration for model
+        model_config = {
+            "inputVariableNames": input_names,
+            "modelType": "shell",
+            "name": model_name,
+            "architectureType": "llm",
+            "metadata": metadata
+        }
+
+        with open("model_config.yaml", "w") as model_config_file:
+            yaml.dump(model_config, model_config_file, default_flow_style=False)
+
+        # Adding the model
+        project.add_model(
+            model_config_file_path="model_config.yaml",
+        )
+
+        # Return the project
+        return project
+
+    def upload_collector(self, collector: Collector, metadata=None, project_name=None, project_description=None):
+        """
+        Uploads a Collector object's data to the platform for LLM (Language Learning Model) tasks.
+
+        This function serves as a convenient wrapper around the `upload_llm_data` method, transforming the data stored in a Collector object to the format expected by `upload_llm_data`.
+
+        Parameters
+        ----------
+        collector : Collector
+            The Collector object containing the dataset, variables, and other necessary details for uploading.
+
+        metadata : dict, optional (default=None)
+            Additional metadata information to be associated with the model. If not provided, an empty dictionary will be used.
+
+        project_name : str, optional (default=None)
+            Name of the project. If not provided, a default name is generated using a hash to ensure uniqueness.
+
+        project_description : str, optional (default=None)
+            Description for the project. If not provided, a default description is generated.
+
+        Returns
+        -------
+        project : Project
+            The created or loaded project instance after uploading the dataset and adding the model.
+
+        Notes
+        -----
+        1. The function extracts the necessary details like dataset and variables from the provided Collector object.
+        2. The output column name is hardcoded to "output".
+        3. It then directly calls the `upload_llm_data` method to handle the actual data upload, model configuration generation, and project creation or loading.
+        4. The final created or loaded project instance is returned.
+        """
+
+        return self.upload_llm_data(
+            collector.dataset,
+            collector.variables,
+            "output",
+            metadata,
+            project_name,
+            project_description
+        )
 
     def commit(self, message: str, project_id: str, force: bool = False):
         """Adds a commit message to staged resources.
