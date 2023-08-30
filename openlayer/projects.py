@@ -96,3 +96,9 @@ class Project:
     def restore(self, *args, **kwargs):
         """Removes the resource specified by ``resource_name`` from the staging area."""
         return self.client.restore(*args, project_id=self.id, **kwargs)
+
+    def create_inference_pipeline(self, *args, **kwargs):
+        """Creates an inference pipeline."""
+        return self.client.create_inference_pipeline(
+            *args, project_id=self.id, **kwargs
+        )
