@@ -70,3 +70,11 @@ class InferencePipeline:
             task_type=tasks.TaskType(self.taskType),
             **kwargs,
         )
+
+    def publish_ground_truths(self, *args, **kwargs):
+        """Publishes a batch data to the inference pipeline."""
+        return self.client.publish_ground_truths(
+            *args,
+            inference_pipeline_id=self.id,
+            **kwargs,
+        )
