@@ -41,7 +41,7 @@ class InferencePipeline:
         *args,
         **kwargs,
     ):
-        """Uploads a reference dataset to the project."""
+        """Uploads a reference dataset to the inference pipeline."""
         return self.client.upload_reference_dataset(
             *args,
             inference_pipeline_id=self.id,
@@ -54,8 +54,17 @@ class InferencePipeline:
         *args,
         **kwargs,
     ):
-        """Uploads a reference dataframe to the project."""
+        """Uploads a reference dataframe to the inference pipeline."""
         return self.client.upload_reference_dataframe(
+            *args,
+            inference_pipeline_id=self.id,
+            task_type=tasks.TaskType(self.taskType),
+            **kwargs,
+        )
+
+    def publish_batch_data(self, *args, **kwargs):
+        """Publishes a batch data to the inference pipeline."""
+        return self.client.publish_batch_data(
             *args,
             inference_pipeline_id=self.id,
             task_type=tasks.TaskType(self.taskType),

@@ -9,7 +9,6 @@ from typing import Dict, List, Optional
 import marshmallow as ma
 import pandas as pd
 import yaml
-
 from .. import constants, schemas, tasks
 from .base_validator import BaseValidator
 
@@ -74,9 +73,6 @@ class BaseDatasetValidator(BaseValidator, ABC):
         self.dataset_config_file_path = dataset_config_file_path
         self.dataset_config = dataset_config
         self.task_type = task_type
-
-        # Attributes to be set during validation
-        self.column_names: Optional[List[str]] = None
 
     def _validate(self) -> List[str]:
         """Runs all dataset validations.
@@ -158,10 +154,14 @@ class BaseDatasetValidator(BaseValidator, ABC):
         """
 
         if self.dataset_config and self.dataset_df is not None:
-            self.column_names = self.dataset_config.get("columnNames")
-
             # Dataset-wide validations
             self._validate_dataset_dtypes()
+
+            # Timestamps and id validations
+            if self.dataset_config.get("timestampColumnName"):
+                self._validate_timestamps()
+            if self.dataset_config.get("inferenceIdColumnName"):
+                self._validate_inference_ids()
 
             self._validate_inputs()
             self._validate_outputs()
@@ -178,6 +178,82 @@ class BaseDatasetValidator(BaseValidator, ABC):
                 f"The dataset contains the following unsupported dtypes: {unsupported_dtypes}"
                 " Please cast the columns in your dataset to conform to these dtypes."
             )
+
+    def _validate_timestamps(self):
+        """Checks whether the timestamps are in the correct format."""
+        timestamp_column_name = self.dataset_config.get("timestampColumnName")
+        if timestamp_column_name not in self.dataset_df.columns:
+            self.failed_validations.append(
+                f"The timestamp column `{timestamp_column_name}` specified as "
+                "`timestampColumnName` is not in the dataset."
+            )
+        else:
+            # Validate if values in the timestamp column are UNIX epoch/time in seconds
+            if not self._timestamps_are_unix_epoch_seconds(
+                self.dataset_df, timestamp_column_name
+            ):
+                self.failed_validations.append(
+                    f"The timestamps in the column `{timestamp_column_name}` specified"
+                    " as `timestampColumnName` are not in the correct format. "
+                    "Please make sure that the timestamps are UNIX epoch/time in"
+                    " seconds."
+                )
+            elif not self._timestamps_within_valid_range(
+                self.dataset_df, timestamp_column_name
+            ):
+                self.failed_validations.append(
+                    f"The timestamps in the column `{timestamp_column_name}` specified"
+                    " as `timestampColumnName` are not within the allowed range. "
+                    "The allowed range is from 2 years ago to 2 years into the future. "
+                    "Please make sure that the timestamps are within the allowed range."
+                )
+
+    @staticmethod
+    def _timestamps_are_unix_epoch_seconds(
+        dataset_df: pd.DataFrame, timestamp_column_name: str
+    ) -> bool:
+        """Checks whether the timestamps are UNIX epoch/time in seconds."""
+        try:
+            # Note the unit="s" argument
+            pd.to_datetime(dataset_df[timestamp_column_name], unit="s")
+        except:
+            return False
+        return True
+
+    @staticmethod
+    def _timestamps_within_valid_range(
+        dataset_df: pd.DataFrame, timestamp_column_name: str
+    ) -> bool:
+        """Checks whether the timestamps are within the allowed range."""
+        # Note the unit="s" argument
+        timestamps = pd.to_datetime(dataset_df[timestamp_column_name], unit="s")
+        now = pd.Timestamp.now()
+        two_years_ago = now - pd.Timedelta(days=365 * 2)
+        two_years_from_now = now + pd.Timedelta(days=365 * 2)
+        if any(
+            (timestamp < two_years_ago) or (timestamp > two_years_from_now)
+            for timestamp in timestamps
+        ):
+            return False
+        return True
+
+    def _validate_inference_ids(self):
+        """Checks whether the inference ids are in the correct format."""
+        inference_id_column_name = self.dataset_config.get("inferenceIdColumnName")
+        if inference_id_column_name not in self.dataset_df.columns:
+            self.failed_validations.append(
+                f"The inference id column `{inference_id_column_name}` specified as "
+                "`inferenceIdColumnName` is not in the dataset."
+            )
+        else:
+            num_unique_ids = len(self.dataset_df[inference_id_column_name].unique())
+            if num_unique_ids != len(self.dataset_df):
+                self.failed_validations.append(
+                    f"The inference ids in the column `{inference_id_column_name}`"
+                    " specified as `inferenceIdColumnName` are not unique. "
+                    "This means that more than one inference has the same id. "
+                    "Please make sure that the inference ids are unique."
+                )
 
     @abstractmethod
     def _validate_inputs(self):

@@ -1744,3 +1744,89 @@ class OpenlayerClient(object):
                 dataset_config_file_path=dataset_config_file_path,
                 task_type=task_type,
             )
+
+    def publish_batch_data(
+        self,
+        inference_pipeline_id: str,
+        task_type: TaskType,
+        batch_df: pd.DataFrame,
+        batch_config_file_path: str,
+    ) -> None:
+        """Publishes a batch of production data to the Openlayer platform.
+
+        Parameters
+        ----------
+        batch_df : pd.DataFrame
+            Dataframe containing the batch of production data.
+        batch_config_file_path : str
+            Path to the configuration YAML file.
+
+            .. admonition:: What's in the config file?
+
+                The configuration for a batch of data depends on the :obj:`TaskType`.
+                Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
+                for examples of dataset configuration files. These configurations are
+                the same for development and batches of production data.
+
+        Notes
+        -----
+        - Production data usually has a column with the prediction timestamps. This
+        column is specified in the ``timestampsColumnName`` of the batch config file,
+        and it should contain timestamps in the UNIX format **in seconds**.
+        - Production data also usually has a column with the prediction IDs. This
+        column is specified in the ``predictionIdsColumnName`` of the batch config file.
+        This column is particularly important when the ground truths are not available
+        during inference time, and they are updated later.
+
+        Examples
+        --------
+
+        First, instantiate the client and retrieve an existing inference pipeline:
+
+        >>> import openlayer
+        >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
+        >>>
+        >>> project = client.load_project(name="Churn prediction")
+        >>>
+        >>> inference_pipeline = project.load_inference_pipeline(
+        ...     name="XGBoost model inference pipeline",
+        ... )
+
+        With the InferencePipeline object retrieved, you can publish a batch
+        of production data -- in this example, stored in a pandas dataframe
+        called ``df`` -- with:
+
+        >>> inference_pipeline.publish_batch_data(
+        ...     batch_df=df,
+        ...     batch_config_file_path='/path/to/batch_config.yaml',
+        ... )
+        """
+        if not os.path.exists(batch_config_file_path):
+            raise exceptions.OpenlayerValidationError(
+                f"Batch config file path {batch_config_file_path} does not exist."
+            ) from None
+        batch_config = utils.read_yaml(batch_config_file_path)
+        batch_config["label"] = "production"
+
+        # Validate batch of data
+        batch_validator = dataset_validators.get_validator(
+            task_type=task_type,
+            dataset_config=batch_config_file_path,
+            dataset_df=batch_df,
+        )
+        failed_validations = batch_validator.validate()
+
+        if failed_validations:
+            raise exceptions.OpenlayerValidationError(
+                "There are issues with the batch of data and its config. \n"
+                "Make sure to fix all of the issues listed above before the upload.",
+            ) from None
+
+        # Load dataset config and augment with defaults
+        batch_data = DatasetSchema().load(
+            {"task_type": task_type.value, **batch_config}
+        )
+
+        # TODO: Make POST request to upload batch
+        print("Publishing batch of data...")
+        print(batch_data)
