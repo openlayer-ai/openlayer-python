@@ -79,11 +79,16 @@ class BaseDatasetSchema(ma.Schema):
         allow_none=True,
         load_default=None,
     )
+    inferenceIdColumnName = ma.fields.Str(
+        validate=COLUMN_NAME_VALIDATION_LIST,
+        allow_none=True,
+        load_default=None,
+    )
     label = ma.fields.Str(
         validate=ma.validate.OneOf(
             [dataset_type.value for dataset_type in DatasetType],
             error="`label` not supported."
-            + "The supported `labels` are 'training' and 'validation'.",
+            + "The supported `labels` are 'training', 'validation', and 'production'.",
         ),
         required=True,
     )
@@ -93,6 +98,36 @@ class BaseDatasetSchema(ma.Schema):
     )
     metadata = ma.fields.Dict(allow_none=True, load_default={})
     sep = ma.fields.Str(load_default=",")
+    timestampColumnName = ma.fields.Str(
+        validate=COLUMN_NAME_VALIDATION_LIST,
+        allow_none=True,
+        load_default=None,
+    )
+
+    @ma.validates_schema
+    def validates_production_data_schema(self, data, **kwargs):
+        """Checks if `inferenceIdColumnName` and `timestampsColumnName` are
+        specified for production data."""
+        if data["label"] == DatasetType.Production.value:
+            if data["inferenceIdColumnName"] is None:
+                raise ma.ValidationError(
+                    "`inferenceIdColumnName` must be specified for production data."
+                )
+            if data["timestampColumnName"] is None:
+                raise ma.ValidationError(
+                    "`timestampColumnName` must be specified for production data."
+                )
+        else:
+            if data["inferenceIdColumnName"] is not None:
+                raise ma.ValidationError(
+                    "`inferenceIdColumnName` can only be specified for production data,"
+                    f" and not for a {data['label']} dataset."
+                )
+            if data["timestampColumnName"] is not None:
+                raise ma.ValidationError(
+                    "`timestampColumnName` can only be specified for production data,"
+                    f" and not for a {data['label']} dataset."
+                )
 
 
 class LLMInputSchema(BaseDatasetSchema):
@@ -138,7 +173,8 @@ class ClassificationOutputSchema(BaseDatasetSchema):
     classNames = ma.fields.List(ma.fields.Str(), required=True)
     labelColumnName = ma.fields.Str(
         validate=COLUMN_NAME_VALIDATION_LIST,
-        required=True,
+        allow_none=True,
+        load_default=None,
     )
     predictionsColumnName = ma.fields.Str(
         validate=COLUMN_NAME_VALIDATION_LIST,
@@ -170,7 +206,8 @@ class RegressionOutputSchema(BaseDatasetSchema):
 
     targetColumnName = ma.fields.Str(
         validate=COLUMN_NAME_VALIDATION_LIST,
-        required=True,
+        allow_none=True,
+        load_default=None,
     )
     predictionsColumnName = ma.fields.Str(
         validate=COLUMN_NAME_VALIDATION_LIST,

@@ -26,6 +26,8 @@ class DatasetType(Enum):
     Validation = "validation"
     #: For training sets.
     Training = "training"
+    #: For production data.
+    Production = "production"
 
 
 class Dataset:
