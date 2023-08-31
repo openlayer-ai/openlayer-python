@@ -32,7 +32,7 @@ class TaskType(Enum):
     LLMSummarization = "llm-summarization"
     #: For translation tasks with LLMs.
     LLMTranslation = "llm-translation"
-    # For general LLM tasks (none of the above).
+    #: For general LLM tasks (none of the above).
     LLM = "llm-base"
     #: For tabular classification tasks.
     TabularClassification = "tabular-classification"
