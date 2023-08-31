@@ -4,15 +4,18 @@
 API reference
 =============
 
-This page gives an overview of all public openlayer objects, functions and methods.
+This page gives an overview of all public ``openlayer`` objects, functions and methods.
+
 
 .. toctree::
    :maxdepth: 2
 
-   upload
+   projects
+   evaluation
+   monitoring
    validate
    objects
 
 .. meta::
     :description lang=en:
-        Documentation for users who wish to use Openlayer.
+        API reference for the openlayer Python client.

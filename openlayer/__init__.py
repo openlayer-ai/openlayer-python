@@ -1556,6 +1556,7 @@ class OpenlayerClient(object):
                 The dataset configuration YAML depends on the :obj:`TaskType`.
                 Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
                 for examples.
+
         Notes
         -----
         - Please ensure your input features are strings, ints or floats.
@@ -1668,6 +1669,7 @@ class OpenlayerClient(object):
                 The dataset configuration YAML depends on the :obj:`TaskType`.
                 Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
                 for examples.
+
         Notes
         -----
         - Please ensure your input features are strings, ints or floats.
@@ -1770,10 +1772,11 @@ class OpenlayerClient(object):
 
         Notes
         -----
-        - Production data usually has a column with the prediction timestamps. This
+        Production data usually has a column with the prediction timestamps. This
         column is specified in the ``timestampsColumnName`` of the batch config file,
         and it should contain timestamps in the UNIX format **in seconds**.
-        - Production data also usually has a column with the prediction IDs. This
+
+        Production data also usually has a column with the prediction IDs. This
         column is specified in the ``predictionIdsColumnName`` of the batch config file.
         This column is particularly important when the ground truths are not available
         during inference time, and they are updated later.
