@@ -34,11 +34,11 @@ import pandas as pd
 import yaml
 
 from . import api, constants, exceptions, utils
+from .decorator import Collector
 from .project_versions import ProjectVersion
 from .projects import Project
 from .schemas import BaselineModelSchema, DatasetSchema, ModelSchema
 from .tasks import TaskType
-from .decorator import Collector
 
 # from validators import models as model_validators
 from .validators import (
@@ -861,7 +861,15 @@ class OpenlayerClient(object):
                 task_type=task_type,
             )
 
-    def upload_llm_data(self, dataset, input_names, output_name, metadata=None, project_name=None, project_description=None):
+    def upload_llm_data(
+        self,
+        dataset,
+        input_names,
+        output_name,
+        metadata=None,
+        project_name=None,
+        project_description=None,
+    ):
         """
         Uploads data for LLM tasks to the platform.
 
@@ -936,9 +944,7 @@ class OpenlayerClient(object):
 
         # Create or load project
         project = self.create_or_load_project(
-            name=project_name,
-            task_type=TaskType.LLM,
-            description=project_description
+            name=project_name, task_type=TaskType.LLM, description=project_description
         )
 
         # Configuration for validation dataset
@@ -951,8 +957,12 @@ class OpenlayerClient(object):
             "outputColumnName": output_name,
         }
 
-        with open("validation_dataset_config.yaml", "w") as dataset_config_file:
-            yaml.dump(validation_dataset_config, dataset_config_file, default_flow_style=False)
+        with open(
+            "validation_dataset_config.yaml", "w", encoding="utf-8"
+        ) as dataset_config_file:
+            yaml.dump(
+                validation_dataset_config, dataset_config_file, default_flow_style=False
+            )
 
         project.add_dataframe(
             dataset_df=dataset,
@@ -965,10 +975,10 @@ class OpenlayerClient(object):
             "modelType": "shell",
             "name": model_name,
             "architectureType": "llm",
-            "metadata": metadata
+            "metadata": metadata,
         }
 
-        with open("model_config.yaml", "w") as model_config_file:
+        with open("model_config.yaml", "w", encoding="utf-8") as model_config_file:
             yaml.dump(model_config, model_config_file, default_flow_style=False)
 
         # Adding the model
@@ -979,7 +989,13 @@ class OpenlayerClient(object):
         # Return the project
         return project
 
-    def upload_collector(self, collector: Collector, metadata=None, project_name=None, project_description=None):
+    def upload_collector(
+        self,
+        collector: Collector,
+        metadata=None,
+        project_name=None,
+        project_description=None,
+    ):
         """
         Uploads a Collector object's data to the platform for LLM (Language Learning Model) tasks.
 
@@ -1018,7 +1034,7 @@ class OpenlayerClient(object):
             "output",
             metadata,
             project_name,
-            project_description
+            project_description,
         )
 
     def commit(self, message: str, project_id: str, force: bool = False):
