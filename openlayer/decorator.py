@@ -36,7 +36,7 @@ class Collector:
                 row = values + [result]
                 self.data.append(row)
 
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-except
                 logging.warning("Collector failed with error: %s", e)
                 result = func(
                     *args, **kwargs

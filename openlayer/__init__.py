@@ -989,7 +989,7 @@ class OpenlayerClient(object):
         # Return the project
         return project
 
-    def upload_collector(
+    def upload_llm_collector(
         self,
         collector: Collector,
         metadata=None,
