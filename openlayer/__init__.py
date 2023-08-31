@@ -1811,7 +1811,7 @@ class OpenlayerClient(object):
         # Validate batch of data
         batch_validator = dataset_validators.get_validator(
             task_type=task_type,
-            dataset_config=batch_config_file_path,
+            dataset_config=batch_config,
             dataset_df=batch_df,
         )
         failed_validations = batch_validator.validate()
@@ -1830,3 +1830,86 @@ class OpenlayerClient(object):
         # TODO: Make POST request to upload batch
         print("Publishing batch of data...")
         print(batch_data)
+
+    def publish_ground_truths(
+        self,
+        inference_pipeline_id: str,
+        df: pd.DataFrame,
+        ground_truth_column_name: str,
+        inference_id_column_name: str,
+    ) -> None:
+        """Publishes ground truths for data already on the Openlayer platform.
+
+        This method is used to update the ground truths of production data that was
+        already published without them. This is useful when the ground truths are not
+        available during inference time, but they shall be update later to enable
+        performance metrics.
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            Dataframe containing ground truths.
+
+            The df must contain a column with the inference IDs, and another column
+            with the ground truths.
+
+        ground_truth_column_name : str
+            Name of the column containing the ground truths.
+
+        inference_id_column_name : str
+            Name of the column containing the inference IDs. The inference IDs are
+            used to match the ground truths with the production data already published.
+
+        Examples
+        --------
+
+        Let's say you have a batch of production data already published to the
+        Openlayer platform (with the method :obj:`publish_batch_data`). Now, you want
+        to update the ground truths of this batch.
+
+        First, instantiate the client and retrieve an existing inference pipeline:
+
+        >>> import openlayer
+        >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
+        >>>
+        >>> project = client.load_project(name="Churn prediction")
+        >>>
+        >>> inference_pipeline = project.load_inference_pipeline(
+        ...     name="XGBoost model inference pipeline",
+        ... )
+
+        If your ``df`` with the ground truths looks like the following:
+
+        .. csv-table::
+            :header: inference_id, label
+
+            d56d2b2c, 0
+            3b0b2521, 1
+            8c294a3a, 0
+
+        You can publish the ground truths with:
+
+        >>> inference_pipeline.publish_ground_truths(
+        ...     df=df,
+        ...     inference_id_column_name='inference_id',
+        ...     ground_truth_column_name='label',
+        ... )
+        """
+        # -------------------------------- Validations ------------------------------- #
+        if not isinstance(df, pd.DataFrame):
+            raise exceptions.OpenlayerValidationError(
+                f"- `df` is a `{type(df)}`, but it must a" " `pd.DataFrame`. \n"
+            ) from None
+        if ground_truth_column_name not in df.columns:
+            raise exceptions.OpenlayerValidationError(
+                f"- `df` does not contain the ground truth column name"
+                f" `{ground_truth_column_name}`. \n"
+            ) from None
+        if inference_id_column_name not in df.columns:
+            raise exceptions.OpenlayerValidationError(
+                f"- `df` does not contain the inference ID column name"
+                f" `{inference_id_column_name}`. \n"
+            ) from None
+
+        # TODO: Make POST request to publish ground truths
+        print("Publishing ground truths...")
