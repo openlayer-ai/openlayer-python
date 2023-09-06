@@ -169,13 +169,13 @@ class BaseDatasetValidator(BaseValidator, ABC):
 
     def _validate_dataset_dtypes(self):
         """Checks whether the dataset contains unsupported dtypes."""
-        supported_dtypes = {"float32", "float64", "int32", "int64", "object"}
+        supported_dtypes = {"bool", "float32", "float64", "int32", "int64", "object"}
         dataset_df_dtypes = {dtype.name for dtype in self.dataset_df.dtypes}
         unsupported_dtypes = dataset_df_dtypes - supported_dtypes
         if unsupported_dtypes:
             self.failed_validations.append(
                 "The dataset contains unsupported dtypes. The supported dtypes are "
-                "'float32', 'float64', 'int32', 'int64', 'object'. "
+                "'bool', 'float32', 'float64', 'int32', 'int64', 'object'. "
                 f"The dataset contains the following unsupported dtypes: {unsupported_dtypes}"
                 " Please cast the columns in your dataset to conform to these dtypes."
             )
