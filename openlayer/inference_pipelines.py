@@ -7,11 +7,12 @@ class InferencePipeline:
     """An object containing information about an inference pipeline
     on the Openlayer platform."""
 
-    def __init__(self, json, upload, client):
+    def __init__(self, json, upload, client, task_type):
         self._json = json
         self.id = json["id"]
         self.upload = upload
         self.client = client
+        self.taskType = task_type
 
     def __getattr__(self, name):
         if name in self._json:
@@ -45,7 +46,7 @@ class InferencePipeline:
         return self.client.upload_reference_dataset(
             *args,
             inference_pipeline_id=self.id,
-            task_type=tasks.TaskType(self.taskType),
+            task_type=self.taskType,
             **kwargs,
         )
 
@@ -58,7 +59,7 @@ class InferencePipeline:
         return self.client.upload_reference_dataframe(
             *args,
             inference_pipeline_id=self.id,
-            task_type=tasks.TaskType(self.taskType),
+            task_type=self.taskType,
             **kwargs,
         )
 
@@ -67,7 +68,7 @@ class InferencePipeline:
         return self.client.publish_batch_data(
             *args,
             inference_pipeline_id=self.id,
-            task_type=tasks.TaskType(self.taskType),
+            task_type=self.taskType,
             **kwargs,
         )
 

@@ -1391,6 +1391,7 @@ class OpenlayerClient(object):
         self,
         project_id: str,
         name: str,
+        task_type: TaskType,
         description: Optional[str] = None,
     ) -> InferencePipeline:
         """Creates an inference pipeline in an Openlayer project.
@@ -1456,14 +1457,14 @@ class OpenlayerClient(object):
                 "Make sure to fix all of the issues listed above before creating it.",
             ) from None
 
-        endpoint = "inference-pipeline"
+        endpoint = f"projects/{project_id}/inference-pipelines"
         payload = {
             "name": name,
             "description": description,
         }
         inference_pipeline_data = self.api.post_request(endpoint, body=payload)
         inference_pipeline = InferencePipeline(
-            inference_pipeline_data, self.api.upload, self
+            inference_pipeline_data, self.api.upload, self, task_type
         )
 
         print(
@@ -1472,7 +1473,9 @@ class OpenlayerClient(object):
         )
         return inference_pipeline
 
-    def load_inference_pipeline(self, project_id: str, name: str) -> InferencePipeline:
+    def load_inference_pipeline(
+        self, project_id: str, name: str, task_type: TaskType
+    ) -> InferencePipeline:
         """Loads an existing inference pipeline from an Openlayer project.
 
         Parameters
@@ -1512,14 +1515,15 @@ class OpenlayerClient(object):
         platform. Refer to :obj:`upload_reference_dataset` and
         :obj:`publish_batch_data` for detailed examples.
         """
-        endpoint = f"inference-pipeline?name={name}"
+        endpoint = f"/projects/{project_id}/inference-pipelines?name={name}"
         inference_pipeline_data = self.api.get_request(endpoint)
         if len(inference_pipeline_data["items"]) == 0:
             raise exceptions.OpenlayerResourceNotFound(
                 f"Inference piepline with name {name} not found."
             )
+
         inference_pipeline = InferencePipeline(
-            inference_pipeline_data["items"][0], self.api.upload, self
+            inference_pipeline_data["items"][0], self.api.upload, self, task_type
         )
 
         print(
