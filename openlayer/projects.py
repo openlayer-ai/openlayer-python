@@ -100,9 +100,11 @@ class Project:
     def create_inference_pipeline(self, *args, **kwargs):
         """Creates an inference pipeline."""
         return self.client.create_inference_pipeline(
-            *args, project_id=self.id, **kwargs
+            *args, project_id=self.id, task_type=tasks.TaskType(self.taskType), **kwargs
         )
 
     def load_inference_pipeline(self, *args, **kwargs):
         """Loads an existing inference pipeline."""
-        return self.client.load_inference_pipeline(*args, project_id=self.id, **kwargs)
+        return self.client.load_inference_pipeline(
+            *args, project_id=self.id, task_type=tasks.TaskType(self.taskType), **kwargs
+        )
