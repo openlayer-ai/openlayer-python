@@ -206,8 +206,9 @@ class Api:
         """Generic method to upload data to S3 storage and create the appropriate resource
         in the backend.
         """
-        params = {"storageInterface": "s3", "objectName": object_name}
-        presigned_json = self.get_request(f"{endpoint}/presigned-url", params=params)
+        presigned_json = self.post_request(
+            f"/storage/presigned-url?objectName={object_name}"
+        )
 
         with tqdm(
             total=os.stat(file_path).st_size,
@@ -245,8 +246,9 @@ class Api:
         """Generic method to upload data to Google Cloud Storage and create the
         appropriate resource in the backend.
         """
-        params = {"storageInterface": "gcs", "objectName": object_name}
-        presigned_json = self.get_request(f"{endpoint}/presigned-url", params=params)
+        presigned_json = self.post_request(
+            f"/storage/presigned-url?objectName={object_name}"
+        )
         with open(file_path, "rb") as f:
             with tqdm(
                 total=os.stat(file_path).st_size,
@@ -274,8 +276,9 @@ class Api:
         """Generic method to upload data to Azure Blob Storage and create the
         appropriate resource in the backend.
         """
-        params = {"storageInterface": "azure", "objectName": object_name}
-        presigned_json = self.get_request(f"{endpoint}/presigned-url", params=params)
+        presigned_json = self.post_request(
+            f"/storage/presigned-url?objectName={object_name}"
+        )
         with open(file_path, "rb") as f:
             with tqdm(
                 total=os.stat(file_path).st_size,
@@ -304,8 +307,9 @@ class Api:
         """Generic method to transfer data to the openlayer folder and create the appropriate
         resource in the backend when using a local deployment.
         """
-        params = {"storageInterface": "local", "objectName": object_name}
-        presigned_json = self.get_request(f"{endpoint}/presigned-url", params=params)
+        presigned_json = self.post_request(
+            f"/storage/presigned-url?objectName={object_name}"
+        )
         blob_path = presigned_json["storageUri"].replace("local://", "")
         dir_path = os.path.dirname(blob_path)
         try:
