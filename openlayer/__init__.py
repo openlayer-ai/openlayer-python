@@ -1390,8 +1390,8 @@ class OpenlayerClient(object):
     def create_inference_pipeline(
         self,
         project_id: str,
-        name: str,
         task_type: TaskType,
+        name: Optional[str] = None,
         description: Optional[str] = None,
     ) -> InferencePipeline:
         """Creates an inference pipeline in an Openlayer project.
@@ -1400,14 +1400,16 @@ class OpenlayerClient(object):
 
         Parameters
         ----------
-        name : str
-            Name of your inference pipeline.
+        name : str, optional
+            Name of your inference pipeline. If not specified, the name will be
+            set to ``"Production"``.
 
             .. important::
                 The inference pipeline name must be unique within a project.
 
-        description : str
-            Inference pipeline description.
+        description : str, optional
+            Inference pipeline description. If not specified, the description will be
+            set to ``"Monitoring production data."``.
 
         Returns
         -------
@@ -1441,8 +1443,8 @@ class OpenlayerClient(object):
         """
         # Validate inference pipeline
         inference_pipeline_config = {
-            "name": name,
-            "description": description,
+            "name": name or "Production",
+            "description": description or "Monitoring production data.",
         }
         inference_pipeline_validator = (
             inference_pipeline_validators.InferencePipelineValidator(
@@ -1474,16 +1476,20 @@ class OpenlayerClient(object):
         return inference_pipeline
 
     def load_inference_pipeline(
-        self, project_id: str, name: str, task_type: TaskType
+        self,
+        project_id: str,
+        task_type: TaskType,
+        name: Optional[str] = None,
     ) -> InferencePipeline:
         """Loads an existing inference pipeline from an Openlayer project.
 
         Parameters
         ----------
-        name : str
+        name : str, optional
             Name of the inference pipeline to be loaded.
             The name of the inference piepline is the one displayed on the
-            Openlayer platform.
+            Openlayer platform. If not specified, will try to load the
+            inference pipeline named ``"Production"``.
 
             .. note::
                 If you haven't created the inference pipeline yet, you should use the
@@ -1515,6 +1521,7 @@ class OpenlayerClient(object):
         platform. Refer to :obj:`upload_reference_dataset` and
         :obj:`publish_batch_data` for detailed examples.
         """
+        name = name or "Production"
         endpoint = f"/projects/{project_id}/inference-pipelines?name={name}"
         inference_pipeline_data = self.api.get_request(endpoint)
         if len(inference_pipeline_data["items"]) == 0:
