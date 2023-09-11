@@ -162,7 +162,6 @@ class BaseDatasetValidator(BaseValidator, ABC):
 
             # Dataset-wide validations
             self._validate_dataset_dtypes()
-            self._validate_dataset_columns()
 
             self._validate_inputs()
             self._validate_outputs()
@@ -178,16 +177,6 @@ class BaseDatasetValidator(BaseValidator, ABC):
                 "'bool', 'float32', 'float64', 'int32', 'int64', 'object'. "
                 f"The dataset contains the following unsupported dtypes: {unsupported_dtypes}"
                 " Please cast the columns in your dataset to conform to these dtypes."
-            )
-
-    def _validate_dataset_columns(self):
-        """Checks whether all columns in the dataset are specified in `columnNames`."""
-        dataset_columns = set(self.dataset_df.columns)
-        column_names = set(self.column_names)
-        if dataset_columns != column_names:
-            self.failed_validations.append(
-                "Not all columns in the dataset are specified in `columnNames`. "
-                "Please specify all dataset columns in `columnNames`."
             )
 
     @abstractmethod

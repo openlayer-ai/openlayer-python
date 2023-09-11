@@ -718,6 +718,7 @@ class OpenlayerClient(object):
                 "Either `dataset_config` or `dataset_config_file_path` must be"
                 " provided."
             )
+
         # Validate dataset
         dataset_validator = dataset_validators.get_validator(
             task_type=task_type,
@@ -739,6 +740,8 @@ class OpenlayerClient(object):
         dataset_data = DatasetSchema().load(
             {"task_type": task_type.value, **dataset_config}
         )
+        if dataset_data.get("columnNames") is None:
+            dataset_data["columnNames"] = utils.get_column_names(file_path)
 
         # Copy relevant resources to temp directory
         with tempfile.TemporaryDirectory() as temp_dir:

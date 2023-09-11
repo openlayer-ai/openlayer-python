@@ -77,6 +77,18 @@ def camel_to_snake_str(name: str) -> str:
     return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
 
 
+def get_column_names(file_path: str) -> list:
+    """Returns the column names of the specified file.
+
+    Args:
+        file_path (str): the path to the file.
+
+    Returns:
+        list: the column names of the specified file.
+    """
+    return pd.read_csv(file_path, nrows=0).columns.tolist()
+
+
 def get_exception_stacktrace(err: Exception):
     """Returns the stacktrace of the most recent exception.
 
