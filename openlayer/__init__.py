@@ -28,7 +28,7 @@ import tempfile
 import time
 import uuid
 import warnings
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 import pandas as pd
 import yaml
@@ -1841,9 +1841,32 @@ class OpenlayerClient(object):
             {"task_type": task_type.value, **batch_config}
         )
 
+        # Add default columns if not present
+        columns_to_add = {"timestampColumnName", "inferenceIdColumnName"}
+        for column in columns_to_add:
+            if batch_data.get(column) is None:
+                batch_data, batch_df = self._add_default_column(
+                    config=batch_data, df=batch_df, column_name=column
+                )
+
         # TODO: Make POST request to upload batch
         print("Publishing batch of data...")
         print(batch_data)
+
+    def _add_default_column(
+        self, config: Dict[str, any], df: pd.DataFrame, column_name: str
+    ) -> Tuple[Dict[str, any], pd.DataFrame]:
+        """Adds the default column specified by ``column_name`` to the dataset config
+        and dataframe."""
+        if column_name == "timestampColumnName":
+            timestamp_column_name = f"timestamp_{str(uuid.uuid1())[:8]}"
+            config["timestampColumnName"] = timestamp_column_name
+            df[timestamp_column_name] = int(time.time())
+        elif column_name == "inferenceIdColumnName":
+            inference_id_column_name = f"inference_id_{str(uuid.uuid1())[:8]}"
+            config["inferenceIdColumnName"] = inference_id_column_name
+            df[inference_id_column_name] = [str(uuid.uuid1()) for _ in range(len(df))]
+        return config, df
 
     def publish_ground_truths(
         self,

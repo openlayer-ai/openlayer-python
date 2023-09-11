@@ -107,17 +107,8 @@ class BaseDatasetSchema(ma.Schema):
     @ma.validates_schema
     def validates_production_data_schema(self, data, **kwargs):
         """Checks if `inferenceIdColumnName` and `timestampsColumnName` are
-        specified for production data."""
-        if data["label"] == DatasetType.Production.value:
-            if data["inferenceIdColumnName"] is None:
-                raise ma.ValidationError(
-                    "`inferenceIdColumnName` must be specified for production data."
-                )
-            if data["timestampColumnName"] is None:
-                raise ma.ValidationError(
-                    "`timestampColumnName` must be specified for production data."
-                )
-        else:
+        specified for non-production data."""
+        if data["label"] != DatasetType.Production.value:
             if data["inferenceIdColumnName"] is not None:
                 raise ma.ValidationError(
                     "`inferenceIdColumnName` can only be specified for production data,"
