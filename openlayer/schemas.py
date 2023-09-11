@@ -404,6 +404,7 @@ class ProjectSchema(ma.Schema):
             min=1,
             max=140,
         ),
+        allow_none=True,
     )
     name = ma.fields.Str(
         required=True,

@@ -28,7 +28,7 @@ import tempfile
 import time
 import uuid
 import warnings
-from typing import Optional
+from typing import Dict, Optional
 
 import pandas as pd
 import yaml
@@ -252,8 +252,9 @@ class OpenlayerClient(object):
 
     def add_model(
         self,
-        model_config_file_path: str,
         task_type: TaskType,
+        model_config: Optional[Dict[str, any]] = None,
+        model_config_file_path: Optional[str] = None,
         model_package_dir: Optional[str] = None,
         sample_data: Optional[pd.DataFrame] = None,
         force: bool = False,
@@ -263,8 +264,19 @@ class OpenlayerClient(object):
 
         Parameters
         ----------
+        model_config : Dict[str, any]
+            Dictionary containing the model configuration. This is not needed if
+            ``model_config_file_path`` is provided.
+
+            .. admonition:: What's in the model config dict?
+
+                The model configuration depends on the :obj:`TaskType`.
+                Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-model-config>`_
+                for examples.
+
         model_config_file_path : str
-            Path to the model configuration YAML file.
+            Path to the model configuration YAML file. This is not needed if
+            ``model_config`` is provided.
 
             .. admonition:: What's in the model config file?
 
@@ -407,10 +419,15 @@ class OpenlayerClient(object):
                     "The sample data must contain at least 2 rows, but only"
                     f"{len(sample_data)} rows were provided."
                 )
+        if model_config is None and model_config_file_path is None:
+            raise ValueError(
+                "Either `model_config` or `model_config_file_path` must be provided."
+            )
 
         # Validate model package
         model_validator = model_validators.get_validator(
             task_type=task_type,
+            model_config=model_config,
             model_package_dir=model_package_dir,
             model_config_file_path=model_config_file_path,
             sample_data=sample_data,
@@ -424,7 +441,8 @@ class OpenlayerClient(object):
             ) from None
 
         # Load model config and augment with defaults
-        model_config = utils.read_yaml(model_config_file_path)
+        if model_config_file_path is not None:
+            model_config = utils.read_yaml(model_config_file_path)
         model_data = ModelSchema().load({"task_type": task_type.value, **model_config})
 
         # Copy relevant resources to temp directory
@@ -451,6 +469,7 @@ class OpenlayerClient(object):
         self,
         project_id: str,
         task_type: TaskType,
+        model_config: Optional[Dict[str, any]] = None,
         model_config_file_path: Optional[str] = None,
         force: bool = False,
     ):
@@ -469,9 +488,23 @@ class OpenlayerClient(object):
 
         Parameters
         ----------
+        model_config : Dict[str, any], optional
+            Dictionary containing the model configuration. This is not needed if
+            ``model_config_file_path`` is provided. If none of these are provided,
+            the default model config will be used.
+
+            .. admonition:: What's on the model config file?
+
+                For baseline models, the config should contain:
+
+                - ``metadata`` : Dict[str, any], default {}
+                    Dictionary containing metadata about the model. This is the
+                    metadata that will be displayed on the Openlayer platform.
+
         model_config_file_path : str, optional
-            Path to the model configuration YAML file. If not provided, the default
-            model config will be used.
+            Path to the model configuration YAML file. This is not needed if
+            ``model_config`` is provided. If none of these are provided,
+            the default model config will be used.
 
             .. admonition:: What's on the model config file?
 
@@ -490,9 +523,9 @@ class OpenlayerClient(object):
             )
 
         # Validate the baseline model
-
         baseline_model_validator = baseline_model_validators.get_validator(
             task_type=task_type,
+            model_config=model_config,
             model_config_file_path=model_config_file_path,
         )
         failed_validations = baseline_model_validator.validate()
@@ -504,7 +537,7 @@ class OpenlayerClient(object):
             ) from None
 
         # Load model config and augment with defaults
-        model_config = {}
+        model_config = {} or model_config
         if model_config_file_path is not None:
             model_config = utils.read_yaml(model_config_file_path)
         model_config["modelType"] = "baseline"
@@ -527,7 +560,8 @@ class OpenlayerClient(object):
         self,
         file_path: str,
         task_type: TaskType,
-        dataset_config_file_path: str,
+        dataset_config: Optional[Dict[str, any]] = None,
+        dataset_config_file_path: Optional[str] = None,
         project_id: str = None,
         force: bool = False,
     ):
@@ -537,8 +571,19 @@ class OpenlayerClient(object):
         ----------
         file_path : str
             Path to the csv file containing the dataset.
+        dataset_config: Dict[str, any]
+            Dictionary containing the dataset configuration. This is not needed if
+            ``dataset_config_file_path`` is provided.
+
+            .. admonition:: What's in the dataset config?
+
+                The dataset configuration depends on the :obj:`TaskType`.
+                Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
+                for examples.
+
         dataset_config_file_path : str
-            Path to the dataset configuration YAML file.
+            Path to the dataset configuration YAML file. This is not needed if
+            ``dataset_config`` is provided.
 
             .. admonition:: What's in the dataset config file?
 
@@ -668,9 +713,15 @@ class OpenlayerClient(object):
         >>> project.commit("Initial dataset commit.")
         >>> project.push()
         """
+        if dataset_config is None and dataset_config_file_path is None:
+            raise ValueError(
+                "Either `dataset_config` or `dataset_config_file_path` must be"
+                " provided."
+            )
         # Validate dataset
         dataset_validator = dataset_validators.get_validator(
             task_type=task_type,
+            dataset_config=dataset_config,
             dataset_config_file_path=dataset_config_file_path,
             dataset_file_path=file_path,
         )
@@ -683,7 +734,8 @@ class OpenlayerClient(object):
             ) from None
 
         # Load dataset config and augment with defaults
-        dataset_config = utils.read_yaml(dataset_config_file_path)
+        if dataset_config_file_path is not None:
+            dataset_config = utils.read_yaml(dataset_config_file_path)
         dataset_data = DatasetSchema().load(
             {"task_type": task_type.value, **dataset_config}
         )
@@ -704,7 +756,8 @@ class OpenlayerClient(object):
         self,
         dataset_df: pd.DataFrame,
         task_type: TaskType,
-        dataset_config_file_path: str,
+        dataset_config: Optional[Dict[str, any]] = None,
+        dataset_config_file_path: Optional[str] = None,
         project_id: str = None,
         force: bool = False,
     ):
@@ -714,8 +767,19 @@ class OpenlayerClient(object):
         ----------
         dataset_df : pd.DataFrame
             Dataframe containing your dataset.
+        dataset_config: Dict[str, any]
+            Dictionary containing the dataset configuration. This is not needed if
+            ``dataset_config_file_path`` is provided.
+
+            .. admonition:: What's in the dataset config?
+
+                The dataset configuration depends on the :obj:`TaskType`.
+                Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
+                for examples.
+
         dataset_config_file_path : str
-            Path to the dataset configuration YAML file.
+            Path to the dataset configuration YAML file. This is not needed if
+            ``dataset_config`` is provided.
 
             .. admonition:: What's in the dataset config file?
 
@@ -856,6 +920,7 @@ class OpenlayerClient(object):
                 file_path=file_path,
                 project_id=project_id,
                 dataset_config_file_path=dataset_config_file_path,
+                dataset_config=dataset_config,
                 force=force,
                 task_type=task_type,
             )
