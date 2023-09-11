@@ -76,7 +76,8 @@ class BaseDatasetSchema(ma.Schema):
 
     columnNames = ma.fields.List(
         ma.fields.Str(validate=COLUMN_NAME_VALIDATION_LIST),
-        required=True,
+        allow_none=True,
+        load_default=None,
     )
     label = ma.fields.Str(
         validate=ma.validate.OneOf(
@@ -233,11 +234,12 @@ class BaseModelSchema(ma.Schema):
     """Common schema for models for all task types."""
 
     name = ma.fields.Str(
-        required=True,
         validate=ma.validate.Length(
             min=1,
             max=64,
         ),
+        allow_none=True,
+        load_default="Model",
     )
     metadata = ma.fields.Dict(
         allow_none=True,
@@ -252,7 +254,8 @@ class BaseModelSchema(ma.Schema):
             + " If you can't find your framework, specify 'custom' for your model's"
             + " `architectureType`.",
         ),
-        required=True,
+        allow_none=True,
+        load_default="custom",
     )
 
 
@@ -306,6 +309,19 @@ class LLMModelSchema(BaseModelSchema):
     inputVariableNames = ma.fields.List(
         ma.fields.Str(validate=COLUMN_NAME_VALIDATION_LIST),
         load_default=[],
+    )
+    # Important that here the architectureType defaults to `llm` and not `custom` since
+    # the architectureType is used to check if the model is an LLM or not.
+    architectureType = ma.fields.Str(
+        validate=ma.validate.OneOf(
+            [model_framework.value for model_framework in ModelType],
+            error="`architectureType` must be one of the supported frameworks."
+            + " Check out our API reference for a full list."
+            + " If you can't find your framework, specify 'custom' for your model's"
+            + " `architectureType`.",
+        ),
+        allow_none=True,
+        load_default="llm",
     )
 
     @ma.validates_schema
