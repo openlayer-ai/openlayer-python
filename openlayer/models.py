@@ -83,6 +83,7 @@ def get_model_runner(
     **kwargs,
 ) -> base_model_runner.ModelRunnerInterface:
     """Factory function to get the correct model runner for the specified task type."""
+    kwargs = utils.camel_to_snake_dict(kwargs)
     logger = kwargs.get("logger") or logging.getLogger("validators")
     model_package = kwargs.get("model_package")
 
