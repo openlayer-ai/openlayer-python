@@ -2,7 +2,7 @@
 """
 import logging
 import os
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import marshmallow as ma
 import yaml
@@ -20,15 +20,21 @@ class BaseBaselineModelValidator(BaseValidator):
     ----------
     task_type : tasks.TaskType
         The task type.
+    model_config : Optional[Dict[str, any]], optional
+        The model config, by default None
     model_config_file_path : Optional[str], optional
         The path to the model config file, by default None
     """
 
     def __init__(
-        self, task_type: tasks.TaskType, model_config_file_path: Optional[str] = None
+        self,
+        task_type: tasks.TaskType,
+        model_config: Optional[Dict[str, any]] = None,
+        model_config_file_path: Optional[str] = None,
     ):
         super().__init__(resource_display_name="baseline model")
         self.task_type = task_type
+        self.model_config = model_config
         self.model_config_file_path = model_config_file_path
 
     def _validate(self) -> List[str]:
@@ -38,7 +44,7 @@ class BaseBaselineModelValidator(BaseValidator):
         List[str]
             The list of failed validations.
         """
-        if self.model_config_file_path:
+        if self.model_config_file_path or self.model_config:
             self._validate_model_config()
 
     def _validate_model_config(self):
@@ -51,13 +57,13 @@ class BaseBaselineModelValidator(BaseValidator):
                 )
             else:
                 with open(self.model_config_file_path, "r", encoding="UTF-8") as stream:
-                    model_config = yaml.safe_load(stream)
+                    self.model_config = yaml.safe_load(stream)
 
-        if model_config:
+        if self.model_config:
             baseline_model_schema = schemas.BaselineModelSchema()
             try:
                 baseline_model_schema.load(
-                    {"task_type": self.task_type.value, **model_config}
+                    {"task_type": self.task_type.value, **self.model_config}
                 )
             except ma.ValidationError as err:
                 self.failed_validations.extend(
@@ -74,13 +80,15 @@ class TabularClassificationBaselineModelValidator(BaseBaselineModelValidator):
 # ----------------------------- Factory function ----------------------------- #
 def get_validator(
     task_type: tasks.TaskType,
-    model_config_file_path: str,
+    model_config: Optional[Dict[str, any]] = None,
+    model_config_file_path: Optional[str] = None,
 ) -> BaseBaselineModelValidator:
     """Factory function to get the correct baseline model validator.
 
     Parameters
     ----------
         task_type: The task type of the model.
+        model_config: The model config.
         model_config_file_path: Path to the model config file.
 
     Returns
@@ -89,6 +97,7 @@ def get_validator(
     """
     if task_type == tasks.TaskType.TabularClassification:
         return TabularClassificationBaselineModelValidator(
+            model_config=model_config,
             model_config_file_path=model_config_file_path,
             task_type=task_type,
         )

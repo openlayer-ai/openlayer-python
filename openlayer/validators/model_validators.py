@@ -28,8 +28,10 @@ class BaseModelValidator(BaseValidator, ABC):
 
     Parameters
     ----------
-    model_config_file_path: str
+    model_config_file_path: str, optional
         Path to the model config file.
+    model_config: Dict[str, any], optional
+        Model config dictionary.
     task_type : tasks.TaskType
         Task type of the model.
     model_package_dir : str
@@ -40,14 +42,26 @@ class BaseModelValidator(BaseValidator, ABC):
 
     def __init__(
         self,
-        model_config_file_path: str,
         task_type: tasks.TaskType,
+        model_config_file_path: Optional[str] = None,
+        model_config: Optional[Dict[str, any]] = None,
         use_runner: bool = False,
         model_package_dir: Optional[str] = None,
         sample_data: Optional[pd.DataFrame] = None,
     ):
         super().__init__(resource_display_name="model")
+        if model_config_file_path and model_config:
+            raise ValueError(
+                "Both model_config_file_path and model_config are provided."
+                " Please provide only one of them."
+            )
+        if not model_config_file_path and not model_config:
+            raise ValueError(
+                "Neither model_config_file_path nor model_config_file is provided."
+                " Please provide one of them."
+            )
         self.model_config_file_path = model_config_file_path
+        self.model_config = model_config
         self.model_package_dir = model_package_dir
         self.sample_data = sample_data
         self._use_runner = use_runner
@@ -189,25 +203,25 @@ class BaseModelValidator(BaseValidator, ABC):
         model_config_failed_validations = []
 
         # File existence check
-        if not os.path.isfile(os.path.expanduser(self.model_config_file_path)):
-            model_config_failed_validations.append(
-                f"File `{self.model_config_file_path}` does not exist."
-            )
-        else:
-            with open(self.model_config_file_path, "r", encoding="UTF-8") as stream:
-                model_config = yaml.safe_load(stream)
+        if self.model_config_file_path:
+            if not os.path.isfile(os.path.expanduser(self.model_config_file_path)):
+                model_config_failed_validations.append(
+                    f"File `{self.model_config_file_path}` does not exist."
+                )
+            else:
+                with open(self.model_config_file_path, "r", encoding="UTF-8") as stream:
+                    self.model_config = yaml.safe_load(stream)
 
+        if self.model_config:
             model_schema = schemas.ModelSchema()
             try:
-                model_schema.load({"task_type": self.task_type.value, **model_config})
+                model_schema.load(
+                    {"task_type": self.task_type.value, **self.model_config}
+                )
             except ma.ValidationError as err:
                 model_config_failed_validations.extend(
                     self._format_marshmallow_error_message(err)
                 )
-
-        # Set the model_config attribute if valid
-        if not model_config_failed_validations:
-            self.model_config = model_config
 
         # Add the `model_config.yaml` failed validations to the list of all failed validations
         self.failed_validations.extend(model_config_failed_validations)
@@ -528,7 +542,8 @@ class LLMValidator(BaseModelValidator):
 # ----------------------------- Factory function ----------------------------- #
 def get_validator(
     task_type: tasks.TaskType,
-    model_config_file_path: str,
+    model_config: Optional[Dict[str, any]] = None,
+    model_config_file_path: Optional[str] = None,
     use_runner: bool = False,
     model_package_dir: Optional[str] = None,
     sample_data: Optional[pd.DataFrame] = None,
@@ -539,7 +554,9 @@ def get_validator(
     ----------
     task_type : :obj:`TaskType`
         The task type of the model.
-    model_config_file_path : str
+    model_config : Dict[str, any], optional
+        The model config dictionary, by default None.
+    model_config_file_path : str, optional
         The path to the model config file.
     model_package_dir : Optional[str], optional
         The path to the model package directory, by default None.
@@ -581,6 +598,7 @@ def get_validator(
     """
     if task_type == tasks.TaskType.TabularClassification:
         return TabularClassificationModelValidator(
+            model_config=model_config,
             model_config_file_path=model_config_file_path,
             use_runner=use_runner,
             model_package_dir=model_package_dir,
@@ -589,6 +607,7 @@ def get_validator(
         )
     elif task_type == tasks.TaskType.TabularRegression:
         return TabularRegressionModelValidator(
+            model_config=model_config,
             model_config_file_path=model_config_file_path,
             use_runner=use_runner,
             model_package_dir=model_package_dir,
@@ -597,6 +616,7 @@ def get_validator(
         )
     elif task_type == tasks.TaskType.TextClassification:
         return TextClassificationModelValidator(
+            model_config=model_config,
             model_config_file_path=model_config_file_path,
             use_runner=use_runner,
             model_package_dir=model_package_dir,
@@ -611,6 +631,7 @@ def get_validator(
         tasks.TaskType.LLMTranslation,
     ]:
         return LLMValidator(
+            model_config=model_config,
             model_config_file_path=model_config_file_path,
             task_type=task_type,
         )
