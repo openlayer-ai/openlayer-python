@@ -1648,9 +1648,24 @@ class OpenlayerClient(object):
             {"task_type": task_type.value, **dataset_config}
         )
 
-        # TODO: Make POST request to upload dataset
-        print("Uploading reference dataset...")
-        print(dataset_data)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            # Copy relevant files to tmp dir
+            utils.write_yaml(dataset_data, f"{tmp_dir}/dataset_config.yaml")
+            shutil.copy(file_path, tmp_dir)
+
+            tar_file_path = os.path.join(tmp_dir, "tarfile")
+            with tarfile.open(tar_file_path, mode="w:gz") as tar:
+                tar.add(tmp_dir, arcname=os.path.basename("reference_dataset"))
+
+            self.api.upload(
+                endpoint=f"inference-pipelines/{inference_pipeline_id}",
+                file_path=tar_file_path,
+                object_name="tarfile",
+                body={},
+                storage_uri_key="referenceDatasetUri",
+                method="PUT",
+            )
+        print("Referece dataset uploaded!")
 
     def upload_reference_dataframe(
         self,
