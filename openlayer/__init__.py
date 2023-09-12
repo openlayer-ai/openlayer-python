@@ -1393,6 +1393,9 @@ class OpenlayerClient(object):
         task_type: TaskType,
         name: Optional[str] = None,
         description: Optional[str] = None,
+        reference_df: Optional[pd.DataFrame] = None,
+        reference_dataset_file_path: Optional[str] = None,
+        reference_dataset_config_file_path: Optional[str] = None,
     ) -> InferencePipeline:
         """Creates an inference pipeline in an Openlayer project.
 
@@ -1441,6 +1444,19 @@ class OpenlayerClient(object):
         platform. Refer to :obj:`upload_reference_dataset` and
         :obj:`publish_batch_data` for detailed examples.
         """
+        if (reference_df is None) ^ (reference_dataset_config_file_path is None) or (
+            reference_dataset_file_path is None
+        ) ^ (reference_dataset_config_file_path is None):
+            raise ValueError(
+                "You must specify both a reference dataset and"
+                " its config or none of them."
+            )
+        if reference_df is not None and reference_dataset_file_path is not None:
+            raise ValueError(
+                "Please specify either a reference dataset or a reference dataset"
+                " file path."
+            )
+
         # Validate inference pipeline
         inference_pipeline_config = {
             "name": name or "Production",
@@ -1452,19 +1468,62 @@ class OpenlayerClient(object):
             )
         )
         failed_validations = inference_pipeline_validator.validate()
-
         if failed_validations:
             raise exceptions.OpenlayerValidationError(
                 "There are issues with the inference pipeline. \n"
                 "Make sure to fix all of the issues listed above before creating it.",
             ) from None
 
-        endpoint = f"projects/{project_id}/inference-pipelines"
-        payload = {
-            "name": name,
-            "description": description,
-        }
-        inference_pipeline_data = self.api.post_request(endpoint, body=payload)
+        # Validate reference dataset and augment config
+        if reference_dataset_config_file_path is not None:
+            dataset_validator = dataset_validators.get_validator(
+                task_type=task_type,
+                dataset_config_file_path=reference_dataset_config_file_path,
+                dataset_df=reference_df,
+            )
+            failed_validations = dataset_validator.validate()
+
+            if failed_validations:
+                raise exceptions.OpenlayerValidationError(
+                    "There are issues with the reference dataset and its config. \n"
+                    "Make sure to fix all of the issues listed above before the upload.",
+                ) from None
+
+            # Load dataset config and augment with defaults
+            reference_dataset_config = utils.read_yaml(
+                reference_dataset_config_file_path
+            )
+            reference_dataset_data = DatasetSchema().load(
+                {"task_type": task_type.value, **reference_dataset_config}
+            )
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            # Copy relevant files to tmp dir if reference dataset is provided
+            if reference_dataset_config_file_path is not None:
+                utils.write_yaml(
+                    reference_dataset_data, f"{tmp_dir}/dataset_config.yaml"
+                )
+                if reference_df is not None:
+                    reference_df.to_csv(f"{tmp_dir}/dataset.csv", index=False)
+                else:
+                    shutil.copy(
+                        reference_dataset_file_path,
+                        f"{tmp_dir}/dataset.csv",
+                    )
+
+            tar_file_path = os.path.join(tmp_dir, "tarfile")
+            with tarfile.open(tar_file_path, mode="w:gz") as tar:
+                tar.add(tmp_dir, arcname=os.path.basename("reference_dataset"))
+
+            endpoint = f"projects/{project_id}/inference-pipelines"
+            inference_pipeline_data = self.api.upload(
+                endpoint=endpoint,
+                file_path=tar_file_path,
+                object_name="tarfile",
+                body=inference_pipeline_config,
+                storage_uri_key="referenceDatasetUri",
+                method="POST",
+            )
         inference_pipeline = InferencePipeline(
             inference_pipeline_data, self.api.upload, self, task_type
         )
