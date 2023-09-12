@@ -181,7 +181,15 @@ class Api:
             data=data,
         )
 
-    def upload(self, endpoint: str, file_path: str, object_name: str = None, body=None):
+    def upload(
+        self,
+        endpoint: str,
+        file_path: str,
+        object_name: str = None,
+        body=None,
+        method: str = "POST",
+        storage_uri_key: str = "storageUri",
+    ):
         """Generic method to upload data to the default storage medium and create the
         appropriate resource in the backend.
         """
@@ -198,10 +206,18 @@ class Api:
             file_path=file_path,
             object_name=object_name,
             body=body,
+            method=method,
+            storage_uri_key=storage_uri_key,
         )
 
     def upload_blob_s3(
-        self, endpoint: str, file_path: str, object_name: str = None, body=None
+        self,
+        endpoint: str,
+        file_path: str,
+        object_name: str = None,
+        body=None,
+        method: str = "POST",
+        storage_uri_key: str = "storageUri",
     ):
         """Generic method to upload data to S3 storage and create the appropriate resource
         in the backend.
@@ -235,13 +251,22 @@ class Api:
                 )
 
         if res.ok:
-            body["storageUri"] = presigned_json["storageUri"]
-            return self.post_request(f"{endpoint}", body=body)
+            body[storage_uri_key] = presigned_json["storageUri"]
+            if method == "POST":
+                return self.post_request(f"{endpoint}", body=body)
+            elif method == "PUT":
+                return self.put_request(f"{endpoint}", body=body)
         else:
             self._raise_on_respose(res)
 
     def upload_blob_gcs(
-        self, endpoint: str, file_path: str, object_name: str = None, body=None
+        self,
+        endpoint: str,
+        file_path: str,
+        object_name: str = None,
+        body=None,
+        method: str = "POST",
+        storage_uri_key: str = "storageUri",
     ):
         """Generic method to upload data to Google Cloud Storage and create the
         appropriate resource in the backend.
@@ -265,13 +290,22 @@ class Api:
                     timeout=constants.REQUESTS_TIMEOUT,
                 )
         if res.ok:
-            body["storageUri"] = presigned_json["storageUri"]
-            return self.post_request(f"{endpoint}", body=body)
+            body[storage_uri_key] = presigned_json["storageUri"]
+            if method == "POST":
+                return self.post_request(f"{endpoint}", body=body)
+            elif method == "PUT":
+                return self.put_request(f"{endpoint}", body=body)
         else:
             self._raise_on_respose(res)
 
     def upload_blob_azure(
-        self, endpoint: str, file_path: str, object_name: str = None, body=None
+        self,
+        endpoint: str,
+        file_path: str,
+        object_name: str = None,
+        body=None,
+        method: str = "POST",
+        storage_uri_key: str = "storageUri",
     ):
         """Generic method to upload data to Azure Blob Storage and create the
         appropriate resource in the backend.
@@ -298,12 +332,23 @@ class Api:
                     timeout=constants.REQUESTS_TIMEOUT,
                 )
         if res.ok:
-            body["storageUri"] = presigned_json["storageUri"]
-            return self.post_request(f"{endpoint}", body=body)
+            body[storage_uri_key] = presigned_json["storageUri"]
+            if method == "POST":
+                return self.post_request(f"{endpoint}", body=body)
+            elif method == "PUT":
+                return self.put_request(f"{endpoint}", body=body)
         else:
             self._raise_on_respose(res)
 
-    def transfer_blob(self, endpoint: str, file_path: str, object_name: str, body=None):
+    def transfer_blob(
+        self,
+        endpoint: str,
+        file_path: str,
+        object_name: str,
+        body=None,
+        method: str = "POST",
+        storage_uri_key: str = "storageUri",
+    ):
         """Generic method to transfer data to the openlayer folder and create the appropriate
         resource in the backend when using a local deployment.
         """
@@ -317,5 +362,8 @@ class Api:
         except OSError as exc:
             raise OpenlayerException(f"Directory {dir_path} cannot be created") from exc
         shutil.copyfile(file_path, blob_path)
-        body["storageUri"] = presigned_json["storageUri"]
-        return self.post_request(f"{endpoint}", body=body)
+        body[storage_uri_key] = presigned_json["storageUri"]
+        if method == "POST":
+            return self.post_request(f"{endpoint}", body=body)
+        elif method == "PUT":
+            return self.put_request(f"{endpoint}", body=body)
