@@ -10,6 +10,7 @@ class InferencePipeline:
     def __init__(self, json, upload, client, task_type):
         self._json = json
         self.id = json["id"]
+        self.project_id = json["projectId"]
         self.upload = upload
         self.client = client
         self.taskType = task_type
