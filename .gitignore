@@ -20,6 +20,7 @@ examples/*
 !examples/tabular-classification
 !examples/tabular-regression
 !examples/text-classification
+!examples/monitoring
 !examples/llms
 !examples/_static
 model_package/
