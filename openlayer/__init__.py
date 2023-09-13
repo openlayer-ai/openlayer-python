@@ -1395,6 +1395,7 @@ class OpenlayerClient(object):
         description: Optional[str] = None,
         reference_df: Optional[pd.DataFrame] = None,
         reference_dataset_file_path: Optional[str] = None,
+        reference_dataset_config: Optional[Dict[str, any]] = None,
         reference_dataset_config_file_path: Optional[str] = None,
     ) -> InferencePipeline:
         """Creates an inference pipeline in an Openlayer project.
@@ -1413,6 +1414,24 @@ class OpenlayerClient(object):
         description : str, optional
             Inference pipeline description. If not specified, the description will be
             set to ``"Monitoring production data."``.
+        reference_df : pd.DataFrame, optional
+            Dataframe containing your reference dataset. It is optional to provide the
+            reference dataframe during the creation of the inference pipeline. If you
+            wish, you can add it later with the :obj:`upload_reference_dataframe` or
+            :obj:`upload_reference_dataset` methods. Not needed if
+            ``reference_dataset_file_path``is provided.
+        reference_dataset_file_path : str, optional
+            Path to the reference dataset CSV file. It is optional to provide the
+            reference dataset file path during the creation of the inference pipeline.
+            If you wish, you can add it later with the :obj:`upload_reference_dataframe`
+            or :obj:`upload_reference_dataset` methods. Not needed if ``reference_df``
+            is provided.
+        reference_dataset_config : Dict[str, any], optional
+            Dictionary containing the reference dataset configuration. This is not
+            needed if ``reference_dataset_config_file_path`` is provided.
+        reference_dataset_config_file_path : str, optional
+            Path to the reference dataset configuration YAML file. This is not needed
+            if ``reference_dataset_config`` is provided.
 
         Returns
         -------
@@ -1603,7 +1622,8 @@ class OpenlayerClient(object):
         inference_pipeline_id: str,
         task_type: TaskType,
         file_path: str,
-        dataset_config_file_path: str,
+        dataset_config: Optional[Dict[str, any]] = None,
+        dataset_config_file_path: Optional[str] = None,
     ) -> None:
         r"""Uploads a reference dataset saved as a csv file to an inference pipeline.
 
@@ -1618,8 +1638,19 @@ class OpenlayerClient(object):
         ----------
         file_path : str
             Path to the csv file containing the reference dataset.
+        dataset_config : Dict[str, any], optional
+            Dictionary containing the dataset configuration. This is not needed if
+            ``dataset_config_file_path`` is provided.
+
+            .. admonition:: What's in the dataset config?
+
+                The dataset configuration depends on the :obj:`TaskType`.
+                Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
+                for examples.
+
         dataset_config_file_path : str
-            Path to the dataset configuration YAML file.
+            Path to the dataset configuration YAML file. This is not needed if
+            ``dataset_config`` is provided.
 
             .. admonition:: What's in the dataset config file?
 
@@ -1687,10 +1718,17 @@ class OpenlayerClient(object):
         ...     dataset_config_file_path='/path/to/dataset_config.yaml',
         ... )
         """
+        if dataset_config is None and dataset_config_file_path is None:
+            raise ValueError(
+                "Either `dataset_config` or `dataset_config_file_path` must be"
+                " provided."
+            )
+
         # Validate dataset
         dataset_validator = dataset_validators.get_validator(
             task_type=task_type,
             dataset_config_file_path=dataset_config_file_path,
+            dataset_config=dataset_config,
             dataset_file_path=file_path,
         )
         failed_validations = dataset_validator.validate()
@@ -1702,7 +1740,8 @@ class OpenlayerClient(object):
             ) from None
 
         # Load dataset config and augment with defaults
-        dataset_config = utils.read_yaml(dataset_config_file_path)
+        if dataset_config_file_path is not None:
+            dataset_config = utils.read_yaml(dataset_config_file_path)
         dataset_data = DatasetSchema().load(
             {"task_type": task_type.value, **dataset_config}
         )
@@ -1731,7 +1770,8 @@ class OpenlayerClient(object):
         inference_pipeline_id: str,
         task_type: TaskType,
         dataset_df: pd.DataFrame,
-        dataset_config_file_path: str,
+        dataset_config: Optional[Dict[str, any]] = None,
+        dataset_config_file_path: Optional[str] = None,
     ) -> None:
         r"""Uploads a reference dataset (a pandas dataframe) to an inference pipeline.
 
@@ -1746,8 +1786,19 @@ class OpenlayerClient(object):
         ----------
         dataset_df : pd.DataFrame
             Dataframe containing the reference dataset.
+        dataset_config : Dict[str, any], optional
+            Dictionary containing the dataset configuration. This is not needed if
+            ``dataset_config_file_path`` is provided.
+
+            .. admonition:: What's in the dataset config?
+
+                The dataset configuration depends on the :obj:`TaskType`.
+                Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
+                for examples.
+
         dataset_config_file_path : str
-            Path to the dataset configuration YAML file.
+            Path to the dataset configuration YAML file. This is not needed if
+            ``dataset_config`` is provided.
 
             .. admonition:: What's in the dataset config file?
 
@@ -1828,6 +1879,7 @@ class OpenlayerClient(object):
             return self.upload_reference_dataset(
                 file_path=file_path,
                 inference_pipeline_id=inference_pipeline_id,
+                dataset_config=dataset_config,
                 dataset_config_file_path=dataset_config_file_path,
                 task_type=task_type,
             )
@@ -1837,7 +1889,8 @@ class OpenlayerClient(object):
         inference_pipeline_id: str,
         task_type: TaskType,
         batch_df: pd.DataFrame,
-        batch_config_file_path: str,
+        batch_config: Optional[Dict[str, any]] = None,
+        batch_config_file_path: Optional[str] = None,
     ) -> None:
         """Publishes a batch of production data to the Openlayer platform.
 
@@ -1845,8 +1898,20 @@ class OpenlayerClient(object):
         ----------
         batch_df : pd.DataFrame
             Dataframe containing the batch of production data.
+        batch_config : Dict[str, any], optional
+            Dictionary containing the batch configuration. This is not needed if
+            ``batch_config_file_path`` is provided.
+
+            .. admonition:: What's in the config?
+
+                The configuration for a batch of data depends on the :obj:`TaskType`.
+                Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
+                for examples of dataset configuration files. These configurations are
+                the same for development and batches of production data.
+
         batch_config_file_path : str
-            Path to the configuration YAML file.
+            Path to the configuration YAML file. This is not needed if
+            ``batch_config`` is provided.
 
             .. admonition:: What's in the config file?
 
@@ -1889,17 +1954,26 @@ class OpenlayerClient(object):
         ...     batch_config_file_path='/path/to/batch_config.yaml',
         ... )
         """
-        if not os.path.exists(batch_config_file_path):
+        if batch_config is None and batch_config_file_path is None:
+            raise ValueError(
+                "Either `batch_config` or `batch_config_file_path` must be" " provided."
+            )
+        if batch_config_file_path is not None and not os.path.exists(
+            batch_config_file_path
+        ):
             raise exceptions.OpenlayerValidationError(
                 f"Batch config file path {batch_config_file_path} does not exist."
             ) from None
-        batch_config = utils.read_yaml(batch_config_file_path)
+        elif batch_config_file_path is not None:
+            batch_config = utils.read_yaml(batch_config_file_path)
+
         batch_config["label"] = "production"
 
         # Validate batch of data
         batch_validator = dataset_validators.get_validator(
             task_type=task_type,
             dataset_config=batch_config,
+            dataset_config_file_path=batch_config_file_path,
             dataset_df=batch_df,
         )
         failed_validations = batch_validator.validate()
