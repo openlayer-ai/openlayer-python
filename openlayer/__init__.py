@@ -1996,10 +1996,28 @@ class OpenlayerClient(object):
                 batch_data, batch_df = self._add_default_column(
                     config=batch_data, df=batch_df, column_name=column
                 )
+        # Get min and max timestamps
+        min_timestamp = batch_df[batch_data["timestampColumnName"]].min()
+        max_timestamp = batch_df[batch_data["timestampColumnName"]].max()
 
-        # TODO: Make POST request to upload batch
-        print("Publishing batch of data...")
-        print(batch_data)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            # Copy relevant files to tmp dir
+            utils.write_yaml(batch_data, f"{tmp_dir}/dataset_config.yaml")
+            batch_df.to_csv(f"{tmp_dir}/dataset.csv", index=False)
+
+            tar_file_path = os.path.join(tmp_dir, "tarfile")
+            with tarfile.open(tar_file_path, mode="w:gz") as tar:
+                tar.add(tmp_dir, arcname=os.path.basename("reference_dataset"))
+
+            self.api.upload(
+                endpoint=f"inference-pipelines/{inference_pipeline_id}/data",
+                file_path=tar_file_path,
+                object_name="tarfile",
+                body={},
+                storage_uri_key="storageUri",
+                method="POST",
+            )
+        print("Batch of data published!")
 
     def _add_default_column(
         self, config: Dict[str, any], df: pd.DataFrame, column_name: str
