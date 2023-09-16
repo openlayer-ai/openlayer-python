@@ -1997,23 +1997,23 @@ class OpenlayerClient(object):
                     config=batch_data, df=batch_df, column_name=column
                 )
         # Get min and max timestamps
-        min_timestamp = batch_df[batch_data["timestampColumnName"]].min()
-        max_timestamp = batch_df[batch_data["timestampColumnName"]].max()
+        earliest_timestamp = batch_df[batch_data["timestampColumnName"]].min()
+        latest_timestamp = batch_df[batch_data["timestampColumnName"]].max()
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            # Copy relevant files to tmp dir
-            utils.write_yaml(batch_data, f"{tmp_dir}/dataset_config.yaml")
+            # Copy save files to tmp dir
             batch_df.to_csv(f"{tmp_dir}/dataset.csv", index=False)
-
-            tar_file_path = os.path.join(tmp_dir, "tarfile")
-            with tarfile.open(tar_file_path, mode="w:gz") as tar:
-                tar.add(tmp_dir, arcname=os.path.basename("reference_dataset"))
+            payload = {
+                "earliestTimestamp": earliest_timestamp,
+                "latestTimestamp": latest_timestamp,
+                **batch_data,
+            }
 
             self.api.upload(
                 endpoint=f"inference-pipelines/{inference_pipeline_id}/data",
-                file_path=tar_file_path,
-                object_name="tarfile",
-                body={},
+                file_path=f"{tmp_dir}/dataset.csv",
+                object_name="dataset.csv",
+                body=payload,
                 storage_uri_key="storageUri",
                 method="POST",
             )
