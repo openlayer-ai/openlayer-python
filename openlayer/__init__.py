@@ -1984,6 +1984,9 @@ class OpenlayerClient(object):
                 "Make sure to fix all of the issues listed above before the upload.",
             ) from None
 
+        # Check if batch of data contains ground truths
+        contains_ground_truths = self._contains_ground_truths(batch_config=batch_data)
+
         # Load dataset config and augment with defaults
         batch_data = DatasetSchema().load(
             {"task_type": task_type.value, **batch_config}
@@ -1999,15 +2002,13 @@ class OpenlayerClient(object):
         # Get min and max timestamps
         earliest_timestamp = batch_df[batch_data["timestampColumnName"]].min()
         latest_timestamp = batch_df[batch_data["timestampColumnName"]].max()
-        # Check if batch of data contains ground truths
-        contains_ground_truths = self._contains_ground_truths(batch_config=batch_data)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             # Copy save files to tmp dir
             batch_df.to_csv(f"{tmp_dir}/dataset.csv", index=False)
             payload = {
-                "earliestTimestamp": earliest_timestamp,
-                "latestTimestamp": latest_timestamp,
+                "earliestTimestamp": int(earliest_timestamp),
+                "latestTimestamp": int(latest_timestamp),
                 "performGroundTruthMerge": not contains_ground_truths,
                 **batch_data,
             }
