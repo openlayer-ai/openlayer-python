@@ -2125,5 +2125,21 @@ class OpenlayerClient(object):
                 f" `{inference_id_column_name}`. \n"
             ) from None
 
-        # TODO: Make POST request to publish ground truths
-        print("Publishing ground truths...")
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            # Copy save files to tmp dir
+            df.to_csv(f"{tmp_dir}/dataset.csv", index=False)
+            payload = {
+                "performGroundTruthMerge": True,
+                "groundTruthColumnName": ground_truth_column_name,
+                "inferenceIdColumnName": inference_id_column_name,
+            }
+
+            self.api.upload(
+                endpoint=f"inference-pipelines/{inference_pipeline_id}/data",
+                file_path=f"{tmp_dir}/dataset.csv",
+                object_name="dataset.csv",
+                body=payload,
+                storage_uri_key="storageUri",
+                method="POST",
+            )
+        print("Ground truths published!")
