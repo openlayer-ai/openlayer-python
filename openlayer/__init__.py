@@ -1984,9 +1984,6 @@ class OpenlayerClient(object):
                 "Make sure to fix all of the issues listed above before the upload.",
             ) from None
 
-        # Check if batch of data contains ground truths
-        contains_ground_truths = self._contains_ground_truths(batch_config=batch_data)
-
         # Load dataset config and augment with defaults
         batch_data = DatasetSchema().load(
             {"task_type": task_type.value, **batch_config}
@@ -2009,7 +2006,7 @@ class OpenlayerClient(object):
             payload = {
                 "earliestTimestamp": int(earliest_timestamp),
                 "latestTimestamp": int(latest_timestamp),
-                "performGroundTruthMerge": not contains_ground_truths,
+                "performGroundTruthMerge": False,
                 **batch_data,
             }
 
@@ -2037,14 +2034,6 @@ class OpenlayerClient(object):
             config["inferenceIdColumnName"] = inference_id_column_name
             df[inference_id_column_name] = [str(uuid.uuid1()) for _ in range(len(df))]
         return config, df
-
-    def _contains_ground_truths(self, batch_config: Dict[str, any]) -> bool:
-        """Checks if the batch of data contains ground truths."""
-        return (
-            batch_config.get("groundTruthColumnName") is not None
-            or batch_config.get("labelColumnName") is not None
-            or batch_config.get("targetColumnName") is not None
-        )
 
     def publish_ground_truths(
         self,
