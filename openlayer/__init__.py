@@ -58,13 +58,18 @@ class OpenlayerClient(object):
     Parameters
     ----------
     api_key : str
-        Your API key. Retrieve it from the web app.
+        Your API key. You can find your workspace API key in your
+        `account settings <https://docs.openlayer.com/docs/find-your-api-keys>`_
+        settings page.
 
     Examples
     --------
-    Instantiate a client with your api key
+    **Relevant guide**: `How to find your API keys <https://docs.openlayer.com/docs/find-your-api-keys>`_.
+
+    Instantiate a client with your api key:
 
     >>> import openlayer
+    >>>
     >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
     """
 
@@ -88,35 +93,39 @@ class OpenlayerClient(object):
                 The project name must be unique in a user's collection of projects.
 
         task_type : :obj:`TaskType`
-            Type of ML task. E.g. :obj:`TaskType.TabularClassification` or
-            :obj:`TaskType.TextClassification`.
+            Type of ML task for the project. E.g. :obj:`TaskType.TabularClassification`
+            or :obj:`TaskType.TextClassification`.
 
-        description : str
+        description : str, optional
             Project description.
 
         Returns
         -------
         Project
-            An object that is used to add models and datasets to the Openlayer platform
-            that also contains information about the project.
+            An object that is used to interact with projects on the Openlayer platform.
+
+
 
         Examples
         --------
+        **Related guide**: `How to create and load projects <https://docs.openlayer.com/docs/creating-and-loading-projects>`_.
+
         Instantiate the client and create the project:
 
         >>> import openlayer
+        >>> from openlayer.tasks import TaskType
+        >>>
         >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
         >>>
-        >>> from openlayer.tasks import TaskType
         >>> project = client.create_project(
         ...     name="Churn prediction",
         ...     task_type=TaskType.TabularClassification,
         ...     description="My first error analysis playground",
         ... )
 
-        With the Project object created, you are able to start adding models and
-        datasets to it. Refer to :obj:`add_model` and :obj:`add_dataset` or
-        :obj:`add_dataframe` for detailed examples.
+        With the Project object, you are able to start adding models and
+        datasets to it. Refer to :obj:`Project.add_model` and :obj:`Project.add_dataset` or
+        :obj:`Project.add_dataframe` for detailed examples.
         """
         try:
             project = self.load_project(name)
@@ -177,21 +186,23 @@ class OpenlayerClient(object):
         Returns
         -------
         Project
-            An object that is used to add models and datasets to the Openlayer platform
-            that also contains information about the project.
+            An object that is used to interact with projects on the Openlayer platform.
 
         Examples
         --------
+        **Related guide**: `How to create and load projects <https://docs.openlayer.com/docs/creating-and-loading-projects>`_.
+
         Instantiate the client and load the project:
 
         >>> import openlayer
+        >>>
         >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
         >>>
         >>> project = client.load_project(name="Churn prediction")
 
         With the Project object loaded, you are able to add models and datasets to
-        the it. Refer to :obj:`add_model` and :obj:`add_dataset` or
-        :obj:`add_dataframe` for detailed examples.
+        the it. Refer to :obj:`Project.add_model` and :obj:`Project.add_dataset` or
+        :obj:`Project.add_dataframe` for detailed examples.
         """
         endpoint = f"projects?name={name}"
         project_data = self.api.get_request(endpoint)
@@ -212,8 +223,10 @@ class OpenlayerClient(object):
     def create_or_load_project(
         self, name: str, task_type: TaskType, description: Optional[str] = None
     ) -> Project:
-        """Helper function that returns a project given a name. Creates a new project
-        if no project with the name exists.
+        """Convenience function that either creates or loads a project.
+
+        If a project with the ``name`` specified already exists, it will be loaded.
+        Otherwise, a new project will be created.
 
         Parameters
         ----------
@@ -224,26 +237,28 @@ class OpenlayerClient(object):
                 The project name must be unique in a user's collection of projects.
 
         task_type : :obj:`TaskType`
-            Type of ML task. E.g. :obj:`TaskType.TabularClassification` or
-            :obj:`TaskType.TextClassification`.
+            Type of ML task for the project. E.g. :obj:`TaskType.TabularClassification`
+            or :obj:`TaskType.TextClassification`.
 
-        description : str
+        description : str, optional
             Project description.
 
         Returns
         -------
         Project
-            An object that is used to add models and datasets to the Openlayer platform
-            that also contains information about the project.
+            An object that is used to interact with projects on the Openlayer platform.
 
         Examples
         --------
+        **Related guide**: `How to create and load projects <https://docs.openlayer.com/docs/creating-and-loading-projects>`_.
+
         Instantiate the client and create or load the project:
 
         >>> import openlayer
+        >>> from openlayer.tasks import TaskType
+        >>>
         >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
         >>>
-        >>> from openlayer.tasks import TaskType
         >>> project = client.create_or_load_project(
         ...     name="Churn prediction",
         ...     task_type=TaskType.TabularClassification,
@@ -251,8 +266,8 @@ class OpenlayerClient(object):
         ... )
 
         With the Project object, you are able to start adding models and
-        datasets to it. Refer to :obj:`add_model` and :obj:`add_dataset` or
-        :obj:`add_dataframe` for detailed examples.
+        datasets to it. Refer to :obj:`Project.add_model` and :obj:`Project.add_dataset`
+        or :obj:`Project.add_dataframe` for detailed examples.
         """
         try:
             return self.load_project(name)
@@ -271,147 +286,7 @@ class OpenlayerClient(object):
         force: bool = False,
         project_id: str = None,
     ):
-        """Adds a model to a project's staging area.
-
-        Parameters
-        ----------
-        model_config : Dict[str, any]
-            Dictionary containing the model configuration. This is not needed if
-            ``model_config_file_path`` is provided.
-
-            .. admonition:: What's in the model config dict?
-
-                The model configuration depends on the :obj:`TaskType`.
-                Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-model-config>`_
-                for examples.
-
-        model_config_file_path : str
-            Path to the model configuration YAML file. This is not needed if
-            ``model_config`` is provided.
-
-            .. admonition:: What's in the model config file?
-
-                The model configuration YAML depends on the :obj:`TaskType`.
-                Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-model-config>`_
-                for examples.
-
-        model_package_dir : str, default None
-            Path to the directory containing the model package. **Only needed if you are
-            interested in adding the model's artifacts.**
-
-            .. admonition:: What's in the `model_package_dir`?
-
-                The model package directory must contain the following files:
-
-                - ``prediction_interface.py``
-                    The prediction interface file.
-                - ``model artifacts``
-                    The model artifacts. This can be a single file, multiple files or a directory.
-                    The model artifacts must be compatible with the
-                    prediction interface file.
-                - ``requirements.txt``
-                    The requirements file. This file contains the dependencies needed to run
-                    the prediction interface file.
-
-                For instructions on how to create a model package, refer to
-                the documentation.
-
-        sample_data : pd.DataFrame, default None
-            Sample data that can be run through the model. **Only needed if  model_package_dir
-            is not None**. This data is used to ensure
-            the model's prediction interface is compatible with the Openlayer platform.
-
-            .. important::
-                The sample_data must be a dataframe with at least two rows.
-        force : bool
-            If :obj:`add_model` is called when there is already a model in the staging area,
-            when ``force=True``, the existing staged model will be overwritten by the new
-            one. When ``force=False``, the user will be prompted to confirm the
-            overwrite.
-
-        Examples
-        --------
-
-        .. seealso::
-            Our `sample notebooks
-            <https://github.com/openlayer-ai/openlayer-python/tree/main/examples>`_ and
-            `tutorials <https://docs.openlayer.com/docs/overview-of-tutorial-tracks>`_.
-
-        First, instantiate the client:
-
-        >>> import openlayer
-        >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
-
-        Create a project if you don't have one:
-
-        >>> from openlayer.tasks import TaskType
-        >>> project = client.create_project(
-        ...     name="Churn Prediction",
-        ...     task_type=TaskType.TabularClassification,
-        ...     description="My first project!",
-        ... )
-
-        If you already have a project created on the platform:
-
-        >>> project = client.load_project(name="Your project name")
-
-        **If your project's task type is tabular classification...**
-
-        Let's say your model expects to receive a dataset looks like
-        the following as input:
-
-        >>> df
-            CreditScore  Geography    Balance
-        0           618     France     321.92
-        1           714    Germany  102001.22
-        2           604      Spain   12333.15
-        ..          ...        ...        ...
-
-        Then, you can add the model to the project with:
-
-        >>> project.add_model(
-        ...     model_config_file_path="path/to/model/config",
-        ...     model_package_dir="path/to/model/package")
-        ...     sample_data=df.iloc[:5, :],
-        ... )
-
-        After adding the model to the project, it is staged, waiting to
-        be committed and pushed to the platform. You can check what's on
-        your staging area with :obj:`status`. If you want to push the model
-        right away with a commit message, you can use the :obj:`commit` and
-        :obj:`push` methods:
-
-        >>> project.commit("Initial model commit.")
-        >>> project.push()
-
-        **If your task type is text classification...**
-
-        Let's say your dataset looks like the following:
-
-        >>> df
-                                      Text
-        0    I have had a long weekend
-        1    I'm in a fantastic mood today
-        2    Things are looking up
-        ..                             ...
-
-        Then, you can add the model to the project with:
-
-        >>> project.add_model(
-        ...     model_config_file_path="path/to/model/config",
-        ...     model_package_dir="path/to/model/package")
-        ...     sample_data=df.iloc[:5, :],
-        ... )
-
-        After adding the model to the project, it is staged, waiting to
-        be committed and pushed to the platform. You can check what's on
-        your staging area with :obj:`status`. If you want to push the model
-        right away with a commit message, you can use the :obj:`commit` and
-        :obj:`push` methods:
-
-        >>> project.commit("Initial model commit.")
-        >>> project.push()
-        """
+        """Adds a model to a project's staging area."""
         # Basic argument combination checks
         if (model_package_dir is not None and sample_data is None) or (
             model_package_dir is None and sample_data is not None
@@ -576,154 +451,7 @@ class OpenlayerClient(object):
         project_id: str = None,
         force: bool = False,
     ):
-        r"""Adds a dataset to a project's staging area (from a csv).
-
-        Parameters
-        ----------
-        file_path : str
-            Path to the csv file containing the dataset.
-        dataset_config: Dict[str, any]
-            Dictionary containing the dataset configuration. This is not needed if
-            ``dataset_config_file_path`` is provided.
-
-            .. admonition:: What's in the dataset config?
-
-                The dataset configuration depends on the :obj:`TaskType`.
-                Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
-                for examples.
-
-        dataset_config_file_path : str
-            Path to the dataset configuration YAML file. This is not needed if
-            ``dataset_config`` is provided.
-
-            .. admonition:: What's in the dataset config file?
-
-                The dataset configuration YAML depends on the :obj:`TaskType`.
-                Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
-                for examples.
-
-        force : bool
-            If :obj:`add_dataset` is called when there is already a dataset of the same type
-            in the staging area, when ``force=True``, the existing staged dataset will be
-            overwritten by the new one. When ``force=False``, the user will be prompted
-            to confirm the overwrite.
-
-        Notes
-        -----
-        - Please ensure your input features are strings, ints or floats.
-        - Please ensure your label column name is not contained in ``feature_names``.
-
-        Examples
-        --------
-
-        First, instantiate the client:
-
-        >>> import openlayer
-        >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
-
-        Create a project if you don't have one:
-
-        >>> from openlayer.tasks import TaskType
-        >>> project = client.create_project(
-        ...     name="Churn Prediction",
-        ...     task_type=TaskType.TabularClassification,
-        ...     description="My first project!",
-        ... )
-
-        If you already have a project created on the platform:
-
-        >>> project = client.load_project(name="Your project name")
-
-        **If your project's task type is tabular classification...**
-
-        Let's say your dataset looks like the following:
-
-        .. csv-table::
-            :header: CreditScore, Geography, Balance, Churned
-
-            618, France, 321.92, 1
-            714, Germany, 102001.22, 0
-            604, Spain, 12333.15, 0
-
-        .. important::
-            The labels in your csv **must** be integers that correctly index into the
-            ``class_names`` array that you define (as shown below).
-            E.g. 0 => 'Retained', 1 => 'Churned'
-
-        Write the dataset config YAML file with the variables are needed by Openlayer:
-
-        >>> import yaml
-        >>>
-        >> dataset_config = {
-        ...     'columnNames': ['CreditScore', 'Geography', 'Balance', 'Churned'],
-        ...     'classNames': ['Retained', 'Churned'],
-        ...     'labelColumnName': 'Churned',
-        ...     'label': 'training',  # or 'validation'
-        ...     'featureNames': ['CreditScore', 'Geography', 'Balance'],
-        ...     'categoricalFeatureNames': ['Geography'],
-        ... }
-        >>>
-        >>> with open('/path/to/dataset_config.yaml', 'w') as f:
-        ...     yaml.dump(dataset_config, f)
-
-        You can now add this dataset to your project with:
-
-        >>> project.add_dataset(
-        ...     file_path='/path/to/dataset.csv',
-        ...     dataset_config_file_path='/path/to/dataset_config.yaml',
-        ... )
-
-        After adding the dataset to the project, it is staged, waiting to
-        be committed and pushed to the platform. You can check what's on
-        your staging area with :obj:`status`. If you want to push the dataset
-        right away with a commit message, you can use the :obj:`commit` and
-        :obj:`push` methods:
-
-        >>> project.commit("Initial dataset commit.")
-        >>> project.push()
-
-        **If your task type is text classification...**
-
-        Let's say your dataset looks like the following:
-
-        .. csv-table::
-            :header: Text, Sentiment
-
-            I have had a long weekend, 0
-            I'm in a fantastic mood today, 1
-            Things are looking up, 1
-
-        Write the dataset config YAML file with the variables are needed by Openlayer:
-
-        >>> import yaml
-        >>>
-        >> dataset_config = {
-        ...     'columnNames': ['Text', 'Sentiment'],
-        ...     'classNames': ['Negative', 'Positive'],
-        ...     'labelColumnName': 'Sentiment',
-        ...     'label': 'training',  # or 'validation'
-        ...     'textColumnName': 'Text',
-        ... }
-        >>>
-        >>> with open('/path/to/dataset_config.yaml', 'w') as f:
-        ...     yaml.dump(dataset_config, f)
-
-        You can now add this dataset to your project with:
-
-        >>> project.add_dataset(
-        ...     file_path='/path/to/dataset.csv',
-        ...     dataset_config_file_path='/path/to/dataset_config.yaml',
-        ... )
-
-        After adding the dataset to the project, it is staged, waiting to
-        be committed and pushed to the platform. You can check what's on
-        your staging area with :obj:`status`. If you want to push the dataset
-        right away with a commit message, you can use the :obj:`commit` and
-        :obj:`push` methods:
-
-        >>> project.commit("Initial dataset commit.")
-        >>> project.push()
-        """
+        r"""Adds a dataset to a project's staging area (from a csv)."""
         if dataset_config is None and dataset_config_file_path is None:
             raise ValueError(
                 "Either `dataset_config` or `dataset_config_file_path` must be"
@@ -775,152 +503,7 @@ class OpenlayerClient(object):
         project_id: str = None,
         force: bool = False,
     ):
-        r"""Adds a dataset to a project's staging area (from a pandas DataFrame).
-
-        Parameters
-        ----------
-        dataset_df : pd.DataFrame
-            Dataframe containing your dataset.
-        dataset_config: Dict[str, any]
-            Dictionary containing the dataset configuration. This is not needed if
-            ``dataset_config_file_path`` is provided.
-
-            .. admonition:: What's in the dataset config?
-
-                The dataset configuration depends on the :obj:`TaskType`.
-                Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
-                for examples.
-
-        dataset_config_file_path : str
-            Path to the dataset configuration YAML file. This is not needed if
-            ``dataset_config`` is provided.
-
-            .. admonition:: What's in the dataset config file?
-
-                The dataset configuration YAML depends on the :obj:`TaskType`.
-                Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
-                for examples.
-
-        force : bool
-            If :obj:`add_dataframe` is called when there is already a dataset of the same
-            type in the staging area, when ``force=True``, the existing staged dataset will
-            be overwritten by the new one. When ``force=False``, the user will be prompted
-            to confirm the overwrite.
-
-        Notes
-        -----
-        - Please ensure your input features are strings, ints or floats.
-        - Please ensure your label column name is not contained in ``feature_names``.
-
-        Examples
-        --------
-
-        First, instantiate the client:
-
-        >>> import openlayer
-        >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
-
-        Create a project if you don't have one:
-
-        >>> from openlayer.tasks import TaskType
-        >>> project = client.create_project(
-        ...     name="Churn Prediction",
-        ...     task_type=TaskType.TabularClassification,
-        ...     description="My first project!",
-        ... )
-
-        If you already have a project created on the platform:
-
-        >>> project = client.load_project(name="Your project name")
-
-        **If your project's task type is tabular classification...**
-
-        Let's say your dataframe looks like the following:
-
-        >>> df
-            CreditScore  Geography    Balance  Churned
-        0           618     France     321.92        1
-        1           714    Germany  102001.22        0
-        2           604      Spain   12333.15        0
-
-        .. important::
-            The labels in your dataframe **must** be integers that correctly index into
-            the ``class_names`` array that you define (as shown below).
-            E.g. 0 => 'Retained', 1 => 'Churned'.
-
-        Write the dataset config YAML file with the variables are needed by Openlayer:
-
-        >>> import yaml
-        >>>
-        >> dataset_config = {
-        ...     'columnNames': ['CreditScore', 'Geography', 'Balance', 'Churned'],
-        ...     'classNames': ['Retained', 'Churned'],
-        ...     'labelColumnName': 'Churned',
-        ...     'label': 'training',  # or 'validation'
-        ...     'featureNames': ['CreditScore', 'Geography', 'Balance'],
-        ...     'categoricalFeatureNames': ['Geography'],
-        ... }
-        >>>
-        >>> with open('/path/to/dataset_config.yaml', 'w') as f:
-        ...     yaml.dump(dataset_config, f)
-
-        You can now add this dataset to your project with:
-
-        >>> project.add_dataframe(
-        ...     dataset_df=df,
-        ...     dataset_config_file_path='/path/to/dataset_config.yaml',
-        ... )
-
-        After adding the dataset to the project, it is staged, waiting to
-        be committed and pushed to the platform. You can check what's on
-        your staging area with :obj:`status`. If you want to push the dataset
-        right away with a commit message, you can use the :obj:`commit` and
-        :obj:`push` methods:
-
-        >>> project.commit("Initial dataset commit.")
-        >>> project.push()
-
-        **If your task type is text classification...**
-
-        Let's say your dataset looks like the following:
-
-        >>> df
-                                      Text  Sentiment
-        0    I have had a long weekend              0
-        1    I'm in a fantastic mood today          1
-        2    Things are looking up                  1
-
-        Write the dataset config YAML file with the variables are needed by Openlayer:
-
-        >>> import yaml
-        >>>
-        >> dataset_config = {
-        ...     'columnNames': ['Text', 'Sentiment'],
-        ...     'classNames': ['Negative', 'Positive'],
-        ...     'labelColumnName': 'Sentiment',
-        ...     'label': 'training',  # or 'validation'
-        ...     'textColumnName': 'Text',
-        ... }
-        >>>
-        >>> with open('/path/to/dataset_config.yaml', 'w') as f:
-        ...     yaml.dump(dataset_config, f)
-
-        You can now add this dataset to your project with:
-
-        >>> project.add_dataframe(
-        ...     dataset_df=df,
-        ...     dataset_config_file_path='/path/to/dataset_config.yaml',
-        ... )
-
-        After adding the dataset to the project, it is staged, waiting to
-        be committed and pushed to the platform. You can check what's on
-        your staging area with :obj:`status`. If you want to push the dataset
-        right away with a commit message, you can use the :obj:`commit` and
-        :obj:`push` methods:
-
-        >>> project.commit("Initial dataset commit.")
-        >>> project.push()
-        """
+        r"""Adds a dataset to a project's staging area (from a pandas DataFrame)."""
         # --------------------------- Resource validations --------------------------- #
         if not isinstance(dataset_df, pd.DataFrame):
             raise exceptions.OpenlayerValidationError(
@@ -940,41 +523,7 @@ class OpenlayerClient(object):
             )
 
     def commit(self, message: str, project_id: str, force: bool = False):
-        """Adds a commit message to staged resources.
-
-        Parameters
-        ----------
-        message : str
-            The commit message, between 1 and 140 characters.
-        force : bool
-            If :obj:`commit` is called when there is already a commit message,
-            when ``force=True``, the existing message will be overwritten by the new
-            one. When ``force=False``, the user will be prompted to confirm the overwrite.
-
-        Notes
-        -----
-        - To use this method, you must first add a model and/or dataset to the staging area using one of the ``add`` methods (e.g., :obj:`add_model`, :obj:`add_dataset`, :obj:`add_dataframe`).
-
-        Examples
-        --------
-        A commit message is associated with a project version. We have a new project version
-        every time any of its resources (namely, model and/or dataset) are updated. The commit
-        message is supposed to be a short description of the changes from one version to the next.
-
-        Let's say you have a project with a model and a dataset staged. You can confirm these
-        resources are indeed in the staging area using the :obj:`status` method:
-
-        >>> project.status()
-
-        Now, you can add a commit message to the staged resources.
-
-        >>> project.commit("Initial commit.")
-
-        After adding the commit message, the resources are ready to be pushed to the platform.
-        You use the :obj:`push` method to do so:
-
-        >>> project.push()
-        """
+        """Adds a commit message to staged resources."""
         # Validate commit
         commit_validator = commit_validators.CommitValidator(commit_message=message)
         failed_validations = commit_validator.validate()
@@ -1059,33 +608,7 @@ class OpenlayerClient(object):
         return validation_has_no_outputs and model_is_llm
 
     def push(self, project_id: str, task_type: TaskType) -> Optional[ProjectVersion]:
-        """Pushes the commited resources to the platform.
-
-        Returns
-        -------
-        :obj:`project_versions.ProjectVersion`
-            An object that is used to check for upload progress and goal statuses.
-            Also contains other useful information about a project version.
-
-        Notes
-        -----
-        - To use this method, you must first have committed your changes with the :obj:`commit`
-            method.
-
-        Examples
-        --------
-
-        Let's say you have a project with a model and a dataset staged and committed. You can
-        confirm these resources are indeed in the staging area using the :obj:`status` method:
-
-        >>> project.status()
-
-        You should see the staged resources as well as the commit message associated with them.
-
-        Now, you can push the resources to the platform with:
-
-        >>> project.push()
-        """
+        """Pushes the commited resources to the platform."""
         project_dir = f"{constants.OPENLAYER_DIR}/{project_id}/staging"
 
         if self._ready_for_push(project_dir=project_dir, task_type=task_type):
@@ -1171,33 +694,6 @@ class OpenlayerClient(object):
     def export(self, destination_dir: str, project_id: str, task_type: TaskType):
         """Exports the commited resources as a tarfile to the location specified
         by ``destination_dir``.
-
-        This is useful if you want to drag and drop the tarfile into the platform's
-        UI to upload it instead of using the :obj:`push` method.
-
-        Parameters
-        ----------
-        destination_dir : str
-            Directory path to where the project's staging area should be exported.
-
-        Notes
-        -----
-        - To use this method, you must first have committed your changes with the :obj:`commit`
-            method.
-
-        Examples
-        --------
-
-        Let's say you have a project with a model and a dataset staged and committed. You can
-        confirm these resources are indeed in the staging area using the :obj:`status` method:
-
-        >>> project.status()
-
-        You should see the staged resources as well as the commit message associated with them.
-
-        Now, you can export the resources to a speficied location with:
-
-        >>> project.export(destination_dir="/path/to/destination")
         """
         project_dir = f"{constants.OPENLAYER_DIR}/{project_id}/staging"
 
@@ -1215,26 +711,7 @@ class OpenlayerClient(object):
             print("Exported tarfile!")
 
     def status(self, project_id: str):
-        """Shows the state of the staging area.
-
-        Examples
-        --------
-
-        You can use the :obj:`status` method to check the state of the staging area.
-
-        >>> project.status()
-
-        The staging area can be in one of three states.
-
-        You can have a clean staging area, which is the initial state as well as the state
-        after you have pushed your changes to the platform (with the :obj:`push` method).
-
-        You can have a staging area with different resources staged (e.g., models and datasets
-        added with the :obj:`add_model`, :obj:`add_dataset`, and :obj:`add_dataframe` mehtods).
-
-        Finally, you can have a staging area with resources staged and committed (with the
-        :obj:`commit` method).
-        """
+        """Shows the state of the staging area."""
         project_dir = f"{constants.OPENLAYER_DIR}/{project_id}/staging"
 
         if not os.listdir(project_dir):
@@ -1263,35 +740,7 @@ class OpenlayerClient(object):
         print("Use the `push` method to push your changes to the platform.")
 
     def restore(self, *resource_names: str, project_id: str):
-        """Removes the resource specified by ``resource_name`` from the staging area.
-
-        Parameters
-        ----------
-        *resource_names : str
-            The names of the resources to restore, separated by comma. Valid resource names
-            are ``"model"``, ``"training"``, and ``"validation"``.
-
-            .. important::
-                To see the names of the resources staged, use the :obj:`status` method.
-
-        Examples
-        --------
-        Let's say you have initially used the :obj:`add_model` method to add a model to the
-        staging area.
-
-        >>> project.add_model(
-        ...     model_package_dir="/path/to/model/package",
-        ...     sample_data=df
-        ... )
-
-        You can see the model staged with the :obj:`status` method:
-
-        >>> project.status()
-
-        You can then remove the model from the staging area with the :obj:`restore` method:
-
-        >>> project.restore(resource_name="model")
-        """
+        """Removes the resource specified by ``resource_name`` from the staging area."""
         project_dir = f"{constants.OPENLAYER_DIR}/{project_id}/staging"
 
         for resource_name in resource_names:
@@ -1407,71 +856,7 @@ class OpenlayerClient(object):
         reference_dataset_config: Optional[Dict[str, any]] = None,
         reference_dataset_config_file_path: Optional[str] = None,
     ) -> InferencePipeline:
-        """Creates an inference pipeline in an Openlayer project.
-
-        An inference pipeline represents a model that has been deployed in production.
-
-        Parameters
-        ----------
-        name : str
-            Name of your inference pipeline. If not specified, the name will be
-            set to ``"Production"``.
-
-            .. important::
-                The inference pipeline name must be unique within a project.
-
-        description : str, optional
-            Inference pipeline description. If not specified, the description will be
-            set to ``"Monitoring production data."``.
-        reference_df : pd.DataFrame, optional
-            Dataframe containing your reference dataset. It is optional to provide the
-            reference dataframe during the creation of the inference pipeline. If you
-            wish, you can add it later with the :obj:`upload_reference_dataframe` or
-            :obj:`upload_reference_dataset` methods. Not needed if
-            ``reference_dataset_file_path``is provided.
-        reference_dataset_file_path : str, optional
-            Path to the reference dataset CSV file. It is optional to provide the
-            reference dataset file path during the creation of the inference pipeline.
-            If you wish, you can add it later with the :obj:`upload_reference_dataframe`
-            or :obj:`upload_reference_dataset` methods. Not needed if ``reference_df``
-            is provided.
-        reference_dataset_config : Dict[str, any], optional
-            Dictionary containing the reference dataset configuration. This is not
-            needed if ``reference_dataset_config_file_path`` is provided.
-        reference_dataset_config_file_path : str, optional
-            Path to the reference dataset configuration YAML file. This is not needed
-            if ``reference_dataset_config`` is provided.
-
-        Returns
-        -------
-        InferencePipeline
-            An object that is used to publish production data the Openlayer platform
-            and that contains information about the inference pipeline.
-
-        Examples
-        --------
-        Instantiate the client and retrieve an existing project:
-
-        >>> import openlayer
-        >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
-        >>>
-        >>> project = client.load_project(
-        ...     name="Churn prediction"
-        ... )
-
-        With the Project object retrieved, you are able to create an inference pipeline:
-
-        >>> inference_pipeline = project.create_inference_pipeline(
-        ...     name="XGBoost model inference pipeline",
-        ...     description="Online model deployed to SageMaker endpoint.",
-        ... )
-
-
-        With the InferencePipeline object created, you are able to upload a reference
-        dataset (used to measure drift) and to publish production data to the Openlayer
-        platform. Refer to :obj:`upload_reference_dataset` and
-        :obj:`publish_batch_data` for detailed examples.
-        """
+        """Creates an inference pipeline in an Openlayer project."""
         if (reference_df is None) ^ (reference_dataset_config_file_path is None) or (
             reference_dataset_file_path is None
         ) ^ (reference_dataset_config_file_path is None):
@@ -1579,46 +964,7 @@ class OpenlayerClient(object):
         task_type: TaskType,
         name: Optional[str] = None,
     ) -> InferencePipeline:
-        """Loads an existing inference pipeline from an Openlayer project.
-
-        Parameters
-        ----------
-        name : str, optional
-            Name of the inference pipeline to be loaded.
-            The name of the inference piepline is the one displayed on the
-            Openlayer platform. If not specified, will try to load the
-            inference pipeline named ``"Production"``.
-
-            .. note::
-                If you haven't created the inference pipeline yet, you should use the
-                :obj:`create_inference_pipeline` method.
-
-        Returns
-        -------
-        InferencePipeline
-            An object that is used to publish production data the Openlayer platform
-            and that contains information about the inference pipeline.
-
-        Examples
-        --------
-        Instantiate the client and load a project:
-
-        >>> import openlayer
-        >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
-        >>>
-        >>> project = client.load_project(name="Churn prediction")
-
-        With the Project object retrieved, you are able to load the inference pipeline:
-
-        >>> inference_pipeline = project.load_inference_pipeline(
-        ...     name="XGBoost model inference pipeline",
-        ... )
-
-        With the InferencePipeline object created, you are able to upload a reference
-        dataset (used to measure drift) and to publish production data to the Openlayer
-        platform. Refer to :obj:`upload_reference_dataset` and
-        :obj:`publish_batch_data` for detailed examples.
-        """
+        """Loads an existing inference pipeline from an Openlayer project."""
         name = name or "Production"
         endpoint = f"/projects/{project_id}/inference-pipelines?name={name}"
         inference_pipeline_data = self.api.get_request(endpoint)
@@ -1645,99 +991,7 @@ class OpenlayerClient(object):
         dataset_config: Optional[Dict[str, any]] = None,
         dataset_config_file_path: Optional[str] = None,
     ) -> None:
-        r"""Uploads a reference dataset saved as a csv file to an inference pipeline.
-
-        The reference dataset is used to measure drift in the inference pipeline.
-        The different types of drift are measured by comparing the production data
-        published to the platform with the reference dataset.
-
-        Ideally, the reference dataset should be a representative sample of the
-        training set used to train the deployed model.
-
-        Parameters
-        ----------
-        file_path : str
-            Path to the csv file containing the reference dataset.
-        dataset_config : Dict[str, any], optional
-            Dictionary containing the dataset configuration. This is not needed if
-            ``dataset_config_file_path`` is provided.
-
-            .. admonition:: What's in the dataset config?
-
-                The dataset configuration depends on the :obj:`TaskType`.
-                Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
-                for examples.
-
-        dataset_config_file_path : str
-            Path to the dataset configuration YAML file. This is not needed if
-            ``dataset_config`` is provided.
-
-            .. admonition:: What's in the dataset config file?
-
-                The dataset configuration YAML depends on the :obj:`TaskType`.
-                Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
-                for examples.
-
-        Notes
-        -----
-        - Please ensure your input features are strings, ints or floats.
-        - Please ensure your label column name is not contained in ``feature_names``.
-
-        Examples
-        --------
-
-        First, instantiate the client and retrieve an existing inference pipeline:
-
-        >>> import openlayer
-        >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
-        >>>
-        >>> project = client.load_project(name="Churn prediction")
-        >>>
-        >>> inference_pipeline = project.load_inference_pipeline(
-        ...     name="XGBoost model inference pipeline",
-        ... )
-
-        With the InferencePipeline object retrieved, you are able to upload a reference
-        dataset.
-
-        For example, if your project's task type is tabular classification and
-        your dataset looks like the following:
-
-        .. csv-table::
-            :header: CreditScore, Geography, Balance, Churned
-
-            618, France, 321.92, 1
-            714, Germany, 102001.22, 0
-            604, Spain, 12333.15, 0
-
-        .. important::
-            The labels in your csv **must** be integers that correctly index into the
-            ``class_names`` array that you define (as shown below).
-            E.g. 0 => 'Retained', 1 => 'Churned'
-
-        Write the dataset config YAML file with the variables are needed by Openlayer:
-
-        >>> import yaml
-        >>>
-        >> dataset_config = {
-        ...     'columnNames': ['CreditScore', 'Geography', 'Balance', 'Churned'],
-        ...     'classNames': ['Retained', 'Churned'],
-        ...     'labelColumnName': 'Churned',
-        ...     'label': 'training',  # or 'validation'
-        ...     'featureNames': ['CreditScore', 'Geography', 'Balance'],
-        ...     'categoricalFeatureNames': ['Geography'],
-        ... }
-        >>>
-        >>> with open('/path/to/dataset_config.yaml', 'w') as f:
-        ...     yaml.dump(dataset_config, f)
-
-        You can now upload this reference dataset to your project with:
-
-        >>> inference_pipeline.upload_reference_dataset(
-        ...     file_path='/path/to/dataset.csv',
-        ...     dataset_config_file_path='/path/to/dataset_config.yaml',
-        ... )
-        """
+        r"""Uploads a reference dataset saved as a csv file to an inference pipeline."""
         if dataset_config is None and dataset_config_file_path is None:
             raise ValueError(
                 "Either `dataset_config` or `dataset_config_file_path` must be"
@@ -1793,100 +1047,7 @@ class OpenlayerClient(object):
         dataset_config: Optional[Dict[str, any]] = None,
         dataset_config_file_path: Optional[str] = None,
     ) -> None:
-        r"""Uploads a reference dataset (a pandas dataframe) to an inference pipeline.
-
-        The reference dataset is used to measure drift in the inference pipeline.
-        The different types of drift are measured by comparing the production data
-        published to the platform with the reference dataset.
-
-        Ideally, the reference dataset should be a representative sample of the
-        training set used to train the deployed model.
-
-        Parameters
-        ----------
-        dataset_df : pd.DataFrame
-            Dataframe containing the reference dataset.
-        dataset_config : Dict[str, any], optional
-            Dictionary containing the dataset configuration. This is not needed if
-            ``dataset_config_file_path`` is provided.
-
-            .. admonition:: What's in the dataset config?
-
-                The dataset configuration depends on the :obj:`TaskType`.
-                Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
-                for examples.
-
-        dataset_config_file_path : str
-            Path to the dataset configuration YAML file. This is not needed if
-            ``dataset_config`` is provided.
-
-            .. admonition:: What's in the dataset config file?
-
-                The dataset configuration YAML depends on the :obj:`TaskType`.
-                Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
-                for examples.
-
-        Notes
-        -----
-        - Please ensure your input features are strings, ints or floats.
-        - Please ensure your label column name is not contained in ``feature_names``.
-
-        Examples
-        --------
-
-        First, instantiate the client and retrieve an existing inference pipeline:
-
-        >>> import openlayer
-        >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
-        >>>
-        >>> project = client.load_project(name="Churn prediction")
-        >>>
-        >>> inference_pipeline = project.load_inference_pipeline(
-        ...     name="XGBoost model inference pipeline",
-        ... )
-
-        With the InferencePipeline object retrieved, you are able to upload a reference
-        dataset.
-
-        For example, if your project's task type is tabular classification, your
-        dataset looks like the following (stored in a pandas dataframe
-        called ``dataset_df``):
-
-        .. csv-table::
-            :header: CreditScore, Geography, Balance, Churned
-
-            618, France, 321.92, 1
-            714, Germany, 102001.22, 0
-            604, Spain, 12333.15, 0
-
-        .. important::
-            The labels in your csv **must** be integers that correctly index into the
-            ``class_names`` array that you define (as shown below).
-            E.g. 0 => 'Retained', 1 => 'Churned'
-
-        Write the dataset config YAML file with the variables are needed by Openlayer:
-
-        >>> import yaml
-        >>>
-        >> dataset_config = {
-        ...     'columnNames': ['CreditScore', 'Geography', 'Balance', 'Churned'],
-        ...     'classNames': ['Retained', 'Churned'],
-        ...     'labelColumnName': 'Churned',
-        ...     'label': 'training',  # or 'validation'
-        ...     'featureNames': ['CreditScore', 'Geography', 'Balance'],
-        ...     'categoricalFeatureNames': ['Geography'],
-        ... }
-        >>>
-        >>> with open('/path/to/dataset_config.yaml', 'w') as f:
-        ...     yaml.dump(dataset_config, f)
-
-        You can now upload this reference dataset to your project with:
-
-        >>> inference_pipeline.upload_reference_dataframe(
-        ...     dataset_df=dataset_df,
-        ...     dataset_config_file_path='/path/to/dataset_config.yaml',
-        ... )
-        """
+        r"""Uploads a reference dataset (a pandas dataframe) to an inference pipeline."""
         # --------------------------- Resource validations --------------------------- #
         if not isinstance(dataset_df, pd.DataFrame):
             raise exceptions.OpenlayerValidationError(
@@ -1912,68 +1073,7 @@ class OpenlayerClient(object):
         batch_config: Optional[Dict[str, any]] = None,
         batch_config_file_path: Optional[str] = None,
     ) -> None:
-        """Publishes a batch of production data to the Openlayer platform.
-
-        Parameters
-        ----------
-        batch_df : pd.DataFrame
-            Dataframe containing the batch of production data.
-        batch_config : Dict[str, any], optional
-            Dictionary containing the batch configuration. This is not needed if
-            ``batch_config_file_path`` is provided.
-
-            .. admonition:: What's in the config?
-
-                The configuration for a batch of data depends on the :obj:`TaskType`.
-                Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
-                for examples of dataset configuration files. These configurations are
-                the same for development and batches of production data.
-
-        batch_config_file_path : str
-            Path to the configuration YAML file. This is not needed if
-            ``batch_config`` is provided.
-
-            .. admonition:: What's in the config file?
-
-                The configuration for a batch of data depends on the :obj:`TaskType`.
-                Refer to the `documentation <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
-                for examples of dataset configuration files. These configurations are
-                the same for development and batches of production data.
-
-        Notes
-        -----
-        Production data usually has a column with the prediction timestamps. This
-        column is specified in the ``timestampsColumnName`` of the batch config file,
-        and it should contain timestamps in the UNIX format **in seconds**.
-
-        Production data also usually has a column with the prediction IDs. This
-        column is specified in the ``predictionIdsColumnName`` of the batch config file.
-        This column is particularly important when the ground truths are not available
-        during inference time, and they are updated later.
-
-        Examples
-        --------
-
-        First, instantiate the client and retrieve an existing inference pipeline:
-
-        >>> import openlayer
-        >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
-        >>>
-        >>> project = client.load_project(name="Churn prediction")
-        >>>
-        >>> inference_pipeline = project.load_inference_pipeline(
-        ...     name="XGBoost model inference pipeline",
-        ... )
-
-        With the InferencePipeline object retrieved, you can publish a batch
-        of production data -- in this example, stored in a pandas dataframe
-        called ``df`` -- with:
-
-        >>> inference_pipeline.publish_batch_data(
-        ...     batch_df=df,
-        ...     batch_config_file_path='/path/to/batch_config.yaml',
-        ... )
-        """
+        """Publishes a batch of production data to the Openlayer platform."""
         if batch_config is None and batch_config_file_path is None:
             raise ValueError(
                 "Either `batch_config` or `batch_config_file_path` must be" " provided."
@@ -2062,63 +1162,7 @@ class OpenlayerClient(object):
         ground_truth_column_name: str,
         inference_id_column_name: str,
     ) -> None:
-        """Publishes ground truths for data already on the Openlayer platform.
-
-        This method is used to update the ground truths of production data that was
-        already published without them. This is useful when the ground truths are not
-        available during inference time, but they shall be update later to enable
-        performance metrics.
-
-        Parameters
-        ----------
-        df : pd.DataFrame
-            Dataframe containing ground truths.
-
-            The df must contain a column with the inference IDs, and another column
-            with the ground truths.
-
-        ground_truth_column_name : str
-            Name of the column containing the ground truths.
-
-        inference_id_column_name : str
-            Name of the column containing the inference IDs. The inference IDs are
-            used to match the ground truths with the production data already published.
-
-        Examples
-        --------
-
-        Let's say you have a batch of production data already published to the
-        Openlayer platform (with the method :obj:`publish_batch_data`). Now, you want
-        to update the ground truths of this batch.
-
-        First, instantiate the client and retrieve an existing inference pipeline:
-
-        >>> import openlayer
-        >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
-        >>>
-        >>> project = client.load_project(name="Churn prediction")
-        >>>
-        >>> inference_pipeline = project.load_inference_pipeline(
-        ...     name="XGBoost model inference pipeline",
-        ... )
-
-        If your ``df`` with the ground truths looks like the following:
-
-        .. csv-table::
-            :header: inference_id, label
-
-            d56d2b2c, 0
-            3b0b2521, 1
-            8c294a3a, 0
-
-        You can publish the ground truths with:
-
-        >>> inference_pipeline.publish_ground_truths(
-        ...     df=df,
-        ...     inference_id_column_name='inference_id',
-        ...     ground_truth_column_name='label',
-        ... )
-        """
+        """Publishes ground truths for data already on the Openlayer platform."""
         # -------------------------------- Validations ------------------------------- #
         if not isinstance(df, pd.DataFrame):
             raise exceptions.OpenlayerValidationError(
