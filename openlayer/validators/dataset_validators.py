@@ -102,28 +102,66 @@ class BaseDatasetValidator(BaseValidator, ABC):
 
         Beware of the order of the validations, as it is important.
         """
+        self._validate_file_existence()
+        self._load_dataset_config()
+        self._validate_dataset_label()
+        self._validate_dataset_schema()
+
+    def _validate_file_existence(self):
+        """Checks whether the dataset_config_file_path exists."""
         # File existence check
         if self.dataset_config_file_path:
             if not os.path.isfile(os.path.expanduser(self.dataset_config_file_path)):
                 self.failed_validations.append(
                     f"File `{self.dataset_config_file_path}` does not exist."
                 )
-            else:
+
+    def _load_dataset_config(self):
+        """Loads the dataset_config_file_path into the `self.dataset_config`
+        attribute."""
+        if self.dataset_config_file_path:
+            try:
                 with open(
                     self.dataset_config_file_path, "r", encoding="UTF-8"
                 ) as stream:
                     self.dataset_config = yaml.safe_load(stream)
+            except:
+                self.failed_validations.append(
+                    f"File `{self.dataset_config_file_path}` is not a valid .yaml file."
+                )
 
+    def _validate_dataset_label(self):
+        """Checks whether the dataset label is valid."""
         if self.dataset_config:
-            dataset_schema = schemas.DatasetSchema()
-            try:
-                dataset_schema.load(
-                    {"task_type": self.task_type.value, **self.dataset_config}
+            if self.dataset_config.get("label") is None:
+                self.failed_validations.append(
+                    "Missing value for required property `label` in the dataset config."
                 )
-            except ma.ValidationError as err:
-                self.failed_validations.extend(
-                    self._format_marshmallow_error_message(err)
+            else:
+                label = self.dataset_config["label"]
+                if not isinstance(label, str):
+                    self.failed_validations.append(
+                        "The value of `label` in the dataset config must be a string."
+                    )
+
+    def _validate_dataset_schema(self):
+        """Checks whether the dataset schema is valid."""
+        if self.dataset_config:
+            label = self.dataset_config.get("label")
+            if label:
+                dataset_schema = (
+                    schemas.ReferenceDatasetSchema()
+                    if label == "reference"
+                    else schemas.DatasetSchema()
                 )
+                try:
+                    dataset_schema.load(
+                        {"task_type": self.task_type.value, **self.dataset_config}
+                    )
+                except ma.ValidationError as err:
+                    self.failed_validations.extend(
+                        self._format_marshmallow_error_message(err)
+                    )
 
     def _validate_dataset_file(self):
         """Checks whether the dataset file exists and is valid.
