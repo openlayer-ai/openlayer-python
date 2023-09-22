@@ -28,6 +28,8 @@ class DatasetType(Enum):
     Training = "training"
     #: For production data.
     Production = "production"
+    #: For reference datasets.
+    Reference = "reference"
 
 
 class Dataset:

@@ -210,7 +210,7 @@ class RegressionOutputSchema(BaseDatasetSchema):
 class LLMDatasetSchema(LLMInputSchema, LLMOutputSchema):
     """LLM dataset schema."""
 
-    # Override the label to allow for a 'fine-tuning' label instead
+    # Overwrite the label to allow for a 'fine-tuning' label instead
     # of the 'training' label
     label = ma.fields.Str(
         validate=ma.validate.OneOf(
@@ -490,3 +490,79 @@ class ProjectSchema(ma.Schema):
             + " https://reference.openlayer.com/reference/api/openlayer.TaskType.html.\n ",
         ),
     )
+
+
+# ---------------------------- Reference datasets ---------------------------- #
+class LLMReferenceDatasetSchema(LLMDatasetSchema):
+    """LLM reference dataset schema."""
+
+    # Overwrite the label to allow for a 'reference' label instead
+    label = ma.fields.Str(
+        validate=ma.validate.OneOf(
+            [DatasetType.Reference.value],
+            error="`label` not supported." + "The supported `labels` are 'reference'.",
+        ),
+        required=True,
+    )
+
+
+class TabularClassificationReferenceDatasetSchema(TabularClassificationDatasetSchema):
+    """Tabular classification reference dataset schema."""
+
+    # Overwrite the label to allow for a 'reference' label instead
+    label = ma.fields.Str(
+        validate=ma.validate.OneOf(
+            [DatasetType.Reference.value],
+            error="`label` not supported." + "The supported `labels` are 'reference'.",
+        ),
+        required=True,
+    )
+
+
+class TabularRegressionReferenceDatasetSchema(TabularRegressionDatasetSchema):
+    """Tabular regression reference dataset schema."""
+
+    # Overwrite the label to allow for a 'reference' label instead
+    label = ma.fields.Str(
+        validate=ma.validate.OneOf(
+            [DatasetType.Reference.value],
+            error="`label` not supported." + "The supported `labels` are 'reference'.",
+        ),
+        required=True,
+    )
+
+
+class TextClassificationReferenceDatasetSchema(TextClassificationDatasetSchema):
+    """Text classification reference dataset schema."""
+
+    # Overwrite the label to allow for a 'reference' label instead
+    label = ma.fields.Str(
+        validate=ma.validate.OneOf(
+            [DatasetType.Reference.value],
+            error="`label` not supported." + "The supported `labels` are 'reference'.",
+        ),
+        required=True,
+    )
+
+
+class ReferenceDatasetSchema(maos.OneOfSchema):
+    """One of schema for reference datasets.
+    Returns the correct schema based on the task type."""
+
+    type_field = "task_type"
+    # pylint: ignore=line-too-long
+    type_schemas = {
+        TaskType.TabularClassification.value: TabularClassificationReferenceDatasetSchema,
+        TaskType.TabularRegression.value: TabularRegressionReferenceDatasetSchema,
+        TaskType.TextClassification.value: TextClassificationReferenceDatasetSchema,
+        TaskType.LLM.value: LLMReferenceDatasetSchema,
+        TaskType.LLMNER.value: LLMReferenceDatasetSchema,
+        TaskType.LLMQuestionAnswering.value: LLMReferenceDatasetSchema,
+        TaskType.LLMSummarization.value: LLMReferenceDatasetSchema,
+        TaskType.LLMTranslation.value: LLMReferenceDatasetSchema,
+    }
+
+    def get_obj_type(self, obj):
+        if obj not in [task_type.value for task_type in TaskType]:
+            raise ma.ValidationError(f"Unknown object type: {obj.__class__.__name__}")
+        return obj
