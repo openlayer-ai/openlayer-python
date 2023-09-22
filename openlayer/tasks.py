@@ -1,27 +1,25 @@
 # pylint: disable=invalid-name
 """TaskTypes supported by Openlayer are defined here
 
-TaskTypes enum chooses between the types of machine learning tasks supported by Openlayer.
-Examples of these tasks are text classification, tabular classification, and tabular regression.
-
-Typical usage example:
-
-    task_type = ma.fields.Str(
-        alidate=ma.validate.OneOf(
-            [task_type.value for task_type in TaskType],
-            error="`task_type` must be one of the supported tasks.",
-        )
-    )
+TaskTypes enum chooses between the types of machine learning tasks supported by
+Openlayer. Examples of these tasks are text classification, tabular classification, and
+tabular regression.
 """
 from enum import Enum
 
 
 class TaskType(Enum):
-    """A selection of machine learning tasks supported by Openlayer.
+    """Enum for the AI/ML tasks types supported by Openlayer.
+
+    The task type is used during project creation with the
+    :meth:`openlayer.OpenlayerClient.create_project` method.
+
+    It also determines the goals available on the platform and the information
+    required to add models and datasets to the project.
 
     .. note::
-        Our `sample notebooks <https://github.com/openlayer-ai/openlayer-python/tree/main/examples>`_
-        show you how to use each one of these task types with Openlayer.
+        The `sample notebooks <https://github.com/openlayer-ai/openlayer-python/tree/main/examples>`_
+        show you how to create projects for each of these task types.
     """
 
     #: For entity recognition tasks with LLMs.

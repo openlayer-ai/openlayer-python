@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.abspath("../openlayer"))
 # -- Project information -----------------------------------------------------
 
 project = "Openlayer Python API reference"
-copyright = "2022, Unbox Inc."
+copyright = "2023, Openlayer"
 author = "Openlayer"
 
 # The short X.Y version
@@ -57,7 +57,7 @@ templates_path = ["_templates"]
 # You can specify multiple suffix as a list of string:
 #
 # source_suffix = ['.rst', '.md']
-source_suffix = ".rst"
+source_suffix = [".rst", ".md"]
 
 # The master toctree document.
 master_doc = "index"
@@ -101,17 +101,17 @@ html_theme_options = {
     "github_url": "https://github.com/openlayer-ai/examples-gallery",
     "twitter_url": "https://twitter.com/openlayerco",
     # "google_analytics_id": "UA-27880019-2",
-    "navbar_end": ["version-switcher", "navbar-icon-links"],
-    "switcher": {
-        # "json_url": "https://pandas.pydata.org/versions.json",
-        "url_template": "https://openlayer.com/docs/{version}/",
-        "version_match": switcher_version,
-    },
+    "navbar_end": ["navbar-icon-links"],
+    # "switcher": {
+    #     # "json_url": "https://pandas.pydata.org/versions.json",
+    #     # "url_template": "https://openlayer.com/docs/{version}/",
+    #     # "version_match": switcher_version,
+    # },
 }
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = "_static/img/openlayer.svg"
+html_logo = "_static/img/openlayer-white.svg"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
