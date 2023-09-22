@@ -5,18 +5,15 @@
 
 .. module:: openlayer
 
-***********************
-Openlayer Documentation
-***********************
+*********************************
+Openlayer Python Client reference
+*********************************
 
 **Date**: |today| **Version**: |version|
 
 Welcome to the API documentation for `Openlayer <https://openlayer.com>`__!
 
 These docs cover our official Python library, which you may use to interact with the Openlayer platform.
-
-If you are new to Openlayer, or looking for more general documentation, including an introduction to the platform and in-depth tutorials,
-please navigate `here <https://docs.openlayer.com>`__.
 
 Installation
 ============
