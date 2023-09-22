@@ -1723,11 +1723,13 @@ class OpenlayerClient(object):
                 "Either `dataset_config` or `dataset_config_file_path` must be"
                 " provided."
             )
+        if dataset_config_file_path is not None:
+            dataset_config = utils.read_yaml(dataset_config_file_path)
+        dataset_config["label"] = "reference"
 
         # Validate dataset
         dataset_validator = dataset_validators.get_validator(
             task_type=task_type,
-            dataset_config_file_path=dataset_config_file_path,
             dataset_config=dataset_config,
             dataset_file_path=file_path,
         )
@@ -1740,8 +1742,6 @@ class OpenlayerClient(object):
             ) from None
 
         # Load dataset config and augment with defaults
-        if dataset_config_file_path is not None:
-            dataset_config = utils.read_yaml(dataset_config_file_path)
         dataset_data = DatasetSchema().load(
             {"task_type": task_type.value, **dataset_config}
         )
