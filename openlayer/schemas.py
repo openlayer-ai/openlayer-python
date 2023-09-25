@@ -101,6 +101,12 @@ class LLMInputSchema(BaseDatasetSchema):
     inputVariableNames = ma.fields.List(
         ma.fields.Str(validate=COLUMN_NAME_VALIDATION_LIST), required=True
     )
+    contextColumnName = ma.fields.Str(
+        validate=COLUMN_NAME_VALIDATION_LIST, allow_none=True, load_default=None
+    )
+    questionColumnName = ma.fields.Str(
+        validate=COLUMN_NAME_VALIDATION_LIST, allow_none=True, load_default=None
+    )
 
 
 class TabularInputSchema(BaseDatasetSchema):

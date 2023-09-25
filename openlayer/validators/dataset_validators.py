@@ -199,14 +199,22 @@ class LLInputValidator(BaseDatasetValidator):
     """
 
     input_variable_names: Optional[List[str]] = None
+    context_column_name: Optional[str] = None
+    question_column_name: Optional[str] = None
 
     def _validate_inputs(self):
         """Validates LLM inputs."""
         # Setting the attributes needed for the validations
         self.input_variable_names = self.dataset_config.get("inputVariableNames")
+        self.context_column_name = self.dataset_config.get("contextColumnName")
+        self.question_column_name = self.dataset_config.get("questionColumnName")
 
         if self.input_variable_names:
             self._validate_input_variables()
+        if self.context_column_name:
+            self._validate_context()
+        if self.question_column_name:
+            self._validate_question()
 
     def _validate_input_variables(self):
         """Validates the data in the input variables columns."""
@@ -233,6 +241,44 @@ class LLInputValidator(BaseDatasetValidator):
                         "Please make sure that all input variables specified in "
                         "`inputVariableNames` do not exceed the maximum character limit."
                     )
+
+    def _validate_context(self):
+        """Validations on the ground truth column."""
+        if self.context_column_name not in self.dataset_df.columns:
+            self.failed_validations.append(
+                f"The context column `{self.context_column_name}` specified as"
+                " `contextColumnName` is not in the dataset."
+            )
+        elif not hasattr(self.dataset_df[self.context_column_name], "str"):
+            self.failed_validations.append(
+                f"The context column `{self.context_column_name}` specified as"
+                " `contextColumnName` is not a string column."
+            )
+        elif exceeds_character_limit(self.dataset_df, self.context_column_name):
+            self.failed_validations.append(
+                f"The ground truth column `{self.context_column_name}` specified as"
+                " `contextColumnName` contains strings that exceed the "
+                f" {constants.MAXIMUM_CHARACTER_LIMIT} character limit."
+            )
+
+    def _validate_question(self):
+        """Validations on the ground truth column."""
+        if self.question_column_name not in self.dataset_df.columns:
+            self.failed_validations.append(
+                f"The question column `{self.question_column_name}` specified as"
+                " `questionColumnName` is not in the dataset."
+            )
+        elif not hasattr(self.dataset_df[self.question_column_name], "str"):
+            self.failed_validations.append(
+                f"The question column `{self.question_column_name}` specified as"
+                " `questionColumnName` is not a string column."
+            )
+        elif exceeds_character_limit(self.dataset_df, self.question_column_name):
+            self.failed_validations.append(
+                f"The ground truth column `{self.question_column_name}` specified as"
+                " `questionColumnName` contains strings that exceed the "
+                f" {constants.MAXIMUM_CHARACTER_LIMIT} character limit."
+            )
 
     @staticmethod
     def _input_variables_not_castable_to_str(
