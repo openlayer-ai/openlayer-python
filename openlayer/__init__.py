@@ -1137,7 +1137,6 @@ class OpenlayerClient(object):
                 "earliestTimestamp": int(earliest_timestamp),
                 "latestTimestamp": int(latest_timestamp),
                 "performGroundTruthMerge": False,
-                **batch_data,
             }
 
             self.api.upload(
