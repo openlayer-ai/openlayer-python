@@ -965,7 +965,7 @@ class OpenlayerClient(object):
     ) -> InferencePipeline:
         """Loads an existing inference pipeline from an Openlayer project."""
         name = name or "Production"
-        endpoint = f"/projects/{project_id}/inference-pipelines?name={name}"
+        endpoint = f"projects/{project_id}/inference-pipelines?name={name}"
         inference_pipeline_data = self.api.get_request(endpoint)
         if len(inference_pipeline_data["items"]) == 0:
             raise exceptions.OpenlayerResourceNotFound(
