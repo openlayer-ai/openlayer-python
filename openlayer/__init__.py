@@ -132,7 +132,6 @@ class OpenlayerClient(object):
             warnings.warn(
                 f"Found an existing project with name '{name}'. Loading it instead."
             )
-            return project
         except exceptions.OpenlayerResourceNotFound:
             # Validate project
             project_config = {
@@ -168,7 +167,7 @@ class OpenlayerClient(object):
             print(
                 f"Created your project. Navigate to {project.links['app']} to see it."
             )
-            return project
+        return project
 
     def load_project(self, name: str) -> Project:
         """Loads an existing project from the Openlayer platform.
@@ -956,7 +955,7 @@ class OpenlayerClient(object):
                 "Created your inference pipeline. Navigate to"
                 f" {inference_pipeline.links['app']} to see it."
             )
-            return inference_pipeline
+        return inference_pipeline
 
     def load_inference_pipeline(
         self,
@@ -1019,6 +1018,9 @@ class OpenlayerClient(object):
         dataset_data = DatasetSchema().load(
             {"task_type": task_type.value, **dataset_config}
         )
+        # Add default columns if not present
+        if dataset_data.get("columnNames") is None:
+            dataset_data["columnNames"] = utils.get_column_names(file_path)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             # Copy relevant files to tmp dir
@@ -1110,6 +1112,8 @@ class OpenlayerClient(object):
         )
 
         # Add default columns if not present
+        if batch_data.get("columnNames") is None:
+            batch_data["columnNames"] = list(batch_df.columns)
         columns_to_add = {"timestampColumnName", "inferenceIdColumnName"}
         for column in columns_to_add:
             if batch_data.get(column) is None:
@@ -1123,6 +1127,12 @@ class OpenlayerClient(object):
         with tempfile.TemporaryDirectory() as tmp_dir:
             # Copy save files to tmp dir
             batch_df.to_csv(f"{tmp_dir}/dataset.csv", index=False)
+            utils.write_yaml(batch_data, f"{tmp_dir}/dataset_config.yaml")
+
+            tar_file_path = os.path.join(tmp_dir, "tarfile")
+            with tarfile.open(tar_file_path, mode="w:gz") as tar:
+                tar.add(tmp_dir, arcname=os.path.basename("batch_data"))
+
             payload = {
                 "earliestTimestamp": int(earliest_timestamp),
                 "latestTimestamp": int(latest_timestamp),
@@ -1132,8 +1142,8 @@ class OpenlayerClient(object):
 
             self.api.upload(
                 endpoint=f"inference-pipelines/{inference_pipeline_id}/data",
-                file_path=f"{tmp_dir}/dataset.csv",
-                object_name="dataset.csv",
+                file_path=tar_file_path,
+                object_name="tarfile",
                 body=payload,
                 storage_uri_key="storageUri",
                 method="POST",
