@@ -1136,6 +1136,8 @@ class OpenlayerClient(object):
             payload = {
                 "earliestTimestamp": int(earliest_timestamp),
                 "latestTimestamp": int(latest_timestamp),
+                "inferenceIdColumnName": batch_data.get("inferenceIdColumnName"),
+                "timestampColumnName": batch_data.get("timestampColumnName"),
                 "performGroundTruthMerge": False,
             }
 
