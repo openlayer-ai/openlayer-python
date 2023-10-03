@@ -219,11 +219,11 @@ class Api:
         method: str = "POST",
         storage_uri_key: str = "storageUri",
     ):
-        """Generic method to upload data to S3 storage and create the appropriate resource
-        in the backend.
+        """Generic method to upload data to S3 storage and create the appropriate
+        resource in the backend.
         """
         presigned_json = self.post_request(
-            f"/storage/presigned-url?objectName={object_name}"
+            f"storage/presigned-url?objectName={object_name}"
         )
 
         with tqdm(
@@ -272,7 +272,7 @@ class Api:
         appropriate resource in the backend.
         """
         presigned_json = self.post_request(
-            f"/storage/presigned-url?objectName={object_name}"
+            f"storage/presigned-url?objectName={object_name}"
         )
         with open(file_path, "rb") as f:
             with tqdm(
@@ -311,7 +311,7 @@ class Api:
         appropriate resource in the backend.
         """
         presigned_json = self.post_request(
-            f"/storage/presigned-url?objectName={object_name}"
+            f"storage/presigned-url?objectName={object_name}"
         )
         with open(file_path, "rb") as f:
             with tqdm(
@@ -349,11 +349,11 @@ class Api:
         method: str = "POST",
         storage_uri_key: str = "storageUri",
     ):
-        """Generic method to transfer data to the openlayer folder and create the appropriate
-        resource in the backend when using a local deployment.
+        """Generic method to transfer data to the openlayer folder and create the
+        appropriate resource in the backend when using a local deployment.
         """
         presigned_json = self.post_request(
-            f"/storage/presigned-url?objectName={object_name}"
+            f"storage/presigned-url?objectName={object_name}"
         )
         blob_path = presigned_json["storageUri"].replace("local://", "")
         dir_path = os.path.dirname(blob_path)
