@@ -214,7 +214,12 @@ class LLMDatasetSchema(LLMInputSchema, LLMOutputSchema):
     # of the 'training' label
     label = ma.fields.Str(
         validate=ma.validate.OneOf(
-            ["fine-tuning", DatasetType.Validation.value],
+            [
+                "fine-tuning",
+                DatasetType.Validation.value,
+                DatasetType.Reference.value,
+                DatasetType.Production.value,
+            ],
             error="`label` not supported."
             + "The supported `labels` are 'fine-tuning' and 'validation'.",
         ),
