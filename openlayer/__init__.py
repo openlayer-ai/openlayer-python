@@ -1156,14 +1156,17 @@ class OpenlayerClient(object):
     ) -> Tuple[Dict[str, any], pd.DataFrame]:
         """Adds the default column specified by ``column_name`` to the dataset config
         and dataframe."""
+        df = df.copy()
         if column_name == "timestampColumnName":
             timestamp_column_name = f"timestamp_{str(uuid.uuid1())[:8]}"
             config["timestampColumnName"] = timestamp_column_name
-            df[timestamp_column_name] = int(time.time())
+            df.loc[:, timestamp_column_name] = int(time.time())
         elif column_name == "inferenceIdColumnName":
             inference_id_column_name = f"inference_id_{str(uuid.uuid1())[:8]}"
             config["inferenceIdColumnName"] = inference_id_column_name
-            df[inference_id_column_name] = [str(uuid.uuid1()) for _ in range(len(df))]
+            df.loc[:, inference_id_column_name] = [
+                str(uuid.uuid1()) for _ in range(len(df))
+            ]
         return config, df
 
     def publish_ground_truths(
