@@ -31,6 +31,7 @@ import warnings
 from typing import Dict, Optional, Tuple
 
 import pandas as pd
+import urllib.parse
 import yaml
 
 from . import api, constants, exceptions, utils
@@ -882,6 +883,7 @@ class OpenlayerClient(object):
             inference_pipeline_config = {
                 "name": name or "Production",
                 "description": description or "Monitoring production data.",
+                "storageType": api.STORAGE.value,
             }
             inference_pipeline_validator = (
                 inference_pipeline_validators.InferencePipelineValidator(
@@ -920,7 +922,7 @@ class OpenlayerClient(object):
                     {"task_type": task_type.value, **reference_dataset_config}
                 )
 
-            with tempfile.TemporaryDirectory() as tmp_dir:
+            with tempfile.TemporaryDirectory() as tmp_dir:  
                 # Copy relevant files to tmp dir if reference dataset is provided
                 if reference_dataset_config_file_path is not None:
                     utils.write_yaml(
@@ -1134,12 +1136,19 @@ class OpenlayerClient(object):
                 tar.add(tmp_dir, arcname=os.path.basename("batch_data"))
 
             payload = {
-                "earliestTimestamp": int(earliest_timestamp),
-                "latestTimestamp": int(latest_timestamp),
-                "inferenceIdColumnName": batch_data.get("inferenceIdColumnName"),
-                "timestampColumnName": batch_data.get("timestampColumnName"),
                 "performGroundTruthMerge": False,
             }
+
+            presigned_url_query_params_dict = {
+                "earliestTimestamp": int(earliest_timestamp),
+                "latestTimestamp": int(latest_timestamp),
+                "storageInterface": api.STORAGE.value,
+                "dataType": "data",
+            }
+
+            presigned_url_query_params = urllib.parse.urlencode(
+                presigned_url_query_params_dict
+            )
 
             self.api.upload(
                 endpoint=f"inference-pipelines/{inference_pipeline_id}/data",
@@ -1148,7 +1157,10 @@ class OpenlayerClient(object):
                 body=payload,
                 storage_uri_key="storageUri",
                 method="POST",
+                presigned_url_endpoint=f"inference-pipelines/{inference_pipeline_id}/presigned-url",
+                presigned_url_query_params=presigned_url_query_params
             )
+
         print("Batch of data published!")
 
     def _add_default_column(
@@ -1196,11 +1208,21 @@ class OpenlayerClient(object):
         with tempfile.TemporaryDirectory() as tmp_dir:
             # Copy save files to tmp dir
             df.to_csv(f"{tmp_dir}/dataset.csv", index=False)
+
             payload = {
                 "performGroundTruthMerge": True,
                 "groundTruthColumnName": ground_truth_column_name,
                 "inferenceIdColumnName": inference_id_column_name,
             }
+
+            presigned_url_query_params_dict = {
+                "storageInterface": api.STORAGE.value,
+                "dataType": "groundTruths",
+            }
+
+            presigned_url_query_params = urllib.parse.urlencode(
+                presigned_url_query_params_dict
+            )
 
             self.api.upload(
                 endpoint=f"inference-pipelines/{inference_pipeline_id}/data",
@@ -1209,5 +1231,7 @@ class OpenlayerClient(object):
                 body=payload,
                 storage_uri_key="storageUri",
                 method="POST",
+                presigned_url_endpoint=f"inference-pipelines/{inference_pipeline_id}/presigned-url",
+                presigned_url_query_params=presigned_url_query_params
             )
         print("Ground truths published!")

@@ -28,6 +28,7 @@ from requests.adapters import HTTPAdapter, Response, Retry
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm
 from tqdm.utils import CallbackIOWrapper
+import urllib.parse
 
 from . import constants
 from .exceptions import ExceptionMap, OpenlayerException
@@ -189,6 +190,8 @@ class Api:
         body=None,
         method: str = "POST",
         storage_uri_key: str = "storageUri",
+        presigned_url_endpoint: str = "storage/presigned-url",
+        presigned_url_query_params: str = "",
     ):
         """Generic method to upload data to the default storage medium and create the
         appropriate resource in the backend.
@@ -201,6 +204,7 @@ class Api:
             upload = self.upload_blob_azure
         else:
             upload = self.transfer_blob
+
         return upload(
             endpoint=endpoint,
             file_path=file_path,
@@ -208,6 +212,8 @@ class Api:
             body=body,
             method=method,
             storage_uri_key=storage_uri_key,
+            presigned_url_endpoint=presigned_url_endpoint,
+            presigned_url_query_params=presigned_url_query_params,
         )
 
     def upload_blob_s3(
@@ -218,12 +224,18 @@ class Api:
         body=None,
         method: str = "POST",
         storage_uri_key: str = "storageUri",
+        presigned_url_endpoint: str = "storage/presigned-url",
+        presigned_url_query_params: str = "",
     ):
         """Generic method to upload data to S3 storage and create the appropriate
         resource in the backend.
         """
+
         presigned_json = self.post_request(
-            f"storage/presigned-url?objectName={object_name}"
+            (
+                f"{presigned_url_endpoint}?objectName={object_name}"
+                f"&{presigned_url_query_params}"
+            )
         )
 
         with tqdm(
@@ -236,7 +248,7 @@ class Api:
             with open(file_path, "rb") as f:
                 # Avoid logging here as it will break the progress bar
                 fields = presigned_json["fields"]
-                fields["file"] = (presigned_json["id"], f, "application/x-tar")
+                fields["file"] = (object_name, f, "application/x-tar")
                 e = MultipartEncoder(fields=fields)
                 m = MultipartEncoderMonitor(
                     e, lambda monitor: t.update(min(t.total, monitor.bytes_read) - t.n)
@@ -267,12 +279,17 @@ class Api:
         body=None,
         method: str = "POST",
         storage_uri_key: str = "storageUri",
+        presigned_url_endpoint: str = "storage/presigned-url",
+        presigned_url_query_params: str = "",
     ):
         """Generic method to upload data to Google Cloud Storage and create the
         appropriate resource in the backend.
         """
         presigned_json = self.post_request(
-            f"storage/presigned-url?objectName={object_name}"
+            (
+                f"{presigned_url_endpoint}?objectName={object_name}"
+                f"&{presigned_url_query_params}"
+            )
         )
         with open(file_path, "rb") as f:
             with tqdm(
@@ -306,12 +323,17 @@ class Api:
         body=None,
         method: str = "POST",
         storage_uri_key: str = "storageUri",
+        presigned_url_endpoint: str = "storage/presigned-url",
+        presigned_url_query_params: str = "",
     ):
         """Generic method to upload data to Azure Blob Storage and create the
         appropriate resource in the backend.
         """
         presigned_json = self.post_request(
-            f"storage/presigned-url?objectName={object_name}"
+            (
+                f"{presigned_url_endpoint}?objectName={object_name}"
+                f"&{presigned_url_query_params}"
+            )
         )
         with open(file_path, "rb") as f:
             with tqdm(
@@ -348,12 +370,17 @@ class Api:
         body=None,
         method: str = "POST",
         storage_uri_key: str = "storageUri",
+        presigned_url_endpoint: str = "storage/presigned-url",
+        presigned_url_query_params: str = "",
     ):
         """Generic method to transfer data to the openlayer folder and create the
         appropriate resource in the backend when using a local deployment.
         """
         presigned_json = self.post_request(
-            f"storage/presigned-url?objectName={object_name}"
+            (
+                f"{presigned_url_endpoint}?objectName={object_name}"
+                f"&{presigned_url_query_params}"
+            )
         )
         blob_path = presigned_json["storageUri"].replace("local://", "")
         dir_path = os.path.dirname(blob_path)
