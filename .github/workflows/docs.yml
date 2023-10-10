@@ -13,9 +13,6 @@ jobs:
       - uses: actions/checkout@v1
       # https://github.com/marketplace/actions/setup-python
       # ^-- This gives info on matrix testing.
-      - uses: actions/setup-python@v4
-        with:
-          python-version: "3.9"
       - uses: ammaraskar/sphinx-action@master
         with:
           pre-build-command: "pip install --upgrade pip; pip install -e ."
