@@ -1,3 +1,3 @@
-pandas==1.1.4
-langchain
+pandas==2.0.3
+langchain>=0.0.308
 openai
