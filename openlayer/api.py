@@ -28,7 +28,6 @@ from requests.adapters import HTTPAdapter, Response, Retry
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm
 from tqdm.utils import CallbackIOWrapper
-import urllib.parse
 
 from . import constants
 from .exceptions import ExceptionMap, OpenlayerException
