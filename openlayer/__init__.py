@@ -26,12 +26,12 @@ import shutil
 import tarfile
 import tempfile
 import time
+import urllib.parse
 import uuid
 import warnings
 from typing import Dict, Optional, Tuple
 
 import pandas as pd
-import urllib.parse
 import yaml
 
 from . import api, constants, exceptions, utils
@@ -922,7 +922,7 @@ class OpenlayerClient(object):
                     {"task_type": task_type.value, **reference_dataset_config}
                 )
 
-            with tempfile.TemporaryDirectory() as tmp_dir:  
+            with tempfile.TemporaryDirectory() as tmp_dir:
                 # Copy relevant files to tmp dir if reference dataset is provided
                 if reference_dataset_config_file_path is not None:
                     utils.write_yaml(
@@ -1135,9 +1135,7 @@ class OpenlayerClient(object):
             with tarfile.open(tar_file_path, mode="w:gz") as tar:
                 tar.add(tmp_dir, arcname=os.path.basename("batch_data"))
 
-            payload = {
-                "performGroundTruthMerge": False,
-            }
+            payload = {"performGroundTruthMerge": False}
 
             presigned_url_query_params_dict = {
                 "earliestTimestamp": int(earliest_timestamp),
@@ -1157,8 +1155,10 @@ class OpenlayerClient(object):
                 body=payload,
                 storage_uri_key="storageUri",
                 method="POST",
-                presigned_url_endpoint=f"inference-pipelines/{inference_pipeline_id}/presigned-url",
-                presigned_url_query_params=presigned_url_query_params
+                presigned_url_endpoint=(
+                    f"inference-pipelines/{inference_pipeline_id}/presigned-url"
+                ),
+                presigned_url_query_params=presigned_url_query_params,
             )
 
         print("Batch of data published!")
@@ -1232,6 +1232,6 @@ class OpenlayerClient(object):
                 storage_uri_key="storageUri",
                 method="POST",
                 presigned_url_endpoint=f"inference-pipelines/{inference_pipeline_id}/presigned-url",
-                presigned_url_query_params=presigned_url_query_params
+                presigned_url_query_params=presigned_url_query_params,
             )
         print("Ground truths published!")
