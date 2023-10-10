@@ -1,6 +1,5 @@
 """Module for the InferencePipeline class.
 """
-from . import tasks
 
 
 class InferencePipeline:
@@ -13,6 +12,7 @@ class InferencePipeline:
         self.project_id = json["projectId"]
         self.upload = upload
         self.client = client
+        # pylint: disable=invalid-name
         self.taskType = task_type
 
     def __getattr__(self, name):

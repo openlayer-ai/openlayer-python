@@ -40,8 +40,6 @@ from .project_versions import ProjectVersion
 from .projects import Project
 from .schemas import BaselineModelSchema, DatasetSchema, ModelSchema
 from .tasks import TaskType
-
-# from validators import models as model_validators
 from .validators import (
     baseline_model_validators,
     commit_validators,

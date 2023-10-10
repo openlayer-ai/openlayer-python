@@ -54,7 +54,8 @@ class Project:
 
         - A **full model** is comprised of metadata and artifacts. Thus, the model config, model package, and sample data arguments are needed.
 
-        - A **direct-to-API model** applies only to **LLMs**. Only the model config argument is required, but the model config must contain all the information needed to make predictions -- such as the ``prompt``, the ``modelProvider``, and others.
+        - A **direct-to-API model** applies only to **LLMs**. Only the model config argument is required, but the model
+            config must contain all the information needed to make predictions -- such as the ``prompt``, the ``modelProvider``, and others.
 
         Parameters
         ----------
@@ -449,7 +450,8 @@ class Project:
 
         Notes
         -----
-        - To use this method, you must first add a model and/or dataset to the staging area using one of the ``add_*`` methods (e.g., :obj:`add_model`, :obj:`add_dataset`, :obj:`add_dataframe`).
+        - To use this method, you must first add a model and/or dataset to the staging
+            area using one of the ``add_*`` methods (e.g., :obj:`add_model`, :obj:`add_dataset`, :obj:`add_dataframe`).
 
         Examples
         --------
