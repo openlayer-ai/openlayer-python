@@ -555,7 +555,7 @@ class ReferenceDatasetSchema(maos.OneOfSchema):
     Returns the correct schema based on the task type."""
 
     type_field = "task_type"
-    # pylint: ignore=line-too-long
+    # pylint: disable=line-too-long
     type_schemas = {
         TaskType.TabularClassification.value: TabularClassificationReferenceDatasetSchema,
         TaskType.TabularRegression.value: TabularRegressionReferenceDatasetSchema,

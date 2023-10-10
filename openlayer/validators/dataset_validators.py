@@ -1,3 +1,4 @@
+# pylint: disable=bare-except
 """Implements the dataset specific validation classes.
 """
 import ast
@@ -125,7 +126,8 @@ class BaseDatasetValidator(BaseValidator, ABC):
                     self.dataset_config_file_path, "r", encoding="UTF-8"
                 ) as stream:
                     self.dataset_config = yaml.safe_load(stream)
-            except:
+            # pylint: disable=broad-exception-caught
+            except Exception:
                 self.failed_validations.append(
                     f"File `{self.dataset_config_file_path}` is not a valid .yaml file."
                 )
@@ -255,7 +257,8 @@ class BaseDatasetValidator(BaseValidator, ABC):
         try:
             # Note the unit="s" argument
             pd.to_datetime(dataset_df[timestamp_column_name], unit="s")
-        except:
+        # pylint: disable=broad-exception-caught
+        except Exception:
             return False
         return True
 
