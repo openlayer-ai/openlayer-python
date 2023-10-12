@@ -96,6 +96,11 @@ class BaseDatasetSchema(ma.Schema):
         load_default="en",
         validate=LANGUAGE_CODE_REGEX,
     )
+    latencyColumnName = ma.fields.Str(
+        validate=COLUMN_NAME_VALIDATION_LIST,
+        allow_none=True,
+        load_default=None,
+    )
     metadata = ma.fields.Dict(allow_none=True, load_default={})
     sep = ma.fields.Str(load_default=",")
     timestampColumnName = ma.fields.Str(
@@ -184,6 +189,11 @@ class LLMOutputSchema(BaseDatasetSchema):
 
     groundTruthColumnName = ma.fields.Str(
         validate=COLUMN_NAME_VALIDATION_LIST, allow_none=True, load_default=None
+    )
+    numOfTokenColumnName = ma.fields.Str(
+        validate=COLUMN_NAME_VALIDATION_LIST,
+        allow_none=True,
+        load_default=None,
     )
     outputColumnName = ma.fields.Str(
         validate=COLUMN_NAME_VALIDATION_LIST,
