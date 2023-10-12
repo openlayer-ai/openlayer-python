@@ -198,11 +198,13 @@ class BaseDatasetValidator(BaseValidator, ABC):
             # Dataset-wide validations
             self._validate_dataset_dtypes()
 
-            # Timestamps and id validations
+            # Timestamps, id, and latency validations
             if self.dataset_config.get("timestampColumnName"):
                 self._validate_timestamps()
             if self.dataset_config.get("inferenceIdColumnName"):
                 self._validate_inference_ids()
+            if self.dataset_config.get("latencyColumnName"):
+                self._validate_latencies()
 
             self._validate_inputs()
             self._validate_outputs()
@@ -296,6 +298,35 @@ class BaseDatasetValidator(BaseValidator, ABC):
                     "This means that more than one inference has the same id. "
                     "Please make sure that the inference ids are unique."
                 )
+
+    def _validate_latencies(self):
+        """Checks if the latencies are in the correct format."""
+        latency_column_name = self.dataset_config.get("latencyColumnName")
+        if latency_column_name not in self.dataset_df.columns:
+            self.failed_validations.append(
+                f"The latency column `{latency_column_name}` specified as "
+                "`latencyColumnName` is not in the dataset."
+            )
+        else:
+            # Validate if values in the latency column are numbers (ints or floats)
+            if not self._values_are_numbers(self.dataset_df, latency_column_name):
+                self.failed_validations.append(
+                    f"The latencies in the column `{latency_column_name}` specified"
+                    " as `latencyColumnName` are not in the correct format. "
+                    "Please make sure that the dtype of the column with the latencies "
+                    "is one of int32, int64, float32, or float64."
+                )
+
+    def _values_are_numbers(self, dataset_df: pd.DataFrame, column_name: str) -> bool:
+        """Checks whether the values in the column are numbers (ints or floats)."""
+        if dataset_df[column_name].dtype.name in (
+            "int64",
+            "int32",
+            "float32",
+            "float64",
+        ):
+            return True
+        return False
 
     @abstractmethod
     def _validate_inputs(self):
@@ -717,6 +748,7 @@ class LLMOutputValidator(BaseDatasetValidator):
         """Validates the LLM outputs (i.e., ground truth and output)."""
         self.ground_truth_column_name = self.dataset_config.get("groundTruthColumnName")
         self.output_column_name = self.dataset_config.get("outputColumnName")
+        self.num_of_token_column_name = self.dataset_config.get("numOfTokenColumnName")
 
         if self.ground_truth_column_name:
             self._validate_ground_truth()
@@ -726,6 +758,9 @@ class LLMOutputValidator(BaseDatasetValidator):
 
         if self.ground_truth_column_name and self.output_column_name:
             self._validate_ground_truth_and_output_columns_different()
+
+        if self.num_of_token_column_name:
+            self._validate_num_of_token()
 
     def _validate_ground_truth(self):
         """Validations on the ground truth column."""
@@ -771,6 +806,23 @@ class LLMOutputValidator(BaseDatasetValidator):
             self.failed_validations.append(
                 "The output column and the ground truth column are the same. "
                 "Please specify different columns for the output and the ground truths."
+            )
+
+    def _validate_num_of_token(self):
+        """Validates the number of tokens column."""
+        if self.num_of_token_column_name not in self.dataset_df.columns:
+            self.failed_validations.append(
+                f"The number of tokens column `{self.num_of_token_column_name}` "
+                "specified as `numOfTokenColumnName` is not in the dataset."
+            )
+        elif not self._values_are_numbers(
+            self.dataset_df, self.num_of_token_column_name
+        ):
+            self.failed_validations.append(
+                f"The number of tokens in the column `{self.num_of_token_column_name}`"
+                " specified as `numOfTokenColumnName` are not in the correct format. "
+                "Please make sure that the dtype of the column with the number of"
+                " tokens is one of int32, int64, float32, or float64."
             )
 
 
