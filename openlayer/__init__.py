@@ -1159,7 +1159,7 @@ class OpenlayerClient(object):
                 presigned_url_query_params=presigned_url_query_params,
             )
 
-        print("Batch of data published!")
+        print("Data published!")
 
     def _add_default_column(
         self, config: Dict[str, any], df: pd.DataFrame, column_name: str

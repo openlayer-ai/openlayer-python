@@ -8,7 +8,7 @@ import re
 import sys
 import traceback
 import warnings
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import pandas as pd
 import yaml
@@ -87,6 +87,21 @@ def get_column_names(file_path: str) -> list:
         list: the column names of the specified file.
     """
     return pd.read_csv(file_path, nrows=0).columns.tolist()
+
+
+def get_env_variable(name: str) -> Optional[str]:
+    """Returns the value of the specified environment variable.
+
+    Args:
+        name (str): the name of the environment variable.
+
+    Returns:
+        str: the value of the specified environment variable.
+    """
+    try:
+        return os.environ[name]
+    except KeyError:
+        return None
 
 
 def get_exception_stacktrace(err: Exception):
