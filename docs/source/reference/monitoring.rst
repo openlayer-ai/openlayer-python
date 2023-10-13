@@ -33,8 +33,24 @@ Openlayer project is what enables the monitoring mode.
 
 Publishing production data
 ----------------------------
-Production data is published to an inference pipeline on the Openlayer platform using
-the methods below.
+
+LLMs
+^^^^
+
+If you are using an OpenAI LLM, you can simply switch monitoring on and off with a
+single line of code.
+
+.. autosummary::
+   :toctree: api/
+   :template: class.rst
+
+   openlayer.llm_monitors.OpenAIMonitor
+
+Traditional ML models
+^^^^^^^^^^^^^^^^^^^^^
+
+For traditional ML models and other LLM providers, you can publish production data with
+the following methods.
 
 .. autosummary::
    :toctree: api/

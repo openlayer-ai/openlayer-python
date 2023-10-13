@@ -15,7 +15,66 @@ logger = logging.getLogger(__name__)
 
 
 class OpenAIMonitor:
-    """Class for monitoring calls to OpenAI LLMs."""
+    """Monitor class used to keep track of OpenAI LLMs inferences.
+
+    Parameters
+    ----------
+    publish : bool, optional
+        Whether to publish the data to Openlayer as soon as it is available. If True,
+        the Openlayer credentials must be provided (either as keyword arguments or as
+        environment variables).
+    openlayer_api_key : str, optional
+        The Openlayer API key. If not provided, it is read from the environment
+        variable `OPENLAYER_API_KEY`. This is required if `publish` is set to True.
+    openlayer_project_name : str, optional
+        The Openlayer project name. If not provided, it is read from the environment
+        variable `OPENLAYER_PROJECT_NAME`. This is required if `publish` is set to True.
+    openlayer_inference_pipeline_name : str, optional
+        The Openlayer inference pipeline name. If not provided, it is read from the
+        environment variable `OPENLAYER_INFERENCE_PIPELINE_NAME`. This is required if
+        `publish` is set to True and you gave your inference pipeline a name different
+        than the default.
+
+    Examples
+    --------
+
+    Let's say that you have a GPT model you want to monitor. You can turn on monitoring
+    with Openlayer by simply doing:
+
+    1. Set the environment variables:
+
+    .. code-block:: bash
+
+        export OPENLAYER_API_KEY=<your-api-key>
+        export OPENLAYER_PROJECT_NAME=<your-project-name>
+
+    2. Instantiate the monitor:
+
+    >>> from opemlayer import llm_monitors
+    >>>
+    >>> monitor = llm_monitors.OpenAIMonitor(publish=True)
+
+    3. Start monitoring:
+
+    >>> monitor.start_monitoring()
+
+    From this point onwards, you can continue making requests to your model normally:
+
+    >>> openai.ChatCompletion.create(
+    >>>     model="gpt-3.5-turbo",
+    >>>     messages=[
+    >>>         {"role": "system", "content": "You are a helpful assistant."},
+    >>>         {"role": "user", "content": "How are you doing today?"}
+    >>>     ],
+    >>> )
+
+    Your data is automatically being published to your Openlayer project!
+
+    If you no longer want to monitor your model, you can stop monitoring by calling:
+
+    >>> monitor.stop_monitoring()
+
+    """
 
     def __init__(
         self,
@@ -24,16 +83,48 @@ class OpenAIMonitor:
         openlayer_project_name: Optional[str] = None,
         openlayer_inference_pipeline_name: Optional[str] = None,
     ) -> None:
-        # ------------------------------ Openlayer setup ----------------------------- #
-        if openlayer_api_key is None:
-            openlayer_api_key = utils.get_env_variable("OPENLAYER_API_KEY")
-        if openlayer_project_name is None:
-            openlayer_project_name = utils.get_env_variable("OPENLAYER_PROJECT_NAME")
-        if openlayer_inference_pipeline_name is None:
-            openlayer_inference_pipeline_name = utils.get_env_variable(
+        # Openlayer setup
+        self.openlayer_api_key: str = None
+        self.openlayer_project_name: str = None
+        self.openlayer_inference_pipeline_name: str = None
+        self.inference_pipeline: openlayer.InferencePipeline = None
+        self._initialize_openlayer(
+            publish=publish,
+            api_key=openlayer_api_key,
+            project_name=openlayer_project_name,
+            inference_pipeline_name=openlayer_inference_pipeline_name,
+        )
+        self._load_inference_pipeline()
+
+        # OpenAI setup
+        self.create_chat_completion: callable = None
+        self.create_completion: callable = None
+        self.modified_create_chat_completion: callable = None
+        self.modified_create_completion: callable = None
+        self._initialize_openai()
+
+        self.df = pd.DataFrame(columns=["input", "output", "tokens", "latency"])
+        self.publish = publish
+        self.monitoring_on = False
+
+    def _initialize_openlayer(
+        self,
+        publish: bool = False,
+        api_key: Optional[str] = None,
+        project_name: Optional[str] = None,
+        inference_pipeline_name: Optional[str] = None,
+    ) -> None:
+        """Initializes the Openlayer attributes, if credentials are provided."""
+        # Get credentials from environment variables if not provided
+        if api_key is None:
+            api_key = utils.get_env_variable("OPENLAYER_API_KEY")
+        if project_name is None:
+            project_name = utils.get_env_variable("OPENLAYER_PROJECT_NAME")
+        if inference_pipeline_name is None:
+            inference_pipeline_name = utils.get_env_variable(
                 "OPENLAYER_INFERENCE_PIPELINE_NAME"
             )
-        if publish and (openlayer_api_key is None or openlayer_project_name is None):
+        if publish and (api_key is None or project_name is None):
             raise ValueError(
                 "To publish data to Openlayer, you must provide an API key and "
                 "a project name. This can be done by setting the environment "
@@ -41,27 +132,15 @@ class OpenAIMonitor:
                 "passing them as arguments to the OpenAIMonitor constructor "
                 "(`openlayer_api_key` and `openlayer_project_name`, respectively)."
             )
-        self.openlayer_api_key = openlayer_api_key
-        self.openlayer_project_name = openlayer_project_name
-        self.openlayer_inference_pipeline_name = openlayer_inference_pipeline_name
-        self.publish = publish
-        self.inference_pipeline = self._load_inference_pipeline()
 
-        # ------------------------------- OpenAI setup ------------------------------- #
-        self.create_chat_completion = openai.ChatCompletion.create
-        self.create_completion = openai.Completion.create
-        self.modified_create_chat_completion = (
-            self._get_modified_create_chat_completion()
-        )
-        self.modified_create_completion = self._get_modified_create_completion()
+        self.openlayer_api_key = api_key
+        self.openlayer_project_name = project_name
+        self.openlayer_inference_pipeline_name = inference_pipeline_name
 
-        self.df = pd.DataFrame(columns=["input", "output", "tokens", "latency"])
-        self.monitoring_on = False
-
-    def _load_inference_pipeline(self) -> Optional[openlayer.InferencePipeline]:
+    def _load_inference_pipeline(self) -> None:
         """Load inference pipeline from the Openlayer platform.
 
-        If no platform/project information is provided, returns None.
+        If no platform/project information is provided, it is set to None.
         """
         inference_pipeline = None
         if self.openlayer_api_key and self.openlayer_project_name:
@@ -73,7 +152,17 @@ class OpenAIMonitor:
                 inference_pipeline = project.load_inference_pipeline(
                     name=self.openlayer_inference_pipeline_name
                 )
-        return inference_pipeline
+
+        self.inference_pipeline = inference_pipeline
+
+    def _initialize_openai(self) -> None:
+        """Initializes the OpenAI attributes."""
+        self.create_chat_completion = openai.ChatCompletion.create
+        self.create_completion = openai.Completion.create
+        self.modified_create_chat_completion = (
+            self._get_modified_create_chat_completion()
+        )
+        self.modified_create_completion = self._get_modified_create_completion()
 
     def _get_modified_create_chat_completion(self) -> callable:
         """Returns a modified version of the create method for openai.ChatCompletion."""
@@ -84,7 +173,7 @@ class OpenAIMonitor:
             latency = (time.time() - start_time) * 1000
 
             try:
-                input_data = self.format_user_messages(kwargs["messages"])
+                input_data = self._format_user_messages(kwargs["messages"])
                 output_data = response.choices[0].message.content.strip()
                 num_of_tokens = response.usage["total_tokens"]
 
@@ -115,7 +204,7 @@ class OpenAIMonitor:
             try:
                 prompts = kwargs.get("prompt", [])
                 prompts = [prompts] if isinstance(prompts, str) else prompts
-                choices_splits = self.split_list(response.choices, len(prompts))
+                choices_splits = self._split_list(response.choices, len(prompts))
 
                 for input_data, choices in zip(prompts, choices_splits):
                     output_data = choices[0].text.strip()
@@ -138,7 +227,7 @@ class OpenAIMonitor:
         return modified_create_completion
 
     @staticmethod
-    def format_user_messages(conversation_list: List[Dict[str, str]]) -> str:
+    def _format_user_messages(conversation_list: List[Dict[str, str]]) -> str:
         """Extracts the 'user' messages from the conversation list and returns them
         as a single string."""
         return "\n".join(
@@ -146,7 +235,7 @@ class OpenAIMonitor:
         ).strip()
 
     @staticmethod
-    def split_list(lst: List, n_parts: int) -> List[List]:
+    def _split_list(lst: List, n_parts: int) -> List[List]:
         """Split a list into n_parts."""
         # Calculate the base size and the number of larger parts
         base_size, extra = divmod(len(lst), n_parts)
@@ -198,7 +287,13 @@ class OpenAIMonitor:
             )
 
     def start_monitoring(self) -> None:
-        """Setup monitoring for every call to OpenAI LLMs."""
+        """Switches monitoring for OpenAI LLMs on.
+
+        After calling this method, all the calls to OpenAI's `Completion` and
+        `ChatCompletion` APIs will be monitored.
+
+        Refer to the `OpenAIMonitor` class docstring for an example.
+        """
         if self.monitoring_on:
             print("Monitoring is already on!\nTo stop it, call `stop_monitoring`.")
             return
@@ -219,7 +314,13 @@ class OpenAIMonitor:
         openai.Completion.create = self.modified_create_completion
 
     def stop_monitoring(self):
-        """Stop monitoring calls to OpenAI LLMs."""
+        """Switches monitoring for OpenAI LLMs off.
+
+        After calling this method, all the calls to OpenAI's `Completion` and
+        `ChatCompletion` APIs will stop being monitored.
+
+        Refer to the `OpenAIMonitor` class docstring for an example.
+        """
         self._restore_completion_methods()
         self.monitoring_on = False
         print("Monitoring stopped.")
@@ -235,7 +336,8 @@ class OpenAIMonitor:
         openai.Completion.create = self.create_completion
 
     def publish_batch_data(self):
-        """Publish the accumulated batch of data to Openlayer."""
+        """Manually publish the accumulated data to Openlayer when automatic publishing
+        is disabled (i.e., ``publish=False``)."""
         if self.inference_pipeline is None:
             raise ValueError(
                 "To publish data to Openlayer, you must provide an API key and "
@@ -274,6 +376,5 @@ class OpenAIMonitor:
 
     @property
     def data(self) -> pd.DataFrame:
-        """Dataframe with the input/output, number of tokens, and latency for each
-        request after the `monitor` method was called."""
+        """Dataframe accumulated after monitoring was switched on."""
         return self.df
