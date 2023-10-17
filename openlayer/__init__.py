@@ -969,7 +969,7 @@ class OpenlayerClient(object):
         inference_pipeline_data = self.api.get_request(endpoint)
         if len(inference_pipeline_data["items"]) == 0:
             raise exceptions.OpenlayerResourceNotFound(
-                f"Inference piepline with name {name} not found."
+                f"Inference pipeline with name {name} not found."
             )
 
         inference_pipeline = InferencePipeline(
