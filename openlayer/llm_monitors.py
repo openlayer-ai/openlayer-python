@@ -149,9 +149,12 @@ class OpenAIMonitor:
                     api_key=self.openlayer_api_key,
                 )
                 project = client.load_project(name=self.openlayer_project_name)
-                inference_pipeline = project.load_inference_pipeline(
-                    name=self.openlayer_inference_pipeline_name
-                )
+                if self.openlayer_inference_pipeline_name:
+                    inference_pipeline = project.load_inference_pipeline(
+                        name=self.openlayer_inference_pipeline_name
+                    )
+                else:
+                    inference_pipeline = project.create_inference_pipeline()
 
         self.inference_pipeline = inference_pipeline
 
