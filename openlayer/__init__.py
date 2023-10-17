@@ -847,7 +847,7 @@ class OpenlayerClient(object):
         self,
         project_id: str,
         task_type: TaskType,
-        name: str = "Production",
+        name: str = "production",
         description: Optional[str] = None,
         reference_df: Optional[pd.DataFrame] = None,
         reference_dataset_file_path: Optional[str] = None,
@@ -879,7 +879,7 @@ class OpenlayerClient(object):
         except exceptions.OpenlayerResourceNotFound:
             # Validate inference pipeline
             inference_pipeline_config = {
-                "name": name or "Production",
+                "name": name or "production",
                 "description": description or "Monitoring production data.",
                 "storageType": api.STORAGE.value,
             }
@@ -964,7 +964,7 @@ class OpenlayerClient(object):
         name: Optional[str] = None,
     ) -> InferencePipeline:
         """Loads an existing inference pipeline from an Openlayer project."""
-        name = name or "Production"
+        name = name or "production"
         endpoint = f"projects/{project_id}/inference-pipelines?name={name}"
         inference_pipeline_data = self.api.get_request(endpoint)
         if len(inference_pipeline_data["items"]) == 0:

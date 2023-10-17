@@ -612,7 +612,7 @@ class Project:
         ----------
         name : str
             Name of your inference pipeline. If not specified, the name will be
-            set to ``"Production"``.
+            set to ``"production"``.
 
             .. important::
                 The inference pipeline name must be unique within a project.
@@ -686,7 +686,7 @@ class Project:
             Name of the inference pipeline to be loaded.
             The name of the inference piepline is the one displayed on the
             Openlayer platform. If not specified, will try to load the
-            inference pipeline named ``"Production"``.
+            inference pipeline named ``"production"``.
 
             .. note::
                 If you haven't created the inference pipeline yet, you should use the
