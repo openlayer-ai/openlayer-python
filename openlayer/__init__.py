@@ -990,7 +990,7 @@ class OpenlayerClient(object):
         dataset_config: Optional[Dict[str, any]] = None,
         dataset_config_file_path: Optional[str] = None,
     ) -> None:
-        r"""Uploads a reference dataset saved as a csv file to an inference pipeline."""
+        """Uploads a reference dataset saved as a csv file to an inference pipeline."""
         if dataset_config is None and dataset_config_file_path is None:
             raise ValueError(
                 "Either `dataset_config` or `dataset_config_file_path` must be"
@@ -1024,8 +1024,10 @@ class OpenlayerClient(object):
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             # Copy relevant files to tmp dir
-            utils.write_yaml(dataset_data, f"{tmp_dir}/dataset_config.yaml")
-            shutil.copy(file_path, tmp_dir)
+            folder_path = os.path.join(tmp_dir, "reference")
+            os.mkdir(folder_path)
+            utils.write_yaml(dataset_data, f"{folder_path}/dataset_config.yaml")
+            shutil.copy(file_path, folder_path)
 
             tar_file_path = os.path.join(tmp_dir, "tarfile")
             with tarfile.open(tar_file_path, mode="w:gz") as tar:
@@ -1049,7 +1051,7 @@ class OpenlayerClient(object):
         dataset_config: Optional[Dict[str, any]] = None,
         dataset_config_file_path: Optional[str] = None,
     ) -> None:
-        r"""Uploads a reference dataset (a pandas dataframe) to an inference pipeline."""
+        """Uploads a reference dataset (a pandas dataframe) to an inference pipeline."""
         # --------------------------- Resource validations --------------------------- #
         if not isinstance(dataset_df, pd.DataFrame):
             raise exceptions.OpenlayerValidationError(
@@ -1057,7 +1059,7 @@ class OpenlayerClient(object):
                 " `pd.DataFrame`. \n"
             ) from None
         with tempfile.TemporaryDirectory() as tmp_dir:
-            file_path = os.path.join(tmp_dir, str(uuid.uuid1()))
+            file_path = os.path.join(tmp_dir, "dataset.csv")
             dataset_df.to_csv(file_path, index=False)
             return self.upload_reference_dataset(
                 file_path=file_path,
