@@ -835,8 +835,8 @@ class OpenlayerClient(object):
         >>> version.wait_for_completion()
         >>> version.print_goal_report()
 
-        With the :obj:`project_versions.ProjectVersion` object loaded, you are able to check progress and
-        goal statuses.
+        With the :obj:`project_versions.ProjectVersion` object loaded, you are able to
+        check progress and goal statuses.
         """
         endpoint = f"versions/{version_id}"
         version_data = self.api.get_request(endpoint)
@@ -896,11 +896,17 @@ class OpenlayerClient(object):
                     " creating it.",
                 ) from None
 
-            # Validate reference dataset and augment config
+            # Load dataset config
             if reference_dataset_config_file_path is not None:
+                reference_dataset_config = utils.read_yaml(
+                    reference_dataset_config_file_path
+                )
+
+            if reference_dataset_config is not None:
+                # Validate reference dataset and augment config
                 dataset_validator = dataset_validators.get_validator(
                     task_type=task_type,
-                    dataset_config_file_path=reference_dataset_config_file_path,
+                    dataset_config=reference_dataset_config,
                     dataset_df=reference_df,
                 )
                 failed_validations = dataset_validator.validate()
@@ -912,17 +918,12 @@ class OpenlayerClient(object):
                         " upload.",
                     ) from None
 
-                # Load dataset config and augment with defaults
-                reference_dataset_config = utils.read_yaml(
-                    reference_dataset_config_file_path
-                )
                 reference_dataset_data = DatasetSchema().load(
                     {"task_type": task_type.value, **reference_dataset_config}
                 )
 
-            with tempfile.TemporaryDirectory() as tmp_dir:
                 # Copy relevant files to tmp dir if reference dataset is provided
-                if reference_dataset_config_file_path is not None:
+                with tempfile.TemporaryDirectory() as tmp_dir:
                     utils.write_yaml(
                         reference_dataset_data, f"{tmp_dir}/dataset_config.yaml"
                     )
@@ -930,22 +931,26 @@ class OpenlayerClient(object):
                         reference_df.to_csv(f"{tmp_dir}/dataset.csv", index=False)
                     else:
                         shutil.copy(
-                            reference_dataset_file_path,
-                            f"{tmp_dir}/dataset.csv",
+                            reference_dataset_file_path, f"{tmp_dir}/dataset.csv"
                         )
 
-                tar_file_path = os.path.join(tmp_dir, "tarfile")
-                with tarfile.open(tar_file_path, mode="w:gz") as tar:
-                    tar.add(tmp_dir, arcname=os.path.basename("reference_dataset"))
+                    tar_file_path = os.path.join(tmp_dir, "tarfile")
+                    with tarfile.open(tar_file_path, mode="w:gz") as tar:
+                        tar.add(tmp_dir, arcname=os.path.basename("reference_dataset"))
 
+                    endpoint = f"projects/{project_id}/inference-pipelines"
+                    inference_pipeline_data = self.api.upload(
+                        endpoint=endpoint,
+                        file_path=tar_file_path,
+                        object_name="tarfile",
+                        body=inference_pipeline_config,
+                        storage_uri_key="referenceDatasetUri",
+                        method="POST",
+                    )
+            else:
                 endpoint = f"projects/{project_id}/inference-pipelines"
-                inference_pipeline_data = self.api.upload(
-                    endpoint=endpoint,
-                    file_path=tar_file_path,
-                    object_name="tarfile",
-                    body=inference_pipeline_config,
-                    storage_uri_key="referenceDatasetUri",
-                    method="POST",
+                inference_pipeline_data = self.api.post_request(
+                    endpoint=endpoint, body=inference_pipeline_config
                 )
             inference_pipeline = InferencePipeline(
                 inference_pipeline_data, self.api.upload, self, task_type
