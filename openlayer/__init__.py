@@ -1130,6 +1130,7 @@ class OpenlayerClient(object):
         # Get min and max timestamps
         earliest_timestamp = batch_df[batch_data["timestampColumnName"]].min()
         latest_timestamp = batch_df[batch_data["timestampColumnName"]].max()
+        batch_row_count = len(batch_df)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             # Copy save files to tmp dir
@@ -1140,7 +1141,12 @@ class OpenlayerClient(object):
             with tarfile.open(tar_file_path, mode="w:gz") as tar:
                 tar.add(tmp_dir, arcname=os.path.basename("batch_data"))
 
-            payload = {"performGroundTruthMerge": False}
+            payload = {
+                "performGroundTruthMerge": False,
+                "earliestTimestamp": int(earliest_timestamp),
+                "latestTimestamp": int(latest_timestamp),
+                "rowCount": batch_row_count,
+            }
 
             presigned_url_query_params_dict = {
                 "earliestTimestamp": int(earliest_timestamp),
