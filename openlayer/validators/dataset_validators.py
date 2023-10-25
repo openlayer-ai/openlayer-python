@@ -270,8 +270,10 @@ class BaseDatasetValidator(BaseValidator, ABC):
     ) -> bool:
         """Checks whether the timestamps are within the allowed range."""
         # Note the unit="s" argument
-        timestamps = pd.to_datetime(dataset_df[timestamp_column_name], unit="s")
-        now = pd.Timestamp.now()
+        timestamps = pd.to_datetime(
+            dataset_df[timestamp_column_name], utc=True, unit="s"
+        )
+        now = pd.Timestamp.utcnow()
         two_years_ago = now - pd.Timedelta(days=365 * 2)
         two_years_from_now = now + pd.Timedelta(days=365 * 2)
         if any(
