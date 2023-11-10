@@ -1046,7 +1046,7 @@ class OpenlayerClient(object):
                 storage_uri_key="referenceDatasetUri",
                 method="PUT",
             )
-        print("Referece dataset uploaded!")
+        print("Reference dataset uploaded!")
 
     def upload_reference_dataframe(
         self,
@@ -1073,6 +1073,75 @@ class OpenlayerClient(object):
                 dataset_config_file_path=dataset_config_file_path,
                 task_type=task_type,
             )
+        
+    def send_stream_data(
+        self,
+        inference_pipeline_id: str,
+        task_type: TaskType,
+        stream_df: pd.DataFrame,
+        stream_config: Optional[Dict[str, any]] = None,
+        stream_config_file_path: Optional[str] = None,
+        verbose: bool = True,
+    ) -> None:
+        """Publishes a batch of production data to the Openlayer platform."""
+        if stream_config is None and stream_config_file_path is None:
+            raise ValueError(
+                "Either `batch_config` or `batch_config_file_path` must be" " provided."
+            )
+        if stream_config_file_path is not None and not os.path.exists(
+            stream_config_file_path
+        ):
+            raise exceptions.OpenlayerValidationError(
+                f"Stream config file path {stream_config_file_path} does not exist."
+            ) from None
+        elif stream_config_file_path is not None:
+            stream_config = utils.read_yaml(stream_config_file_path)
+
+        stream_config["label"] = "production"
+
+        # Validate stream of data
+        stream_validator = dataset_validators.get_validator(
+            task_type=task_type,
+            dataset_config=stream_config,
+            dataset_config_file_path=stream_config_file_path,
+            dataset_df=stream_df,
+        )
+        failed_validations = stream_validator.validate()
+
+        if failed_validations:
+            raise exceptions.OpenlayerValidationError(
+                "There are issues with the stream of data and its config. \n"
+                "Make sure to fix all of the issues listed above before the upload.",
+            ) from None
+
+        # Load dataset config and augment with defaults
+        stream_data = DatasetSchema().load(
+            {"task_type": task_type.value, **stream_config}
+        )
+
+        # Add default columns if not present
+        if stream_data.get("columnNames") is None:
+            stream_data["columnNames"] = list(stream_df.columns)
+        columns_to_add = {"timestampColumnName", "inferenceIdColumnName"}
+        for column in columns_to_add:
+            if stream_data.get(column) is None:
+                stream_data, stream_df = self._add_default_column(
+                    config=stream_data, df=stream_df, column_name=column
+                )
+
+
+        body = {
+            "datasetConfig": stream_data,
+            "dataset": stream_df.to_dict(orient="records"),
+        }
+
+        self.api.post_request(
+            endpoint=f"inference-pipelines/{inference_pipeline_id}/data-stream",
+            body=body,
+        )
+
+        if verbose:
+            print("Stream published!")
 
     def publish_batch_data(
         self,
