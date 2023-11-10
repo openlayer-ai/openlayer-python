@@ -238,6 +238,81 @@ class InferencePipeline:
             task_type=self.taskType,
             **kwargs,
         )
+    
+    def send_stream_data(self, *args, **kwargs):
+        """Publishes a stream of production data to the Openlayer platform.
+
+        Parameters
+        ----------
+        stream_df : pd.DataFrame
+            Dataframe containing the batch of production data.
+        stream_config : Dict[str, any], optional
+            Dictionary containing the batch configuration. This is not needed if
+            ``batch_config_file_path`` is provided.
+
+            .. admonition:: What's in the config?
+
+                The configuration for a batch of data depends on the :obj:`TaskType`.
+                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
+                for details. These configurations are
+                the same for development and batches of production data.
+
+        stream_config_file_path : str
+            Path to the configuration YAML file. This is not needed if
+            ``batch_config`` is provided.
+
+            .. admonition:: What's in the config file?
+
+                The configuration for a batch of data depends on the :obj:`TaskType`.
+                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
+                for details. These configurations are
+                the same for development and batches of production data.
+
+        Notes
+        -----
+        Production data usually has a column with the inference timestamps. This
+        column is specified in the ``timestampsColumnName`` of the batch config file,
+        and it should contain timestamps in the **UNIX format in seconds**.
+
+        Production data also usually has a column with the prediction IDs. This
+        column is specified in the ``inferenceIdColumnName`` of the batch config file.
+        This column is particularly important when the ground truths are not available
+        during inference time, and they are updated later.
+
+        If the above are not provided, **Openlayer will generate inference IDs and use
+        the current time as the inference timestamp**.
+
+        Examples
+        --------
+        **Related guide**: `How to set up monitoring <https://docs.openlayer.com/docs/set-up-monitoring>`_.
+
+        First, instantiate the client and retrieve an existing inference pipeline:
+
+        >>> import openlayer
+        >>>
+        >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
+        >>>
+        >>> project = client.load_project(name="Churn prediction")
+        >>>
+        >>> inference_pipeline = project.load_inference_pipeline(
+        ...     name="XGBoost model inference pipeline",
+        ... )
+
+        With the ``InferencePipeline`` object retrieved, you can publish a batch
+        of production data -- in this example, stored in a pandas dataframe
+        called ``df`` -- with:
+
+        >>> inference_pipeline.send_stream_data(
+        ...     batch_df=df,
+        ...     batch_config=config,
+        ... )
+        """
+        return self.client.send_stream_data(
+            *args,
+            inference_pipeline_id=self.id,
+            task_type=self.taskType,
+            **kwargs,
+        )
 
     def publish_batch_data(self, *args, **kwargs):
         """Publishes a batch of production data to the Openlayer platform.
