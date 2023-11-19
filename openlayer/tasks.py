@@ -14,7 +14,7 @@ class TaskType(Enum):
     The task type is used during project creation with the
     :meth:`openlayer.OpenlayerClient.create_project` method.
 
-    It also determines the goals available on the platform and the information
+    It also determines the tests available on the platform and the information
     required to add models and datasets to the project.
 
     .. note::

@@ -806,7 +806,7 @@ class OpenlayerClient(object):
     def load_project_version(self, version_id: str) -> Project:
         """Loads an existing project version from the Openlayer platform. Can be used
         to check the status of the project version and the number of passing, failing
-        and skipped goals.
+        and skipped tests.
 
         Parameters
         ----------
@@ -816,12 +816,12 @@ class OpenlayerClient(object):
 
             .. note::
                 When you run :obj:`push`, it will return the project version object,
-                which you can use to check your goal statuses.
+                which you can use to check your test statuses.
 
         Returns
         -------
         :obj:`project_versions.ProjectVersion`
-            An object that is used to check for upload progress and goal statuses.
+            An object that is used to check for upload progress and test statuses.
             Also contains other useful information about a project version.
 
         Examples
@@ -833,10 +833,10 @@ class OpenlayerClient(object):
         >>>
         >>> version = client.load_project_version(id='YOUR_PROJECT_ID_HERE')
         >>> version.wait_for_completion()
-        >>> version.print_goal_report()
+        >>> version.print_test_report()
 
         With the :obj:`project_versions.ProjectVersion` object loaded, you are able to
-        check progress and goal statuses.
+        check progress and test statuses.
         """
         endpoint = f"versions/{version_id}"
         version_data = self.api.get_request(endpoint)

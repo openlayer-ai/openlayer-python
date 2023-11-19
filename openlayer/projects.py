@@ -483,7 +483,7 @@ class Project:
         Returns
         -------
         :obj:`ProjectVersion`
-            An object that is used to check for upload progress and goal statuses.
+            An object that is used to check for upload progress and test statuses.
             Also contains other useful information about a project version.
 
         Notes

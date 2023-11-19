@@ -68,18 +68,18 @@ class ProjectVersion:
         return self._json["statusMessage"]
 
     @property
-    def passing_goal_count(self) -> int:
-        """Returns the number of passing goals for the project version."""
+    def passing_test_count(self) -> int:
+        """Returns the number of passing tests for the project version."""
         return self._json["passingGoalCount"]
 
     @property
-    def failing_goal_count(self) -> int:
-        """Returns the number of failing goals for the project version."""
+    def failing_test_count(self) -> int:
+        """Returns the number of failing tests for the project version."""
         return self._json["failingGoalCount"]
 
     @property
-    def skipped_goal_count(self) -> int:
-        """Returns the number of failing goals for the project version."""
+    def skipped_test_count(self) -> int:
+        """Returns the number of failing tests for the project version."""
         return (
             self._json["totalGoalCount"]
             - self._json["passingGoalCount"]
@@ -87,8 +87,8 @@ class ProjectVersion:
         )
 
     @property
-    def total_goal_count(self) -> int:
-        """Returns the number of failing goals for the project version."""
+    def total_test_count(self) -> int:
+        """Returns the number of failing tests for the project version."""
         return self._json["totalGoalCount"]
 
     def wait_for_completion(self, timeout: Optional[int] = None):
@@ -134,20 +134,20 @@ class ProjectVersion:
         """Prints the status report along with its status message."""
         print("Status:", self.status.value, "(" + f"{self.status_message}" + ")")
 
-    def print_goal_report(self):
-        """Prints the goal results of the project version."""
+    def print_test_report(self):
+        """Prints the test results of the project version."""
         if self.status != TaskStatus.COMPLETED:
             print("Project version is not complete. Nothing to print.")
             return
         print(
             tabulate.tabulate(
                 [
-                    ["Passed", self.passing_goal_count],
-                    ["Failed", self.failing_goal_count],
-                    ["Skipped", self.skipped_goal_count],
-                    ["Total", self.total_goal_count],
+                    ["Passed", self.passing_test_count],
+                    ["Failed", self.failing_test_count],
+                    ["Skipped", self.skipped_test_count],
+                    ["Total", self.total_test_count],
                 ],
-                headers=["Goals", "Count"],
+                headers=["Tests", "Count"],
                 tablefmt="fancy_grid",
             ),
             f"\nVisit {self.links['app']} to view detailed results.",
