@@ -23,6 +23,10 @@ class OpenAIMonitor:
         Whether to publish the data to Openlayer as soon as it is available. If True,
         the Openlayer credentials must be provided (either as keyword arguments or as
         environment variables).
+    accumulate_data : bool, False
+        Whether to accumulate the data in a dataframe. If False (default), only the
+        latest request is stored. If True, all the requests are stored in a dataframe,
+        accessed through the `data` attribute.
     client : openai.api_client.Client, optional
         The OpenAI client. It is required if you are using openai>=1.0.0.
     openlayer_api_key : str, optional
@@ -101,6 +105,7 @@ class OpenAIMonitor:
         self,
         publish: bool = False,
         client=None,
+        accumulate_data: bool = False,
         openlayer_api_key: Optional[str] = None,
         openlayer_project_name: Optional[str] = None,
         openlayer_inference_pipeline_name: Optional[str] = None,
@@ -120,7 +125,7 @@ class OpenAIMonitor:
 
         # OpenAI setup
         self.openai_version = openai.__version__
-        if self.openai_version.split(".")[0] == "1" and client is None:
+        if self.openai_version.split(".", maxsplit=1)[0] == "1" and client is None:
             raise ValueError(
                 "You must provide the OpenAI client for as the kwarg `client` for"
                 " openai>=1.0.0."
@@ -134,6 +139,7 @@ class OpenAIMonitor:
 
         self.df = pd.DataFrame(columns=["input", "output", "tokens", "latency"])
         self.publish = publish
+        self.accumulate_data = accumulate_data
         self.monitoring_on = False
 
     def _initialize_openlayer(
@@ -191,7 +197,7 @@ class OpenAIMonitor:
 
     def _initialize_openai(self) -> None:
         """Initializes the OpenAI attributes."""
-        if self.openai_version.split(".")[0] == "0":
+        if self.openai_version.split(".", maxsplit=1)[0] == "0":
             openai_api_key = utils.get_env_variable("OPENAI_API_KEY")
             openai.api_key = openai_api_key
             self.create_chat_completion = openai.ChatCompletion.create
@@ -311,7 +317,10 @@ class OpenAIMonitor:
                 }
             ]
         )
-        self.df = pd.concat([self.df, row], ignore_index=True)
+        if self.accumulate_data:
+            self.df = pd.concat([self.df, row], ignore_index=True)
+        else:
+            self.df = row
         self.df = self.df.astype(
             {"input": object, "output": object, "tokens": int, "latency": float}
         )
@@ -350,7 +359,7 @@ class OpenAIMonitor:
 
     def _overwrite_completion_methods(self) -> None:
         """Overwrites OpenAI's completion methods with the modified versions."""
-        if self.openai_version.split(".")[0] == "0":
+        if self.openai_version.split(".", maxsplit=1)[0] == "0":
             openai.ChatCompletion.create = self.modified_create_chat_completion
             openai.Completion.create = self.modified_create_completion
         else:
@@ -378,7 +387,7 @@ class OpenAIMonitor:
 
     def _restore_completion_methods(self) -> None:
         """Restores OpenAI's completion methods to their original versions."""
-        if self.openai_version.split(".")[0] == "0":
+        if self.openai_version.split(".", maxsplit=1)[0] == "0":
             openai.ChatCompletion.create = self.create_chat_completion
             openai.Completion.create = self.create_completion
         else:
