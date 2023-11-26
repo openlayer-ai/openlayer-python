@@ -9,7 +9,7 @@ import pandas as pd
 
 import openlayer
 
-from . import utils
+from . import tasks, utils
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,8 @@ class OpenAIMonitor:
         Whether to publish the data to Openlayer as soon as it is available. If True,
         the Openlayer credentials must be provided (either as keyword arguments or as
         environment variables).
+    client : openai.api_client.Client, optional
+        The OpenAI client. It is required if you are using openai>=1.0.0.
     openlayer_api_key : str, optional
         The Openlayer API key. If not provided, it is read from the environment
         variable `OPENLAYER_API_KEY`. This is required if `publish` is set to True.
@@ -44,15 +46,24 @@ class OpenAIMonitor:
     1. Set the environment variables:
 
     .. code-block:: bash
+        export OPENAI_API_KEY=<your-openai-api-key>
 
-        export OPENLAYER_API_KEY=<your-api-key>
+        export OPENLAYER_API_KEY=<your-openlayer-api-key>
         export OPENLAYER_PROJECT_NAME=<your-project-name>
 
     2. Instantiate the monitor:
 
+    ** If you are using openai<1.0.0 **
     >>> from opemlayer import llm_monitors
     >>>
     >>> monitor = llm_monitors.OpenAIMonitor(publish=True)
+
+    ** If you are using openai>=1.0.0 **
+    >>> from opemlayer import llm_monitors
+    >>> from openai import OpenAI
+    >>>
+    >>> openai_client = OpenAI()
+    >>> monitor = llm_monitors.OpenAIMonitor(publish=True, client=openai_client)
 
     3. Start monitoring:
 
@@ -60,7 +71,17 @@ class OpenAIMonitor:
 
     From this point onwards, you can continue making requests to your model normally:
 
+    ** If you are using openai<1.0.0 **
     >>> openai.ChatCompletion.create(
+    >>>     model="gpt-3.5-turbo",
+    >>>     messages=[
+    >>>         {"role": "system", "content": "You are a helpful assistant."},
+    >>>         {"role": "user", "content": "How are you doing today?"}
+    >>>     ],
+    >>> )
+
+    ** If you are using openai>=1.0.0 **
+    >>> openai_client.chat.completions.create(
     >>>     model="gpt-3.5-turbo",
     >>>     messages=[
     >>>         {"role": "system", "content": "You are a helpful assistant."},
@@ -79,6 +100,7 @@ class OpenAIMonitor:
     def __init__(
         self,
         publish: bool = False,
+        client=None,
         openlayer_api_key: Optional[str] = None,
         openlayer_project_name: Optional[str] = None,
         openlayer_inference_pipeline_name: Optional[str] = None,
@@ -97,6 +119,13 @@ class OpenAIMonitor:
         self._load_inference_pipeline()
 
         # OpenAI setup
+        self.openai_version = openai.__version__
+        if self.openai_version.split(".")[0] == "1" and client is None:
+            raise ValueError(
+                "You must provide the OpenAI client for as the kwarg `client` for"
+                " openai>=1.0.0."
+            )
+        self.openai_client = client
         self.create_chat_completion: callable = None
         self.create_completion: callable = None
         self.modified_create_chat_completion: callable = None
@@ -148,7 +177,9 @@ class OpenAIMonitor:
                 client = openlayer.OpenlayerClient(
                     api_key=self.openlayer_api_key,
                 )
-                project = client.load_project(name=self.openlayer_project_name)
+                project = client.create_project(
+                    name=self.openlayer_project_name, task_type=tasks.TaskType.LLM
+                )
                 if self.openlayer_inference_pipeline_name:
                     inference_pipeline = project.load_inference_pipeline(
                         name=self.openlayer_inference_pipeline_name
@@ -160,8 +191,14 @@ class OpenAIMonitor:
 
     def _initialize_openai(self) -> None:
         """Initializes the OpenAI attributes."""
-        self.create_chat_completion = openai.ChatCompletion.create
-        self.create_completion = openai.Completion.create
+        if self.openai_version.split(".")[0] == "0":
+            openai_api_key = utils.get_env_variable("OPENAI_API_KEY")
+            openai.api_key = openai_api_key
+            self.create_chat_completion = openai.ChatCompletion.create
+            self.create_completion = openai.Completion.create
+        else:
+            self.create_chat_completion = self.openai_client.chat.completions.create
+            self.create_completion = self.openai_client.completions.create
         self.modified_create_chat_completion = (
             self._get_modified_create_chat_completion()
         )
@@ -178,7 +215,7 @@ class OpenAIMonitor:
             try:
                 input_data = self._format_user_messages(kwargs["messages"])
                 output_data = response.choices[0].message.content.strip()
-                num_of_tokens = response.usage["total_tokens"]
+                num_of_tokens = response.usage.total_tokens
 
                 self._append_row_to_df(
                     input_data=input_data,
@@ -211,7 +248,7 @@ class OpenAIMonitor:
 
                 for input_data, choices in zip(prompts, choices_splits):
                     output_data = choices[0].text.strip()
-                    num_of_tokens = int(response.usage["total_tokens"] / len(prompts))
+                    num_of_tokens = int(response.usage.total_tokens / len(prompts))
 
                     self._append_row_to_df(
                         input_data=input_data,
@@ -313,8 +350,14 @@ class OpenAIMonitor:
 
     def _overwrite_completion_methods(self) -> None:
         """Overwrites OpenAI's completion methods with the modified versions."""
-        openai.ChatCompletion.create = self.modified_create_chat_completion
-        openai.Completion.create = self.modified_create_completion
+        if self.openai_version.split(".")[0] == "0":
+            openai.ChatCompletion.create = self.modified_create_chat_completion
+            openai.Completion.create = self.modified_create_completion
+        else:
+            self.openai_client.chat.completions.create = (
+                self.modified_create_chat_completion
+            )
+            self.openai_client.completions.create = self.modified_create_completion
 
     def stop_monitoring(self):
         """Switches monitoring for OpenAI LLMs off.
@@ -335,8 +378,12 @@ class OpenAIMonitor:
 
     def _restore_completion_methods(self) -> None:
         """Restores OpenAI's completion methods to their original versions."""
-        openai.ChatCompletion.create = self.create_chat_completion
-        openai.Completion.create = self.create_completion
+        if self.openai_version.split(".")[0] == "0":
+            openai.ChatCompletion.create = self.create_chat_completion
+            openai.Completion.create = self.create_completion
+        else:
+            self.openai_client.chat.completions.create = self.create_chat_completion
+            self.openai_client.completions.create = self.create_completion
 
     def publish_batch_data(self):
         """Manually publish the accumulated data to Openlayer when automatic publishing
