@@ -1097,12 +1097,13 @@ class OpenlayerClient(object):
         elif stream_config_file_path is not None:
             stream_config = utils.read_yaml(stream_config_file_path)
 
-        stream_config["label"] = "production"
+        stream_config_to_validate = dict(stream_config)
+        stream_config_to_validate["label"] = "production"
 
         # Validate stream of data
         stream_validator = dataset_validators.get_validator(
             task_type=task_type,
-            dataset_config=stream_config,
+            dataset_config=stream_config_to_validate,
             dataset_config_file_path=stream_config_file_path,
             dataset_df=stream_df,
         )
@@ -1115,13 +1116,9 @@ class OpenlayerClient(object):
             ) from None
 
         # Load dataset config and augment with defaults
-        stream_data = DatasetSchema().load(
-            {"task_type": task_type.value, **stream_config}
-        )
+        stream_data = dict(stream_config)
 
         # Add default columns if not present
-        if stream_data.get("columnNames") is None:
-            stream_data["columnNames"] = list(stream_df.columns)
         columns_to_add = {"timestampColumnName", "inferenceIdColumnName"}
         for column in columns_to_add:
             if stream_data.get(column) is None:
@@ -1131,10 +1128,12 @@ class OpenlayerClient(object):
 
 
         body = {
-            "datasetConfig": stream_data,
-            "dataset": stream_df.to_dict(orient="records"),
+            "config": stream_data,
+            "rows": stream_df.to_dict(orient="records"),
         }
-
+        
+        print("This is the body!")
+        print(body)
         self.api.post_request(
             endpoint=f"inference-pipelines/{inference_pipeline_id}/data-stream",
             body=body,
@@ -1181,11 +1180,6 @@ class OpenlayerClient(object):
                 "There are issues with the batch of data and its config. \n"
                 "Make sure to fix all of the issues listed above before the upload.",
             ) from None
-
-        # Load dataset config and augment with defaults
-        batch_data = DatasetSchema().load(
-            {"task_type": task_type.value, **batch_config}
-        )
 
         # Add default columns if not present
         if batch_data.get("columnNames") is None:
