@@ -448,18 +448,16 @@ class OpenAIChatCompletionRunner(LLModelRunner):
                 "keyword argument 'openai_api_key'"
             )
 
-        self.openai_api_key = kwargs["openai_api_key"]
+        self.openai_client = openai.OpenAI(api_key=kwargs["openai_api_key"])
         self._initialize_llm()
 
         self.cost: List[float] = []
 
     def _initialize_llm(self):
         """Initializes the OpenAI chat completion model."""
-        openai.api_key = self.openai_api_key
-
         # Check if API key is valid
         try:
-            openai.Model.list()
+            self.openai_client.models.list()
         except Exception as e:
             raise openlayer_exceptions.OpenlayerInvalidLlmApiKey(
                 "Please pass a valid OpenAI API key as the "
@@ -479,15 +477,16 @@ class OpenAIChatCompletionRunner(LLModelRunner):
     def _make_request(self, llm_input: List[Dict[str, str]]) -> Dict[str, Any]:
         """Make the request to OpenAI's chat completion model
         for a given input."""
-        return openai.ChatCompletion.create(
+        response = self.openai_client.chat.completions.create(
             model=self.model_config.get("model", "gpt-3.5-turbo"),
             messages=llm_input,
             **self.model_config.get("model_parameters", {}),
         )
+        return response
 
     def _get_output(self, response: Dict[str, Any]) -> str:
         """Gets the output from the response."""
-        return response["choices"][0]["message"]["content"]
+        return response.choices[0].message.content
 
     def _get_cost_estimate(self, response: Dict[str, Any]) -> None:
         """Estimates the cost from the response."""
@@ -495,8 +494,8 @@ class OpenAIChatCompletionRunner(LLModelRunner):
         if model not in self.COST_PER_TOKEN:
             return -1
         else:
-            num_input_tokens = response["usage"]["prompt_tokens"]
-            num_output_tokens = response["usage"]["completion_tokens"]
+            num_input_tokens = response.usage.prompt_tokens
+            num_output_tokens = response.usage.completion_tokens
             return (
                 num_input_tokens * self.COST_PER_TOKEN[model]["input"]
                 + num_output_tokens * self.COST_PER_TOKEN[model]["output"]
