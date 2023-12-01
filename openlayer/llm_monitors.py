@@ -166,7 +166,7 @@ class OpenAIMonitor:
         if self.openlayer_api_key and self.openlayer_project_name:
             with utils.HidePrints():
                 client = openlayer.OpenlayerClient(
-                    api_key=self.openlayer_api_key,
+                    api_key=self.openlayer_api_key, verbose=False
                 )
                 project = client.create_project(
                     name=self.openlayer_project_name, task_type=tasks.TaskType.LLM
@@ -340,7 +340,6 @@ class OpenAIMonitor:
                 "Furthermore, since `publish` was set to True, the data is being"
                 f" published to your '{self.openlayer_project_name}' Openlayer project."
             )
-        print("The `data` attribute contails all the data collected.")
         print("To stop monitoring, call the `stop_monitoring` method.")
 
     def _overwrite_completion_methods(self) -> None:
