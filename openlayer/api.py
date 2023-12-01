@@ -87,6 +87,7 @@ class Api:
         body=None,
         files=None,
         data=None,
+        include_metadata=True,
     ) -> Response:
         with requests.Session() as https:
             retry_strategy = Retry(
@@ -102,7 +103,8 @@ class Api:
 
             try:
                 params = params or {}
-                params.update(CLIENT_METADATA)
+                if include_metadata:
+                    params.update(CLIENT_METADATA)
                 res = https.request(
                     method=method,
                     url=url,
@@ -136,12 +138,22 @@ class Api:
         body=None,
         files=None,
         data=None,
+        include_metadata=True,
     ):
         """Make any HTTP request + error handling."""
 
         url = f"{OPENLAYER_ENDPOINT}/{endpoint}"
 
-        res = self._http_request(method, url, headers, params, body, files, data)
+        res = self._http_request(
+            method=method,
+            url=url,
+            headers=headers,
+            params=params,
+            body=body,
+            files=files,
+            data=data,
+            include_metadata=include_metadata,
+        )
 
         json = None
         if res.ok:
@@ -155,17 +167,20 @@ class Api:
         """Generic GET Request Wrapper."""
         return self._api_request("GET", endpoint, headers=self._headers, params=params)
 
-    def post_request(self, endpoint: str, body=None, files=None, data=None):
+    def post_request(
+        self, endpoint: str, body=None, files=None, data=None, include_metadata=True
+    ):
         """Generic POST Request Wrapper."""
         return self._api_request(
-            "POST",
-            endpoint,
+            method="POST",
+            endpoint=endpoint,
             headers=self._headers
             if files is None
             else self._headers_multipart_form_data,
             body=body,
             files=files,
             data=data,
+            include_metadata=include_metadata,
         )
 
     def put_request(self, endpoint: str, body=None, files=None, data=None):

@@ -1109,6 +1109,7 @@ class OpenlayerClient(object):
         self.api.post_request(
             endpoint=f"inference-pipelines/{inference_pipeline_id}/data-stream",
             body=body,
+            include_metadata=False,
         )
         print("Stream published!")
 
