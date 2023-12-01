@@ -21,6 +21,7 @@ Typical usage example:
     project.status()
     project.push()
 """
+import copy
 import os
 import shutil
 import tarfile
@@ -29,7 +30,7 @@ import time
 import urllib.parse
 import uuid
 import warnings
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 import yaml
@@ -1073,74 +1074,50 @@ class OpenlayerClient(object):
                 dataset_config_file_path=dataset_config_file_path,
                 task_type=task_type,
             )
-        
-    def send_stream_data(
+
+    def stream_data(
         self,
         inference_pipeline_id: str,
         task_type: TaskType,
-        stream_df: pd.DataFrame,
+        stream_data: Union[Dict[str, any], List[Dict[str, any]]],
         stream_config: Optional[Dict[str, any]] = None,
         stream_config_file_path: Optional[str] = None,
-        verbose: bool = True,
     ) -> None:
-        """Publishes a batch of production data to the Openlayer platform."""
-        if stream_config is None and stream_config_file_path is None:
+        """Streams production data to the Openlayer platform."""
+        if not isinstance(stream_data, (dict, list)):
             raise ValueError(
-                "Either `batch_config` or `batch_config_file_path` must be" " provided."
+                "stream_data must be a dictionary or a list of dictionaries."
             )
-        if stream_config_file_path is not None and not os.path.exists(
-            stream_config_file_path
-        ):
-            raise exceptions.OpenlayerValidationError(
-                f"Stream config file path {stream_config_file_path} does not exist."
-            ) from None
-        elif stream_config_file_path is not None:
-            stream_config = utils.read_yaml(stream_config_file_path)
+        if isinstance(stream_data, dict):
+            stream_data = [stream_data]
 
-        stream_config_to_validate = dict(stream_config)
-        stream_config_to_validate["label"] = "production"
-
-        # Validate stream of data
-        stream_validator = dataset_validators.get_validator(
+        stream_df = pd.DataFrame(stream_data)
+        stream_config = self._validate_production_data_and_load_config(
             task_type=task_type,
-            dataset_config=stream_config_to_validate,
-            dataset_config_file_path=stream_config_file_path,
-            dataset_df=stream_df,
+            config=stream_config,
+            config_file_path=stream_config_file_path,
+            df=stream_df,
         )
-        failed_validations = stream_validator.validate()
-
-        if failed_validations:
-            raise exceptions.OpenlayerValidationError(
-                "There are issues with the stream of data and its config. \n"
-                "Make sure to fix all of the issues listed above before the upload.",
-            ) from None
-
-        # Load dataset config and augment with defaults
-        stream_data = dict(stream_config)
-
-        # Add default columns if not present
-        columns_to_add = {"timestampColumnName", "inferenceIdColumnName"}
-        for column in columns_to_add:
-            if stream_data.get(column) is None:
-                stream_data, stream_df = self._add_default_column(
-                    config=stream_data, df=stream_df, column_name=column
-                )
-
-
+        stream_config, stream_df = self._add_default_columns(
+            config=stream_config, df=stream_df
+        )
+        stream_config = self._strip_read_only_fields(stream_config)
         body = {
-            "config": stream_data,
+            "config": stream_config,
             "rows": stream_df.to_dict(orient="records"),
         }
-        
-        print("This is the body!")
-        print(body)
         self.api.post_request(
             endpoint=f"inference-pipelines/{inference_pipeline_id}/data-stream",
             body=body,
         )
+        print("Stream published!")
 
-        if verbose:
-            print("Stream published!")
+    def _strip_read_only_fields(self, config: Dict[str, any]) -> Dict[str, any]:
+        """Strips read-only fields from the config."""
+        stripped_config = copy.deepcopy(config)
+        for field in {"columnNames", "label"}:
+            stripped_config.pop(field, None)
+        return stripped_config
 
     def publish_batch_data(
         self,
@@ -1151,54 +1128,29 @@ class OpenlayerClient(object):
         batch_config_file_path: Optional[str] = None,
     ) -> None:
         """Publishes a batch of production data to the Openlayer platform."""
-        if batch_config is None and batch_config_file_path is None:
-            raise ValueError(
-                "Either `batch_config` or `batch_config_file_path` must be" " provided."
-            )
-        if batch_config_file_path is not None and not os.path.exists(
-            batch_config_file_path
-        ):
-            raise exceptions.OpenlayerValidationError(
-                f"Batch config file path {batch_config_file_path} does not exist."
-            ) from None
-        elif batch_config_file_path is not None:
-            batch_config = utils.read_yaml(batch_config_file_path)
-
-        batch_config["label"] = "production"
-
-        # Validate batch of data
-        batch_validator = dataset_validators.get_validator(
+        batch_config = self._validate_production_data_and_load_config(
             task_type=task_type,
-            dataset_config=batch_config,
-            dataset_config_file_path=batch_config_file_path,
-            dataset_df=batch_df,
+            config=batch_config,
+            config_file_path=batch_config_file_path,
+            df=batch_df,
         )
-        failed_validations = batch_validator.validate()
+        batch_config, batch_df = self._add_default_columns(
+            config=batch_config, df=batch_df
+        )
 
-        if failed_validations:
-            raise exceptions.OpenlayerValidationError(
-                "There are issues with the batch of data and its config. \n"
-                "Make sure to fix all of the issues listed above before the upload.",
-            ) from None
+        # Add column names if missing
+        if batch_config.get("columnNames") is None:
+            batch_config["columnNames"] = list(batch_df.columns)
 
-        # Add default columns if not present
-        if batch_data.get("columnNames") is None:
-            batch_data["columnNames"] = list(batch_df.columns)
-        columns_to_add = {"timestampColumnName", "inferenceIdColumnName"}
-        for column in columns_to_add:
-            if batch_data.get(column) is None:
-                batch_data, batch_df = self._add_default_column(
-                    config=batch_data, df=batch_df, column_name=column
-                )
         # Get min and max timestamps
-        earliest_timestamp = batch_df[batch_data["timestampColumnName"]].min()
-        latest_timestamp = batch_df[batch_data["timestampColumnName"]].max()
+        earliest_timestamp = batch_df[batch_config["timestampColumnName"]].min()
+        latest_timestamp = batch_df[batch_config["timestampColumnName"]].max()
         batch_row_count = len(batch_df)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             # Copy save files to tmp dir
             batch_df.to_csv(f"{tmp_dir}/dataset.csv", index=False)
-            utils.write_yaml(batch_data, f"{tmp_dir}/dataset_config.yaml")
+            utils.write_yaml(batch_config, f"{tmp_dir}/dataset_config.yaml")
 
             tar_file_path = os.path.join(tmp_dir, "tarfile")
             with tarfile.open(tar_file_path, mode="w:gz") as tar:
@@ -1234,8 +1186,63 @@ class OpenlayerClient(object):
                 ),
                 presigned_url_query_params=presigned_url_query_params,
             )
-
         print("Data published!")
+
+    def _validate_production_data_and_load_config(
+        self,
+        task_type: tasks.TaskType,
+        config: Dict[str, any],
+        config_file_path: str,
+        df: pd.DataFrame,
+    ) -> Dict[str, any]:
+        """Validates the production data and its config and returns a valid config
+        populated with the default values."""
+        if config is None and config_file_path is None:
+            raise ValueError(
+                "Either the config or the config file path must be provided."
+            )
+        if config_file_path is not None and not os.path.exists(config_file_path):
+            raise exceptions.OpenlayerValidationError(
+                f"The file specified by the config file path {config_file_path} does"
+                " not exist."
+            ) from None
+        elif config_file_path is not None:
+            config = utils.read_yaml(config_file_path)
+
+        # Force label to be production
+        config["label"] = "production"
+
+        # Validate batch of data
+        validator = dataset_validators.get_validator(
+            task_type=task_type,
+            dataset_config=config,
+            dataset_config_file_path=config_file_path,
+            dataset_df=df,
+        )
+        failed_validations = validator.validate()
+
+        if failed_validations:
+            raise exceptions.OpenlayerValidationError(
+                "There are issues with the data and its config. \n"
+                "Make sure to fix all of the issues listed above before the upload.",
+            ) from None
+
+        config = DatasetSchema().load({"task_type": task_type.value, **config})
+
+        return config
+
+    def _add_default_columns(
+        self, config: Dict[str, any], df: pd.DataFrame
+    ) -> Tuple[Dict[str, any], pd.DataFrame]:
+        """Adds the default columns if not present and returns the updated config and
+        dataframe."""
+        columns_to_add = {"timestampColumnName", "inferenceIdColumnName"}
+        for column in columns_to_add:
+            if config.get(column) is None:
+                config, df = self._add_default_column(
+                    config=config, df=df, column_name=column
+                )
+        return config, df
 
     def _add_default_column(
         self, config: Dict[str, any], df: pd.DataFrame, column_name: str
