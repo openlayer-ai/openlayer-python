@@ -20,12 +20,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 * Warnings if the dependencies from the `requirement_txt_file` and current environment are inconsistent.
 * Paths to custom SSL certificates can now be modified by altering `openlayer.api.VERIFY_REQUESTS`. The value can either be True (default), False, or a path to a certificate.
 * Ability to check for goal statuses through the API.
-* New method `send_stream_data` for inference pipelines that is used for real time streaming of small bits of data.
 
 ### Changed
 
-* Renamed conda environment created by the model runner from `new-openlayer` to `model-runner-env-%m-%d-%H-%M-%S-%f`. 
+* Renamed conda environment created by the model runner from `new-openlayer` to `model-runner-env-%m-%d-%H-%M-%S-%f`.
 * Modified the zero-index integer checks for `predictionsColumnName` and `labelColumnName` to support dataset uploads with only a sample of the classes.
-* Renamed `predictionsColumnName` argument from the datasets' configuration YAML to `predictionScoresColumnName`. 
+* Renamed `predictionsColumnName` argument from the datasets' configuration YAML to `predictionScoresColumnName`.
 * Migrated package name from [openlayer](https://pypi.org/project/openlayer/) to [openlayer](https://pypi.org/project/openlayer/) due to a company name change.
 * Required Python version `>=3.7` and `<3.9`.

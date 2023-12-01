@@ -1131,7 +1131,7 @@ class OpenlayerClient(object):
     def _strip_read_only_fields(self, config: Dict[str, any]) -> Dict[str, any]:
         """Strips read-only fields from the config."""
         stripped_config = copy.deepcopy(config)
-        for field in {"columnNames", "label"}:
+        for field in ["columnNames", "label"]:
             stripped_config.pop(field, None)
         return stripped_config
 
@@ -1207,7 +1207,7 @@ class OpenlayerClient(object):
 
     def _validate_production_data_and_load_config(
         self,
-        task_type: tasks.TaskType,
+        task_type: TaskType,
         config: Dict[str, any],
         config_file_path: str,
         df: pd.DataFrame,
