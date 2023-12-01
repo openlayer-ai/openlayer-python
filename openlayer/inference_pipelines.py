@@ -238,44 +238,45 @@ class InferencePipeline:
             task_type=self.taskType,
             **kwargs,
         )
-    
-    def send_stream_data(self, *args, **kwargs):
-        """Publishes a stream of production data to the Openlayer platform.
+
+    def stream_data(self, *args, **kwargs):
+        """Streams production data to the Openlayer platform.
 
         Parameters
         ----------
-        stream_df : pd.DataFrame
-            Dataframe containing the batch of production data.
+        stream_data: Union[Dict[str, any], List[Dict[str, any]]]
+            Dictionary or list of dictionaries containing the production data. E.g.,
+            ``{'CreditScore': 618, 'Geography': 'France', 'Balance': 321.92}``.
         stream_config : Dict[str, any], optional
-            Dictionary containing the batch configuration. This is not needed if
-            ``batch_config_file_path`` is provided.
+            Dictionary containing the stream configuration. This is not needed if
+            ``stream_config_file_path`` is provided.
 
             .. admonition:: What's in the config?
 
-                The configuration for a batch of data depends on the :obj:`TaskType`.
+                The configuration for a stream of data depends on the :obj:`TaskType`.
                 Refer to the `How to write dataset configs guides <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
                 for details. These configurations are
-                the same for development and batches of production data.
+                the same for development and production data.
 
         stream_config_file_path : str
             Path to the configuration YAML file. This is not needed if
-            ``batch_config`` is provided.
+            ``stream_config`` is provided.
 
             .. admonition:: What's in the config file?
 
-                The configuration for a batch of data depends on the :obj:`TaskType`.
+                The configuration for a stream of data depends on the :obj:`TaskType`.
                 Refer to the `How to write dataset configs guides <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
                 for details. These configurations are
-                the same for development and batches of production data.
+                the same for development and production data.
 
         Notes
         -----
-        Production data usually has a column with the inference timestamps. This
-        column is specified in the ``timestampsColumnName`` of the batch config file,
+        Production data usually contains the inference timestamps. This
+        column is specified in the ``timestampsColumnName`` of the stream config file,
         and it should contain timestamps in the **UNIX format in seconds**.
 
-        Production data also usually has a column with the prediction IDs. This
-        column is specified in the ``inferenceIdColumnName`` of the batch config file.
+        Production data also usually contains the prediction IDs. This
+        column is specified in the ``inferenceIdColumnName`` of the stream config file.
         This column is particularly important when the ground truths are not available
         during inference time, and they are updated later.
 
@@ -298,16 +299,16 @@ class InferencePipeline:
         ...     name="XGBoost model inference pipeline",
         ... )
 
-        With the ``InferencePipeline`` object retrieved, you can publish a batch
-        of production data -- in this example, stored in a pandas dataframe
-        called ``df`` -- with:
+        With the ``InferencePipeline`` object retrieved, you can stream
+        production data -- in this example, stored in a dictionary called
+        ``stream_data`` -- with:
 
-        >>> inference_pipeline.send_stream_data(
-        ...     batch_df=df,
-        ...     batch_config=config,
+        >>> inference_pipeline.stream_data(
+        ...     stream_data=stream_data,
+        ...     stream_config=config,
         ... )
         """
-        return self.client.send_stream_data(
+        return self.client.stream_data(
             *args,
             inference_pipeline_id=self.id,
             task_type=self.taskType,
