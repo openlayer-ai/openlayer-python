@@ -31,13 +31,13 @@ class OpenAIMonitor:
         The OpenAI client. It is required if you are using openai>=1.0.0.
     openlayer_api_key : str, optional
         The Openlayer API key. If not provided, it is read from the environment
-        variable `OPENLAYER_API_KEY`. This is required if `publish` is set to True.
+        variable ``OPENLAYER_API_KEY``. This is required if `publish` is set to True.
     openlayer_project_name : str, optional
         The Openlayer project name. If not provided, it is read from the environment
-        variable `OPENLAYER_PROJECT_NAME`. This is required if `publish` is set to True.
+        variable ``OPENLAYER_PROJECT_NAME``. This is required if `publish` is set to True.
     openlayer_inference_pipeline_name : str, optional
         The Openlayer inference pipeline name. If not provided, it is read from the
-        environment variable `OPENLAYER_INFERENCE_PIPELINE_NAME`. This is required if
+        environment variable ``OPENLAYER_INFERENCE_PIPELINE_NAME``. This is required if
         `publish` is set to True and you gave your inference pipeline a name different
         than the default.
 
@@ -50,6 +50,7 @@ class OpenAIMonitor:
     1. Set the environment variables:
 
     .. code-block:: bash
+
         export OPENAI_API_KEY=<your-openai-api-key>
 
         export OPENLAYER_API_KEY=<your-openlayer-api-key>
@@ -57,12 +58,6 @@ class OpenAIMonitor:
 
     2. Instantiate the monitor:
 
-    ** If you are using openai<1.0.0 **
-    >>> from opemlayer import llm_monitors
-    >>>
-    >>> monitor = llm_monitors.OpenAIMonitor(publish=True)
-
-    ** If you are using openai>=1.0.0 **
     >>> from opemlayer import llm_monitors
     >>> from openai import OpenAI
     >>>
@@ -75,16 +70,6 @@ class OpenAIMonitor:
 
     From this point onwards, you can continue making requests to your model normally:
 
-    ** If you are using openai<1.0.0 **
-    >>> openai.ChatCompletion.create(
-    >>>     model="gpt-3.5-turbo",
-    >>>     messages=[
-    >>>         {"role": "system", "content": "You are a helpful assistant."},
-    >>>         {"role": "user", "content": "How are you doing today?"}
-    >>>     ],
-    >>> )
-
-    ** If you are using openai>=1.0.0 **
     >>> openai_client.chat.completions.create(
     >>>     model="gpt-3.5-turbo",
     >>>     messages=[

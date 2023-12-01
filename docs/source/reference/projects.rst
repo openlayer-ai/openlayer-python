@@ -10,7 +10,7 @@ A project is the logical unit on the Openlayer platform that houses models, data
 and goals. You can create projects for any of the task types defined
 in :class:`tasks.TaskType`.
 
-**Related guide**: `How to create and load projects <https://docs.openlayer.com/docs/creating-and-loading-projects>`_.
+**Related guide**: `How to create and load projects <https://docs.openlayer.com/documentation/how-to-guides/creating-and-loading-projects>`_.
 
 Project creation and loading
 ----------------------------

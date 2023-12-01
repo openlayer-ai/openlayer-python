@@ -6,7 +6,7 @@ Authentication
 .. currentmodule:: openlayer
 
 Openlayer uses API keys for client authentication. You can find your workspace API key on
-your `Account settings <https://docs.openlayer.com/docs/find-your-api-keys>`_.
+your `Account settings <https://docs.openlayer.com/documentation/how-to-guides/find-your-api-key>`_.
 
 The authentication step happens when the ``OpenlayerClient`` is instantiated.
 
