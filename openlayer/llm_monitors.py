@@ -316,8 +316,9 @@ class OpenAIMonitor:
         If `publish` is set to True, publish the latest row to Openlayer.
         """
         if self.publish:
-            self.inference_pipeline.publish_batch_data(
-                batch_df=self.df.tail(1), batch_config=self.data_config
+            self.inference_pipeline.stream_data(
+                stream_data=self.df.tail(1).to_dict(orient="records"),
+                stream_config=self.data_config,
             )
 
     def start_monitoring(self) -> None:
