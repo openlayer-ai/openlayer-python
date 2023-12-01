@@ -61,6 +61,9 @@ class OpenlayerClient(object):
         Your API key. You can find your workspace API key in your
         `account settings <https://docs.openlayer.com/documentation/how-to-guides/find-your-api-key>`_
         settings page.
+    verbose : bool, default True
+        Whether to print out success messages to the console. E.g., when data is
+        successfully uploaded, a resource is staged, etc.
 
     Examples
     --------
@@ -73,8 +76,9 @@ class OpenlayerClient(object):
     >>> client = openlayer.OpenlayerClient('YOUR_API_KEY_HERE')
     """
 
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: str = None, verbose: bool = True):
         self.api = api.Api(api_key)
+        self.verbose = verbose
 
         if not os.path.exists(constants.OPENLAYER_DIR):
             os.makedirs(constants.OPENLAYER_DIR)
@@ -164,9 +168,10 @@ class OpenlayerClient(object):
             project_dir = os.path.join(constants.OPENLAYER_DIR, f"{project.id}/staging")
             os.makedirs(project_dir)
 
-            print(
-                f"Created your project. Navigate to {project.links['app']} to see it."
-            )
+            if self.verbose:
+                print(
+                    f"Created your project. Navigate to {project.links['app']} to see it."
+                )
         return project
 
     def load_project(self, name: str) -> Project:
@@ -216,7 +221,8 @@ class OpenlayerClient(object):
         if not os.path.exists(project_dir):
             os.makedirs(project_dir)
 
-        print(f"Found your project. Navigate to {project.links['app']} to see it.")
+        if self.verbose:
+            print(f"Found your project. Navigate to {project.links['app']} to see it.")
         return project
 
     def create_or_load_project(
@@ -581,7 +587,8 @@ class OpenlayerClient(object):
         with open(f"{project_dir}/commit.yaml", "w", encoding="UTF-8") as commit_file:
             yaml.dump(commit, commit_file)
 
-        print("Committed!")
+        if self.verbose:
+            print("Committed!")
 
     def _check_llm_and_no_outputs(self, project_dir: str) -> bool:
         """Checks if the project's staging area contains an LLM and no outputs."""
@@ -638,7 +645,10 @@ class OpenlayerClient(object):
                 project_version = ProjectVersion(json=response_body, client=self)
 
             self._post_push_cleanup(project_dir=project_dir)
-            print("Pushed!")
+
+            if self.verbose:
+                print("Pushed!")
+
             return project_version
 
     def _ready_for_push(self, project_dir: str, task_type: TaskType) -> bool:
@@ -802,7 +812,8 @@ class OpenlayerClient(object):
 
         shutil.copytree(resource_dir, project_dir + "/" + resource_name)
 
-        print(f"Staged the `{resource_name}` resource!")
+        if self.verbose:
+            print(f"Staged the `{resource_name}` resource!")
 
     def load_project_version(self, version_id: str) -> Project:
         """Loads an existing project version from the Openlayer platform. Can be used
@@ -957,10 +968,11 @@ class OpenlayerClient(object):
                 inference_pipeline_data, self.api.upload, self, task_type
             )
 
-            print(
-                "Created your inference pipeline. Navigate to"
-                f" {inference_pipeline.links['app']} to see it."
-            )
+            if self.verbose:
+                print(
+                    "Created your inference pipeline. Navigate to"
+                    f" {inference_pipeline.links['app']} to see it."
+                )
         return inference_pipeline
 
     def load_inference_pipeline(
@@ -982,10 +994,11 @@ class OpenlayerClient(object):
             inference_pipeline_data["items"][0], self.api.upload, self, task_type
         )
 
-        print(
-            "Found your inference pipeline."
-            f" Navigate to {inference_pipeline.links['app']} to see it."
-        )
+        if self.verbose:
+            print(
+                "Found your inference pipeline."
+                f" Navigate to {inference_pipeline.links['app']} to see it."
+            )
         return inference_pipeline
 
     def upload_reference_dataset(
@@ -1047,7 +1060,8 @@ class OpenlayerClient(object):
                 storage_uri_key="referenceDatasetUri",
                 method="PUT",
             )
-        print("Reference dataset uploaded!")
+        if self.verbose:
+            print("Reference dataset uploaded!")
 
     def upload_reference_dataframe(
         self,
@@ -1111,7 +1125,8 @@ class OpenlayerClient(object):
             body=body,
             include_metadata=False,
         )
-        print("Stream published!")
+        if self.verbose:
+            print("Stream published!")
 
     def _strip_read_only_fields(self, config: Dict[str, any]) -> Dict[str, any]:
         """Strips read-only fields from the config."""
@@ -1187,7 +1202,8 @@ class OpenlayerClient(object):
                 ),
                 presigned_url_query_params=presigned_url_query_params,
             )
-        print("Data published!")
+        if self.verbose:
+            print("Data published!")
 
     def _validate_production_data_and_load_config(
         self,
@@ -1316,4 +1332,5 @@ class OpenlayerClient(object):
                 presigned_url_endpoint=f"inference-pipelines/{inference_pipeline_id}/presigned-url",
                 presigned_url_query_params=presigned_url_query_params,
             )
-        print("Ground truths published!")
+        if self.verbose:
+            print("Ground truths published!")
