@@ -44,18 +44,11 @@ class Project:
     ):
         """Adds a model to a project's staging area.
 
-        This is the method for every model upload, regardless of whether you want to
-        add a shell model, a full model, or a direct-to-API model (for LLMs-only).
+        This is the method for every model upload, regardless of whether you want to add a shell model,
+        a full model, or a direct-to-API model (for LLMs-only).
 
-        The difference between the three model types is discussed in the
-        documentation. In short:
-
-        - A **shell model** is comprised of metadata only. Therefore, only the model config argument is required.
-
-        - A **full model** is comprised of metadata and artifacts. Thus, the model config, model package, and sample data arguments are needed.
-
-        - A **direct-to-API model** applies only to **LLMs**. Only the model config argument is required, but the model
-            config must contain all the information needed to make predictions -- such as the ``prompt``, the ``modelProvider``, and others.
+        Refer to the `Knowledge base guide on model upload <https://docs.openlayer.com/knowledge-base/development/versioning#adding-models>`_ to
+        learn more about the differences between these options.
 
         Parameters
         ----------
@@ -66,7 +59,7 @@ class Project:
             .. admonition:: What's in the model config dict?
 
                 The model configuration depends on the project's :obj:`tasks.TaskType`.
-                Refer to the `How to write model configs <https://docs.openlayer.com/docs/tabular-classification-model-config>`_
+                Refer to the `How to write model configs <https://docs.openlayer.com/documentation/how-to-guides/write-model-configs>`_
                 guide for details.
 
         model_config_file_path : str
@@ -76,7 +69,7 @@ class Project:
             .. admonition:: What's in the model config file?
 
                 The model configuration YAML depends on the project's :obj:`tasks.TaskType`.
-                Refer to the `How to write model configs <https://docs.openlayer.com/docs/tabular-classification-model-config>`_
+                Refer to the `How to write model configs <https://docs.openlayer.com/documentation/how-to-guides/write-model-configs>`_
                 guide for details.
 
         model_package_dir : str, default None
@@ -115,7 +108,7 @@ class Project:
 
         Examples
         --------
-        **Related guide**: `How to upload datasets and models for development <https://docs.openlayer.com/docs/upload-datasets-and-models>`_.
+        **Related guide**: `How to upload datasets and models for development <https://docs.openlayer.com/documentation/how-to-guides/upload-datasets-and-models>`_.
 
         First, instantiate the client:
 
@@ -165,7 +158,7 @@ class Project:
         .. admonition:: What's in the model config?
 
                 The model configuration depends on the project's :obj:`tasks.TaskType`.
-                Refer to the `How to write model configs guides <https://docs.openlayer.com/docs/tabular-classification-model-config>`_
+                Refer to the `How to write model configs guides <https://docs.openlayer.com/documentation/how-to-guides/write-model-configs>`_
                 for details.
 
         Then, you can add the model to the project with:
@@ -232,7 +225,7 @@ class Project:
             .. admonition:: What's in the dataset config?
 
                 The dataset configuration depends on the project's :obj:`tasks.TaskType`.
-                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
+                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/documentation/how-to-guides/write-dataset-configs>`_
                 for details.
 
         dataset_config_file_path : str
@@ -242,7 +235,7 @@ class Project:
             .. admonition:: What's in the dataset config file?
 
                 The dataset configuration YAML depends on the project's :obj:`tasks.TaskType`.
-                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
+                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/documentation/how-to-guides/write-dataset-configs>`_
                 for details.
 
         force : bool
@@ -258,7 +251,7 @@ class Project:
 
         Examples
         --------
-        **Related guide**: `How to upload datasets and models for development <https://docs.openlayer.com/docs/upload-datasets-and-models>`_.
+        **Related guide**: `How to upload datasets and models for development <https://docs.openlayer.com/documentation/how-to-guides/upload-datasets-and-models>`_.
 
         First, instantiate the client:
 
@@ -303,7 +296,7 @@ class Project:
         .. admonition:: What's in the dataset config?
 
                 The dataset configuration depends on the project's :obj:`tasks.TaskType`.
-                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
+                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/documentation/how-to-guides/write-dataset-configs>`_
                 for details.
 
         You can now add this dataset to your project with:
@@ -341,7 +334,7 @@ class Project:
             .. admonition:: What's in the dataset config?
 
                 The dataset configuration depends on the project's :obj:`tasks.TaskType`.
-                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
+                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/documentation/how-to-guides/write-dataset-configs>`_
                 for details.
 
         dataset_config_file_path : str
@@ -351,7 +344,7 @@ class Project:
             .. admonition:: What's in the dataset config file?
 
                 The dataset configuration YAML depends on the project's :obj:`tasks.TaskType`.
-                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
+                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/documentation/how-to-guides/write-dataset-configs>`_
                 for details.
 
         force : bool
@@ -367,7 +360,7 @@ class Project:
 
         Examples
         --------
-        **Related guide**: `How to upload datasets and models for development <https://docs.openlayer.com/docs/upload-datasets-and-models>`_.
+        **Related guide**: `How to upload datasets and models for development <https://docs.openlayer.com/documentation/how-to-guides/upload-datasets-and-models>`_.
 
         First, instantiate the client:
 
@@ -411,7 +404,7 @@ class Project:
         .. admonition:: What's in the dataset config?
 
                 The dataset configuration depends on the project's :obj:`tasks.TaskType`.
-                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/docs/tabular-classification-dataset-config>`_
+                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/documentation/how-to-guides/write-dataset-configs>`_
                 for details.
 
         You can now add this dataset to your project with:
@@ -455,7 +448,7 @@ class Project:
 
         Examples
         --------
-        **Related guide**: `How to upload datasets and models for development <https://docs.openlayer.com/docs/upload-datasets-and-models>`_.
+        **Related guide**: `How to upload datasets and models for development <https://docs.openlayer.com/documentation/how-to-guides/upload-datasets-and-models>`_.
 
         A commit message is associated with a project version. The commit message is
         supposed to be a short description of the changes made from one version to
@@ -492,7 +485,7 @@ class Project:
 
         Examples
         --------
-        **Related guide**: `How to upload datasets and models for development <https://docs.openlayer.com/docs/upload-datasets-and-models>`_.
+        **Related guide**: `How to upload datasets and models for development <https://docs.openlayer.com/documentation/how-to-guides/upload-datasets-and-models>`_.
 
         Let's say you have a project with a model and a dataset staged and committed.
         You can confirm these resources are indeed in the staging area using the
@@ -548,7 +541,7 @@ class Project:
 
         Examples
         --------
-        **Related guide**: `How to upload datasets and models for development <https://docs.openlayer.com/docs/upload-datasets-and-models>`_.
+        **Related guide**: `How to upload datasets and models for development <https://docs.openlayer.com/documentation/how-to-guides/upload-datasets-and-models>`_.
 
         You can use the :obj:`status` method to check the state of the staging area.
 
@@ -583,7 +576,7 @@ class Project:
 
         Examples
         --------
-        **Related guide**: `How to upload datasets and models for development <https://docs.openlayer.com/docs/upload-datasets-and-models>`_.
+        **Related guide**: `How to upload datasets and models for development <https://docs.openlayer.com/documentation/how-to-guides/upload-datasets-and-models>`_.
 
         Let's say you have initially used the :obj:`add_model` method to add a model to the
         staging area.
@@ -649,7 +642,7 @@ class Project:
 
         Examples
         --------
-        **Related guide**: `How to set up monitoring <https://docs.openlayer.com/docs/set-up-monitoring>`_.
+        **Related guide**: `How to set up monitoring <https://docs.openlayer.com/documentation/how-to-guides/set-up-monitoring>`_.
 
         Instantiate the client and retrieve an existing project:
 
@@ -700,7 +693,7 @@ class Project:
 
         Examples
         --------
-        **Related guide**: `How to set up monitoring <https://docs.openlayer.com/docs/set-up-monitoring>`_.
+        **Related guide**: `How to set up monitoring <https://docs.openlayer.com/documentation/how-to-guides/set-up-monitoring>`_.
 
         Instantiate the client and load a project:
 
