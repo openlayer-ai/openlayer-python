@@ -1208,9 +1208,9 @@ class OpenlayerClient(object):
     def _validate_production_data_and_load_config(
         self,
         task_type: TaskType,
-        config: Dict[str, any],
-        config_file_path: str,
         df: pd.DataFrame,
+        config: Optional[Dict[str, any]] = None,
+        config_file_path: Optional[str] = None,
     ) -> Dict[str, any]:
         """Validates the production data and its config and returns a valid config
         populated with the default values."""
@@ -1218,12 +1218,13 @@ class OpenlayerClient(object):
             raise ValueError(
                 "Either the config or the config file path must be provided."
             )
-        if config_file_path is not None and not os.path.exists(config_file_path):
-            raise exceptions.OpenlayerValidationError(
-                f"The file specified by the config file path {config_file_path} does"
-                " not exist."
-            ) from None
-        elif config_file_path is not None:
+
+        if config_file_path is not None:
+            if not os.path.exists(config_file_path):
+                raise exceptions.OpenlayerValidationError(
+                    f"The file specified by the config file path {config_file_path} does"
+                    " not exist."
+                ) from None
             config = utils.read_yaml(config_file_path)
 
         # Force label to be production
@@ -1233,7 +1234,6 @@ class OpenlayerClient(object):
         validator = dataset_validators.get_validator(
             task_type=task_type,
             dataset_config=config,
-            dataset_config_file_path=config_file_path,
             dataset_df=df,
         )
         failed_validations = validator.validate()
