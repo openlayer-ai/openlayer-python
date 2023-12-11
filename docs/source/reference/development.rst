@@ -15,7 +15,7 @@ To use these methods, you must have:
 
 2. Created a project, using :obj:`openlayer.OpenlayerClient.create_project`
 
-**Related guide**: `How to upload datasets and models for development <https://docs.openlayer.com/documentation/how-to-guides/upload-datasets-and-models>`_.
+**Related guide**: `How to upload datasets and models for development <https://docs.openlayer.com/docs/how-to-guides/upload-datasets-and-models>`_.
 
 
 Staging area

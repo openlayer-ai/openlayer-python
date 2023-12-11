@@ -63,7 +63,7 @@ class InferencePipeline:
             .. admonition:: What's in the dataset config?
 
                 The dataset configuration depends on the :obj:`TaskType`.
-                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/documentation/how-to-guides/write-dataset-configs>`_
+                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/docs/how-to-guides/write-dataset-configs>`_
                 for details.
 
         dataset_config_file_path : str
@@ -73,7 +73,7 @@ class InferencePipeline:
             .. admonition:: What's in the dataset config file?
 
                 The dataset configuration YAML depends on the :obj:`TaskType`.
-                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/documentation/how-to-guides/write-dataset-configs>`_
+                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/docs/how-to-guides/write-dataset-configs>`_
                 for details.
 
         Notes
@@ -83,7 +83,7 @@ class InferencePipeline:
 
         Examples
         --------
-        **Related guide**: `How to set up monitoring <https://docs.openlayer.com/documentation/how-to-guides/set-up-monitoring>`_.
+        **Related guide**: `How to set up monitoring <https://docs.openlayer.com/docs/how-to-guides/set-up-monitoring>`_.
 
         First, instantiate the client and retrieve an existing inference pipeline:
 
@@ -163,7 +163,7 @@ class InferencePipeline:
             .. admonition:: What's in the dataset config?
 
                 The dataset configuration depends on the :obj:`TaskType`.
-                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/documentation/how-to-guides/write-dataset-configs>`_
+                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/docs/how-to-guides/write-dataset-configs>`_
                 for details.
 
         dataset_config_file_path : str
@@ -173,7 +173,7 @@ class InferencePipeline:
             .. admonition:: What's in the dataset config file?
 
                 The dataset configuration YAML depends on the :obj:`TaskType`.
-                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/documentation/how-to-guides/write-dataset-configs>`_
+                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/docs/how-to-guides/write-dataset-configs>`_
                 for details.
 
         Notes
@@ -183,7 +183,7 @@ class InferencePipeline:
 
         Examples
         --------
-        **Related guide**: `How to set up monitoring <https://docs.openlayer.com/documentation/how-to-guides/set-up-monitoring>`_.
+        **Related guide**: `How to set up monitoring <https://docs.openlayer.com/docs/how-to-guides/set-up-monitoring>`_.
 
         First, instantiate the client and retrieve an existing inference pipeline:
 
@@ -329,7 +329,7 @@ class InferencePipeline:
             .. admonition:: What's in the config?
 
                 The configuration for a batch of data depends on the :obj:`TaskType`.
-                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/documentation/how-to-guides/write-dataset-configs>`_
+                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/docs/how-to-guides/write-dataset-configs>`_
                 for details. These configurations are
                 the same for development and batches of production data.
 
@@ -340,7 +340,7 @@ class InferencePipeline:
             .. admonition:: What's in the config file?
 
                 The configuration for a batch of data depends on the :obj:`TaskType`.
-                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/documentation/how-to-guides/write-dataset-configs>`_
+                Refer to the `How to write dataset configs guides <https://docs.openlayer.com/docs/how-to-guides/write-dataset-configs>`_
                 for details. These configurations are
                 the same for development and batches of production data.
 
@@ -360,7 +360,7 @@ class InferencePipeline:
 
         Examples
         --------
-        **Related guide**: `How to set up monitoring <https://docs.openlayer.com/documentation/how-to-guides/set-up-monitoring>`_.
+        **Related guide**: `How to set up monitoring <https://docs.openlayer.com/docs/how-to-guides/set-up-monitoring>`_.
 
         First, instantiate the client and retrieve an existing inference pipeline:
 
@@ -415,7 +415,7 @@ class InferencePipeline:
 
         Examples
         --------
-        **Related guide**: `How to set up monitoring <https://docs.openlayer.com/documentation/how-to-guides/set-up-monitoring>`_.
+        **Related guide**: `How to set up monitoring <https://docs.openlayer.com/docs/how-to-guides/set-up-monitoring>`_.
 
         Let's say you have a batch of production data already published to the
         Openlayer platform (with the method :obj:`publish_batch_data`). Now, you want

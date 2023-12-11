@@ -59,7 +59,7 @@ class OpenlayerClient(object):
     ----------
     api_key : str
         Your API key. You can find your workspace API key in your
-        `account settings <https://docs.openlayer.com/documentation/how-to-guides/find-your-api-key>`_
+        `account settings <https://docs.openlayer.com/docs/how-to-guides/find-your-api-key>`_
         settings page.
     verbose : bool, default True
         Whether to print out success messages to the console. E.g., when data is
@@ -67,7 +67,7 @@ class OpenlayerClient(object):
 
     Examples
     --------
-    **Relevant guide**: `How to find your API keys <https://docs.openlayer.com/documentation/how-to-guides/find-your-api-key>`_.
+    **Relevant guide**: `How to find your API keys <https://docs.openlayer.com/docs/how-to-guides/find-your-api-key>`_.
 
     Instantiate a client with your api key:
 
@@ -112,7 +112,7 @@ class OpenlayerClient(object):
 
         Examples
         --------
-        **Related guide**: `How to create and load projects <https://docs.openlayer.com/documentation/how-to-guides/creating-and-loading-projects>`_.
+        **Related guide**: `How to create and load projects <https://docs.openlayer.com/docs/how-to-guides/creating-and-loading-projects>`_.
 
         Instantiate the client and create the project:
 
@@ -194,7 +194,7 @@ class OpenlayerClient(object):
 
         Examples
         --------
-        **Related guide**: `How to create and load projects <https://docs.openlayer.com/documentation/how-to-guides/creating-and-loading-projects>`_.
+        **Related guide**: `How to create and load projects <https://docs.openlayer.com/docs/how-to-guides/creating-and-loading-projects>`_.
 
         Instantiate the client and load the project:
 
@@ -255,7 +255,7 @@ class OpenlayerClient(object):
 
         Examples
         --------
-        **Related guide**: `How to create and load projects <https://docs.openlayer.com/documentation/how-to-guides/creating-and-loading-projects>`_.
+        **Related guide**: `How to create and load projects <https://docs.openlayer.com/docs/how-to-guides/creating-and-loading-projects>`_.
 
         Instantiate the client and create or load the project:
 
