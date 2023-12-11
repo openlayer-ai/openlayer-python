@@ -16,7 +16,7 @@ To use these methods, you must have:
 
 2. Created a project, using :obj:`openlayer.OpenlayerClient.create_project`
 
-**Related guide**: `How to set up monitoring <https://docs.openlayer.com/documentation/how-to-guides/set-up-monitoring>`_.
+**Related guide**: `How to set up monitoring <https://docs.openlayer.com/docs/how-to-guides/set-up-monitoring>`_.
 
 
 Creating and loading inference pipelines
