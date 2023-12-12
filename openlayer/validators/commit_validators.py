@@ -30,6 +30,8 @@ class BaseCommitBundleValidator(BaseValidator, ABC):
         Whether to skip dataset validation, by default False
     use_runner : bool
         Whether to use the runner to validate the model, by default False.
+    log_file_path : Optional[str], optional
+        The path to the log file, by default None
     """
 
     def __init__(

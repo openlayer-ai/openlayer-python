@@ -38,6 +38,8 @@ class BaseDatasetValidator(BaseValidator, ABC):
         The path to the dataset file.
     dataset_df : pd.DataFrame, optional
         The dataset to validate.
+    log_file_path : str, optional
+        The path to the log file.
     """
 
     def __init__(
@@ -47,8 +49,18 @@ class BaseDatasetValidator(BaseValidator, ABC):
         dataset_config: Optional[Dict] = None,
         dataset_file_path: Optional[str] = None,
         dataset_df: Optional[pd.DataFrame] = None,
+        log_file_path: Optional[str] = None,
     ):
         super().__init__(resource_display_name="dataset")
+
+        if log_file_path:
+            bundle_file_handler = logging.FileHandler(log_file_path)
+            bundle_formatter = logging.Formatter(
+                "[%(asctime)s] - %(levelname)s - %(message)s"
+            )
+            bundle_file_handler.setFormatter(bundle_formatter)
+            logger.addHandler(bundle_file_handler)
+
         if dataset_df is not None and dataset_file_path:
             raise ValueError(
                 "Both dataset_df and dataset_file_path are provided."
@@ -930,6 +942,7 @@ def get_validator(
     dataset_config: Optional[Dict] = None,
     dataset_file_path: Optional[str] = None,
     dataset_df: Optional[pd.DataFrame] = None,
+    log_file_path: Optional[str] = None,
 ) -> BaseDatasetValidator:
     """Factory function to get the correct dataset validator for the task type.
 
@@ -945,6 +958,8 @@ def get_validator(
         The path to the dataset file.
     dataset_df : pd.DataFrame, optional
         The dataset to validate.
+    log_file_path : str, optional
+        The path to the log file.
 
     Returns
     -------
@@ -985,6 +1000,7 @@ def get_validator(
             dataset_file_path=dataset_file_path,
             dataset_df=dataset_df,
             task_type=task_type,
+            log_file_path=log_file_path,
         )
     elif task_type == tasks.TaskType.TabularRegression:
         return TabularRegressionDatasetValidator(
@@ -993,6 +1009,7 @@ def get_validator(
             dataset_file_path=dataset_file_path,
             dataset_df=dataset_df,
             task_type=task_type,
+            log_file_path=log_file_path,
         )
     elif task_type == tasks.TaskType.TextClassification:
         return TextClassificationDatasetValidator(
@@ -1001,6 +1018,7 @@ def get_validator(
             dataset_file_path=dataset_file_path,
             dataset_df=dataset_df,
             task_type=task_type,
+            log_file_path=log_file_path,
         )
     elif task_type in [
         tasks.TaskType.LLM,
@@ -1015,6 +1033,7 @@ def get_validator(
             dataset_file_path=dataset_file_path,
             dataset_df=dataset_df,
             task_type=task_type,
+            log_file_path=log_file_path,
         )
     else:
         raise ValueError(f"Task type `{task_type}` is not supported.")

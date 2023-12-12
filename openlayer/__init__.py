@@ -1037,6 +1037,7 @@ class OpenlayerClient(object):
         dataset_data = DatasetSchema().load(
             {"task_type": task_type.value, **dataset_config}
         )
+
         # Add default columns if not present
         if dataset_data.get("columnNames") is None:
             dataset_data["columnNames"] = utils.get_column_names(file_path)
