@@ -1,3 +1,7 @@
+# pylint: disable=invalid-name, unused-argument
+"""Schemas for the project object that shall be created on the Openlayer
+platform.
+"""
 import marshmallow as ma
 
 from ..tasks import TaskType
