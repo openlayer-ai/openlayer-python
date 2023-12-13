@@ -4,7 +4,7 @@ from typing import Dict
 
 import marshmallow as ma
 
-from .. import schemas
+from ..schemas import inference_pipeline_schemas
 from .base_validator import BaseValidator
 
 
@@ -30,7 +30,7 @@ class InferencePipelineValidator(BaseValidator):
 
     def _validate_inference_pipeline_config(self):
         """Checks if the inference pipeline configuration is valid."""
-        inference_pipeline_schema = schemas.InferencePipelineSchema()
+        inference_pipeline_schema = inference_pipeline_schemas.InferencePipelineSchema()
         try:
             inference_pipeline_schema.load(
                 {

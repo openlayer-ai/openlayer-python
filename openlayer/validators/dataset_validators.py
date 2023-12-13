@@ -11,7 +11,9 @@ import marshmallow as ma
 import pandas as pd
 import yaml
 
-from .. import constants, schemas, tasks
+from .. import constants, tasks
+from ..datasets import DatasetType
+from ..schemas import dataset_schemas
 from .base_validator import BaseValidator
 
 logger = logging.getLogger("validators")
@@ -117,7 +119,6 @@ class BaseDatasetValidator(BaseValidator, ABC):
         """
         self._validate_file_existence()
         self._load_dataset_config()
-        self._validate_dataset_label()
         self._validate_dataset_schema()
 
     def _validate_file_existence(self):
@@ -144,38 +145,36 @@ class BaseDatasetValidator(BaseValidator, ABC):
                     f"File `{self.dataset_config_file_path}` is not a valid .yaml file."
                 )
 
-    def _validate_dataset_label(self):
-        """Checks whether the dataset label is valid."""
-        if self.dataset_config:
-            if self.dataset_config.get("label") is None:
-                self.failed_validations.append(
-                    "Missing value for required property `label` in the dataset config."
-                )
-            else:
-                label = self.dataset_config["label"]
-                if not isinstance(label, str):
-                    self.failed_validations.append(
-                        "The value of `label` in the dataset config must be a string."
-                    )
-
     def _validate_dataset_schema(self):
         """Checks whether the dataset schema is valid."""
         if self.dataset_config:
             label = self.dataset_config.get("label")
-            if label:
-                dataset_schema = (
-                    schemas.ReferenceDatasetSchema()
-                    if label == "reference"
-                    else schemas.DatasetSchema()
+            if label in [
+                DatasetType.Training.value,
+                DatasetType.Validation.value,
+                DatasetType.FineTuning.value,
+            ]:
+                dataset_schema = dataset_schemas.DatasetSchema()
+            elif label == DatasetType.Reference.value:
+                dataset_schema = dataset_schemas.ReferenceDatasetSchema()
+            elif label == DatasetType.Production.value:
+                dataset_schema = dataset_schemas.ProductionDataSchema()
+            else:
+                self.failed_validations.append(
+                    f"The dataset label `{label}` is not supported. "
+                    "The supported dataset labels are 'training', 'validation', "
+                    "'fine-tuning', 'reference', and 'production'."
                 )
-                try:
-                    dataset_schema.load(
-                        {"task_type": self.task_type.value, **self.dataset_config}
-                    )
-                except ma.ValidationError as err:
-                    self.failed_validations.extend(
-                        self._format_marshmallow_error_message(err)
-                    )
+                return
+
+            try:
+                dataset_schema.load(
+                    {"task_type": self.task_type.value, **self.dataset_config}
+                )
+            except ma.ValidationError as err:
+                self.failed_validations.extend(
+                    self._format_marshmallow_error_message(err)
+                )
 
     def _validate_dataset_file(self):
         """Checks whether the dataset file exists and is valid.

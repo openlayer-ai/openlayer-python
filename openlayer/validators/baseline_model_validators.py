@@ -7,7 +7,8 @@ from typing import Dict, List, Optional
 import marshmallow as ma
 import yaml
 
-from .. import schemas, tasks
+from .. import tasks
+from ..schemas import model_schemas
 from .base_validator import BaseValidator
 
 logger = logging.getLogger("validators")
@@ -60,7 +61,7 @@ class BaseBaselineModelValidator(BaseValidator):
                     self.model_config = yaml.safe_load(stream)
 
         if self.model_config:
-            baseline_model_schema = schemas.BaselineModelSchema()
+            baseline_model_schema = model_schemas.BaselineModelSchema()
             try:
                 baseline_model_schema.load(
                     {"task_type": self.task_type.value, **self.model_config}

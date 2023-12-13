@@ -8,7 +8,8 @@ import marshmallow as ma
 import pandas as pd
 import yaml
 
-from .. import schemas, tasks, utils
+from .. import tasks, utils
+from ..schemas import project_schemas as schemas
 from . import baseline_model_validators, dataset_validators, model_validators
 from .base_validator import BaseValidator
 

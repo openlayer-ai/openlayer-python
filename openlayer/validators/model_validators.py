@@ -17,7 +17,8 @@ import pandas as pd
 import pkg_resources
 import yaml
 
-from .. import constants, models, schemas, tasks, utils
+from .. import constants, models, tasks, utils
+from ..schemas import model_schemas
 from .base_validator import BaseValidator
 
 logger = logging.getLogger("validators")
@@ -213,7 +214,7 @@ class BaseModelValidator(BaseValidator, ABC):
                     self.model_config = yaml.safe_load(stream)
 
         if self.model_config:
-            model_schema = schemas.ModelSchema()
+            model_schema = model_schemas.ModelSchema()
             try:
                 model_schema.load(
                     {"task_type": self.task_type.value, **self.model_config}
