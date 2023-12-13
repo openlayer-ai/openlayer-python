@@ -15,6 +15,7 @@ import openai
 import pandas as pd
 import pybars
 import requests
+from google import generativeai
 from tqdm import tqdm
 
 from .. import constants
@@ -500,6 +501,84 @@ class OpenAIChatCompletionRunner(LLModelRunner):
                 num_input_tokens * self.COST_PER_TOKEN[model]["input"]
                 + num_output_tokens * self.COST_PER_TOKEN[model]["output"]
             )
+
+
+class GoogleGenAIModelRunner(LLModelRunner):
+    """Wraps Google's Gen AI models."""
+
+    def __init__(
+        self,
+        logger: Optional[logging.Logger] = None,
+        **kwargs,
+    ):
+        super().__init__(logger, **kwargs)
+        if kwargs.get("google_api_key") is None:
+            raise openlayer_exceptions.OpenlayerMissingLlmApiKey(
+                "Please pass your Google API key generated with "
+                "https://makersuite.google.com/  as the keyword argument"
+                " 'google_api_key'"
+            )
+        self.google_api_key = kwargs["google_api_key"]
+
+        self._initialize_llm()
+
+        self.cost: List[float] = []
+
+    def _initialize_llm(self):
+        """Initializes the OpenAI chat completion model."""
+        if self.model_config.get("model") is None:
+            warnings.warn("No model specified. Defaulting to model 'gemini-pro'.")
+        if self.model_config.get("model_parameters") is None:
+            warnings.warn("No model parameters specified. Using default parameters.")
+        # Check if API key is valid
+        try:
+            generativeai.configure(api_key=self.google_api_key)
+            self.model = generativeai.GenerativeModel(
+                self.model_config.get("model", "gemini-pro")
+            )
+        except Exception as e:
+            raise openlayer_exceptions.OpenlayerInvalidLlmApiKey(
+                "Please pass your Google API key generated with "
+                "https://makersuite.google.com/  as the keyword argument"
+                f" 'google_api_key' \n Error message: {e}"
+            ) from e
+
+    def _get_llm_input(
+        self, injected_prompt: List[Dict[str, str]]
+    ) -> List[Dict[str, str]]:
+        """Prepares the input for Google's model."""
+        llm_input = ""
+        for message in injected_prompt:
+            if message["role"] == "system":
+                llm_input += f"S: {message['content']} \n"
+            elif message["role"] == "assistant":
+                llm_input += f"A: {message['content']} \n"
+            elif message["role"] == "user":
+                llm_input += f"U: {message['content']} \n"
+            else:
+                raise ValueError(
+                    "Message role must be either 'system', 'assistant' or 'user'. "
+                    f"Got: {message['role']}"
+                )
+        llm_input += "A:"
+        return llm_input
+
+    def _make_request(self, llm_input: List[Dict[str, str]]) -> Dict[str, Any]:
+        """Make the request to Google's model
+        for a given input."""
+        response = self.model.generate_content(
+            contents=llm_input,
+            **self.model_config.get("model_parameters", {}),
+        )
+        return response
+
+    def _get_output(self, response: Dict[str, Any]) -> str:
+        """Gets the output from the response."""
+        return response.text
+
+    def _get_cost_estimate(self, response: Dict[str, Any]) -> None:
+        """Estimates the cost from the response."""
+        return 0
 
 
 class SelfHostedLLModelRunner(LLModelRunner):
