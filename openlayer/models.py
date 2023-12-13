@@ -111,6 +111,7 @@ class ModelRunnerFactory:
         "OpenAI": ll_model_runners.OpenAIChatCompletionRunner,
         "SelfHosted": ll_model_runners.SelfHostedLLModelRunner,
         "HuggingFace": ll_model_runners.HuggingFaceModelRunner,
+        "Google": ll_model_runners.GoogleGenAIModelRunner,
     }
     _MODEL_RUNNERS = {
         tasks.TaskType.TabularClassification.value: traditional_ml_model_runners.ClassificationModelRunner,
@@ -176,8 +177,8 @@ class ModelRunnerFactory:
             raise exceptions.OpenlayerUnsupportedLlmProvider(
                 provider=model_provider,
                 message="\nCurrently, the supported providers are: 'OpenAI', 'Cohere',"
-                " 'Anthropic', 'SelfHosted', 'HuggingFace'. Reach out if you'd like us"
-                " to support your use case.",
+                " 'Anthropic', 'SelfHosted', 'HuggingFace', and 'Google'."
+                " Reach out if you'd like us to support your use case.",
             )
 
         model_runner_class = ModelRunnerFactory._LL_MODEL_RUNNERS[task_type.value][
