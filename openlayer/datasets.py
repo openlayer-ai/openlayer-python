@@ -22,14 +22,16 @@ class DatasetType(Enum):
     Used by the ``dataset_type`` argument of the :meth:`openlayer.OpenlayerClient.add_dataset` and
     :meth:`openlayer.OpenlayerClient.add_dataframe` methods."""
 
-    #: For validation sets.
-    Validation = "validation"
-    #: For training sets.
-    Training = "training"
+    #: For fine-tuning data.
+    FineTuning = "fine-tuning"
     #: For production data.
     Production = "production"
     #: For reference datasets.
     Reference = "reference"
+    #: For training sets.
+    Training = "training"
+    #: For validation sets.
+    Validation = "validation"
 
 
 class Dataset:

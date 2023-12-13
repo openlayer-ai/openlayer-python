@@ -4,7 +4,7 @@ from typing import Dict
 
 import marshmallow as ma
 
-from .. import schemas
+from ..schemas import project_schemas
 from .base_validator import BaseValidator
 
 
@@ -30,7 +30,7 @@ class ProjectValidator(BaseValidator):
 
     def _validate_project_config(self):
         """Checks if the project configuration is valid."""
-        project_schema = schemas.ProjectSchema()
+        project_schema = project_schemas.ProjectSchema()
         try:
             project_schema.load(
                 {

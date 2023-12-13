@@ -39,7 +39,7 @@ from . import api, constants, exceptions, utils
 from .inference_pipelines import InferencePipeline
 from .project_versions import ProjectVersion
 from .projects import Project
-from .schemas import BaselineModelSchema, DatasetSchema, ModelSchema
+from .schemas import dataset_schemas, model_schemas
 from .tasks import TaskType
 from .validators import (
     baseline_model_validators,
@@ -334,7 +334,9 @@ class OpenlayerClient(object):
         # Load model config and augment with defaults
         if model_config_file_path is not None:
             model_config = utils.read_yaml(model_config_file_path)
-        model_data = ModelSchema().load({"task_type": task_type.value, **model_config})
+        model_data = model_schemas.ModelSchema().load(
+            {"task_type": task_type.value, **model_config}
+        )
 
         # Copy relevant resources to temp directory
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -432,7 +434,7 @@ class OpenlayerClient(object):
         if model_config_file_path is not None:
             model_config = utils.read_yaml(model_config_file_path)
         model_config["modelType"] = "baseline"
-        model_data = BaselineModelSchema().load(
+        model_data = model_schemas.BaselineModelSchema().load(
             {"task_type": task_type.value, **model_config}
         )
 
@@ -481,7 +483,7 @@ class OpenlayerClient(object):
         # Load dataset config and augment with defaults
         if dataset_config_file_path is not None:
             dataset_config = utils.read_yaml(dataset_config_file_path)
-        dataset_data = DatasetSchema().load(
+        dataset_data = dataset_schemas.DatasetSchema().load(
             {"task_type": task_type.value, **dataset_config}
         )
         if dataset_data.get("columnNames") is None:
@@ -930,7 +932,7 @@ class OpenlayerClient(object):
                         " upload.",
                     ) from None
 
-                reference_dataset_data = DatasetSchema().load(
+                reference_dataset_data = dataset_schemas.ReferenceDatasetSchema().load(
                     {"task_type": task_type.value, **reference_dataset_config}
                 )
 
@@ -1034,7 +1036,7 @@ class OpenlayerClient(object):
             ) from None
 
         # Load dataset config and augment with defaults
-        dataset_data = DatasetSchema().load(
+        dataset_data = dataset_schemas.ReferenceDatasetSchema().load(
             {"task_type": task_type.value, **dataset_config}
         )
         # Add default columns if not present
@@ -1115,7 +1117,10 @@ class OpenlayerClient(object):
         stream_config, stream_df = self._add_default_columns(
             config=stream_config, df=stream_df
         )
-        stream_config = self._strip_read_only_fields(stream_config)
+
+        # Remove the `label` for the upload
+        stream_config.pop("label", None)
+
         body = {
             "config": stream_config,
             "rows": stream_df.to_dict(orient="records"),
@@ -1127,13 +1132,6 @@ class OpenlayerClient(object):
         )
         if self.verbose:
             print("Stream published!")
-
-    def _strip_read_only_fields(self, config: Dict[str, any]) -> Dict[str, any]:
-        """Strips read-only fields from the config."""
-        stripped_config = copy.deepcopy(config)
-        for field in ["columnNames", "label"]:
-            stripped_config.pop(field, None)
-        return stripped_config
 
     def publish_batch_data(
         self,
@@ -1244,7 +1242,9 @@ class OpenlayerClient(object):
                 "Make sure to fix all of the issues listed above before the upload.",
             ) from None
 
-        config = DatasetSchema().load({"task_type": task_type.value, **config})
+        config = dataset_schemas.ProductionDataSchema().load(
+            {"task_type": task_type.value, **config}
+        )
 
         return config
 
