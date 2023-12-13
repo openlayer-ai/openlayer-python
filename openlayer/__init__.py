@@ -21,7 +21,6 @@ Typical usage example:
     project.status()
     project.push()
 """
-import copy
 import os
 import shutil
 import tarfile
