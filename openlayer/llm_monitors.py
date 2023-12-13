@@ -2,7 +2,7 @@
 
 import logging
 import time
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import openai
 import pandas as pd
@@ -204,9 +204,12 @@ class OpenAIMonitor:
             latency = (time.time() - start_time) * 1000
 
             try:
-                input_data = self._format_user_messages(kwargs["messages"])
+                prompt, input_data = self.format_input(kwargs["messages"])
                 output_data = response.choices[0].message.content.strip()
                 num_of_tokens = response.usage.total_tokens
+                config = self.data_config.copy()
+                config["prompt"] = prompt
+                config.update({"inputVariableNames": list(input_data.keys())})
 
                 self._append_row_to_df(
                     input_data=input_data,
@@ -215,10 +218,10 @@ class OpenAIMonitor:
                     latency=latency,
                 )
 
-                self._handle_data_publishing()
+                self._handle_data_publishing(config=config)
             # pylint: disable=broad-except
             except Exception as e:
-                logger.error("Failed to track chat request. %s", e)
+                logger.error("Failed to monitor chat request. %s", e)
 
             return response
 
@@ -242,7 +245,7 @@ class OpenAIMonitor:
                     num_of_tokens = int(response.usage.total_tokens / len(prompts))
 
                     self._append_row_to_df(
-                        input_data=input_data,
+                        input_data={"message": input_data},
                         output_data=output_data,
                         num_of_tokens=num_of_tokens,
                         latency=latency,
@@ -251,19 +254,52 @@ class OpenAIMonitor:
                     self._handle_data_publishing()
             # pylint: disable=broad-except
             except Exception as e:
-                logger.error("Failed to track completion request. %s", e)
+                logger.error("Failed to monitor completion request. %s", e)
 
             return response
 
         return modified_create_completion
 
     @staticmethod
-    def _format_user_messages(conversation_list: List[Dict[str, str]]) -> str:
-        """Extracts the 'user' messages from the conversation list and returns them
-        as a single string."""
-        return "\n".join(
-            item["content"] for item in conversation_list if item["role"] == "user"
-        ).strip()
+    def format_input(
+        messages: List[Dict[str, str]]
+    ) -> Tuple[List[Dict[str, str]], Dict[str, str]]:
+        """Formats the input messages.
+
+        Returns messages (prompt) replacing the user messages with input variables
+        in brackets (e.g., ``{{ message_0 }}``) and a dictionary mapping the input variable
+        names to the original user messages.
+
+        Parameters
+        ----------
+        messages : List[Dict[str, str]]
+            List of messages that were sent to the chat completion model. Each message
+            is a dictionary with the following keys:
+
+            - ``role``: The role of the message. Can be either ``"user"`` or ``"system"``.
+            - ``content``: The content of the message.
+
+        Returns
+        -------
+        Tuple(List[Dict[str, str]], Dict[str, str])
+            The formatted messages and the mapping from input variable names to the
+            original user messages.
+        """
+        input_messages = []
+        input_variables = {}
+        for i, message in enumerate(messages):
+            if message["role"] == "user":
+                input_variable_name = f"message_{i}"
+                input_messages.append(
+                    {
+                        "role": message["role"],
+                        "content": f"{{{{ {input_variable_name} }}}}",
+                    }
+                )
+                input_variables[input_variable_name] = message["content"]
+            else:
+                input_messages.append(message)
+        return input_messages, input_variables
 
     @staticmethod
     def _split_list(lst: List, n_parts: int) -> List[List]:
@@ -288,17 +324,23 @@ class OpenAIMonitor:
         return result
 
     def _append_row_to_df(
-        self, input_data: str, output_data: str, num_of_tokens: int, latency: float
+        self,
+        input_data: Dict[str, str],
+        output_data: str,
+        num_of_tokens: int,
+        latency: float,
     ) -> None:
         """Appends a row with input/output, number of tokens, and latency to the
         df."""
         row = pd.DataFrame(
             [
                 {
-                    "input": input_data,
-                    "output": output_data,
-                    "tokens": num_of_tokens,
-                    "latency": latency,
+                    **input_data,
+                    **{
+                        "output": output_data,
+                        "tokens": num_of_tokens,
+                        "latency": latency,
+                    },
                 }
             ]
         )
@@ -306,11 +348,14 @@ class OpenAIMonitor:
             self.df = pd.concat([self.df, row], ignore_index=True)
         else:
             self.df = row
-        self.df = self.df.astype(
-            {"input": object, "output": object, "tokens": int, "latency": float}
-        )
 
-    def _handle_data_publishing(self) -> None:
+        # Perform casting
+        input_columns = [col for col in self.df.columns if col.startswith("message")]
+        casting_dict = {col: object for col in input_columns}
+        casting_dict.update({"output": object, "tokens": int, "latency": float})
+        self.df = self.df.astype(casting_dict)
+
+    def _handle_data_publishing(self, config: Optional[Dict[str, any]] = None) -> None:
         """Handle data publishing.
 
         If `publish` is set to True, publish the latest row to Openlayer.
@@ -318,7 +363,7 @@ class OpenAIMonitor:
         if self.publish:
             self.inference_pipeline.stream_data(
                 stream_data=self.df.tail(1).to_dict(orient="records"),
-                stream_config=self.data_config,
+                stream_config=config or self.data_config,
             )
 
     def start_monitoring(self) -> None:
@@ -411,7 +456,7 @@ class OpenAIMonitor:
     def data_config(self) -> Dict[str, any]:
         """Data config for the df. Used for publishing data to Openlayer."""
         return {
-            "inputVariableNames": ["input"],
+            "inputVariableNames": ["message"],
             "label": "production",
             "outputColumnName": "output",
             "numOfTokenColumnName": "tokens",
