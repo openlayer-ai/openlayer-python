@@ -290,15 +290,15 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
 class AnthropicModelRunner(LLModelRunner):
     """Wraps Anthropic's models."""
 
-    # Last update: 2023-08-15
+    # Last update: 2023-12-19
     COST_PER_TOKEN = {
         "claude-2": {
-            "input": 11.02e-6,
-            "output": 32.68e-6,
+            "input": 8e-6,
+            "output": 24e-6,
         },
         "claude-instant": {
-            "input": 1.63e-6,
-            "output": 5.51e-6,
+            "input": 0.8e-6,
+            "output": 2.4e-6,
         },
     }
 
@@ -369,9 +369,6 @@ class AnthropicModelRunner(LLModelRunner):
 
 class CohereGenerateModelRunner(LLModelRunner):
     """Wraps Cohere's Generate model."""
-
-    # Last update: 2023-08-15
-    COST_PER_TOKEN = 0.000015
 
     def __init__(
         self,
@@ -444,15 +441,23 @@ class CohereGenerateModelRunner(LLModelRunner):
 class OpenAIChatCompletionRunner(LLModelRunner):
     """Wraps OpenAI's chat completion model."""
 
-    # Last update: 2023-08-15
+    # Last update: 2023-12-19
     COST_PER_TOKEN = {
-        "gpt-3.5-turbo": {
+        "gpt-3.5-turbo-1106": {
+            "input": 0.001e-3,
+            "output": 0.002e-3,
+        },
+        "gpt-3.5-turbo-instruct": {
             "input": 0.0015e-3,
             "output": 0.002e-3,
         },
         "gpt-4": {
             "input": 0.03e-3,
             "output": 0.06e-3,
+        },
+        "gpt-4-32k": {
+            "input": 0.06e-3,
+            "output": 0.12e-3,
         },
     }
 
