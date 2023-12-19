@@ -96,7 +96,7 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
 
         model_outputs = []
         timestamps = []
-        run_exceptions = set()
+        run_exceptions = []
         run_cost = 0
         total_rows = len(input_data)
         current_row = 0
@@ -121,24 +121,43 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
 
             model_outputs.append(output)
             run_cost += cost
-            run_exceptions.update(exceptions)
+            run_exceptions.append(exceptions)
             timestamps.append(datetime.datetime.utcnow().isoformat())
             current_row += 1
 
             yield pd.DataFrame(
-                {"output": model_outputs, "output_time_utc": timestamps}
+                {
+                    "output": model_outputs,
+                    "output_time_utc": timestamps,
+                    "exceptions": run_exceptions,
+                }
             ), current_row / total_rows
+
+        if (
+            len(run_exceptions) > 0
+            and None not in run_exceptions
+            and len(set(run_exceptions)) == 1
+        ):
+            raise openlayer_exceptions.OpenlayerLlmException(
+                f"Calculating all outputs failed with: {run_exceptions[0]}"
+            )
 
         self.logger.info("Successfully ran data through the model!")
 
-        self._report_exceptions(run_exceptions)
+        self._report_exceptions(set(run_exceptions))
         self.cost_estimates.append(run_cost)
 
         yield pd.DataFrame(
-            {"output": model_outputs, "output_time_utc": timestamps}
+            {
+                "output": model_outputs,
+                "output_time_utc": timestamps,
+                "exceptions": run_exceptions,
+            }
         ), 1.0
 
-    def _run_single_input(self, input_data_row: pd.Series) -> Tuple[str, float, set]:
+    def _run_single_input(
+        self, input_data_row: pd.Series
+    ) -> Tuple[str, float, Optional[Exception]]:
         """Runs the LLM on a single row of input data.
 
         Returns a tuple of the output, cost, and exceptions encountered.
@@ -151,10 +170,10 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
 
         try:
             outputs = self._get_llm_output(llm_input)
-            return outputs["output"], outputs["cost"], set()
+            return outputs["output"], outputs["cost"], None
         # pylint: disable=broad-except
         except Exception as exc:
-            return None, 0, {exc}
+            return None, 0, exc
 
     def _inject_prompt(self, input_variables_dict: dict) -> List[Dict[str, str]]:
         """Injects the input variables into the prompt template.
