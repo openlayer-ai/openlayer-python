@@ -441,11 +441,35 @@ class CohereGenerateModelRunner(LLModelRunner):
 class OpenAIChatCompletionRunner(LLModelRunner):
     """Wraps OpenAI's chat completion model."""
 
-    # Last update: 2023-12-19
+    # Last update: 2024-01-05
     COST_PER_TOKEN = {
+        "babbage-002": {
+            "input": 0.0004e-3,
+            "output": 0.0004e-3,
+        },
+        "davinci-002": {
+            "input": 0.002e-3,
+            "output": 0.002e-3,
+        },
+        "gpt-3.5-turbo": {
+            "input": 0.003e-3,
+            "output": 0.006e-3,
+        },
+        "gpt-3.5-turbo-0301": {
+            "input": 0.0015e-3,
+            "output": 0.002e-3,
+        },
+        "gpt-3.5-turbo-0613": {
+            "input": 0.0015e-3,
+            "output": 0.002e-3,
+        },
         "gpt-3.5-turbo-1106": {
             "input": 0.001e-3,
             "output": 0.002e-3,
+        },
+        "gpt-3.5-turbo-16k-0613": {
+            "input": 0.003e-3,
+            "output": 0.004e-3,
         },
         "gpt-3.5-turbo-instruct": {
             "input": 0.0015e-3,
@@ -455,7 +479,23 @@ class OpenAIChatCompletionRunner(LLModelRunner):
             "input": 0.03e-3,
             "output": 0.06e-3,
         },
+        "gpt-4-0314": {
+            "input": 0.03e-3,
+            "output": 0.06e-3,
+        },
+        "gpt-4-1106-preview": {
+            "input": 0.01e-3,
+            "output": 0.03e-3,
+        },
+        "gpt-4-1106-vision-preview": {
+            "input": 0.01e-3,
+            "output": 0.03e-3,
+        },
         "gpt-4-32k": {
+            "input": 0.06e-3,
+            "output": 0.12e-3,
+        },
+        "gpt-4-32k-0314": {
             "input": 0.06e-3,
             "output": 0.12e-3,
         },
