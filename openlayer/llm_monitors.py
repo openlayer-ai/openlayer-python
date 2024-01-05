@@ -86,6 +86,66 @@ class OpenAIMonitor:
 
     """
 
+    # Last update: 2024-01-05
+    COST_PER_TOKEN = {
+        "babbage-002": {
+            "input": 0.0004e-3,
+            "output": 0.0004e-3,
+        },
+        "davinci-002": {
+            "input": 0.002e-3,
+            "output": 0.002e-3,
+        },
+        "gpt-3.5-turbo": {
+            "input": 0.003e-3,
+            "output": 0.006e-3,
+        },
+        "gpt-3.5-turbo-0301": {
+            "input": 0.0015e-3,
+            "output": 0.002e-3,
+        },
+        "gpt-3.5-turbo-0613": {
+            "input": 0.0015e-3,
+            "output": 0.002e-3,
+        },
+        "gpt-3.5-turbo-1106": {
+            "input": 0.001e-3,
+            "output": 0.002e-3,
+        },
+        "gpt-3.5-turbo-16k-0613": {
+            "input": 0.003e-3,
+            "output": 0.004e-3,
+        },
+        "gpt-3.5-turbo-instruct": {
+            "input": 0.0015e-3,
+            "output": 0.002e-3,
+        },
+        "gpt-4": {
+            "input": 0.03e-3,
+            "output": 0.06e-3,
+        },
+        "gpt-4-0314": {
+            "input": 0.03e-3,
+            "output": 0.06e-3,
+        },
+        "gpt-4-1106-preview": {
+            "input": 0.01e-3,
+            "output": 0.03e-3,
+        },
+        "gpt-4-1106-vision-preview": {
+            "input": 0.01e-3,
+            "output": 0.03e-3,
+        },
+        "gpt-4-32k": {
+            "input": 0.06e-3,
+            "output": 0.12e-3,
+        },
+        "gpt-4-32k-0314": {
+            "input": 0.06e-3,
+            "output": 0.12e-3,
+        },
+    }
+
     def __init__(
         self,
         publish: bool = False,
@@ -207,15 +267,23 @@ class OpenAIMonitor:
                 prompt, input_data = self.format_input(kwargs["messages"])
                 output_data = response.choices[0].message.content.strip()
                 num_of_tokens = response.usage.total_tokens
+                cost = self.get_cost_estimate(
+                    model=kwargs.get("model"),
+                    num_input_tokens=response.usage.prompt_tokens,
+                    num_output_tokens=response.usage.completion_tokens,
+                )
+
                 config = self.data_config.copy()
                 config["prompt"] = prompt
                 config.update({"inputVariableNames": list(input_data.keys())})
+                config["costColumnName"] = "cost"
 
                 self._append_row_to_df(
                     input_data=input_data,
                     output_data=output_data,
                     num_of_tokens=num_of_tokens,
                     latency=latency,
+                    cost=cost,
                 )
 
                 self._handle_data_publishing(config=config)
@@ -243,15 +311,24 @@ class OpenAIMonitor:
                 for input_data, choices in zip(prompts, choices_splits):
                     output_data = choices[0].text.strip()
                     num_of_tokens = int(response.usage.total_tokens / len(prompts))
+                    cost = self.get_cost_estimate(
+                        model=kwargs.get("model"),
+                        num_input_tokens=response.usage.prompt_tokens,
+                        num_output_tokens=response.usage.completion_tokens,
+                    )
 
                     self._append_row_to_df(
                         input_data={"message": input_data},
                         output_data=output_data,
                         num_of_tokens=num_of_tokens,
                         latency=latency,
+                        cost=cost,
                     )
 
-                    self._handle_data_publishing()
+                    config = self.data_config.copy()
+                    config["costColumnName"] = "cost"
+
+                    self._handle_data_publishing(config=config)
             # pylint: disable=broad-except
             except Exception as e:
                 logger.error("Failed to monitor completion request. %s", e)
@@ -323,12 +400,25 @@ class OpenAIMonitor:
             start = end
         return result
 
+    def get_cost_estimate(
+        self, num_input_tokens: int, num_output_tokens: int, model: str
+    ) -> float:
+        """Returns the cost estimate for a given model and number of tokens."""
+        if model not in self.COST_PER_TOKEN:
+            return None
+        cost_per_token = self.COST_PER_TOKEN[model]
+        return (
+            cost_per_token["input"] * num_input_tokens
+            + cost_per_token["output"] * num_output_tokens
+        )
+
     def _append_row_to_df(
         self,
         input_data: Dict[str, str],
         output_data: str,
         num_of_tokens: int,
         latency: float,
+        cost: float,
     ) -> None:
         """Appends a row with input/output, number of tokens, and latency to the
         df."""
@@ -340,6 +430,7 @@ class OpenAIMonitor:
                         "output": output_data,
                         "tokens": num_of_tokens,
                         "latency": latency,
+                        "cost": cost,
                     },
                 }
             ]
@@ -352,7 +443,9 @@ class OpenAIMonitor:
         # Perform casting
         input_columns = [col for col in self.df.columns if col.startswith("message")]
         casting_dict = {col: object for col in input_columns}
-        casting_dict.update({"output": object, "tokens": int, "latency": float})
+        casting_dict.update(
+            {"output": object, "tokens": int, "latency": float, "cost": float}
+        )
         self.df = self.df.astype(casting_dict)
 
     def _handle_data_publishing(self, config: Optional[Dict[str, any]] = None) -> None:

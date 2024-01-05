@@ -104,6 +104,11 @@ class LLMOutputSchema(ma.Schema):
         allow_none=True,
         load_default=None,
     )
+    costColumnName = ma.fields.Str(
+        validate=constants.COLUMN_NAME_VALIDATION_LIST,
+        allow_none=True,
+        load_default=None,
+    )
     numOfTokenColumnName = ma.fields.Str(
         validate=constants.COLUMN_NAME_VALIDATION_LIST,
         allow_none=True,
