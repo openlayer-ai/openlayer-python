@@ -75,10 +75,13 @@ class BaseValidator(ABC):
     def _display_failure_message(self) -> None:
         """Displays the failed validations in a list format, with one failed
         validation per line."""
-        logger.error("The following %s validations failed:", self.resource_display_name)
+        error_message = (
+            f"The following {self.resource_display_name} validations failed:"
+        )
         for message in self.failed_validations:
-            logger.error("* %s", message)
-        logger.error("Please fix the issues and try again.\n")
+            error_message += f"\n* {message}"
+        error_message += "\nPlease fix the issues and try again.\n"
+        logger.error(error_message)
 
     def _format_marshmallow_error_message(self, err: ma.ValidationError) -> str:
         """Formats the error messages from Marshmallow to conform to the expected
