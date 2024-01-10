@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 * `llm_monitor` for OpenAI models now records the `cost` estimate and uploads it.
 
+### Removed
+* Deprecated and removed `publish_ground_truths` method. Use `update_data` instead.
+
 ## [0.1.0a20]
 
 ### Added

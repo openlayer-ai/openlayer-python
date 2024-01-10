@@ -391,10 +391,24 @@ class InferencePipeline:
         )
 
     def publish_ground_truths(self, *args, **kwargs):
-        """Publishes ground truths for data already on the Openlayer platform.
+        """
+        (Deprecated since version 0.1.0a21.)
 
-        This method is used to upload the ground truths of production data that was
-        already published without them. This is useful when the ground truths are not
+        .. deprecated:: 0.1.0a21
+
+            Use :obj:`update_data` instead.
+        """
+        return self.client.publish_ground_truths(
+            *args,
+            inference_pipeline_id=self.id,
+            **kwargs,
+        )
+
+    def update_data(self, *args, **kwargs):
+        """Updates values for data already on the Openlayer platform.
+
+        This method is frequently used to upload the ground truths of production data
+        that was already published without them. This is useful when the ground truths are not
         available during inference time, but they shall be update later to enable
         performance metrics.
 
@@ -406,8 +420,9 @@ class InferencePipeline:
             The df must contain a column with the inference IDs, and another column
             with the ground truths.
 
-        ground_truth_column_name : str
-            Name of the column containing the ground truths.
+        ground_truth_column_name : Optional[str]
+            Name of the column containing the ground truths. Optional, defaults to
+            ``None``.
 
         inference_id_column_name : str
             Name of the column containing the inference IDs. The inference IDs are
@@ -443,13 +458,13 @@ class InferencePipeline:
 
         You can publish the ground truths with:
 
-        >>> inference_pipeline.publish_ground_truths(
+        >>> inference_pipeline.update_data(
         ...     df=df,
         ...     inference_id_column_name='inference_id',
         ...     ground_truth_column_name='label',
         ... )
         """
-        return self.client.publish_ground_truths(
+        return self.client.update_data(
             *args,
             inference_pipeline_id=self.id,
             **kwargs,
