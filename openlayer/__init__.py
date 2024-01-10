@@ -1283,20 +1283,34 @@ class OpenlayerClient(object):
         self,
         inference_pipeline_id: str,
         df: pd.DataFrame,
-        ground_truth_column_name: str,
         inference_id_column_name: str,
+        ground_truth_column_name: str,
+    ):
+        """Publishes ground truths to the Openlayer platform."""
+        raise DeprecationWarning(
+            "The `publish_ground_truths` method is deprecated.\n"
+            "Please use `update_data` instead."
+        )
+
+    def update_data(
+        self,
+        inference_pipeline_id: str,
+        df: pd.DataFrame,
+        inference_id_column_name: str,
+        ground_truth_column_name: Optional[str] = None,
     ) -> None:
-        """Publishes ground truths for data already on the Openlayer platform."""
+        """Updates data already on the Openlayer platform."""
         # -------------------------------- Validations ------------------------------- #
         if not isinstance(df, pd.DataFrame):
             raise exceptions.OpenlayerValidationError(
                 f"- `df` is a `{type(df)}`, but it must a" " `pd.DataFrame`. \n"
             ) from None
-        if ground_truth_column_name not in df.columns:
-            raise exceptions.OpenlayerValidationError(
-                f"- `df` does not contain the ground truth column name"
-                f" `{ground_truth_column_name}`. \n"
-            ) from None
+        if ground_truth_column_name is not None:
+            if ground_truth_column_name not in df.columns:
+                raise exceptions.OpenlayerValidationError(
+                    f"- `df` does not contain the ground truth column name"
+                    f" `{ground_truth_column_name}`. \n"
+                ) from None
         if inference_id_column_name not in df.columns:
             raise exceptions.OpenlayerValidationError(
                 f"- `df` does not contain the inference ID column name"
@@ -1333,4 +1347,4 @@ class OpenlayerClient(object):
                 presigned_url_query_params=presigned_url_query_params,
             )
         if self.verbose:
-            print("Ground truths published!")
+            print("Uploaded data to be updated!")

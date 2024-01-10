@@ -57,6 +57,8 @@ the following methods.
    :template: class.rst
 
    InferencePipeline.publish_batch_data
+   InferencePipeline.stream_data
+   InferencePipeline.update_data
    InferencePipeline.publish_ground_truths
 
 Uploading reference datasets
