@@ -1171,7 +1171,7 @@ class OpenlayerClient(object):
                 tar.add(tmp_dir, arcname=os.path.basename("batch_data"))
 
             payload = {
-                "performGroundTruthMerge": False,
+                "performDataMerge": False,
                 "earliestTimestamp": int(earliest_timestamp),
                 "latestTimestamp": int(latest_timestamp),
                 "rowCount": batch_row_count,
@@ -1322,7 +1322,7 @@ class OpenlayerClient(object):
             df.to_csv(f"{tmp_dir}/dataset.csv", index=False)
 
             payload = {
-                "performGroundTruthMerge": True,
+                "performDataMerge": True,
                 "groundTruthColumnName": ground_truth_column_name,
                 "inferenceIdColumnName": inference_id_column_name,
             }
