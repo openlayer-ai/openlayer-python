@@ -29,6 +29,9 @@ class OpenAIMonitor:
         accessed through the `data` attribute.
     client : openai.api_client.Client, optional
         The OpenAI client. It is required if you are using openai>=1.0.0.
+    monitor_output_only : bool, False
+        Whether to monitor only the output of the model. If True, only the output of
+        the model is logged.
     openlayer_api_key : str, optional
         The Openlayer API key. If not provided, it is read from the environment
         variable ``OPENLAYER_API_KEY``. This is required if `publish` is set to True.
@@ -150,6 +153,7 @@ class OpenAIMonitor:
         self,
         publish: bool = False,
         client=None,
+        monitor_output_only: bool = False,
         accumulate_data: bool = False,
         openlayer_api_key: Optional[str] = None,
         openlayer_project_name: Optional[str] = None,
@@ -184,6 +188,7 @@ class OpenAIMonitor:
 
         self.df = pd.DataFrame(columns=["input", "output", "tokens", "latency"])
         self.publish = publish
+        self.monitor_output_only = monitor_output_only
         self.accumulate_data = accumulate_data
         self.monitoring_on = False
 
@@ -274,9 +279,10 @@ class OpenAIMonitor:
                 )
 
                 config = self.data_config.copy()
-                config["prompt"] = prompt
-                config.update({"inputVariableNames": list(input_data.keys())})
                 config["costColumnName"] = "cost"
+                config["prompt"] = prompt
+                if not self.monitor_output_only:
+                    config.update({"inputVariableNames": list(input_data.keys())})
 
                 self._append_row_to_df(
                     input_data=input_data,
@@ -327,6 +333,9 @@ class OpenAIMonitor:
 
                     config = self.data_config.copy()
                     config["costColumnName"] = "cost"
+                    if not self.monitor_output_only:
+                        config["prompt"] = [{"role": "user", "content": input_data}]
+                        config["inputVariableNames"] = ["message"]
 
                     self._handle_data_publishing(config=config)
             # pylint: disable=broad-except
@@ -422,6 +431,9 @@ class OpenAIMonitor:
     ) -> None:
         """Appends a row with input/output, number of tokens, and latency to the
         df."""
+        if self.monitor_output_only:
+            input_data = {}
+
         row = pd.DataFrame(
             [
                 {
@@ -549,7 +561,7 @@ class OpenAIMonitor:
     def data_config(self) -> Dict[str, any]:
         """Data config for the df. Used for publishing data to Openlayer."""
         return {
-            "inputVariableNames": ["message"],
+            "inputVariableNames": [],
             "label": "production",
             "outputColumnName": "output",
             "numOfTokenColumnName": "tokens",
