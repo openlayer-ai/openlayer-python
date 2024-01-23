@@ -235,15 +235,16 @@ class LLModelRunner(base_model_runner.ModelRunnerInterface, ABC):
         pass
 
     def _report_exceptions(self, exceptions: set) -> None:
-        if exceptions:
-            warnings.warn(
-                f"We couldn't get the outputs for all rows.\n"
-                "Encountered the following exceptions while running the model: \n"
-                f"{exceptions}\n"
-                "After you fix the issues, you can call the `run` method again and provide "
-                "the `output_column_name` argument to avoid re-running the model on rows "
-                "that already have an output value."
-            )
+        if len(exceptions) == 1 and None in exceptions:
+            return
+        warnings.warn(
+            f"We couldn't get the outputs for all rows.\n"
+            "Encountered the following exceptions while running the model: \n"
+            f"{exceptions}\n"
+            "After you fix the issues, you can call the `run` method again and provide "
+            "the `output_column_name` argument to avoid re-running the model on rows "
+            "that already have an output value."
+        )
 
     def _run_in_conda(
         self, input_data: pd.DataFrame, output_column_name: Optional[str] = None
