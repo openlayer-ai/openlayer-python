@@ -9,7 +9,7 @@ import pandas as pd
 
 import openlayer
 
-from . import tasks, utils
+from . import inference_pipelines, tasks, utils
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +43,11 @@ class OpenAIMonitor:
         environment variable ``OPENLAYER_INFERENCE_PIPELINE_NAME``. This is required if
         `publish` is set to True and you gave your inference pipeline a name different
         than the default.
+    openlayer_inference_pipeline_id : str, optional
+        The Openlayer inference pipeline id. If not provided, it is read from the
+        environment variable ``OPENLAYER_INFERENCE_PIPELINE_ID``.
+        This is only needed if you do not want to specify an inference pipeline name and
+        project name, and you want to load the inference pipeline directly from its id.
 
     Examples
     --------
@@ -158,17 +163,19 @@ class OpenAIMonitor:
         openlayer_api_key: Optional[str] = None,
         openlayer_project_name: Optional[str] = None,
         openlayer_inference_pipeline_name: Optional[str] = None,
+        openlayer_inference_pipeline_id: Optional[str] = None,
     ) -> None:
         # Openlayer setup
         self.openlayer_api_key: str = None
         self.openlayer_project_name: str = None
         self.openlayer_inference_pipeline_name: str = None
-        self.inference_pipeline: openlayer.InferencePipeline = None
+        self.inference_pipeline: inference_pipelines.InferencePipeline = None
         self._initialize_openlayer(
             publish=publish,
             api_key=openlayer_api_key,
             project_name=openlayer_project_name,
             inference_pipeline_name=openlayer_inference_pipeline_name,
+            inference_pipeline_id=openlayer_inference_pipeline_id,
         )
         self._load_inference_pipeline()
 
@@ -198,6 +205,7 @@ class OpenAIMonitor:
         api_key: Optional[str] = None,
         project_name: Optional[str] = None,
         inference_pipeline_name: Optional[str] = None,
+        inference_pipeline_id: Optional[str] = None,
     ) -> None:
         """Initializes the Openlayer attributes, if credentials are provided."""
         # Get credentials from environment variables if not provided
@@ -209,18 +217,24 @@ class OpenAIMonitor:
             inference_pipeline_name = utils.get_env_variable(
                 "OPENLAYER_INFERENCE_PIPELINE_NAME"
             )
-        if publish and (api_key is None or project_name is None):
-            raise ValueError(
-                "To publish data to Openlayer, you must provide an API key and "
-                "a project name. This can be done by setting the environment "
-                "variables `OPENLAYER_API_KEY` and `OPENLAYER_PROJECT_NAME`, or by "
-                "passing them as arguments to the OpenAIMonitor constructor "
-                "(`openlayer_api_key` and `openlayer_project_name`, respectively)."
+        if inference_pipeline_id is None:
+            inference_pipeline_id = utils.get_env_variable(
+                "OPENLAYER_INFERENCE_PIPELINE_ID"
             )
+        if publish and (api_key is None or project_name is None):
+            if inference_pipeline_id is None:
+                raise ValueError(
+                    "To publish data to Openlayer, you must provide an API key and "
+                    "a project name. This can be done by setting the environment "
+                    "variables `OPENLAYER_API_KEY` and `OPENLAYER_PROJECT_NAME`, or by "
+                    "passing them as arguments to the OpenAIMonitor constructor "
+                    "(`openlayer_api_key` and `openlayer_project_name`, respectively)."
+                )
 
         self.openlayer_api_key = api_key
         self.openlayer_project_name = project_name
         self.openlayer_inference_pipeline_name = inference_pipeline_name
+        self.openlayer_inference_pipeline_id = inference_pipeline_id
 
     def _load_inference_pipeline(self) -> None:
         """Load inference pipeline from the Openlayer platform.
@@ -228,20 +242,34 @@ class OpenAIMonitor:
         If no platform/project information is provided, it is set to None.
         """
         inference_pipeline = None
-        if self.openlayer_api_key and self.openlayer_project_name:
-            with utils.HidePrints():
-                client = openlayer.OpenlayerClient(
-                    api_key=self.openlayer_api_key, verbose=False
+        if self.openlayer_api_key:
+            client = openlayer.OpenlayerClient(
+                api_key=self.openlayer_api_key, verbose=False
+            )
+            if self.openlayer_inference_pipeline_id:
+                # Load inference pipeline directly from the id
+                inference_pipeline = inference_pipelines.InferencePipeline(
+                    client=client,
+                    upload=None,
+                    json={
+                        "id": self.openlayer_inference_pipeline_id,
+                        "projectId": None,
+                    },
+                    task_type=tasks.TaskType.LLM,
                 )
-                project = client.create_project(
-                    name=self.openlayer_project_name, task_type=tasks.TaskType.LLM
-                )
-                if self.openlayer_inference_pipeline_name:
-                    inference_pipeline = project.load_inference_pipeline(
-                        name=self.openlayer_inference_pipeline_name
-                    )
-                else:
-                    inference_pipeline = project.create_inference_pipeline()
+            else:
+                if self.openlayer_project_name:
+                    with utils.HidePrints():
+                        project = client.create_project(
+                            name=self.openlayer_project_name,
+                            task_type=tasks.TaskType.LLM,
+                        )
+                        if self.openlayer_inference_pipeline_name:
+                            inference_pipeline = project.load_inference_pipeline(
+                                name=self.openlayer_inference_pipeline_name
+                            )
+                        else:
+                            inference_pipeline = project.create_inference_pipeline()
 
         self.inference_pipeline = inference_pipeline
 
