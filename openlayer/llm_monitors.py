@@ -104,6 +104,10 @@ class OpenAIMonitor:
             "input": 0.002e-3,
             "output": 0.002e-3,
         },
+        "gpt-3.5-turbo": {
+            "input": 0.0005e-3,
+            "output": 0.0015e-3,
+        },
         "gpt-3.5-turbo-0125": {
             "input": 0.0005e-3,
             "output": 0.0015e-3,
@@ -140,11 +144,19 @@ class OpenAIMonitor:
             "input": 0.01e-3,
             "output": 0.03e-3,
         },
+        "gpt-4-0314": {
+            "input": 0.03e-3,
+            "output": 0.06e-3,
+        },
         "gpt-4-1106-vision-preview": {
             "input": 0.01e-3,
             "output": 0.03e-3,
         },
         "gpt-4-32k": {
+            "input": 0.06e-3,
+            "output": 0.12e-3,
+        },
+        "gpt-4-32k-0314": {
             "input": 0.06e-3,
             "output": 0.12e-3,
         },
