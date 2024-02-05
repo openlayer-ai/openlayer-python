@@ -94,7 +94,7 @@ class OpenAIMonitor:
 
     """
 
-    # Last update: 2024-01-05
+    # Last update: 2024-02-05
     COST_PER_TOKEN = {
         "babbage-002": {
             "input": 0.0004e-3,
@@ -104,9 +104,9 @@ class OpenAIMonitor:
             "input": 0.002e-3,
             "output": 0.002e-3,
         },
-        "gpt-3.5-turbo": {
-            "input": 0.003e-3,
-            "output": 0.006e-3,
+        "gpt-3.5-turbo-0125": {
+            "input": 0.0005e-3,
+            "output": 0.0015e-3,
         },
         "gpt-3.5-turbo-0301": {
             "input": 0.0015e-3,
@@ -132,9 +132,9 @@ class OpenAIMonitor:
             "input": 0.03e-3,
             "output": 0.06e-3,
         },
-        "gpt-4-0314": {
-            "input": 0.03e-3,
-            "output": 0.06e-3,
+        "gpt-4-0125-preview": {
+            "input": 0.01e-3,
+            "output": 0.03e-3,
         },
         "gpt-4-1106-preview": {
             "input": 0.01e-3,
@@ -145,10 +145,6 @@ class OpenAIMonitor:
             "output": 0.03e-3,
         },
         "gpt-4-32k": {
-            "input": 0.06e-3,
-            "output": 0.12e-3,
-        },
-        "gpt-4-32k-0314": {
             "input": 0.06e-3,
             "output": 0.12e-3,
         },
