@@ -7,9 +7,8 @@ from typing import Dict, List, Optional, Tuple
 import openai
 import pandas as pd
 
-import openlayer
-
-from . import inference_pipelines, tasks, utils
+from . import constants, utils
+from .services import data_streamer
 
 logger = logging.getLogger(__name__)
 
@@ -92,75 +91,22 @@ class OpenAIMonitor:
 
     >>> monitor.stop_monitoring()
 
-    """
+    You can also use the ``monitor`` as a context manager:
 
-    # Last update: 2024-02-05
-    COST_PER_TOKEN = {
-        "babbage-002": {
-            "input": 0.0004e-3,
-            "output": 0.0004e-3,
-        },
-        "davinci-002": {
-            "input": 0.002e-3,
-            "output": 0.002e-3,
-        },
-        "gpt-3.5-turbo": {
-            "input": 0.0005e-3,
-            "output": 0.0015e-3,
-        },
-        "gpt-3.5-turbo-0125": {
-            "input": 0.0005e-3,
-            "output": 0.0015e-3,
-        },
-        "gpt-3.5-turbo-0301": {
-            "input": 0.0015e-3,
-            "output": 0.002e-3,
-        },
-        "gpt-3.5-turbo-0613": {
-            "input": 0.0015e-3,
-            "output": 0.002e-3,
-        },
-        "gpt-3.5-turbo-1106": {
-            "input": 0.001e-3,
-            "output": 0.002e-3,
-        },
-        "gpt-3.5-turbo-16k-0613": {
-            "input": 0.003e-3,
-            "output": 0.004e-3,
-        },
-        "gpt-3.5-turbo-instruct": {
-            "input": 0.0015e-3,
-            "output": 0.002e-3,
-        },
-        "gpt-4": {
-            "input": 0.03e-3,
-            "output": 0.06e-3,
-        },
-        "gpt-4-0125-preview": {
-            "input": 0.01e-3,
-            "output": 0.03e-3,
-        },
-        "gpt-4-1106-preview": {
-            "input": 0.01e-3,
-            "output": 0.03e-3,
-        },
-        "gpt-4-0314": {
-            "input": 0.03e-3,
-            "output": 0.06e-3,
-        },
-        "gpt-4-1106-vision-preview": {
-            "input": 0.01e-3,
-            "output": 0.03e-3,
-        },
-        "gpt-4-32k": {
-            "input": 0.06e-3,
-            "output": 0.12e-3,
-        },
-        "gpt-4-32k-0314": {
-            "input": 0.06e-3,
-            "output": 0.12e-3,
-        },
-    }
+    >>> monitor = llm_monitors.OpenAIMonitor(publish=True, client=openai_client)
+    >>>
+    >>> with monitor:
+    >>>     openai_client.chat.completions.create(
+    >>>         model="gpt-3.5-turbo",
+    >>>         messages=[
+    >>>             {"role": "system", "content": "You are a helpful assistant."},
+    >>>             {"role": "user", "content": "How are you doing today?"}
+    >>>         ],
+    >>>     )
+
+    This will automatically start and stop the monitoring for you.
+
+    """
 
     def __init__(
         self,
@@ -173,21 +119,35 @@ class OpenAIMonitor:
         openlayer_inference_pipeline_name: Optional[str] = None,
         openlayer_inference_pipeline_id: Optional[str] = None,
     ) -> None:
-        # Openlayer setup
-        self.openlayer_api_key: str = None
-        self.openlayer_project_name: str = None
-        self.openlayer_inference_pipeline_name: str = None
-        self.inference_pipeline: inference_pipelines.InferencePipeline = None
-        self._initialize_openlayer(
-            publish=publish,
-            api_key=openlayer_api_key,
-            project_name=openlayer_project_name,
-            inference_pipeline_name=openlayer_inference_pipeline_name,
-            inference_pipeline_id=openlayer_inference_pipeline_id,
-        )
-        self._load_inference_pipeline()
+        self._initialize_openai(client)
 
-        # OpenAI setup
+        self.accumulate_data = accumulate_data
+        self.monitor_output_only = monitor_output_only
+        self.monitoring_on = False
+        self.df = pd.DataFrame(columns=["input", "output", "tokens", "latency"])
+
+        self.data_streamer = data_streamer.DataStreamer(
+            openlayer_api_key=openlayer_api_key,
+            openlayer_project_name=openlayer_project_name,
+            openlayer_inference_pipeline_name=openlayer_inference_pipeline_name,
+            openlayer_inference_pipeline_id=openlayer_inference_pipeline_id,
+            publish=publish,
+        )
+
+    def __enter__(self):
+        self.start_monitoring()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.stop_monitoring()
+
+    def _initialize_openai(self, client) -> None:
+        """Initializes the OpenAI attributes."""
+        self._validate_and_set_openai_client(client)
+        self._set_create_methods()
+
+    def _validate_and_set_openai_client(self, client) -> None:
+        """Validate and set the OpenAI client."""
         self.openai_version = openai.__version__
         if self.openai_version.split(".", maxsplit=1)[0] == "1" and client is None:
             raise ValueError(
@@ -195,102 +155,19 @@ class OpenAIMonitor:
                 " openai>=1.0.0."
             )
         self.openai_client = client
-        self.create_chat_completion: callable = None
-        self.create_completion: callable = None
-        self.modified_create_chat_completion: callable = None
-        self.modified_create_completion: callable = None
-        self._initialize_openai()
 
-        self.df = pd.DataFrame(columns=["input", "output", "tokens", "latency"])
-        self.publish = publish
-        self.monitor_output_only = monitor_output_only
-        self.accumulate_data = accumulate_data
-        self.monitoring_on = False
-
-    def _initialize_openlayer(
-        self,
-        publish: bool = False,
-        api_key: Optional[str] = None,
-        project_name: Optional[str] = None,
-        inference_pipeline_name: Optional[str] = None,
-        inference_pipeline_id: Optional[str] = None,
-    ) -> None:
-        """Initializes the Openlayer attributes, if credentials are provided."""
-        # Get credentials from environment variables if not provided
-        if api_key is None:
-            api_key = utils.get_env_variable("OPENLAYER_API_KEY")
-        if project_name is None:
-            project_name = utils.get_env_variable("OPENLAYER_PROJECT_NAME")
-        if inference_pipeline_name is None:
-            inference_pipeline_name = utils.get_env_variable(
-                "OPENLAYER_INFERENCE_PIPELINE_NAME"
-            )
-        if inference_pipeline_id is None:
-            inference_pipeline_id = utils.get_env_variable(
-                "OPENLAYER_INFERENCE_PIPELINE_ID"
-            )
-        if publish and (api_key is None or project_name is None):
-            if inference_pipeline_id is None:
-                raise ValueError(
-                    "To publish data to Openlayer, you must provide an API key and "
-                    "a project name. This can be done by setting the environment "
-                    "variables `OPENLAYER_API_KEY` and `OPENLAYER_PROJECT_NAME`, or by "
-                    "passing them as arguments to the OpenAIMonitor constructor "
-                    "(`openlayer_api_key` and `openlayer_project_name`, respectively)."
-                )
-
-        self.openlayer_api_key = api_key
-        self.openlayer_project_name = project_name
-        self.openlayer_inference_pipeline_name = inference_pipeline_name
-        self.openlayer_inference_pipeline_id = inference_pipeline_id
-
-    def _load_inference_pipeline(self) -> None:
-        """Load inference pipeline from the Openlayer platform.
-
-        If no platform/project information is provided, it is set to None.
-        """
-        inference_pipeline = None
-        if self.openlayer_api_key:
-            client = openlayer.OpenlayerClient(
-                api_key=self.openlayer_api_key, verbose=False
-            )
-            if self.openlayer_inference_pipeline_id:
-                # Load inference pipeline directly from the id
-                inference_pipeline = inference_pipelines.InferencePipeline(
-                    client=client,
-                    upload=None,
-                    json={
-                        "id": self.openlayer_inference_pipeline_id,
-                        "projectId": None,
-                    },
-                    task_type=tasks.TaskType.LLM,
-                )
-            else:
-                if self.openlayer_project_name:
-                    with utils.HidePrints():
-                        project = client.create_project(
-                            name=self.openlayer_project_name,
-                            task_type=tasks.TaskType.LLM,
-                        )
-                        if self.openlayer_inference_pipeline_name:
-                            inference_pipeline = project.load_inference_pipeline(
-                                name=self.openlayer_inference_pipeline_name
-                            )
-                        else:
-                            inference_pipeline = project.create_inference_pipeline()
-
-        self.inference_pipeline = inference_pipeline
-
-    def _initialize_openai(self) -> None:
-        """Initializes the OpenAI attributes."""
-        if self.openai_version.split(".", maxsplit=1)[0] == "0":
-            openai_api_key = utils.get_env_variable("OPENAI_API_KEY")
-            openai.api_key = openai_api_key
+    def _set_create_methods(self) -> None:
+        """Sets up the create methods for OpenAI's Completion and ChatCompletion."""
+        # Original versions of the create methods
+        if self.openai_version.startswith("0"):
+            openai.api_key = utils.get_env_variable("OPENAI_API_KEY")
             self.create_chat_completion = openai.ChatCompletion.create
             self.create_completion = openai.Completion.create
         else:
             self.create_chat_completion = self.openai_client.chat.completions.create
             self.create_completion = self.openai_client.completions.create
+
+        # Modified versions of the create methods
         self.modified_create_chat_completion = (
             self._get_modified_create_chat_completion()
         )
@@ -305,6 +182,7 @@ class OpenAIMonitor:
             latency = (time.time() - start_time) * 1000
 
             try:
+                # Extract data
                 prompt, input_data = self.format_input(kwargs["messages"])
                 output_data = response.choices[0].message.content.strip()
                 num_of_tokens = response.usage.total_tokens
@@ -314,8 +192,8 @@ class OpenAIMonitor:
                     num_output_tokens=response.usage.completion_tokens,
                 )
 
+                # Prepare config
                 config = self.data_config.copy()
-                config["costColumnName"] = "cost"
                 config["prompt"] = prompt
                 if not self.monitor_output_only:
                     config.update({"inputVariableNames": list(input_data.keys())})
@@ -328,7 +206,10 @@ class OpenAIMonitor:
                     cost=cost,
                 )
 
-                self._handle_data_publishing(config=config)
+                self.data_streamer.stream_data(
+                    data=self.df.tail(1).to_dict(orient="records"),
+                    config=config,
+                )
             # pylint: disable=broad-except
             except Exception as e:
                 logger.error("Failed to monitor chat request. %s", e)
@@ -351,6 +232,7 @@ class OpenAIMonitor:
                 choices_splits = self._split_list(response.choices, len(prompts))
 
                 for input_data, choices in zip(prompts, choices_splits):
+                    # Extract data
                     output_data = choices[0].text.strip()
                     num_of_tokens = int(response.usage.total_tokens / len(prompts))
                     cost = self.get_cost_estimate(
@@ -358,6 +240,12 @@ class OpenAIMonitor:
                         num_input_tokens=response.usage.prompt_tokens,
                         num_output_tokens=response.usage.completion_tokens,
                     )
+
+                    # Prepare config
+                    config = self.data_config.copy()
+                    if not self.monitor_output_only:
+                        config["prompt"] = [{"role": "user", "content": input_data}]
+                        config["inputVariableNames"] = ["message"]
 
                     self._append_row_to_df(
                         input_data={"message": input_data},
@@ -367,13 +255,10 @@ class OpenAIMonitor:
                         cost=cost,
                     )
 
-                    config = self.data_config.copy()
-                    config["costColumnName"] = "cost"
-                    if not self.monitor_output_only:
-                        config["prompt"] = [{"role": "user", "content": input_data}]
-                        config["inputVariableNames"] = ["message"]
-
-                    self._handle_data_publishing(config=config)
+                    self.data_streamer.stream_data(
+                        data=self.df.tail(1).to_dict(orient="records"),
+                        config=config,
+                    )
             # pylint: disable=broad-except
             except Exception as e:
                 logger.error("Failed to monitor completion request. %s", e)
@@ -389,8 +274,8 @@ class OpenAIMonitor:
         """Formats the input messages.
 
         Returns messages (prompt) replacing the user messages with input variables
-        in brackets (e.g., ``{{ message_0 }}``) and a dictionary mapping the input variable
-        names to the original user messages.
+        in brackets (e.g., ``{{ message_0 }}``) and a dictionary mapping the input
+        variable names to the original user messages.
 
         Parameters
         ----------
@@ -398,7 +283,8 @@ class OpenAIMonitor:
             List of messages that were sent to the chat completion model. Each message
             is a dictionary with the following keys:
 
-            - ``role``: The role of the message. Can be either ``"user"`` or ``"system"``.
+            - ``role``: The role of the message. Can be either ``"user"`` or
+            ``"system"``.
             - ``content``: The content of the message.
 
         Returns
@@ -449,9 +335,9 @@ class OpenAIMonitor:
         self, num_input_tokens: int, num_output_tokens: int, model: str
     ) -> float:
         """Returns the cost estimate for a given model and number of tokens."""
-        if model not in self.COST_PER_TOKEN:
+        if model not in constants.OPENAI_COST_PER_TOKEN:
             return None
-        cost_per_token = self.COST_PER_TOKEN[model]
+        cost_per_token = constants.OPENAI_COST_PER_TOKEN[model]
         return (
             cost_per_token["input"] * num_input_tokens
             + cost_per_token["output"] * num_output_tokens
@@ -496,17 +382,6 @@ class OpenAIMonitor:
         )
         self.df = self.df.astype(casting_dict)
 
-    def _handle_data_publishing(self, config: Optional[Dict[str, any]] = None) -> None:
-        """Handle data publishing.
-
-        If `publish` is set to True, publish the latest row to Openlayer.
-        """
-        if self.publish:
-            self.inference_pipeline.stream_data(
-                stream_data=self.df.tail(1).to_dict(orient="records"),
-                stream_config=config or self.data_config,
-            )
-
     def start_monitoring(self) -> None:
         """Switches monitoring for OpenAI LLMs on.
 
@@ -521,16 +396,16 @@ class OpenAIMonitor:
         self.monitoring_on = True
         self._overwrite_completion_methods()
         print("All the calls to OpenAI models are now being monitored!")
-        if self.publish:
+        if self.data_streamer.publish:
             print(
                 "Furthermore, since `publish` was set to True, the data is being"
-                f" published to your '{self.openlayer_project_name}' Openlayer project."
+                f" published to your '{self.data_streamer.openlayer_project_name}' Openlayer project."
             )
         print("To stop monitoring, call the `stop_monitoring` method.")
 
     def _overwrite_completion_methods(self) -> None:
         """Overwrites OpenAI's completion methods with the modified versions."""
-        if self.openai_version.split(".", maxsplit=1)[0] == "0":
+        if self.openai_version.startswith("0"):
             openai.ChatCompletion.create = self.modified_create_chat_completion
             openai.Completion.create = self.modified_create_completion
         else:
@@ -550,7 +425,7 @@ class OpenAIMonitor:
         self._restore_completion_methods()
         self.monitoring_on = False
         print("Monitoring stopped.")
-        if not self.publish:
+        if not self.data_streamer.publish:
             print(
                 "To publish the data collected so far to your Openlayer project, "
                 "call the `publish_batch_data` method."
@@ -558,7 +433,7 @@ class OpenAIMonitor:
 
     def _restore_completion_methods(self) -> None:
         """Restores OpenAI's completion methods to their original versions."""
-        if self.openai_version.split(".", maxsplit=1)[0] == "0":
+        if self.openai_version.startswith("0"):
             openai.ChatCompletion.create = self.create_chat_completion
             openai.Completion.create = self.create_completion
         else:
@@ -568,12 +443,7 @@ class OpenAIMonitor:
     def publish_batch_data(self):
         """Manually publish the accumulated data to Openlayer when automatic publishing
         is disabled (i.e., ``publish=False``)."""
-        if self.inference_pipeline is None:
-            raise ValueError(
-                "To publish data to Openlayer, you must provide an API key and "
-                "a project name to the OpenAIMonitor."
-            )
-        if self.publish:
+        if self.data_streamer.publish:
             print(
                 "You have set `publish` to True, so every request you've made so far"
                 " was already published to Openlayer."
@@ -589,19 +459,18 @@ class OpenAIMonitor:
                     "with `publish=False`."
                 )
                 return
-        self.inference_pipeline.publish_batch_data(
-            batch_df=self.df, batch_config=self.data_config
-        )
+        self.data_streamer.publish_batch_data(df=self.df, config=self.data_config)
 
     @property
     def data_config(self) -> Dict[str, any]:
         """Data config for the df. Used for publishing data to Openlayer."""
         return {
+            "costColumnName": "cost",
             "inputVariableNames": [],
             "label": "production",
-            "outputColumnName": "output",
-            "numOfTokenColumnName": "tokens",
             "latencyColumnName": "latency",
+            "numOfTokenColumnName": "tokens",
+            "outputColumnName": "output",
         }
 
     @property
