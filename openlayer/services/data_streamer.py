@@ -129,7 +129,9 @@ class DataStreamer:
                             name=self.openlayer_project_name,
                             task_type=tasks.TaskType.LLM,
                         )
-                        inference_pipeline = project.create_inference_pipeline()
+                        inference_pipeline = project.create_inference_pipeline(
+                            name=self.openlayer_inference_pipeline_name
+                        )
 
         self.inference_pipeline = inference_pipeline
 
