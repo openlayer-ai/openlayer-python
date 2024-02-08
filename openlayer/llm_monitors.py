@@ -477,3 +477,101 @@ class OpenAIMonitor:
     def data(self) -> pd.DataFrame:
         """Dataframe accumulated after monitoring was switched on."""
         return self.df
+
+    def monitor_thread_run(self, run: openai.types.beta.threads.run.Run) -> None:
+        """Monitor a run from an OpenAI assistant.
+
+        Once the run is completed, the thread data is published to Openlayer,
+        along with the latency, cost, and number of tokens used."""
+        self._type_check_run(run)
+
+        # Do nothing if the run is not completed
+        if run.status != "completed":
+            return
+
+        try:
+            # Extract vars
+            run_vars = self._extract_run_vars(run)
+
+            # Convert thread to prompt
+            messages = self.openai_client.beta.threads.messages.list(
+                thread_id=run_vars["openai_thread_id"], order="asc"
+            )
+            populated_prompt = self.thread_messages_to_prompt(messages)
+            prompt, input_variables = self.format_input(populated_prompt)
+
+            # Data
+            input_data = {
+                **input_variables,
+                **{
+                    "output": prompt[-1]["content"],
+                    "tokens": run_vars["total_num_tokens"],
+                    "latency": run_vars["latency"],
+                    "cost": run_vars["cost"],
+                    "thread_id": run_vars["openai_thread_id"],
+                    "assistant_id": run_vars["openai_assistant_id"],
+                    "timestamp": run_vars["timestamp"],
+                },
+            }
+
+            # Config
+            config = self.data_config.copy()
+            config["inputVariableNames"] = input_variables.keys()
+            config["prompt"] = prompt[:-1]  # Remove the last message (the output)
+            config["timestampColumnName"] = "timestamp"
+
+            self.data_streamer.stream_data(data=input_data, config=config)
+            print("Data published to Openlayer.")
+        # pylint: disable=broad-except
+        except Exception as e:
+            print(f"Failed to monitor run. {e}")
+
+    def _type_check_run(self, run: openai.types.beta.threads.run.Run) -> None:
+        """Validate the run object."""
+        if not isinstance(run, openai.types.beta.threads.run.Run):
+            raise ValueError(f"Expected a Run object, but got {type(run)}.")
+
+    def _extract_run_vars(
+        self, run: openai.types.beta.threads.run.Run
+    ) -> Dict[str, any]:
+        """Extract the variables from the run object."""
+        return {
+            "openai_thread_id": run.thread_id,
+            "openai_assistant_id": run.assistant_id,
+            "latency": (run.completed_at - run.created_at) * 1000,  # Convert to ms
+            "timestamp": run.created_at,  # Convert to ms
+            "num_input_tokens": run.usage["prompt_tokens"],
+            "num_output_tokens": run.usage["completion_tokens"],
+            "total_num_tokens": run.usage["total_tokens"],
+            "cost": self.get_cost_estimate(
+                model=run.model,
+                num_input_tokens=run.usage["prompt_tokens"],
+                num_output_tokens=run.usage["completion_tokens"],
+            ),
+        }
+
+    @staticmethod
+    def thread_messages_to_prompt(
+        messages: List[openai.types.beta.threads.thread_message.ThreadMessage],
+    ) -> List[Dict[str, str]]:
+        """Given list of ThreadMessage, return its contents in the `prompt` format,
+        i.e., a list of dicts with 'role' and 'content' keys."""
+        prompt = []
+        for message in list(messages):
+            role = message.role
+            contents = message.content
+
+            for content in contents:
+                content_type = content.type
+                if content_type == "text":
+                    text_content = content.text.value
+                if content_type == "image_file":
+                    text_content = content.image_file.file_id
+
+                prompt.append(
+                    {
+                        "role": role,
+                        "content": text_content,
+                    }
+                )
+        return prompt
