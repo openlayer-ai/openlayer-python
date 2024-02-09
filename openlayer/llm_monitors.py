@@ -508,8 +508,8 @@ class OpenAIMonitor:
                     "tokens": run_vars["total_num_tokens"],
                     "latency": run_vars["latency"],
                     "cost": run_vars["cost"],
-                    "thread_id": run_vars["openai_thread_id"],
-                    "assistant_id": run_vars["openai_assistant_id"],
+                    "openai_thread_id": run_vars["openai_thread_id"],
+                    "openai_assistant_id": run_vars["openai_assistant_id"],
                     "timestamp": run_vars["timestamp"],
                 },
             }

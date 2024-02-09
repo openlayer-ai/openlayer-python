@@ -17,11 +17,8 @@ dependencies/
 # Ignore everything in examples/ except the task dirs
 !examples
 examples/*
-!examples/tabular-classification
-!examples/tabular-regression
-!examples/text-classification
+!examples/development
 !examples/monitoring
-!examples/llms
 !examples/_static
 model_package/
 
