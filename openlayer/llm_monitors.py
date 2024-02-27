@@ -177,44 +177,118 @@ class OpenAIMonitor:
         """Returns a modified version of the create method for openai.ChatCompletion."""
 
         def modified_create_chat_completion(*args, **kwargs) -> str:
-            start_time = time.time()
-            response = self.create_chat_completion(*args, **kwargs)
-            latency = (time.time() - start_time) * 1000
+            stream = kwargs.get("stream", False)
 
-            try:
-                # Extract data
-                prompt, input_data = self.format_input(kwargs["messages"])
-                output_data = response.choices[0].message.content.strip()
-                num_of_tokens = response.usage.total_tokens
-                cost = self.get_cost_estimate(
-                    model=kwargs.get("model"),
-                    num_input_tokens=response.usage.prompt_tokens,
-                    num_output_tokens=response.usage.completion_tokens,
-                )
+            if not stream:
+                start_time = time.time()
+                response = self.create_chat_completion(*args, **kwargs)
+                latency = (time.time() - start_time) * 1000
 
-                # Prepare config
-                config = self.data_config.copy()
-                config["prompt"] = prompt
-                if not self.monitor_output_only:
-                    config.update({"inputVariableNames": list(input_data.keys())})
+                try:
+                    # Extract data
+                    prompt, input_data = self.format_input(kwargs["messages"])
+                    output_data = response.choices[0].message.content.strip()
+                    num_of_tokens = response.usage.total_tokens
+                    cost = self.get_cost_estimate(
+                        model=kwargs.get("model"),
+                        num_input_tokens=response.usage.prompt_tokens,
+                        num_output_tokens=response.usage.completion_tokens,
+                    )
 
-                self._append_row_to_df(
-                    input_data=input_data,
-                    output_data=output_data,
-                    num_of_tokens=num_of_tokens,
-                    latency=latency,
-                    cost=cost,
-                )
+                    # Prepare config
+                    config = self.data_config.copy()
+                    config["prompt"] = prompt
+                    if not self.monitor_output_only:
+                        config.update({"inputVariableNames": list(input_data.keys())})
 
-                self.data_streamer.stream_data(
-                    data=self.df.tail(1).to_dict(orient="records"),
-                    config=config,
-                )
-            # pylint: disable=broad-except
-            except Exception as e:
-                logger.error("Failed to monitor chat request. %s", e)
+                    self._append_row_to_df(
+                        input_data=input_data,
+                        output_data=output_data,
+                        num_of_tokens=num_of_tokens,
+                        latency=latency,
+                        cost=cost,
+                    )
 
-            return response
+                    self.data_streamer.stream_data(
+                        data=self.df.tail(1).to_dict(orient="records"),
+                        config=config,
+                    )
+                # pylint: disable=broad-except
+                except Exception as e:
+                    logger.error("Failed to monitor chat request. %s", e)
+
+                return response
+            else:
+                chunks = self.create_chat_completion(*args, **kwargs)
+
+                def stream_chunks():
+                    collected_messages = []
+                    start_time = time.time()
+                    first_token_time = None
+                    num_of_completion_tokens = None
+                    try:
+                        i = 0
+                        for i, chunk in enumerate(chunks):
+                            if i == 0:
+                                first_token_time = time.time()
+                            collected_messages.append(chunk.choices[0].delta.content)
+                            yield chunk
+                        if i > 0:
+                            num_of_completion_tokens = i + 1
+                    # pylint: disable=broad-except
+                    except Exception as e:
+                        logger.error("Failed to monitor chat request. %s", e)
+                    finally:
+                        try:
+                            # Extract data
+                            prompt, input_data = self.format_input(kwargs["messages"])
+                            collected_messages = [
+                                m for m in collected_messages if m is not None
+                            ]
+                            output_data = "".join(collected_messages)
+                            completion_cost = self.get_cost_estimate(
+                                model=kwargs.get("model"),
+                                num_input_tokens=0,
+                                num_output_tokens=(
+                                    num_of_completion_tokens
+                                    if num_of_completion_tokens
+                                    else 0
+                                ),
+                            )
+                            latency = (time.time() - start_time) * 1000
+
+                            # Prepare config
+                            config = self.data_config.copy()
+                            config["prompt"] = prompt
+                            if not self.monitor_output_only:
+                                config.update(
+                                    {"inputVariableNames": list(input_data.keys())}
+                                )
+
+                            self._append_row_to_df(
+                                input_data=input_data,
+                                output_data=output_data,
+                                num_of_tokens=num_of_completion_tokens,
+                                latency=latency,
+                                cost=completion_cost,
+                                time_to_first_token=(
+                                    (first_token_time - start_time) * 1000
+                                    if first_token_time
+                                    else None
+                                ),
+                                completion_tokens=num_of_completion_tokens,
+                                completion_cost=completion_cost,
+                            )
+
+                            self.data_streamer.stream_data(
+                                data=self.df.tail(1).to_dict(orient="records"),
+                                config=config,
+                            )
+                        # pylint: disable=broad-except
+                        except Exception as e:
+                            logger.error("Failed to monitor chat request. %s", e)
+
+                return stream_chunks()
 
         return modified_create_chat_completion
 
@@ -348,9 +422,10 @@ class OpenAIMonitor:
         self,
         input_data: Dict[str, str],
         output_data: str,
-        num_of_tokens: int,
         latency: float,
+        num_of_tokens: int,
         cost: float,
+        **kwargs,
     ) -> None:
         """Appends a row with input/output, number of tokens, and latency to the
         df."""
@@ -367,6 +442,7 @@ class OpenAIMonitor:
                         "latency": latency,
                         "cost": cost,
                     },
+                    **kwargs,
                 }
             ]
         )
