@@ -331,8 +331,9 @@ class OpenAIMonitor:
             start = end
         return result
 
+    @staticmethod
     def get_cost_estimate(
-        self, num_input_tokens: int, num_output_tokens: int, model: str
+        num_input_tokens: int, num_output_tokens: int, model: str
     ) -> float:
         """Returns the cost estimate for a given model and number of tokens."""
         if model not in constants.OPENAI_COST_PER_TOKEN:
