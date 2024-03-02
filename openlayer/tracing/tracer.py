@@ -17,13 +17,15 @@ _current_trace = contextvars.ContextVar("current_trace")
 @contextmanager
 def create_step(
     name: str,
+    step_type: str = "user_call",
     inputs: Optional[Any] = None,
     output: Optional[Any] = None,
     metadata: Dict[str, any] = {},
 ) -> Generator[steps.Step, None, None]:
     """Starts a trace and yields a Step object."""
-    new_step = steps.Step(name=name, inputs=inputs, output=output, metadata=metadata)
-
+    new_step = steps.step_factory(
+        step_type=step_type, name=name, inputs=inputs, output=output, metadata=metadata
+    )
     parent_step = _current_step.get(None)
     is_root_step = parent_step is None
 
@@ -65,7 +67,12 @@ def trace(*step_args, **step_kwargs):
                 output = func(*func_args, **func_kwargs)
                 end_time = time.time()
                 latency = (end_time - step.start_time) * 1000  # in ms
-                inputs = func_signature.bind(*func_args, **func_kwargs).arguments
+
+                bound = func_signature.bind(*func_args, **func_kwargs)
+                bound.apply_defaults()
+                inputs = dict(bound.arguments)
+                inputs.pop("self", None)
+                inputs.pop("cls", None)
 
                 step.update_data(
                     inputs=inputs,

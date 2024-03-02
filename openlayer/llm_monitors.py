@@ -9,6 +9,7 @@ import pandas as pd
 
 from . import constants, utils
 from .services import data_streamer
+from .tracing import tracer
 
 logger = logging.getLogger(__name__)
 
@@ -182,11 +183,11 @@ class OpenAIMonitor:
             if not stream:
                 start_time = time.time()
                 response = self.create_chat_completion(*args, **kwargs)
-                latency = (time.time() - start_time) * 1000
+                end_time = time.time()
+                latency = (end_time - start_time) * 1000
 
                 try:
                     # Extract data
-                    prompt, input_data = self.format_input(kwargs["messages"])
                     output_data = response.choices[0].message.content.strip()
                     num_of_tokens = response.usage.total_tokens
                     cost = self.get_cost_estimate(
@@ -194,25 +195,24 @@ class OpenAIMonitor:
                         num_input_tokens=response.usage.prompt_tokens,
                         num_output_tokens=response.usage.completion_tokens,
                     )
-
-                    # Prepare config
-                    config = self.data_config.copy()
-                    config["prompt"] = prompt
-                    if not self.monitor_output_only:
-                        config.update({"inputVariableNames": list(input_data.keys())})
-
-                    self._append_row_to_df(
-                        input_data=input_data,
-                        output_data=output_data,
-                        num_of_tokens=num_of_tokens,
-                        latency=latency,
-                        cost=cost,
-                    )
-
-                    self.data_streamer.stream_data(
-                        data=self.df.tail(1).to_dict(orient="records"),
-                        config=config,
-                    )
+                    with tracer.create_step(
+                        step_type="openai_chat_completion", name="chat_completion"
+                    ) as step:
+                        step.update_data(
+                            end_time=end_time,
+                            inputs={
+                                "prompt": kwargs["messages"],
+                            },
+                            output=output_data,
+                            latency=latency,
+                            tokens=num_of_tokens,
+                            cost=cost,
+                            prompt_tokens=response.usage.prompt_tokens,
+                            completion_tokens=response.usage.completion_tokens,
+                            model=kwargs.get("model"),
+                            model_parameters=kwargs.get("model_parameters"),
+                            raw_output=response.model_dump(),
+                        )
                 # pylint: disable=broad-except
                 except Exception as e:
                     logger.error("Failed to monitor chat request. %s", e)
