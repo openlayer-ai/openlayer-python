@@ -1,6 +1,6 @@
 """Module with the Trace class."""
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from .steps import Step
 
@@ -14,6 +14,6 @@ class Trace:
         """Adds a step to the trace."""
         self.steps.append(step)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> List[Dict[str, Any]]:
         """Dictionary representation of the Trace."""
-        return {"rows": [step.to_dict() for step in self.steps]}
+        return [step.to_dict() for step in self.steps]

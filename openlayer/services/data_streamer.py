@@ -3,6 +3,7 @@
 Validates the arguments needed for data streaming and handles the streaming
 process.
 """
+
 import logging
 from typing import Dict, Optional
 
@@ -79,6 +80,14 @@ class DataStreamer:
                 "or set the OPENLAYER_INFERENCE_PIPELINE_ID or"
                 " OPENLAYER_INFERENCE_PIPELINE_NAME environment variables."
             )
+        logger.info(
+            "Data will be streamed to Openlayer project %s and inference pipeline %s.",
+            self.openlayer_project_name,
+            (
+                self.openlayer_inference_pipeline_id
+                or self.openlayer_inference_pipeline_name
+            ),
+        )
 
     def stream_data(self, data: Dict[str, any], config: Dict[str, any]) -> None:
         """Stream data to the Openlayer platform.
@@ -90,6 +99,7 @@ class DataStreamer:
 
         self._check_inference_pipeline_ready()
         self.inference_pipeline.stream_data(stream_data=data, stream_config=config)
+        logger.info("Data streamed to Openlayer.")
 
     def _check_inference_pipeline_ready(self) -> None:
         """Lazy load the inference pipeline and check if it is ready."""
@@ -144,3 +154,4 @@ class DataStreamer:
         """
         self._check_inference_pipeline_ready()
         self.inference_pipeline.publish_batch_data(batch_df=df, batch_config=config)
+        logger.info("Batch of data published to Openlayer.")
