@@ -29,8 +29,8 @@ class Step:
         """Adds a nested step to the current step."""
         self.steps.append(nested_step)
 
-    def update_data(self, **kwargs: Any) -> None:
-        """Updates the step data."""
+    def log(self, **kwargs: Any) -> None:
+        """Logs step data."""
         for key, value in kwargs.items():
             if hasattr(self, key):
                 setattr(self, key, value)

@@ -126,14 +126,17 @@ class OpenAIMonitor:
         self.monitor_output_only = monitor_output_only
         self.monitoring_on = False
         self.df = pd.DataFrame(columns=["input", "output", "tokens", "latency"])
+        self.publish = publish
+        self.data_streamer = None
 
-        self.data_streamer = data_streamer.DataStreamer(
-            openlayer_api_key=openlayer_api_key,
-            openlayer_project_name=openlayer_project_name,
-            openlayer_inference_pipeline_name=openlayer_inference_pipeline_name,
-            openlayer_inference_pipeline_id=openlayer_inference_pipeline_id,
-            publish=publish,
-        )
+        if self.publish is True:
+            self.data_streamer = data_streamer.DataStreamer(
+                openlayer_api_key=openlayer_api_key,
+                openlayer_project_name=openlayer_project_name,
+                openlayer_inference_pipeline_name=openlayer_inference_pipeline_name,
+                openlayer_inference_pipeline_id=openlayer_inference_pipeline_id,
+                publish=publish,
+            )
 
     def __enter__(self):
         self.start_monitoring()
@@ -473,7 +476,7 @@ class OpenAIMonitor:
         self.monitoring_on = True
         self._overwrite_completion_methods()
         print("All the calls to OpenAI models are now being monitored!")
-        if self.data_streamer.publish:
+        if self.publish:
             print(
                 "Furthermore, since `publish` was set to True, the data is being"
                 f" published to your '{self.data_streamer.openlayer_project_name}' Openlayer project."
@@ -502,7 +505,7 @@ class OpenAIMonitor:
         self._restore_completion_methods()
         self.monitoring_on = False
         print("Monitoring stopped.")
-        if not self.data_streamer.publish:
+        if not self.publish:
             print(
                 "To publish the data collected so far to your Openlayer project, "
                 "call the `publish_batch_data` method."
@@ -520,7 +523,7 @@ class OpenAIMonitor:
     def publish_batch_data(self):
         """Manually publish the accumulated data to Openlayer when automatic publishing
         is disabled (i.e., ``publish=False``)."""
-        if self.data_streamer.publish:
+        if self.publish:
             print(
                 "You have set `publish` to True, so every request you've made so far"
                 " was already published to Openlayer."
