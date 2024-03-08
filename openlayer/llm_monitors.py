@@ -2,52 +2,23 @@
 
 import logging
 import time
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List
 
 import openai
-import pandas as pd
 
 from . import constants, utils
-from .services import data_streamer
 from .tracing import tracer
 
 logger = logging.getLogger(__name__)
 
 
 class OpenAIMonitor:
-    """Monitor class used to keep track of OpenAI LLMs inferences.
+    """Monitor inferences from OpenAI LLMs and upload traces to Openlayer.
 
     Parameters
     ----------
-    publish : bool, optional
-        Whether to publish the data to Openlayer as soon as it is available. If True,
-        the Openlayer credentials must be provided (either as keyword arguments or as
-        environment variables).
-    accumulate_data : bool, False
-        Whether to accumulate the data in a dataframe. If False (default), only the
-        latest request is stored. If True, all the requests are stored in a dataframe,
-        accessed through the `data` attribute.
     client : openai.api_client.Client, optional
         The OpenAI client. It is required if you are using openai>=1.0.0.
-    monitor_output_only : bool, False
-        Whether to monitor only the output of the model. If True, only the output of
-        the model is logged.
-    openlayer_api_key : str, optional
-        The Openlayer API key. If not provided, it is read from the environment
-        variable ``OPENLAYER_API_KEY``. This is required if `publish` is set to True.
-    openlayer_project_name : str, optional
-        The Openlayer project name. If not provided, it is read from the environment
-        variable ``OPENLAYER_PROJECT_NAME``. This is required if `publish` is set to True.
-    openlayer_inference_pipeline_name : str, optional
-        The Openlayer inference pipeline name. If not provided, it is read from the
-        environment variable ``OPENLAYER_INFERENCE_PIPELINE_NAME``. This is required if
-        `publish` is set to True and you gave your inference pipeline a name different
-        than the default.
-    openlayer_inference_pipeline_id : str, optional
-        The Openlayer inference pipeline id. If not provided, it is read from the
-        environment variable ``OPENLAYER_INFERENCE_PIPELINE_ID``.
-        This is only needed if you do not want to specify an inference pipeline name and
-        project name, and you want to load the inference pipeline directly from its id.
 
     Examples
     --------
@@ -72,9 +43,7 @@ class OpenAIMonitor:
     >>> openai_client = OpenAI()
     >>> monitor = llm_monitors.OpenAIMonitor(publish=True, client=openai_client)
 
-    3. Start monitoring:
-
-    >>> monitor.start_monitoring()
+    3. Use the OpenAI model as you normally would:
 
     From this point onwards, you can continue making requests to your model normally:
 
@@ -86,64 +55,15 @@ class OpenAIMonitor:
     >>>     ],
     >>> )
 
-    Your data is automatically being published to your Openlayer project!
-
-    If you no longer want to monitor your model, you can stop monitoring by calling:
-
-    >>> monitor.stop_monitoring()
-
-    You can also use the ``monitor`` as a context manager:
-
-    >>> monitor = llm_monitors.OpenAIMonitor(publish=True, client=openai_client)
-    >>>
-    >>> with monitor:
-    >>>     openai_client.chat.completions.create(
-    >>>         model="gpt-3.5-turbo",
-    >>>         messages=[
-    >>>             {"role": "system", "content": "You are a helpful assistant."},
-    >>>             {"role": "user", "content": "How are you doing today?"}
-    >>>         ],
-    >>>     )
-
-    This will automatically start and stop the monitoring for you.
-
+    The trace of this inference request is automatically uploaded to your Openlayer
+    project.
     """
 
     def __init__(
         self,
-        publish: bool = False,
         client=None,
-        monitor_output_only: bool = False,
-        accumulate_data: bool = False,
-        openlayer_api_key: Optional[str] = None,
-        openlayer_project_name: Optional[str] = None,
-        openlayer_inference_pipeline_name: Optional[str] = None,
-        openlayer_inference_pipeline_id: Optional[str] = None,
     ) -> None:
         self._initialize_openai(client)
-
-        self.accumulate_data = accumulate_data
-        self.monitor_output_only = monitor_output_only
-        self.monitoring_on = False
-        self.df = pd.DataFrame(columns=["input", "output", "tokens", "latency"])
-        self.publish = publish
-        self.data_streamer = None
-
-        if self.publish is True:
-            self.data_streamer = data_streamer.DataStreamer(
-                openlayer_api_key=openlayer_api_key,
-                openlayer_project_name=openlayer_project_name,
-                openlayer_inference_pipeline_name=openlayer_inference_pipeline_name,
-                openlayer_inference_pipeline_id=openlayer_inference_pipeline_id,
-                publish=publish,
-            )
-
-    def __enter__(self):
-        self.start_monitoring()
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.stop_monitoring()
 
     def _initialize_openai(self, client) -> None:
         """Initializes the OpenAI attributes."""
@@ -177,6 +97,9 @@ class OpenAIMonitor:
         )
         self.modified_create_completion = self._get_modified_create_completion()
 
+        # Overwrite the original methods with the modified ones
+        self._overwrite_completion_methods()
+
     def _get_modified_create_chat_completion(self) -> callable:
         """Returns a modified version of the create method for openai.ChatCompletion."""
 
@@ -187,35 +110,31 @@ class OpenAIMonitor:
                 start_time = time.time()
                 response = self.create_chat_completion(*args, **kwargs)
                 end_time = time.time()
-                latency = (end_time - start_time) * 1000
 
+                # Try to add step to the trace
                 try:
-                    # Extract data
-                    output_data = response.choices[0].message.content.strip()
-                    num_of_tokens = response.usage.total_tokens
+                    output_data = response.choices[0].message.content
                     cost = self.get_cost_estimate(
                         model=kwargs.get("model"),
                         num_input_tokens=response.usage.prompt_tokens,
                         num_output_tokens=response.usage.completion_tokens,
                     )
-                    with tracer.create_step(
-                        step_type="openai_chat_completion", name="chat_completion"
-                    ) as step:
-                        step.update_data(
-                            end_time=end_time,
-                            inputs={
-                                "prompt": kwargs["messages"],
-                            },
-                            output=output_data,
-                            latency=latency,
-                            tokens=num_of_tokens,
-                            cost=cost,
-                            prompt_tokens=response.usage.prompt_tokens,
-                            completion_tokens=response.usage.completion_tokens,
-                            model=kwargs.get("model"),
-                            model_parameters=kwargs.get("model_parameters"),
-                            raw_output=response.model_dump(),
-                        )
+
+                    tracer.add_openai_chat_completion_step_to_trace(
+                        end_time=end_time,
+                        inputs={
+                            "prompt": kwargs["messages"],
+                        },
+                        output=output_data,
+                        latency=(end_time - start_time) * 1000,
+                        tokens=response.usage.total_tokens,
+                        cost=cost,
+                        prompt_tokens=response.usage.prompt_tokens,
+                        completion_tokens=response.usage.completion_tokens,
+                        model=kwargs.get("model"),
+                        model_parameters=kwargs.get("model_parameters"),
+                        raw_output=response.model_dump(),
+                    )
                 # pylint: disable=broad-except
                 except Exception as e:
                     logger.error("Failed to monitor chat request. %s", e)
@@ -238,15 +157,18 @@ class OpenAIMonitor:
                             yield chunk
                         if i > 0:
                             num_of_completion_tokens = i + 1
+                        end_time = time.time()
+                        latency = (end_time - start_time) * 1000
                     # pylint: disable=broad-except
                     except Exception as e:
-                        logger.error("Failed to monitor chat request. %s", e)
+                        logger.error("Failed yield chunk. %s", e)
                     finally:
+                        # Try to add step to the trace
                         try:
-                            # Extract data
-                            prompt, input_data = self.format_input(kwargs["messages"])
                             collected_messages = [
-                                m for m in collected_messages if m is not None
+                                message
+                                for message in collected_messages
+                                if message is not None
                             ]
                             output_data = "".join(collected_messages)
                             completion_cost = self.get_cost_estimate(
@@ -258,34 +180,28 @@ class OpenAIMonitor:
                                     else 0
                                 ),
                             )
-                            latency = (time.time() - start_time) * 1000
 
-                            # Prepare config
-                            config = self.data_config.copy()
-                            config["prompt"] = prompt
-                            if not self.monitor_output_only:
-                                config.update(
-                                    {"inputVariableNames": list(input_data.keys())}
-                                )
-
-                            self._append_row_to_df(
-                                input_data=input_data,
-                                output_data=output_data,
-                                num_of_tokens=num_of_completion_tokens,
+                            tracer.add_openai_chat_completion_step_to_trace(
+                                end_time=end_time,
+                                inputs={
+                                    "prompt": kwargs["messages"],
+                                },
+                                output=output_data,
                                 latency=latency,
+                                tokens=num_of_completion_tokens,
                                 cost=completion_cost,
-                                time_to_first_token=(
-                                    (first_token_time - start_time) * 1000
-                                    if first_token_time
-                                    else None
-                                ),
+                                prompt_tokens=None,
                                 completion_tokens=num_of_completion_tokens,
-                                completion_cost=completion_cost,
-                            )
-
-                            self.data_streamer.stream_data(
-                                data=self.df.tail(1).to_dict(orient="records"),
-                                config=config,
+                                model=kwargs.get("model"),
+                                model_parameters=kwargs.get("model_parameters"),
+                                raw_output=None,
+                                metadata={
+                                    "timeToFirstToken": (
+                                        (first_token_time - start_time) * 1000
+                                        if first_token_time
+                                        else None
+                                    )
+                                },
                             )
                         # pylint: disable=broad-except
                         except Exception as e:
@@ -301,7 +217,7 @@ class OpenAIMonitor:
         def modified_create_completion(*args, **kwargs):
             start_time = time.time()
             response = self.create_completion(*args, **kwargs)
-            latency = (time.time() - start_time) * 1000
+            end_time = time.time()
 
             try:
                 prompts = kwargs.get("prompt", [])
@@ -318,23 +234,20 @@ class OpenAIMonitor:
                         num_output_tokens=response.usage.completion_tokens,
                     )
 
-                    # Prepare config
-                    config = self.data_config.copy()
-                    if not self.monitor_output_only:
-                        config["prompt"] = [{"role": "user", "content": input_data}]
-                        config["inputVariableNames"] = ["message"]
-
-                    self._append_row_to_df(
-                        input_data={"message": input_data},
-                        output_data=output_data,
-                        num_of_tokens=num_of_tokens,
-                        latency=latency,
+                    tracer.add_openai_chat_completion_step_to_trace(
+                        end_time=end_time,
+                        inputs={
+                            "prompt": [{"role": "user", "content": input_data}],
+                        },
+                        output=output_data,
+                        tokens=num_of_tokens,
+                        latency=(end_time - start_time) * 1000,
                         cost=cost,
-                    )
-
-                    self.data_streamer.stream_data(
-                        data=self.df.tail(1).to_dict(orient="records"),
-                        config=config,
+                        prompt_tokens=response.usage.prompt_tokens,
+                        completion_tokens=response.usage.completion_tokens,
+                        model=kwargs.get("model"),
+                        model_parameters=kwargs.get("model_parameters"),
+                        raw_output=response.model_dump(),
                     )
             # pylint: disable=broad-except
             except Exception as e:
@@ -343,48 +256,6 @@ class OpenAIMonitor:
             return response
 
         return modified_create_completion
-
-    @staticmethod
-    def format_input(
-        messages: List[Dict[str, str]]
-    ) -> Tuple[List[Dict[str, str]], Dict[str, str]]:
-        """Formats the input messages.
-
-        Returns messages (prompt) replacing the user messages with input variables
-        in brackets (e.g., ``{{ message_0 }}``) and a dictionary mapping the input
-        variable names to the original user messages.
-
-        Parameters
-        ----------
-        messages : List[Dict[str, str]]
-            List of messages that were sent to the chat completion model. Each message
-            is a dictionary with the following keys:
-
-            - ``role``: The role of the message. Can be either ``"user"`` or
-            ``"system"``.
-            - ``content``: The content of the message.
-
-        Returns
-        -------
-        Tuple(List[Dict[str, str]], Dict[str, str])
-            The formatted messages and the mapping from input variable names to the
-            original user messages.
-        """
-        input_messages = []
-        input_variables = {}
-        for i, message in enumerate(messages):
-            if message["role"] == "user":
-                input_variable_name = f"message_{i}"
-                input_messages.append(
-                    {
-                        "role": message["role"],
-                        "content": f"{{{{ {input_variable_name} }}}}",
-                    }
-                )
-                input_variables[input_variable_name] = message["content"]
-            else:
-                input_messages.append(message)
-        return input_messages, input_variables
 
     @staticmethod
     def _split_list(lst: List, n_parts: int) -> List[List]:
@@ -421,68 +292,6 @@ class OpenAIMonitor:
             + cost_per_token["output"] * num_output_tokens
         )
 
-    def _append_row_to_df(
-        self,
-        input_data: Dict[str, str],
-        output_data: str,
-        latency: float,
-        num_of_tokens: int,
-        cost: float,
-        **kwargs,
-    ) -> None:
-        """Appends a row with input/output, number of tokens, and latency to the
-        df."""
-        if self.monitor_output_only:
-            input_data = {}
-
-        row = pd.DataFrame(
-            [
-                {
-                    **input_data,
-                    **{
-                        "output": output_data,
-                        "tokens": num_of_tokens,
-                        "latency": latency,
-                        "cost": cost,
-                    },
-                    **kwargs,
-                }
-            ]
-        )
-        if self.accumulate_data:
-            self.df = pd.concat([self.df, row], ignore_index=True)
-        else:
-            self.df = row
-
-        # Perform casting
-        input_columns = [col for col in self.df.columns if col.startswith("message")]
-        casting_dict = {col: object for col in input_columns}
-        casting_dict.update(
-            {"output": object, "tokens": int, "latency": float, "cost": float}
-        )
-        self.df = self.df.astype(casting_dict)
-
-    def start_monitoring(self) -> None:
-        """Switches monitoring for OpenAI LLMs on.
-
-        After calling this method, all the calls to OpenAI's `Completion` and
-        `ChatCompletion` APIs will be monitored.
-
-        Refer to the `OpenAIMonitor` class docstring for an example.
-        """
-        if self.monitoring_on:
-            print("Monitoring is already on!\nTo stop it, call `stop_monitoring`.")
-            return
-        self.monitoring_on = True
-        self._overwrite_completion_methods()
-        print("All the calls to OpenAI models are now being monitored!")
-        if self.publish:
-            print(
-                "Furthermore, since `publish` was set to True, the data is being"
-                f" published to your '{self.data_streamer.openlayer_project_name}' Openlayer project."
-            )
-        print("To stop monitoring, call the `stop_monitoring` method.")
-
     def _overwrite_completion_methods(self) -> None:
         """Overwrites OpenAI's completion methods with the modified versions."""
         if self.openai_version.startswith("0"):
@@ -493,70 +302,6 @@ class OpenAIMonitor:
                 self.modified_create_chat_completion
             )
             self.openai_client.completions.create = self.modified_create_completion
-
-    def stop_monitoring(self):
-        """Switches monitoring for OpenAI LLMs off.
-
-        After calling this method, all the calls to OpenAI's `Completion` and
-        `ChatCompletion` APIs will stop being monitored.
-
-        Refer to the `OpenAIMonitor` class docstring for an example.
-        """
-        self._restore_completion_methods()
-        self.monitoring_on = False
-        print("Monitoring stopped.")
-        if not self.publish:
-            print(
-                "To publish the data collected so far to your Openlayer project, "
-                "call the `publish_batch_data` method."
-            )
-
-    def _restore_completion_methods(self) -> None:
-        """Restores OpenAI's completion methods to their original versions."""
-        if self.openai_version.startswith("0"):
-            openai.ChatCompletion.create = self.create_chat_completion
-            openai.Completion.create = self.create_completion
-        else:
-            self.openai_client.chat.completions.create = self.create_chat_completion
-            self.openai_client.completions.create = self.create_completion
-
-    def publish_batch_data(self):
-        """Manually publish the accumulated data to Openlayer when automatic publishing
-        is disabled (i.e., ``publish=False``)."""
-        if self.publish:
-            print(
-                "You have set `publish` to True, so every request you've made so far"
-                " was already published to Openlayer."
-            )
-            answer = input(
-                "Do you want to publish the "
-                "accumulated data again to Openlayer? [y/n]:"
-            )
-            if answer.lower() != "y":
-                print(
-                    "Canceled data publishing attempt.\nIf you want to use the "
-                    "`publish_data` method manually, instantiate the OpenAIMonitor "
-                    "with `publish=False`."
-                )
-                return
-        self.data_streamer.publish_batch_data(df=self.df, config=self.data_config)
-
-    @property
-    def data_config(self) -> Dict[str, any]:
-        """Data config for the df. Used for publishing data to Openlayer."""
-        return {
-            "costColumnName": "cost",
-            "inputVariableNames": [],
-            "label": "production",
-            "latencyColumnName": "latency",
-            "numOfTokenColumnName": "tokens",
-            "outputColumnName": "output",
-        }
-
-    @property
-    def data(self) -> pd.DataFrame:
-        """Dataframe accumulated after monitoring was switched on."""
-        return self.df
 
     def monitor_thread_run(self, run: openai.types.beta.threads.run.Run) -> None:
         """Monitor a run from an OpenAI assistant.
@@ -571,37 +316,23 @@ class OpenAIMonitor:
 
         try:
             # Extract vars
-            run_vars = self._extract_run_vars(run)
+            run_step_vars = self._extract_run_vars(run)
+            metadata = self._extract_run_metadata(run)
 
             # Convert thread to prompt
             messages = self.openai_client.beta.threads.messages.list(
-                thread_id=run_vars["openai_thread_id"], order="asc"
+                thread_id=run.thread_id, order="asc"
             )
-            populated_prompt = self.thread_messages_to_prompt(messages)
-            prompt, input_variables = self.format_input(populated_prompt)
+            prompt = self.thread_messages_to_prompt(messages)
 
-            # Data
-            input_data = {
-                **input_variables,
-                **{
-                    "output": prompt[-1]["content"],
-                    "tokens": run_vars["total_num_tokens"],
-                    "latency": run_vars["latency"],
-                    "cost": run_vars["cost"],
-                    "openai_thread_id": run_vars["openai_thread_id"],
-                    "openai_assistant_id": run_vars["openai_assistant_id"],
-                    "timestamp": run_vars["timestamp"],
-                },
-            }
+            # Add step to the trace
+            tracer.add_openai_chat_completion_step_to_trace(
+                inputs={"prompt": prompt[:-1]},  # Remove the last message (the output)
+                output=prompt[-1]["content"],
+                **run_step_vars,
+                metadata=metadata,
+            )
 
-            # Config
-            config = self.data_config.copy()
-            config["inputVariableNames"] = input_variables.keys()
-            config["prompt"] = prompt[:-1]  # Remove the last message (the output)
-            config["timestampColumnName"] = "timestamp"
-
-            self.data_streamer.stream_data(data=input_data, config=config)
-            print("Data published to Openlayer.")
         # pylint: disable=broad-except
         except Exception as e:
             print(f"Failed to monitor run. {e}")
@@ -616,18 +347,27 @@ class OpenAIMonitor:
     ) -> Dict[str, any]:
         """Extract the variables from the run object."""
         return {
-            "openai_thread_id": run.thread_id,
-            "openai_assistant_id": run.assistant_id,
+            "start_time": run.created_at,
+            "end_time": run.completed_at,
             "latency": (run.completed_at - run.created_at) * 1000,  # Convert to ms
-            "timestamp": run.created_at,  # Convert to ms
-            "num_input_tokens": run.usage["prompt_tokens"],
-            "num_output_tokens": run.usage["completion_tokens"],
-            "total_num_tokens": run.usage["total_tokens"],
+            "prompt_tokens": run.usage.prompt_tokens,
+            "completion_tokens": run.usage.completion_tokens,
+            "tokens": run.usage.total_tokens,
+            "model": run.model,
             "cost": self.get_cost_estimate(
                 model=run.model,
-                num_input_tokens=run.usage["prompt_tokens"],
-                num_output_tokens=run.usage["completion_tokens"],
+                num_input_tokens=run.usage.prompt_tokens,
+                num_output_tokens=run.usage.completion_tokens,
             ),
+        }
+
+    def _extract_run_metadata(
+        self, run: openai.types.beta.threads.run.Run
+    ) -> Dict[str, any]:
+        """Extract the metadata from the run object."""
+        return {
+            "openaiThreadId": run.thread_id,
+            "openaiAssistantId": run.assistant_id,
         }
 
     @staticmethod
