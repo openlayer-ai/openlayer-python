@@ -68,12 +68,12 @@ def create_step(
                 "label": "production",
                 "groundTruthColumnName": "groundTruth",
                 "latencyColumnName": "latency",
+                "costColumnName": "cost",
+                "numOfTokenColumnName": "tokens",
             }
             if isinstance(new_step, steps.OpenAIChatCompletionStep):
                 config.update(
                     {
-                        "costColumnName": "cost",
-                        "numOfTokenColumnName": "tokens",
                         "prompt": new_step.inputs.get("prompt"),
                     }
                 )
@@ -99,23 +99,52 @@ def process_trace_for_upload(trace: traces.Trace) -> Tuple[Dict[str, Any], List[
     input_variables = root_step.inputs
     input_variable_names = list(input_variables.keys())
 
+    processed_steps = bubble_up_costs_and_tokens(trace.to_dict())
+
     trace_data = {
         **input_variables,
         "output": root_step.output,
         "groundTruth": root_step.ground_truth,
         "latency": root_step.latency,
-        "steps": trace.to_dict(),
+        "cost": processed_steps[0].get("cost", 0),
+        "tokens": processed_steps[0].get("tokens", 0),
+        "steps": processed_steps,
     }
-    # Extra fields for openai_chat_completion step
-    if isinstance(root_step, steps.OpenAIChatCompletionStep):
-        trace_data.update(
-            {
-                "cost": root_step.cost,
-                "tokens": root_step.prompt_tokens + root_step.completion_tokens,
-            }
-        )
 
     return trace_data, input_variable_names
+
+
+def bubble_up_costs_and_tokens(
+    trace_dict: List[Dict[str, Any]]
+) -> List[Dict[str, Any]]:
+    """Adds the cost and number of tokens of nested steps to their parent steps."""
+
+    def add_step_costs_and_tokens(step: Dict[str, Any]) -> Tuple[float, int]:
+        step_cost = step_tokens = 0
+
+        if "cost" in step:
+            step_cost += step["cost"]
+        if "tokens" in step:
+            step_tokens += step["tokens"]
+
+        # Recursively add costs and tokens from nested steps
+        for nested_step in step.get("steps", []):
+            nested_cost, nested_tokens = add_step_costs_and_tokens(nested_step)
+            step_cost += nested_cost
+            step_tokens += nested_tokens
+
+        if "steps" in step:
+            if step_cost > 0 and "cost" not in step:
+                step["cost"] = step_cost
+            if step_tokens > 0 and "tokens" not in step:
+                step["tokens"] = step_tokens
+
+        return step_cost, step_tokens
+
+    for root_step_dict in trace_dict:
+        add_step_costs_and_tokens(root_step_dict)
+
+    return trace_dict
 
 
 def trace(*step_args, **step_kwargs):
