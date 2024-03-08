@@ -76,6 +76,7 @@ class OpenAIChatCompletionStep(Step):
         self.step_type = "openai_chat_completion"
         self.prompt_tokens: int = None
         self.completion_tokens: int = None
+        self.tokens: int = None
         self.cost: float = None
         self.model: str = None
         self.model_parameters: Dict[str, Any] = None
@@ -88,6 +89,7 @@ class OpenAIChatCompletionStep(Step):
             {
                 "promptTokens": self.prompt_tokens,
                 "completionTokens": self.completion_tokens,
+                "tokens": self.tokens,
                 "cost": self.cost,
                 "model": self.model,
                 "modelParameters": self.model_parameters,
