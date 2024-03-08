@@ -89,6 +89,50 @@ def create_step(
             logger.debug(f"Ending step {name}")
 
 
+def add_openai_chat_completion_step_to_trace(**kwargs) -> None:
+    """Adds an OpenAI chat completion step to the trace."""
+    with create_step(
+        step_type="openai_chat_completion", name="chat_completion"
+    ) as step:
+        step.log(
+            **kwargs,
+        )
+
+
+# ----------------------------- Tracing decorator ---------------------------- #
+def trace(*step_args, **step_kwargs):
+    def decorator(func):
+        func_signature = inspect.signature(func)
+
+        @wraps(func)
+        def wrapper(*func_args, **func_kwargs):
+            if step_kwargs.get("name") is None:
+                step_kwargs["name"] = func.__name__
+            with create_step(*step_args, **step_kwargs) as step:
+                output = func(*func_args, **func_kwargs)
+                end_time = time.time()
+                latency = (end_time - step.start_time) * 1000  # in ms
+
+                bound = func_signature.bind(*func_args, **func_kwargs)
+                bound.apply_defaults()
+                inputs = dict(bound.arguments)
+                inputs.pop("self", None)
+                inputs.pop("cls", None)
+
+                step.log(
+                    inputs=inputs,
+                    output=output,
+                    end_time=end_time,
+                    latency=latency,
+                )
+            return output
+
+        return wrapper
+
+    return decorator
+
+
+# --------------------- Helper post-processing functions --------------------- #
 def process_trace_for_upload(trace: traces.Trace) -> Tuple[Dict[str, Any], List[str]]:
     """Post processing of the trace data before uploading to Openlayer.
 
@@ -145,35 +189,3 @@ def bubble_up_costs_and_tokens(
         add_step_costs_and_tokens(root_step_dict)
 
     return trace_dict
-
-
-def trace(*step_args, **step_kwargs):
-    def decorator(func):
-        func_signature = inspect.signature(func)
-
-        @wraps(func)
-        def wrapper(*func_args, **func_kwargs):
-            if step_kwargs.get("name") is None:
-                step_kwargs["name"] = func.__name__
-            with create_step(*step_args, **step_kwargs) as step:
-                output = func(*func_args, **func_kwargs)
-                end_time = time.time()
-                latency = (end_time - step.start_time) * 1000  # in ms
-
-                bound = func_signature.bind(*func_args, **func_kwargs)
-                bound.apply_defaults()
-                inputs = dict(bound.arguments)
-                inputs.pop("self", None)
-                inputs.pop("cls", None)
-
-                step.log(
-                    inputs=inputs,
-                    output=output,
-                    end_time=end_time,
-                    latency=latency,
-                )
-            return output
-
-        return wrapper
-
-    return decorator
