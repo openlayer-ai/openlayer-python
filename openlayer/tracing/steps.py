@@ -3,6 +3,8 @@
 import time
 from typing import Any, Dict, Optional
 
+from . import enums
+
 
 class Step:
     def __init__(
@@ -17,7 +19,7 @@ class Step:
         self.output = output
         self.metadata = metadata
 
-        self.step_type = None
+        self.step_type: enums.StepType = None
         self.start_time = time.time()
         self.end_time = None
         self.ground_truth = None
@@ -39,7 +41,7 @@ class Step:
         """Dictionary representation of the Step."""
         return {
             "name": self.name,
-            "type": self.step_type,
+            "type": self.step_type.value,
             "inputs": self.inputs,
             "output": self.output,
             "groundTruth": self.ground_truth,
@@ -60,10 +62,10 @@ class UserCallStep(Step):
         metadata: Dict[str, any] = {},
     ) -> None:
         super().__init__(name=name, inputs=inputs, output=output, metadata=metadata)
-        self.step_type = "user_call"
+        self.step_type = enums.StepType.USER_CALL
 
 
-class OpenAIChatCompletionStep(Step):
+class ChatCompletionStep(Step):
     def __init__(
         self,
         name: str,
@@ -73,7 +75,8 @@ class OpenAIChatCompletionStep(Step):
     ) -> None:
         super().__init__(name=name, inputs=inputs, output=output, metadata=metadata)
 
-        self.step_type = "openai_chat_completion"
+        self.step_type = enums.StepType.CHAT_COMPLETION
+        self.provider: str = None
         self.prompt_tokens: int = None
         self.completion_tokens: int = None
         self.tokens: int = None
@@ -83,10 +86,11 @@ class OpenAIChatCompletionStep(Step):
         self.raw_output: str = None
 
     def to_dict(self) -> Dict[str, Any]:
-        """Dictionary representation of the OpenAIChatCompletionStep."""
+        """Dictionary representation of the ChatCompletionStep."""
         step_dict = super().to_dict()
         step_dict.update(
             {
+                "provider": self.provider,
                 "promptTokens": self.prompt_tokens,
                 "completionTokens": self.completion_tokens,
                 "tokens": self.tokens,
@@ -100,12 +104,12 @@ class OpenAIChatCompletionStep(Step):
 
 
 # ----------------------------- Factory function ----------------------------- #
-def step_factory(step_type: str, *args, **kwargs) -> Step:
+def step_factory(step_type: enums.StepType, *args, **kwargs) -> Step:
     """Factory function to create a step based on the step_type."""
-    if step_type not in ["user_call", "openai_chat_completion"]:
-        raise ValueError(f"Step type {step_type} not recognized.")
+    if step_type.value not in [item.value for item in enums.StepType]:
+        raise ValueError(f"Step type {step_type.value} not recognized.")
     step_type_mapping = {
-        "user_call": UserCallStep,
-        "openai_chat_completion": OpenAIChatCompletionStep,
+        enums.StepType.USER_CALL: UserCallStep,
+        enums.StepType.CHAT_COMPLETION: ChatCompletionStep,
     }
     return step_type_mapping[step_type](*args, **kwargs)
