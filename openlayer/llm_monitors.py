@@ -2,7 +2,8 @@
 
 import logging
 import time
-from typing import Dict, List
+import warnings
+from typing import Dict, List, Optional
 
 import openai
 
@@ -62,8 +63,36 @@ class OpenAIMonitor:
     def __init__(
         self,
         client=None,
+        publish: Optional[bool] = None,
     ) -> None:
         self._initialize_openai(client)
+        if publish is not None:
+            warnings.warn(
+                "The `publish` parameter is deprecated and will be removed in a future"
+                " version. All traces are now automatically published to Openlayer.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+    def start_monitoring(self) -> None:
+        """Start monitoring the OpenAI assistant."""
+        warnings.warn(
+            "The `start_monitoring` method is deprecated and will be removed in a future"
+            " version. Monitoring is now automatically enabled once the OpenAIMonitor"
+            " is instantiated.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+    def stop_monitoring(self) -> None:
+        """Stop monitoring the OpenAI assistant."""
+        warnings.warn(
+            "The `stop_monitoring` method is deprecated and will be removed in a future"
+            " version. Monitoring is now automatically enabled once the OpenAIMonitor"
+            " is instantiated.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
     def _initialize_openai(self, client) -> None:
         """Initializes the OpenAI attributes."""
