@@ -7,17 +7,24 @@ from . import enums
 
 
 class Step:
+    """Step, defined as a single function call being traced.
+
+    This is the base class for all the different types of steps that can be
+    used in a trace. Steps can also contain nested steps, which represent
+    function calls made within the parent step.
+    """
+
     def __init__(
         self,
         name: str,
         inputs: Optional[Any] = None,
         output: Optional[Any] = None,
-        metadata: Dict[str, any] = {},
+        metadata: Optional[Dict[str, any]] = None,
     ) -> None:
         self.name = name
         self.inputs = inputs
         self.output = output
-        self.metadata = metadata
+        self.metadata = metadata or {}
 
         self.step_type: enums.StepType = None
         self.start_time = time.time()
@@ -54,24 +61,28 @@ class Step:
 
 
 class UserCallStep(Step):
+    """User call step represents a generic user call in the trace."""
+
     def __init__(
         self,
         name: str,
         inputs: Optional[Any] = None,
         output: Optional[Any] = None,
-        metadata: Dict[str, any] = {},
+        metadata: Optional[Dict[str, any]] = None,
     ) -> None:
         super().__init__(name=name, inputs=inputs, output=output, metadata=metadata)
         self.step_type = enums.StepType.USER_CALL
 
 
 class ChatCompletionStep(Step):
+    """Chat completion step represents an LLM chat completion in the trace."""
+
     def __init__(
         self,
         name: str,
         inputs: Optional[Any] = None,
         output: Optional[Any] = None,
-        metadata: Dict[str, any] = {},
+        metadata: Optional[Dict[str, any]] = None,
     ) -> None:
         super().__init__(name=name, inputs=inputs, output=output, metadata=metadata)
 

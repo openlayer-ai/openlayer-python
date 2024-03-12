@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 _streamer = None
 try:
     _streamer = data_streamer.DataStreamer(publish=True)
+# pylint: disable=broad-except
 except Exception as exc:
     logger.error(
         "You have not provided enough information to upload traces to Openlayer."
@@ -34,7 +35,7 @@ def create_step(
     step_type: enums.StepType = enums.StepType.USER_CALL,
     inputs: Optional[Any] = None,
     output: Optional[Any] = None,
-    metadata: Dict[str, any] = {},
+    metadata: Optional[Dict[str, Any]] = None,
 ) -> Generator[steps.Step, None, None]:
     """Starts a trace and yields a Step object."""
     new_step: steps.Step = steps.step_factory(
@@ -50,7 +51,7 @@ def create_step(
         _current_trace.set(current_trace)  # Set the current trace in context
         current_trace.add_step(new_step)
     else:
-        logger.debug(f"Adding step {name} to parent step {parent_step.name}")
+        logger.debug("Adding step %s to parent step %s", name, parent_step.name)
         current_trace = _current_trace.get()
         parent_step.add_nested_step(new_step)
 
@@ -86,7 +87,7 @@ def create_step(
                     " Openlayer."
                 )
         else:
-            logger.debug(f"Ending step {name}")
+            logger.debug("Ending step %s", name)
 
 
 def add_openai_chat_completion_step_to_trace(**kwargs) -> None:
@@ -133,17 +134,19 @@ def trace(*step_args, **step_kwargs):
 
 
 # --------------------- Helper post-processing functions --------------------- #
-def process_trace_for_upload(trace: traces.Trace) -> Tuple[Dict[str, Any], List[str]]:
+def process_trace_for_upload(
+    trace_obj: traces.Trace,
+) -> Tuple[Dict[str, Any], List[str]]:
     """Post processing of the trace data before uploading to Openlayer.
 
     This is done to ensure backward compatibility with data on Openlayer.
     """
-    root_step = trace.steps[0]
+    root_step = trace_obj.steps[0]
 
     input_variables = root_step.inputs
     input_variable_names = list(input_variables.keys())
 
-    processed_steps = bubble_up_costs_and_tokens(trace.to_dict())
+    processed_steps = bubble_up_costs_and_tokens(trace_obj.to_dict())
 
     trace_data = {
         **input_variables,
