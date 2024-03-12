@@ -1,3 +1,5 @@
+"""Module with the enums used in the tracing module."""
+
 import enum
 
 

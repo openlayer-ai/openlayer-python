@@ -6,6 +6,12 @@ from .steps import Step
 
 
 class Trace:
+    """Trace, defined as a sequence of steps.
+
+    Each step represents a function call being traced. Steps can also
+    contain nested steps, which represent function calls made within the
+    parent step."""
+
     def __init__(self):
         self.steps = []
         self.current_step = None

@@ -178,6 +178,7 @@ class OpenAIMonitor:
                     start_time = time.time()
                     first_token_time = None
                     num_of_completion_tokens = None
+                    latency = None
                     try:
                         i = 0
                         for i, chunk in enumerate(chunks):
