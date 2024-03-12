@@ -9,7 +9,7 @@ from functools import wraps
 from typing import Any, Dict, Generator, List, Optional, Tuple
 
 from ..services import data_streamer
-from . import steps, traces
+from . import enums, steps, traces
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ _current_trace = contextvars.ContextVar("current_trace")
 @contextmanager
 def create_step(
     name: str,
-    step_type: str = "user_call",
+    step_type: enums.StepType = enums.StepType.USER_CALL,
     inputs: Optional[Any] = None,
     output: Optional[Any] = None,
     metadata: Dict[str, any] = {},
@@ -71,7 +71,7 @@ def create_step(
                 "costColumnName": "cost",
                 "numOfTokenColumnName": "tokens",
             }
-            if isinstance(new_step, steps.OpenAIChatCompletionStep):
+            if isinstance(new_step, steps.ChatCompletionStep):
                 config.update(
                     {
                         "prompt": new_step.inputs.get("prompt"),
@@ -92,7 +92,7 @@ def create_step(
 def add_openai_chat_completion_step_to_trace(**kwargs) -> None:
     """Adds an OpenAI chat completion step to the trace."""
     with create_step(
-        step_type="openai_chat_completion", name="chat_completion"
+        step_type=enums.StepType.CHAT_COMPLETION, name="OpenAI Chat Completion"
     ) as step:
         step.log(
             **kwargs,

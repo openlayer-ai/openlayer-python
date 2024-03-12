@@ -134,6 +134,7 @@ class OpenAIMonitor:
                         model=kwargs.get("model"),
                         model_parameters=kwargs.get("model_parameters"),
                         raw_output=response.model_dump(),
+                        provider="OpenAI",
                     )
                 # pylint: disable=broad-except
                 except Exception as e:
@@ -202,6 +203,7 @@ class OpenAIMonitor:
                                         else None
                                     )
                                 },
+                                provider="OpenAI",
                             )
                         # pylint: disable=broad-except
                         except Exception as e:
@@ -248,6 +250,7 @@ class OpenAIMonitor:
                         model=kwargs.get("model"),
                         model_parameters=kwargs.get("model_parameters"),
                         raw_output=response.model_dump(),
+                        provider="OpenAI",
                     )
             # pylint: disable=broad-except
             except Exception as e:
@@ -331,6 +334,7 @@ class OpenAIMonitor:
                 output=prompt[-1]["content"],
                 **run_step_vars,
                 metadata=metadata,
+                provider="OpenAI",
             )
 
         # pylint: disable=broad-except
