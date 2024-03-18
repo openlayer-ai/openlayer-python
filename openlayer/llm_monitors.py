@@ -142,6 +142,23 @@ class OpenAIMonitor:
 
                 # Try to add step to the trace
                 try:
+                    output_content = response.choices[0].message.content
+                    output_function_call = response.choices[0].message.function_call
+                    output_tool_calls = response.choices[0].message.tool_calls
+                    if output_content:
+                        output_data = output_content.strip()
+                    elif output_function_call or output_tool_calls:
+                        if output_function_call:
+                            function_call = dict(output_function_call)
+                        else:
+                            function_call = dict(output_tool_calls[0].function)
+                        metadata = {
+                            "function_call_name": function_call.get("name"),
+                            "function_call_arguments": function_call.get("arguments"),
+                        }
+                        output_data = str(function_call)
+                    else:
+                        output_data = None
                     output_data = response.choices[0].message.content
                     cost = self.get_cost_estimate(
                         model=kwargs.get("model"),
@@ -164,6 +181,7 @@ class OpenAIMonitor:
                         model_parameters=kwargs.get("model_parameters"),
                         raw_output=response.model_dump(),
                         provider="OpenAI",
+                        metadata=metadata,
                     )
                 # pylint: disable=broad-except
                 except Exception as e:
