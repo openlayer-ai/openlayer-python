@@ -393,7 +393,7 @@ class OpenAIMonitor:
             )
             self.openai_client.completions.create = self.modified_create_completion
 
-    def monitor_thread_run(self, run: openai.types.beta.threads.run.Run) -> None:
+    def monitor_thread_run(self, run: "openai.types.beta.threads.run.Run") -> None:
         """Monitor a run from an OpenAI assistant.
 
         Once the run is completed, the thread data is published to Openlayer,
@@ -428,13 +428,13 @@ class OpenAIMonitor:
         except Exception as e:
             print(f"Failed to monitor run. {e}")
 
-    def _type_check_run(self, run: openai.types.beta.threads.run.Run) -> None:
+    def _type_check_run(self, run: "openai.types.beta.threads.run.Run") -> None:
         """Validate the run object."""
         if not isinstance(run, openai.types.beta.threads.run.Run):
             raise ValueError(f"Expected a Run object, but got {type(run)}.")
 
     def _extract_run_vars(
-        self, run: openai.types.beta.threads.run.Run
+        self, run: "openai.types.beta.threads.run.Run"
     ) -> Dict[str, any]:
         """Extract the variables from the run object."""
         return {
@@ -453,7 +453,7 @@ class OpenAIMonitor:
         }
 
     def _extract_run_metadata(
-        self, run: openai.types.beta.threads.run.Run
+        self, run: "openai.types.beta.threads.run.Run"
     ) -> Dict[str, any]:
         """Extract the metadata from the run object."""
         return {
@@ -463,7 +463,7 @@ class OpenAIMonitor:
 
     @staticmethod
     def thread_messages_to_prompt(
-        messages: List[openai.types.beta.threads.thread_message.ThreadMessage],
+        messages: List["openai.types.beta.threads.thread_message.ThreadMessage"],
     ) -> List[Dict[str, str]]:
         """Given list of ThreadMessage, return its contents in the `prompt` format,
         i.e., a list of dicts with 'role' and 'content' keys."""
