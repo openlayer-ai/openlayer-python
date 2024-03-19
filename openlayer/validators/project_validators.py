@@ -1,5 +1,6 @@
 """Implements the project specific validation class.
 """
+
 from typing import Dict
 
 import marshmallow as ma

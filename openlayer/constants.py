@@ -1,5 +1,6 @@
 """Module for storing constants used throughout the OpenLayer Python Client.
 """
+
 import os
 
 import marshmallow as ma

@@ -19,6 +19,7 @@ Typical usage example:
     project_data = self.api.post_request(endpoint, body=payload)
 
 """
+
 import os
 import shutil
 from enum import Enum
@@ -174,9 +175,9 @@ class Api:
         return self._api_request(
             method="POST",
             endpoint=endpoint,
-            headers=self._headers
-            if files is None
-            else self._headers_multipart_form_data,
+            headers=(
+                self._headers if files is None else self._headers_multipart_form_data
+            ),
             body=body,
             files=files,
             data=data,
@@ -188,9 +189,9 @@ class Api:
         return self._api_request(
             "PUT",
             endpoint,
-            headers=self._headers
-            if files is None
-            else self._headers_multipart_form_data,
+            headers=(
+                self._headers if files is None else self._headers_multipart_form_data
+            ),
             body=body,
             files=files,
             data=data,

@@ -5,6 +5,7 @@ Typical usage example:
   if project is None:
     raise errors.OpenlayerResourceNotFound(f"Project {project_id} does not exist")
 """
+
 from typing import Dict
 
 

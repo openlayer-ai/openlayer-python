@@ -3,6 +3,7 @@
 import time
 from typing import Any, Dict, Optional
 
+from .. import utils
 from . import enums
 
 
@@ -40,6 +41,7 @@ class Step:
 
     def log(self, **kwargs: Any) -> None:
         """Logs step data."""
+        kwargs = utils.json_serialize(kwargs)
         for key, value in kwargs.items():
             if hasattr(self, key):
                 setattr(self, key, value)

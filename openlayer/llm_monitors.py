@@ -1,5 +1,6 @@
 """Module with classes for monitoring calls to LLMs."""
 
+import json
 import logging
 import time
 import warnings
@@ -149,17 +150,18 @@ class OpenAIMonitor:
                         output_data = output_content.strip()
                     elif output_function_call or output_tool_calls:
                         if output_function_call:
-                            function_call = dict(output_function_call)
+                            function_call = {
+                                "name": output_function_call.name,
+                                "arguments": json.loads(output_function_call.arguments),
+                            }
                         else:
-                            function_call = dict(output_tool_calls[0].function)
-                        metadata = {
-                            "function_call_name": function_call.get("name"),
-                            "function_call_arguments": function_call.get("arguments"),
-                        }
-                        output_data = str(function_call)
+                            function_call = {
+                                "name": output_tool_calls[0].name,
+                                "arguments": json.loads(output_function_call.arguments),
+                            }
+                        output_data = function_call
                     else:
                         output_data = None
-                    output_data = response.choices[0].message.content
                     cost = self.get_cost_estimate(
                         model=kwargs.get("model"),
                         num_input_tokens=response.usage.prompt_tokens,
@@ -181,7 +183,6 @@ class OpenAIMonitor:
                         model_parameters=kwargs.get("model_parameters"),
                         raw_output=response.model_dump(),
                         provider="OpenAI",
-                        metadata=metadata,
                     )
                 # pylint: disable=broad-except
                 except Exception as e:
