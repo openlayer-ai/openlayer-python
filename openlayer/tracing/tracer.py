@@ -41,6 +41,7 @@ def create_step(
     new_step: steps.Step = steps.step_factory(
         step_type=step_type, name=name, inputs=inputs, output=output, metadata=metadata
     )
+    new_step.start_time = time.time()
 
     parent_step: Optional[steps.Step] = _current_step.get(None)
     is_root_step: bool = parent_step is None
@@ -59,6 +60,12 @@ def create_step(
     try:
         yield new_step
     finally:
+        if new_step.end_time is None:
+            new_step.end_time = time.time()
+        if new_step.latency is None:
+            latency = (new_step.end_time - new_step.start_time) * 1000  # in ms
+            new_step.latency = latency
+
         _current_step.reset(token)
         if is_root_step:
             logger.debug("Ending the trace...")
@@ -95,9 +102,7 @@ def add_openai_chat_completion_step_to_trace(**kwargs) -> None:
     with create_step(
         step_type=enums.StepType.CHAT_COMPLETION, name="OpenAI Chat Completion"
     ) as step:
-        step.log(
-            **kwargs,
-        )
+        step.log(**kwargs)
 
 
 # ----------------------------- Tracing decorator ---------------------------- #

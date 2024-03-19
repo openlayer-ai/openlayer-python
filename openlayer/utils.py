@@ -1,7 +1,9 @@
 """Series of helper functions and classes that are used throughout the
 OpenLayer Python client.
 """
+
 import io
+import json
 import logging
 import os
 import re
@@ -250,3 +252,24 @@ def write_yaml(dictionary: dict, filename: str):
     """
     with open(filename, "w", encoding="UTF-8") as stream:
         yaml.dump(dictionary, stream)
+
+
+def json_serialize(data):
+    """
+    Recursively attempts to convert data into JSON-serializable formats.
+    """
+    if isinstance(data, (str, int, float, bool, type(None))):
+        return data  # Already JSON-serializable
+    elif isinstance(data, dict):
+        return {k: json_serialize(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [json_serialize(item) for item in data]
+    elif isinstance(data, tuple):
+        return tuple(json_serialize(item) for item in data)
+    else:
+        # Fallback: Convert to string if not serializable
+        try:
+            json.dumps(data)
+            return data  # Data was serializable
+        except TypeError:
+            return str(data)  # Not serializable, convert to string

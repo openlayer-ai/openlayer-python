@@ -3,6 +3,7 @@
 The entry point for all validators. This is the interface that all validators
 must implement.
 """
+
 import logging
 from abc import ABC, abstractmethod
 from typing import List

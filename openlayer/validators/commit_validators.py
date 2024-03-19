@@ -1,5 +1,6 @@
 """Implements the commit bundle specific validation class.
 """
+
 import logging
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional
@@ -66,16 +67,16 @@ class BaseCommitBundleValidator(BaseValidator, ABC):
             else {}
         )
         if "training" in self._bundle_resources:
-            self.training_dataset_config: Dict[
-                str, any
-            ] = utils.load_dataset_config_from_bundle(
-                bundle_path=bundle_path, label="training"
+            self.training_dataset_config: Dict[str, any] = (
+                utils.load_dataset_config_from_bundle(
+                    bundle_path=bundle_path, label="training"
+                )
             )
         elif "fine-tuning" in self._bundle_resources:
-            self.training_dataset_config: Dict[
-                str, any
-            ] = utils.load_dataset_config_from_bundle(
-                bundle_path=bundle_path, label="fine-tuning"
+            self.training_dataset_config: Dict[str, any] = (
+                utils.load_dataset_config_from_bundle(
+                    bundle_path=bundle_path, label="fine-tuning"
+                )
             )
         else:
             self.training_dataset_config = {}

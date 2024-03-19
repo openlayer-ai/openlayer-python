@@ -29,27 +29,66 @@ class DataStreamer:
         openlayer_inference_pipeline_id: Optional[str] = None,
         publish: bool = False,
     ) -> None:
-        self.openlayer_api_key = openlayer_api_key or utils.get_env_variable(
+        self._openlayer_api_key = openlayer_api_key or utils.get_env_variable(
             "OPENLAYER_API_KEY"
         )
-        self.openlayer_project_name = openlayer_project_name or utils.get_env_variable(
+        self._openlayer_project_name = openlayer_project_name or utils.get_env_variable(
             "OPENLAYER_PROJECT_NAME"
         )
-        self.openlayer_inference_pipeline_name = (
+        self._openlayer_inference_pipeline_name = (
             openlayer_inference_pipeline_name
             or utils.get_env_variable("OPENLAYER_INFERENCE_PIPELINE_NAME")
             or "production"
         )
-        self.openlayer_inference_pipeline_id = (
+        self._openlayer_inference_pipeline_id = (
             openlayer_inference_pipeline_id
             or utils.get_env_variable("OPENLAYER_INFERENCE_PIPELINE_ID")
         )
         self.publish = publish
 
-        self._validate_attributes()
-
         # Lazy load the inference pipeline
         self.inference_pipeline = None
+
+    @property
+    def openlayer_api_key(self) -> Optional[str]:
+        """The Openlayer API key."""
+        return self._get_openlayer_attribute("_openlayer_api_key", "OPENLAYER_API_KEY")
+
+    @property
+    def openlayer_project_name(self) -> Optional[str]:
+        """The name of the project on Openlayer."""
+        return self._get_openlayer_attribute(
+            "_openlayer_project_name", "OPENLAYER_PROJECT_NAME"
+        )
+
+    @property
+    def openlayer_inference_pipeline_name(self) -> Optional[str]:
+        """The name of the inference pipeline on Openlayer."""
+        return self._get_openlayer_attribute(
+            "_openlayer_inference_pipeline_name", "OPENLAYER_INFERENCE_PIPELINE_NAME"
+        )
+
+    @property
+    def openlayer_inference_pipeline_id(self) -> Optional[str]:
+        """The id of the inference pipeline on Openlayer."""
+        return self._get_openlayer_attribute(
+            "_openlayer_inference_pipeline_id", "OPENLAYER_INFERENCE_PIPELINE_ID"
+        )
+
+    def _get_openlayer_attribute(
+        self, attribute_name: str, env_variable: str
+    ) -> Optional[str]:
+        """A helper method to fetch an Openlayer attribute value.
+
+        Args:
+            attribute_name: The name of the attribute in this class.
+            env_variable: The name of the environment variable to fetch.
+        """
+        attribute_value = getattr(self, attribute_name, None)
+        if not attribute_value:
+            attribute_value = utils.get_env_variable(env_variable)
+            setattr(self, attribute_name, attribute_value)
+        return attribute_value
 
     def _validate_attributes(self) -> None:
         """Granular validation of the arguments."""
@@ -97,6 +136,7 @@ class DataStreamer:
             config: The configuration for the data stream.
         """
 
+        self._validate_attributes()
         self._check_inference_pipeline_ready()
         self.inference_pipeline.stream_data(stream_data=data, stream_config=config)
         logger.info("Data streamed to Openlayer.")

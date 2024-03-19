@@ -1,5 +1,6 @@
 """Implements the inference pipeline validation class.
 """
+
 from typing import Dict
 
 import marshmallow as ma

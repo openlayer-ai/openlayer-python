@@ -1,6 +1,7 @@
 """
 Module with sample openlayer test
 """
+
 import openlayer
 
 
