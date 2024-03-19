@@ -78,6 +78,7 @@ def create_step(
                 "latencyColumnName": "latency",
                 "costColumnName": "cost",
                 "numOfTokenColumnName": "tokens",
+                "timestampColumnName": "inferenceTimestamp",
             }
             if isinstance(new_step, steps.ChatCompletionStep):
                 config.update(
@@ -155,6 +156,7 @@ def process_trace_for_upload(
 
     trace_data = {
         **input_variables,
+        "inferenceTimestamp": root_step.start_time,
         "output": root_step.output,
         "groundTruth": root_step.ground_truth,
         "latency": root_step.latency,
