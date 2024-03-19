@@ -156,8 +156,10 @@ class OpenAIMonitor:
                             }
                         else:
                             function_call = {
-                                "name": output_tool_calls[0].name,
-                                "arguments": json.loads(output_function_call.arguments),
+                                "name": output_tool_calls[0].function.name,
+                                "arguments": json.loads(
+                                    output_tool_calls[0].function.arguments
+                                ),
                             }
                         output_data = function_call
                     else:
@@ -193,17 +195,47 @@ class OpenAIMonitor:
                 chunks = self.create_chat_completion(*args, **kwargs)
 
                 def stream_chunks():
-                    collected_messages = []
+                    collected_output_data = []
+                    collected_function_call = {
+                        "name": "",
+                        "arguments": "",
+                    }
+                    raw_outputs = []
                     start_time = time.time()
+                    end_time = None
                     first_token_time = None
                     num_of_completion_tokens = None
                     latency = None
                     try:
                         i = 0
                         for i, chunk in enumerate(chunks):
+                            raw_outputs.append(chunk.model_dump())
                             if i == 0:
                                 first_token_time = time.time()
-                            collected_messages.append(chunk.choices[0].delta.content)
+
+                            delta = chunk.choices[0].delta
+
+                            if delta.content:
+                                collected_output_data.append(delta.content)
+                            elif delta.function_call:
+                                if delta.function_call.name:
+                                    collected_function_call[
+                                        "name"
+                                    ] += delta.function_call.name
+                                if delta.function_call.arguments:
+                                    collected_function_call[
+                                        "arguments"
+                                    ] += delta.function_call.arguments
+                            elif delta.tool_calls:
+                                if delta.tool_calls[0].function.name:
+                                    collected_function_call["name"] += delta.tool_calls[
+                                        0
+                                    ].function.name
+                                if delta.tool_calls[0].function.arguments:
+                                    collected_function_call[
+                                        "arguments"
+                                    ] += delta.tool_calls[0].function.arguments
+
                             yield chunk
                         if i > 0:
                             num_of_completion_tokens = i + 1
@@ -215,12 +247,18 @@ class OpenAIMonitor:
                     finally:
                         # Try to add step to the trace
                         try:
-                            collected_messages = [
+                            collected_output_data = [
                                 message
-                                for message in collected_messages
+                                for message in collected_output_data
                                 if message is not None
                             ]
-                            output_data = "".join(collected_messages)
+                            if collected_output_data:
+                                output_data = "".join(collected_output_data)
+                            else:
+                                collected_function_call["arguments"] = json.loads(
+                                    collected_function_call["arguments"]
+                                )
+                                output_data = collected_function_call
                             completion_cost = self.get_cost_estimate(
                                 model=kwargs.get("model"),
                                 num_input_tokens=0,
@@ -244,7 +282,7 @@ class OpenAIMonitor:
                                 completion_tokens=num_of_completion_tokens,
                                 model=kwargs.get("model"),
                                 model_parameters=kwargs.get("model_parameters"),
-                                raw_output=None,
+                                raw_output=raw_outputs,
                                 metadata={
                                     "timeToFirstToken": (
                                         (first_token_time - start_time) * 1000
