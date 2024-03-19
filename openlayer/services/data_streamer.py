@@ -182,7 +182,7 @@ class DataStreamer:
                 inference_pipeline.id,
             )
         else:
-            logger.warn(
+            logger.warning(
                 "No inference pipeline found. Data will not be streamed to Openlayer."
             )
         self.inference_pipeline = inference_pipeline
