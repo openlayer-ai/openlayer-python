@@ -176,9 +176,9 @@ def bubble_up_costs_and_tokens(
     def add_step_costs_and_tokens(step: Dict[str, Any]) -> Tuple[float, int]:
         step_cost = step_tokens = 0
 
-        if "cost" in step:
+        if "cost" in step and step["cost"] is not None:
             step_cost += step["cost"]
-        if "tokens" in step:
+        if "tokens" in step and step["tokens"] is not None:
             step_tokens += step["tokens"]
 
         # Recursively add costs and tokens from nested steps

@@ -78,6 +78,10 @@ OPENAI_COST_PER_TOKEN = {
         "input": 0.03e-3,
         "output": 0.06e-3,
     },
+    "gpt-4-turbo-preview": {
+        "input": 0.01e-3,
+        "output": 0.03e-3,
+    },
     "gpt-4-0125-preview": {
         "input": 0.01e-3,
         "output": 0.03e-3,
