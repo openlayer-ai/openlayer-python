@@ -8,25 +8,29 @@ from contextlib import contextmanager
 from functools import wraps
 from typing import Any, Dict, Generator, List, Optional, Tuple
 
+from .. import utils
 from ..services import data_streamer
 from . import enums, steps, traces
 
 logger = logging.getLogger(__name__)
 
+_publish = utils.get_env_variable("PUBLISH") == "true"
 _streamer = None
-try:
-    _streamer = data_streamer.DataStreamer(publish=True)
-# pylint: disable=broad-except
-except Exception as exc:
-    logger.error(
-        "You have not provided enough information to upload traces to Openlayer."
-        "\n%s \n"
-        "To upload the traces, please provide the missing information and try again.",
-        exc,
-    )
+if _publish:
+    _streamer = data_streamer.DataStreamer()
 
 _current_step = contextvars.ContextVar("current_step")
 _current_trace = contextvars.ContextVar("current_trace")
+
+
+def get_current_trace() -> Optional[traces.Trace]:
+    """Returns the current trace."""
+    return _current_trace.get(None)
+
+
+def get_current_step() -> Optional[steps.Step]:
+    """Returns the current step."""
+    return _current_step.get(None)
 
 
 @contextmanager
@@ -43,7 +47,7 @@ def create_step(
     )
     new_step.start_time = time.time()
 
-    parent_step: Optional[steps.Step] = _current_step.get(None)
+    parent_step: Optional[steps.Step] = get_current_step()
     is_root_step: bool = parent_step is None
 
     if parent_step is None:
@@ -53,7 +57,7 @@ def create_step(
         current_trace.add_step(new_step)
     else:
         logger.debug("Adding step %s to parent step %s", name, parent_step.name)
-        current_trace = _current_trace.get()
+        current_trace = get_current_trace()
         parent_step.add_nested_step(new_step)
 
     token = _current_step.set(new_step)
@@ -86,14 +90,11 @@ def create_step(
                         "prompt": new_step.inputs.get("prompt"),
                     }
                 )
-            if _streamer:
-                _streamer.stream_data(data=trace_data, config=config)
-            else:
-                logger.warning(
-                    "Trace computed but not uploaded to Openlayer. "
-                    "You have not provided enough information to upload traces to"
-                    " Openlayer."
-                )
+            if _publish:
+                try:
+                    _streamer.stream_data(data=trace_data, config=config)
+                except Exception as _:
+                    logger.error("Could not stream data to Openlayer")
         else:
             logger.debug("Ending step %s", name)
 
