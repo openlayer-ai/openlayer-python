@@ -27,7 +27,6 @@ class DataStreamer:
         openlayer_project_name: Optional[str] = None,
         openlayer_inference_pipeline_name: Optional[str] = None,
         openlayer_inference_pipeline_id: Optional[str] = None,
-        publish: bool = False,
     ) -> None:
         self._openlayer_api_key = openlayer_api_key or utils.get_env_variable(
             "OPENLAYER_API_KEY"
@@ -44,7 +43,6 @@ class DataStreamer:
             openlayer_inference_pipeline_id
             or utils.get_env_variable("OPENLAYER_INFERENCE_PIPELINE_ID")
         )
-        self.publish = publish
 
         # Lazy load the inference pipeline
         self.inference_pipeline = None
@@ -92,40 +90,39 @@ class DataStreamer:
 
     def _validate_attributes(self) -> None:
         """Granular validation of the arguments."""
-        if self.publish:
-            if not self.openlayer_api_key:
-                raise ValueError(
-                    "An Openlayer API key is required for publishing."
-                    " Please set it as environment variable named OPENLAYER_API_KEY."
-                )
+        if not self.openlayer_api_key:
+            logger.error(
+                "An Openlayer API key is required for publishing."
+                " Please set it as environment variable named OPENLAYER_API_KEY."
+            )
 
-            if (
-                not self.openlayer_project_name
-                and not self.openlayer_inference_pipeline_name
-                and not self.openlayer_inference_pipeline_id
-            ):
-                raise ValueError(
-                    "You must provide more information about the project and"
-                    " inference pipeline on Openlayer to publish data."
-                    " Please provide either: "
-                    " - the project name and inference pipeline name, or"
-                    " - the inference pipeline id."
-                    " You can set them as environment variables named"
-                    " OPENLAYER_PROJECT_NAME, OPENLAYER_INFERENCE_PIPELINE_NAME, "
-                    "and OPENLAYER_INFERENCE_PIPELINE_ID."
-                )
+        if (
+            not self.openlayer_project_name
+            and not self.openlayer_inference_pipeline_name
+            and not self.openlayer_inference_pipeline_id
+        ):
+            logger.error(
+                "You must provide more information about the project and"
+                " inference pipeline on Openlayer to publish data."
+                " Please provide either: "
+                " - the project name and inference pipeline name, or"
+                " - the inference pipeline id."
+                " You can set them as environment variables named"
+                " OPENLAYER_PROJECT_NAME, OPENLAYER_INFERENCE_PIPELINE_NAME, "
+                "and OPENLAYER_INFERENCE_PIPELINE_ID."
+            )
 
-            if (
-                self.openlayer_inference_pipeline_name
-                and not self.openlayer_project_name
-                and not self.openlayer_inference_pipeline_id
-            ):
-                raise ValueError(
-                    "You must provide the Openlayer project name where the inference"
-                    " pipeline is located."
-                    " Please set it as the environment variable"
-                    " OPENLAYER_PROJECT_NAME."
-                )
+        if (
+            self.openlayer_inference_pipeline_name
+            and not self.openlayer_project_name
+            and not self.openlayer_inference_pipeline_id
+        ):
+            logger.error(
+                "You must provide the Openlayer project name where the inference"
+                " pipeline is located."
+                " Please set it as the environment variable"
+                " OPENLAYER_PROJECT_NAME."
+            )
 
     def stream_data(self, data: Dict[str, any], config: Dict[str, any]) -> None:
         """Stream data to the Openlayer platform.
@@ -145,7 +142,7 @@ class DataStreamer:
         if self.inference_pipeline is None:
             self._load_inference_pipeline()
             if self.inference_pipeline is None:
-                raise ValueError(
+                logger.error(
                     "No inference pipeline found. Please provide the inference pipeline"
                     " id or name."
                 )
@@ -155,37 +152,46 @@ class DataStreamer:
 
         If no platform/project information is provided, it is set to None.
         """
-        inference_pipeline = None
-        client = openlayer.OpenlayerClient(
-            api_key=self.openlayer_api_key, verbose=False
-        )
 
-        # Prioritize the inference pipeline id over the name
-        if self.openlayer_inference_pipeline_id:
-            inference_pipeline = inference_pipelines.InferencePipeline(
-                client=client,
-                upload=None,
-                json={"id": self.openlayer_inference_pipeline_id, "projectId": None},
-                task_type=tasks.TaskType.LLM,
+        inference_pipeline = None
+        try:
+            client = openlayer.OpenlayerClient(
+                api_key=self.openlayer_api_key, verbose=False
             )
-        elif self.openlayer_inference_pipeline_name:
-            with utils.HidePrints():
-                project = client.create_project(
-                    name=self.openlayer_project_name, task_type=tasks.TaskType.LLM
+
+            # Prioritize the inference pipeline id over the name
+            if self.openlayer_inference_pipeline_id:
+                inference_pipeline = inference_pipelines.InferencePipeline(
+                    client=client,
+                    upload=None,
+                    json={
+                        "id": self.openlayer_inference_pipeline_id,
+                        "projectId": None,
+                    },
+                    task_type=tasks.TaskType.LLM,
                 )
-                inference_pipeline = project.create_inference_pipeline(
-                    name=self.openlayer_inference_pipeline_name
+            elif self.openlayer_inference_pipeline_name:
+                with utils.HidePrints():
+                    project = client.create_project(
+                        name=self.openlayer_project_name, task_type=tasks.TaskType.LLM
+                    )
+                    inference_pipeline = project.create_inference_pipeline(
+                        name=self.openlayer_inference_pipeline_name
+                    )
+            if inference_pipeline:
+                logger.info(
+                    "Going to try to stream data to the inference pipeline with id %s.",
+                    inference_pipeline.id,
                 )
-        if inference_pipeline:
-            logger.info(
-                "Going to try to stream data to the inference pipeline with id %s.",
-                inference_pipeline.id,
+            else:
+                logger.warning(
+                    "No inference pipeline found. Data will not be streamed to Openlayer."
+                )
+            self.inference_pipeline = inference_pipeline
+        except Exception as exc:
+            logger.error(
+                "An error occurred while trying to load the inference pipeline: %s", exc
             )
-        else:
-            logger.warning(
-                "No inference pipeline found. Data will not be streamed to Openlayer."
-            )
-        self.inference_pipeline = inference_pipeline
 
     def publish_batch_data(self, df: pd.DataFrame, config: Dict[str, any]) -> None:
         """Publish a batch of data to the Openlayer platform.
