@@ -493,6 +493,8 @@ class OpenAIMonitor:
 
 
 class AzureOpenAIMonitor(OpenAIMonitor):
+    """Monitor inferences from Azure OpenAI LLMs and upload traces to Openlayer."""
+
     def __init__(
         self,
         client=None,
