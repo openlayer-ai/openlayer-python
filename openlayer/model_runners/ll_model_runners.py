@@ -390,6 +390,7 @@ class CohereGenerateModelRunner(LLModelRunner):
         """Initializes Cohere's Generate model."""
         # Check if API key is valid -- Cohere's validation seems to be very shallow
         try:
+            # pylint: disable=unexpected-keyword-arg
             self.cohere_client = cohere.Client(
                 api_key=self.cohere_api_key, check_api_key=True
             )
