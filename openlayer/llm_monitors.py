@@ -165,12 +165,12 @@ class OpenAIMonitor:
                     else:
                         output_data = None
                     cost = self.get_cost_estimate(
-                        model=kwargs.get("model"),
+                        model=response.model,
                         num_input_tokens=response.usage.prompt_tokens,
                         num_output_tokens=response.usage.completion_tokens,
                     )
 
-                    tracer.add_openai_chat_completion_step_to_trace(
+                    self._add_to_trace(
                         end_time=end_time,
                         inputs={
                             "prompt": kwargs["messages"],
@@ -181,10 +181,9 @@ class OpenAIMonitor:
                         cost=cost,
                         prompt_tokens=response.usage.prompt_tokens,
                         completion_tokens=response.usage.completion_tokens,
-                        model=kwargs.get("model"),
+                        model=response.model,
                         model_parameters=kwargs.get("model_parameters"),
                         raw_output=response.model_dump(),
-                        provider="OpenAI",
                     )
                 # pylint: disable=broad-except
                 except Exception as e:
@@ -269,7 +268,7 @@ class OpenAIMonitor:
                                 ),
                             )
 
-                            tracer.add_openai_chat_completion_step_to_trace(
+                            self._add_to_trace(
                                 end_time=end_time,
                                 inputs={
                                     "prompt": kwargs["messages"],
@@ -290,7 +289,6 @@ class OpenAIMonitor:
                                         else None
                                     )
                                 },
-                                provider="OpenAI",
                             )
                         # pylint: disable=broad-except
                         except Exception as e:
@@ -318,12 +316,12 @@ class OpenAIMonitor:
                     output_data = choices[0].text.strip()
                     num_of_tokens = int(response.usage.total_tokens / len(prompts))
                     cost = self.get_cost_estimate(
-                        model=kwargs.get("model"),
+                        model=response.model,
                         num_input_tokens=response.usage.prompt_tokens,
                         num_output_tokens=response.usage.completion_tokens,
                     )
 
-                    tracer.add_openai_chat_completion_step_to_trace(
+                    self._add_to_trace(
                         end_time=end_time,
                         inputs={
                             "prompt": [{"role": "user", "content": input_data}],
@@ -334,10 +332,9 @@ class OpenAIMonitor:
                         cost=cost,
                         prompt_tokens=response.usage.prompt_tokens,
                         completion_tokens=response.usage.completion_tokens,
-                        model=kwargs.get("model"),
+                        model=response.model,
                         model_parameters=kwargs.get("model_parameters"),
                         raw_output=response.model_dump(),
-                        provider="OpenAI",
                     )
             # pylint: disable=broad-except
             except Exception as e:
@@ -346,6 +343,13 @@ class OpenAIMonitor:
             return response
 
         return modified_create_completion
+
+    def _add_to_trace(self, **kwargs) -> None:
+        """Add a step to the trace."""
+        tracer.add_openai_chat_completion_step_to_trace(
+            **kwargs,
+            provider="OpenAI",
+        )
 
     @staticmethod
     def _split_list(lst: List, n_parts: int) -> List[List]:
@@ -486,3 +490,32 @@ class OpenAIMonitor:
                     }
                 )
         return prompt
+
+
+class AzureOpenAIMonitor(OpenAIMonitor):
+    def __init__(
+        self,
+        client=None,
+    ) -> None:
+        super().__init__(client)
+
+    @staticmethod
+    def get_cost_estimate(
+        num_input_tokens: int, num_output_tokens: int, model: str
+    ) -> float:
+        """Returns the cost estimate for a given model and number of tokens."""
+        if model not in constants.AZURE_OPENAI_COST_PER_TOKEN:
+            return None
+        cost_per_token = constants.AZURE_OPENAI_COST_PER_TOKEN[model]
+        return (
+            cost_per_token["input"] * num_input_tokens
+            + cost_per_token["output"] * num_output_tokens
+        )
+
+    def _add_to_trace(self, **kwargs) -> None:
+        """Add a step to the trace."""
+        tracer.add_openai_chat_completion_step_to_trace(
+            **kwargs,
+            name="Azure OpenAI Chat Completion",
+            provider="Azure OpenAI",
+        )

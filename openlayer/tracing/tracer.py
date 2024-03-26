@@ -101,7 +101,8 @@ def create_step(
 def add_openai_chat_completion_step_to_trace(**kwargs) -> None:
     """Adds an OpenAI chat completion step to the trace."""
     with create_step(
-        step_type=enums.StepType.CHAT_COMPLETION, name="OpenAI Chat Completion"
+        step_type=enums.StepType.CHAT_COMPLETION,
+        name=kwargs.get("name", "OpenAI Chat Completion"),
     ) as step:
         step.log(**kwargs)
 
