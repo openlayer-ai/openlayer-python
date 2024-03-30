@@ -93,7 +93,7 @@ def create_step(
             if _publish:
                 try:
                     _streamer.stream_data(data=trace_data, config=config)
-                except Exception as _:
+                except Exception:  # pylint: disable=broad-except
                     logger.error("Could not stream data to Openlayer")
         else:
             logger.debug("Ending step %s", name)
