@@ -185,10 +185,11 @@ class DataStreamer:
                 )
             else:
                 logger.warning(
-                    "No inference pipeline found. Data will not be streamed to Openlayer."
+                    "No inference pipeline found. Data will not be streamed to "
+                    "Openlayer."
                 )
             self.inference_pipeline = inference_pipeline
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-except
             logger.error(
                 "An error occurred while trying to load the inference pipeline: %s", exc
             )
