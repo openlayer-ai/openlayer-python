@@ -19,7 +19,7 @@ class OpenAIMonitor:
 
     Parameters
     ----------
-    client : openai.api_client.Client, optional
+    client : openai.api_client.Client
         The OpenAI client. It is required if you are using openai>=1.0.0.
 
     Examples
@@ -43,7 +43,7 @@ class OpenAIMonitor:
     >>> from openai import OpenAI
     >>>
     >>> openai_client = OpenAI()
-    >>> monitor = llm_monitors.OpenAIMonitor(publish=True, client=openai_client)
+    >>> monitor = llm_monitors.OpenAIMonitor(client=openai_client)
 
     3. Use the OpenAI model as you normally would:
 
@@ -76,7 +76,7 @@ class OpenAIMonitor:
             )
 
     def start_monitoring(self) -> None:
-        """Start monitoring the OpenAI assistant."""
+        """(Deprecated) Start monitoring the OpenAI assistant."""
         warnings.warn(
             "The `start_monitoring` method is deprecated and will be removed in a future"
             " version. Monitoring is now automatically enabled once the OpenAIMonitor"
@@ -86,7 +86,7 @@ class OpenAIMonitor:
         )
 
     def stop_monitoring(self) -> None:
-        """Stop monitoring the OpenAI assistant."""
+        """(Deprecated) Stop monitoring the OpenAI assistant."""
         warnings.warn(
             "The `stop_monitoring` method is deprecated and will be removed in a future"
             " version. Monitoring is now automatically enabled once the OpenAIMonitor"
@@ -417,7 +417,7 @@ class OpenAIMonitor:
             messages = self.openai_client.beta.threads.messages.list(
                 thread_id=run.thread_id, order="asc"
             )
-            prompt = self.thread_messages_to_prompt(messages)
+            prompt = self._thread_messages_to_prompt(messages)
 
             # Add step to the trace
             tracer.add_openai_chat_completion_step_to_trace(
@@ -466,7 +466,7 @@ class OpenAIMonitor:
         }
 
     @staticmethod
-    def thread_messages_to_prompt(
+    def _thread_messages_to_prompt(
         messages: List["openai.types.beta.threads.thread_message.ThreadMessage"],
     ) -> List[Dict[str, str]]:
         """Given list of ThreadMessage, return its contents in the `prompt` format,
@@ -493,7 +493,57 @@ class OpenAIMonitor:
 
 
 class AzureOpenAIMonitor(OpenAIMonitor):
-    """Monitor inferences from Azure OpenAI LLMs and upload traces to Openlayer."""
+    """Monitor inferences from Azure OpenAI LLMs and upload traces to Openlayer.
+
+    Parameters
+    ----------
+    client : openai.AzureOpenAI
+        The AzureOpenAI client.
+
+    Examples
+    --------
+
+    Let's say that you have a GPT model you want to monitor. You can turn on monitoring
+    with Openlayer by simply doing:
+
+    1. Set the environment variables:
+
+    .. code-block:: bash
+
+        export AZURE_OPENAI_ENDPOINT=<your-azure-openai-endpoint>
+        export AZURE_OPENAI_API_KEY=<your-azure-openai-api-key>
+        export AZURE_OPENAI_DEPLOYMENT_NAME=<your-azure-openai-deployment-name>
+
+        export OPENLAYER_API_KEY=<your-openlayer-api-key>
+        export OPENLAYER_PROJECT_NAME=<your-project-name>
+
+    2. Instantiate the monitor:
+
+    >>> from opemlayer import llm_monitors
+    >>> from openai import AzureOpenAI
+    >>>
+    >>> azure_client = AzureOpenAI(
+    >>>     api_key=os.environ.get("AZURE_OPENAI_API_KEY"),
+    >>>     api_version="2024-02-01",
+    >>>     azure_endpoint=os.environ.get("AZURE_OPENAI_ENDPOINT"),
+    >>> )
+    >>> monitor = llm_monitors.OpenAIMonitor(client=azure_client)
+
+    3. Use the Azure OpenAI model as you normally would:
+
+    From this point onwards, you can continue making requests to your model normally:
+
+    >>> completion = azure_client.chat.completions.create(
+    >>>     model=os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME"),
+    >>>     messages=[
+    >>>         {"role": "system", "content": "You are a helpful assistant."},
+    >>>         {"role": "user", "content": "How are you doing today?"},
+    >>>     ]
+    >>> )
+
+    The trace of this inference request is automatically uploaded to your Openlayer
+    project.
+    """
 
     def __init__(
         self,

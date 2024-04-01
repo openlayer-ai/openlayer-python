@@ -110,6 +110,42 @@ def add_openai_chat_completion_step_to_trace(**kwargs) -> None:
 
 # ----------------------------- Tracing decorator ---------------------------- #
 def trace(*step_args, **step_kwargs):
+    """Decorator to trace a function.
+
+    Examples
+    --------
+
+    To trace a function, simply decorate it with the ``@trace()`` decorator. By doing so,
+    the functions inputs, outputs, and metadata will be automatically logged to your
+    Openlayer project.
+
+    >>> import os
+    >>> from openlayer.tracing import tracer
+    >>>
+    >>> # Set the environment variables
+    >>> os.environ["OPENLAYER_API_KEY"] = "YOUR_OPENLAYER_API_KEY_HERE"
+    >>> os.environ["OPENLAYER_PROJECT_NAME"] = "YOUR_OPENLAYER_PROJECT_NAME_HERE"
+    >>>
+    >>> # Decorate all the functions you want to trace
+    >>> @tracer.trace()
+    >>> def main(user_query: str) -> str:
+    >>>     context = retrieve_context(user_query)
+    >>>     answer = generate_answer(user_query, context)
+    >>>     return answer
+    >>>
+    >>> @tracer.trace()
+    >>> def retrieve_context(user_query: str) -> str:
+    >>>     return "Some context"
+    >>>
+    >>> @tracer.trace()
+    >>> def generate_answer(user_query: str, context: str) -> str:
+    >>>     return "Some answer"
+    >>>
+    >>> # Every time the main function is called, the data is automatically
+    >>> # streamed to your Openlayer project. E.g.:
+    >>> main("What is the meaning of life?")
+    """
+
     def decorator(func):
         func_signature = inspect.signature(func)
 
