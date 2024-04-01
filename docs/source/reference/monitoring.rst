@@ -31,6 +31,17 @@ Openlayer project is what enables the monitoring mode.
    Project.create_inference_pipeline
    Project.load_inference_pipeline
 
+Tracing
+-------
+If you have a multi-step system (e.g., RAG), you can trace all the steps in the system
+by decorating the functions with the ``@trace()`` decorator.
+
+.. autosummary::
+   :toctree: api/
+   :template: class.rst
+
+   openlayer.tracing.tracer.trace
+
 Publishing production data
 ----------------------------
 
@@ -45,6 +56,7 @@ single line of code.
    :template: class.rst
 
    openlayer.llm_monitors.OpenAIMonitor
+   openlayer.llm_monitors.AzureOpenAIMonitor
 
 Traditional ML models
 ^^^^^^^^^^^^^^^^^^^^^
