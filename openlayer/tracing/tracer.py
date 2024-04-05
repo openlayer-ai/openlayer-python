@@ -14,7 +14,7 @@ from . import enums, steps, traces
 
 logger = logging.getLogger(__name__)
 
-_publish = utils.get_env_variable("PUBLISH") == "true"
+_publish = utils.get_env_variable("OPENLAYER_DISABLE_PUBLISH") != "true"
 _streamer = None
 if _publish:
     _streamer = data_streamer.DataStreamer()
