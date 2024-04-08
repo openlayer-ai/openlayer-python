@@ -330,14 +330,16 @@ class BaseDatasetValidator(BaseValidator, ABC):
                     "is one of int32, int64, float32, or float64."
                 )
 
-    def _values_are_numbers(self, dataset_df: pd.DataFrame, column_name: str) -> bool:
+    def _values_are_numbers(
+        self, dataset_df: pd.DataFrame, column_name: str, allow_none: bool = False
+    ) -> bool:
         """Checks whether the values in the column are numbers (ints or floats)."""
         if dataset_df[column_name].dtype.name in (
             "int64",
             "int32",
             "float32",
             "float64",
-        ):
+        ) or (allow_none and dataset_df[column_name].dtype.name == "object"):
             return True
         return False
 
@@ -829,7 +831,7 @@ class LLMOutputValidator(BaseDatasetValidator):
                 "specified as `numOfTokenColumnName` is not in the dataset."
             )
         elif not self._values_are_numbers(
-            self.dataset_df, self.num_of_token_column_name
+            self.dataset_df, self.num_of_token_column_name, allow_none=True
         ):
             self.failed_validations.append(
                 f"The number of tokens in the column `{self.num_of_token_column_name}`"
