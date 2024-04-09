@@ -211,6 +211,8 @@ class OpenAIMonitor:
                             raw_outputs.append(chunk.model_dump())
                             if i == 0:
                                 first_token_time = time.time()
+                            if i > 0:
+                                num_of_completion_tokens = i + 1
 
                             delta = chunk.choices[0].delta
 
@@ -236,8 +238,6 @@ class OpenAIMonitor:
                                     ] += delta.tool_calls[0].function.arguments
 
                             yield chunk
-                        if i > 0:
-                            num_of_completion_tokens = i + 1
                         end_time = time.time()
                         latency = (end_time - start_time) * 1000
                     # pylint: disable=broad-except
