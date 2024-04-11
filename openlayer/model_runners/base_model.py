@@ -32,14 +32,10 @@ class OpenlayerModel(abc.ABC):
             "--dataset-path", type=str, required=True, help="Path to the dataset"
         )
         parser.add_argument(
-            "--dataset-name", type=str, required=True, help="Name of the dataset"
-        )
-        parser.add_argument(
-            "--output-path",
+            "--output-dir",
             type=str,
             required=False,
-            help="Path to dump the results",
-            default="output",
+            help="Directory to dump the results in",
         )
 
         # Parse the arguments
@@ -47,17 +43,18 @@ class OpenlayerModel(abc.ABC):
 
         return self.batch(
             dataset_path=args.dataset_path,
-            dataset_name=args.dataset_name,
-            output_dir=args.output_path,
+            output_dir=args.output_dir,
         )
 
-    def batch(self, dataset_path: str, dataset_name: str, output_dir: str):
+    def batch(self, dataset_path: str, output_dir: str):
         # Load the dataset into a pandas DataFrame
-        df = pd.read_json(dataset_path, orient="records")
+        if dataset_path.endswith(".csv"):
+            df = pd.read_csv(dataset_path)
+        elif dataset_path.endswith(".json"):
+            df = pd.read_json(dataset_path, orient="records")
 
         # Call the model's run_batch method, passing in the DataFrame
         output_df, config = self.run_batch_from_df(df)
-        output_dir = os.path.join(output_dir, dataset_name)
         self.write_output_to_directory(output_df, config, output_dir)
 
     def run_batch_from_df(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, dict]:
