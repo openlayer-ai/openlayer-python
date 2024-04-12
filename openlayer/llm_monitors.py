@@ -136,6 +136,9 @@ class OpenAIMonitor:
         def modified_create_chat_completion(*args, **kwargs) -> str:
             stream = kwargs.get("stream", False)
 
+            # Pop the reserved Openlayer kwargs
+            inference_id = kwargs.pop("inference_id", None)
+
             if not stream:
                 start_time = time.time()
                 response = self.create_chat_completion(*args, **kwargs)
@@ -169,21 +172,26 @@ class OpenAIMonitor:
                         num_input_tokens=response.usage.prompt_tokens,
                         num_output_tokens=response.usage.completion_tokens,
                     )
-
-                    self._add_to_trace(
-                        end_time=end_time,
-                        inputs={
+                    trace_args = {
+                        "end_time": end_time,
+                        "inputs": {
                             "prompt": kwargs["messages"],
                         },
-                        output=output_data,
-                        latency=(end_time - start_time) * 1000,
-                        tokens=response.usage.total_tokens,
-                        cost=cost,
-                        prompt_tokens=response.usage.prompt_tokens,
-                        completion_tokens=response.usage.completion_tokens,
-                        model=response.model,
-                        model_parameters=kwargs.get("model_parameters"),
-                        raw_output=response.model_dump(),
+                        "output": output_data,
+                        "latency": (end_time - start_time) * 1000,
+                        "tokens": response.usage.total_tokens,
+                        "cost": cost,
+                        "prompt_tokens": response.usage.prompt_tokens,
+                        "completion_tokens": response.usage.completion_tokens,
+                        "model": response.model,
+                        "model_parameters": kwargs.get("model_parameters"),
+                        "raw_output": response.model_dump(),
+                    }
+                    if inference_id:
+                        trace_args["id"] = str(inference_id)
+
+                    self._add_to_trace(
+                        **trace_args,
                     )
                 # pylint: disable=broad-except
                 except Exception as e:
@@ -267,28 +275,33 @@ class OpenAIMonitor:
                                     else 0
                                 ),
                             )
-
-                            self._add_to_trace(
-                                end_time=end_time,
-                                inputs={
+                            trace_args = {
+                                "end_time": end_time,
+                                "inputs": {
                                     "prompt": kwargs["messages"],
                                 },
-                                output=output_data,
-                                latency=latency,
-                                tokens=num_of_completion_tokens,
-                                cost=completion_cost,
-                                prompt_tokens=None,
-                                completion_tokens=num_of_completion_tokens,
-                                model=kwargs.get("model"),
-                                model_parameters=kwargs.get("model_parameters"),
-                                raw_output=raw_outputs,
-                                metadata={
+                                "output": output_data,
+                                "latency": latency,
+                                "tokens": num_of_completion_tokens,
+                                "cost": completion_cost,
+                                "prompt_tokens": None,
+                                "completion_tokens": num_of_completion_tokens,
+                                "model": kwargs.get("model"),
+                                "model_parameters": kwargs.get("model_parameters"),
+                                "raw_output": raw_outputs,
+                                "metadata": {
                                     "timeToFirstToken": (
                                         (first_token_time - start_time) * 1000
                                         if first_token_time
                                         else None
                                     )
                                 },
+                            }
+                            if inference_id:
+                                trace_args["id"] = str(inference_id)
+
+                            self._add_to_trace(
+                                **trace_args,
                             )
                         # pylint: disable=broad-except
                         except Exception as e:
