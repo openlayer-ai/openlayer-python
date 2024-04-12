@@ -1,6 +1,7 @@
 """Module with the different Step classes that can be used in a trace."""
 
 import time
+import uuid
 from typing import Any, Dict, Optional
 
 from .. import utils
@@ -23,6 +24,7 @@ class Step:
         metadata: Optional[Dict[str, any]] = None,
     ) -> None:
         self.name = name
+        self.id = uuid.uuid4()
         self.inputs = inputs
         self.output = output
         self.metadata = metadata or {}
@@ -50,6 +52,7 @@ class Step:
         """Dictionary representation of the Step."""
         return {
             "name": self.name,
+            "id": str(self.id),
             "type": self.step_type.value,
             "inputs": self.inputs,
             "output": self.output,
