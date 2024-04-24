@@ -7,7 +7,6 @@ Typical usage example:
 
 from typing import Dict
 
-import anthropic
 import pandas as pd
 
 # pylint: disable=line-too-long
@@ -64,35 +63,7 @@ OPENAI_PROMPT = [
     },
 ]
 
-# flake8: noqa: E501
-COHERE_PROMPT = """S: You are a helpful assistant.
-U: You will be provided with a product description and seed words, and your task is to generate a list
-of product names and provide a short description of the target customer for such product. The output
-must be a valid JSON with attributes `names` and `target_custommer`.
-A: Let\'s get started!
-U: Product description: \n description: A home milkshake maker \n seed words: fast, healthy, compact
-A: {\n    "names": ["QuickBlend", "FitShake", "MiniMix"]\n    "target_custommer": "College students that are into fitness and healthy living"\n}
-U: description: A smartwatch with fitness tracking capabilities \n\nseed words: smart, fitness, health
-A:"""
-
-# flake8: noqa: E501
-ANTHROPIC_PROMPT = f"""{anthropic.HUMAN_PROMPT} You are a helpful assistant. {anthropic.HUMAN_PROMPT} You will be provided with a product description and seed words, and your task is to generate a list
-of product names and provide a short description of the target customer for such product. The output
-must be a valid JSON with attributes `names` and `target_custommer`. {anthropic.AI_PROMPT} Let\'s get started! {anthropic.HUMAN_PROMPT} Product description:
- description: A home milkshake maker \n seed words: fast, healthy, compact {anthropic.AI_PROMPT} {{\n    "names": ["QuickBlend", "FitShake", "MiniMix"]\n    "target_custommer": "College students that are into fitness and healthy living"\n}} {anthropic.HUMAN_PROMPT} description: A smartwatch with fitness tracking capabilities \n\nseed words: smart, fitness, health {anthropic.AI_PROMPT}"""
-
-
 # --------------------------------- Fixtures --------------------------------- #
-@pytest.fixture
-def anthropic_model_runner():
-    """Returns an instance of Anthropic's runner."""
-    return ll_model_runners.AnthropicModelRunner(
-        prompt=PROMPT,
-        input_variable_names=INPUT_VARIABLES,
-        model="claude-2",
-        model_parameters={},
-        anthropic_api_key="try-to-guess",
-    )
 
 
 @pytest.fixture
@@ -104,18 +75,6 @@ def openai_chat_completion_runner():
         model="gpt-3.5-turbo",
         model_parameters={},
         openai_api_key="try-to-guess",
-    )
-
-
-@pytest.fixture
-def cohere_generate_runner():
-    """Returns an instance of Cohere's generate runner."""
-    return ll_model_runners.CohereGenerateModelRunner(
-        prompt=PROMPT,
-        input_variable_names=INPUT_VARIABLES,
-        model="command",
-        model_parameters={},
-        cohere_api_key="try-to-guess",
     )
 
 
@@ -144,23 +103,3 @@ def test_openai_chat_completion_input(
     """Tests the input for the OpenAI chat completion runner."""
     input_data = openai_chat_completion_runner._get_llm_input(OPENAI_PROMPT)
     assert input_data == OPENAI_PROMPT
-
-
-def test_cohere_generate_input(
-    input_data_dict: Dict[str, str],
-    cohere_generate_runner: ll_model_runners.CohereGenerateModelRunner,
-):
-    """Tests the input for the Cohere generate runner."""
-    injected_prompt = cohere_generate_runner._inject_prompt(input_data_dict)
-    input_data = cohere_generate_runner._get_llm_input(injected_prompt)
-    assert input_data == COHERE_PROMPT
-
-
-def test_anthropic_input(
-    input_data_dict: Dict[str, str],
-    anthropic_model_runner: ll_model_runners.AnthropicModelRunner,
-):
-    """Tests the input for the Cohere generate runner."""
-    injected_prompt = anthropic_model_runner._inject_prompt(input_data_dict)
-    input_data = anthropic_model_runner._get_llm_input(injected_prompt)
-    assert input_data == ANTHROPIC_PROMPT
