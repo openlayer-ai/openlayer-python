@@ -106,12 +106,7 @@ class ModelRunnerFactory:
 
     # TODO: Create enum for LLM model providers
     _LLM_PROVIDERS = {
-        "Anthropic": ll_model_runners.AnthropicModelRunner,
-        "Cohere": ll_model_runners.CohereGenerateModelRunner,
         "OpenAI": ll_model_runners.OpenAIChatCompletionRunner,
-        "SelfHosted": ll_model_runners.SelfHostedLLModelRunner,
-        "HuggingFace": ll_model_runners.HuggingFaceModelRunner,
-        "Google": ll_model_runners.GoogleGenAIModelRunner,
     }
     _MODEL_RUNNERS = {
         tasks.TaskType.TabularClassification.value: traditional_ml_model_runners.ClassificationModelRunner,
