@@ -73,6 +73,12 @@ class Api:
             )
 
         self.api_key = api_key
+        self.base_url = os.getenv("OPENLAYER_SERVER_URL", OPENLAYER_ENDPOINT).rstrip(
+            "/"
+        )
+        if not self.base_url.endswith("/v1"):
+            self.base_url += "/v1"
+
         self._headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}",
@@ -143,7 +149,7 @@ class Api:
     ):
         """Make any HTTP request + error handling."""
 
-        url = f"{OPENLAYER_ENDPOINT}/{endpoint}"
+        url = f"{self.base_url}/{endpoint}"
 
         res = self._http_request(
             method=method,
