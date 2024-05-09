@@ -155,7 +155,14 @@ def trace(*step_args, **step_kwargs):
             if step_kwargs.get("name") is None:
                 step_kwargs["name"] = func.__name__
             with create_step(*step_args, **step_kwargs) as step:
-                output = func(*func_args, **func_kwargs)
+                output = None
+                exception = None
+                try:
+                    output = func(*func_args, **func_kwargs)
+                # pylint: disable=broad-except
+                except Exception as exc:
+                    step.log(metadata={"Exceptions": str(exc)})
+                    exception = exc
                 end_time = time.time()
                 latency = (end_time - step.start_time) * 1000  # in ms
 
@@ -171,6 +178,9 @@ def trace(*step_args, **step_kwargs):
                     end_time=end_time,
                     latency=latency,
                 )
+
+                if exception is not None:
+                    raise exception
             return output
 
         return wrapper
@@ -189,12 +199,14 @@ def process_trace_for_upload(
     root_step = trace_obj.steps[0]
 
     input_variables = root_step.inputs
-    input_variable_names = list(input_variables.keys())
+    if input_variables:
+        input_variable_names = list(input_variables.keys())
+    else:
+        input_variable_names = []
 
     processed_steps = bubble_up_costs_and_tokens(trace_obj.to_dict())
 
     trace_data = {
-        **input_variables,
         "inferenceTimestamp": root_step.start_time,
         "inferenceId": str(root_step.id),
         "output": root_step.output,
@@ -204,6 +216,8 @@ def process_trace_for_upload(
         "tokens": processed_steps[0].get("tokens", 0),
         "steps": processed_steps,
     }
+    if input_variables:
+        trace_data.update(input_variables)
 
     return trace_data, input_variable_names
 
