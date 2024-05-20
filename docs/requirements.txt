@@ -1,6 +1,0 @@
-numpydoc
-pydata-sphinx-theme==0.14.1
-sphinx==7.1.2
-# These packages cause 'make' to break
-protobuf==3.20.2
-pygments>=2.7.0
