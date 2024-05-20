@@ -1,29 +1,15 @@
-__pycache__/
-unboxapi.egg-info/
-openlayer.egg-info/
-data/
-.ipynb_checkpoints/
-.DS_Store
-.eggs/
-build
+.vscode
+_dev
+
+__pycache__
+.mypy_cache
+
 dist
-template_model.py
-server-tests.ipynb
-dependencies/
-*.bin
-*.csv
-*.yaml
 
-# Ignore everything in examples/ except the task dirs
-!examples
-examples/*
-!examples/development
-!examples/monitoring
-!examples/_static
-model_package/
+.venv
+.idea
 
-# Documentation generated files #
-#################################
-docs/source/generated
-docs/source/reference/api
-docs/source/_static/*.html
+.env
+.envrc
+codegen.log
+Brewfile.lock.json
