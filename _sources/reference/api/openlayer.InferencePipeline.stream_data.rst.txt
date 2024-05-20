@@ -1,0 +1,6 @@
+﻿openlayer.InferencePipeline.stream\_data
+========================================
+
+.. currentmodule:: openlayer
+
+.. automethod:: InferencePipeline.stream_data

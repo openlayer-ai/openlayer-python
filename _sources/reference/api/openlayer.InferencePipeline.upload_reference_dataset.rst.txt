@@ -1,0 +1,6 @@
+﻿openlayer.InferencePipeline.upload\_reference\_dataset
+======================================================
+
+.. currentmodule:: openlayer
+
+.. automethod:: InferencePipeline.upload_reference_dataset

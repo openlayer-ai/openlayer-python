@@ -1,0 +1,29 @@
+﻿openlayer.tasks.TaskType
+========================
+
+.. currentmodule:: openlayer.tasks
+
+.. autoclass:: TaskType
+
+   
+   .. automethod:: __init__
+
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TaskType.LLMNER
+      ~TaskType.LLMQuestionAnswering
+      ~TaskType.LLMSummarization
+      ~TaskType.LLMTranslation
+      ~TaskType.LLM
+      ~TaskType.TabularClassification
+      ~TaskType.TabularRegression
+      ~TaskType.TextClassification
+   
+   

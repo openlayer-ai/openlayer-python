@@ -1,0 +1,6 @@
+﻿openlayer.InferencePipeline.publish\_batch\_data
+================================================
+
+.. currentmodule:: openlayer
+
+.. automethod:: InferencePipeline.publish_batch_data

@@ -1,0 +1,6 @@
+﻿openlayer.tracing.tracer.trace
+==============================
+
+.. currentmodule:: openlayer.tracing.tracer
+
+.. autofunction:: trace

@@ -1,0 +1,6 @@
+﻿openlayer.Project.create\_inference\_pipeline
+=============================================
+
+.. currentmodule:: openlayer
+
+.. automethod:: Project.create_inference_pipeline

@@ -1,0 +1,6 @@
+﻿openlayer.llm\_monitors.AzureOpenAIMonitor
+==========================================
+
+.. currentmodule:: openlayer.llm_monitors
+
+.. autoclass:: AzureOpenAIMonitor

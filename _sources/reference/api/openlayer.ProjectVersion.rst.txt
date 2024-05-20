@@ -1,0 +1,6 @@
+﻿openlayer.ProjectVersion
+========================
+
+.. currentmodule:: openlayer
+
+.. autoclass:: ProjectVersion

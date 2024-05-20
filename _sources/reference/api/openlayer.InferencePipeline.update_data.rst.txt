@@ -1,0 +1,6 @@
+﻿openlayer.InferencePipeline.update\_data
+========================================
+
+.. currentmodule:: openlayer
+
+.. automethod:: InferencePipeline.update_data

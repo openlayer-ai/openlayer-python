@@ -1,0 +1,6 @@
+﻿openlayer.OpenlayerClient.load\_project
+=======================================
+
+.. currentmodule:: openlayer
+
+.. automethod:: OpenlayerClient.load_project

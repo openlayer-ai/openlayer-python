@@ -1,0 +1,6 @@
+﻿openlayer.OpenlayerClient
+=========================
+
+.. currentmodule:: openlayer
+
+.. autoclass:: OpenlayerClient

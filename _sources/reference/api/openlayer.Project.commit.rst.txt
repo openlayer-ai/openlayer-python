@@ -1,0 +1,6 @@
+﻿openlayer.Project.commit
+========================
+
+.. currentmodule:: openlayer
+
+.. automethod:: Project.commit

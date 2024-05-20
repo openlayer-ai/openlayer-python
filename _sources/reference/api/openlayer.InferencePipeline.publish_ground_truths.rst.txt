@@ -1,0 +1,6 @@
+﻿openlayer.InferencePipeline.publish\_ground\_truths
+===================================================
+
+.. currentmodule:: openlayer
+
+.. automethod:: InferencePipeline.publish_ground_truths

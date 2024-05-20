@@ -1,0 +1,6 @@
+﻿openlayer.Project.add\_dataframe
+================================
+
+.. currentmodule:: openlayer
+
+.. automethod:: Project.add_dataframe
