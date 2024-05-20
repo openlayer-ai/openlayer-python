@@ -1,5 +1,0 @@
-black==24.3.0
-pytest==6.2.2
-flake8==6.0.0
-isort==5.13.2
-pylint==2.17.3
