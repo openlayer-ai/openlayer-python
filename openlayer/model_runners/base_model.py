@@ -48,14 +48,17 @@ class OpenlayerModel(abc.ABC):
 
     def batch(self, dataset_path: str, output_dir: str):
         # Load the dataset into a pandas DataFrame
+        fmt = dataset_path.split(".")[-1]
         if dataset_path.endswith(".csv"):
             df = pd.read_csv(dataset_path)
         elif dataset_path.endswith(".json"):
             df = pd.read_json(dataset_path, orient="records")
+        else:
+            raise ValueError("Unsupported format. Please choose 'csv' or 'json'.")
 
         # Call the model's run_batch method, passing in the DataFrame
         output_df, config = self.run_batch_from_df(df)
-        self.write_output_to_directory(output_df, config, output_dir)
+        self.write_output_to_directory(output_df, config, output_dir, fmt=fmt)
 
     def run_batch_from_df(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, dict]:
         """Function that runs the model and returns the result."""
