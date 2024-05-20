@@ -125,25 +125,53 @@ class LLMModelSchema(BaseModelSchema):
         """Validates the prompt structure."""
         if data.get("prompt") is not None:
             for message in data.get("prompt"):
-                if message.get("role") is None:
+                # Validate the role
+                role = message.get("role")
+                if role is None:
                     raise ma.ValidationError(
                         "Each message in the prompt must have a `role`."
                     )
                 else:
-                    if message.get("role") not in ["system", "user", "assistant"]:
+                    if role not in ["system", "user", "assistant"]:
                         raise ma.ValidationError(
                             "The `role` of each message in the prompt must be one of "
-                            "'system', 'user', or 'assistant'."
+                            "'system', 'user', or 'assistant' but got "
+                            f"{role}."
                         )
-                if message.get("content") is None:
+
+                # Validate the content
+                content = message.get("content")
+                if content is None:
                     raise ma.ValidationError(
                         "Each message in the prompt must have a `content`."
                     )
-                else:
-                    if not isinstance(message.get("content"), str):
-                        raise ma.ValidationError(
-                            "The `content` of each message in the prompt must be a string."
-                        )
+                elif isinstance(content, str):
+                    continue
+                elif isinstance(content, list):
+                    for sub_message in content:
+                        if not isinstance(sub_message, dict):
+                            raise ma.ValidationError(
+                                "Each item in the content list must be a dictionary."
+                            )
+
+                        # Text sub-message
+                        if sub_message.get("type") == "text":
+                            if not isinstance(sub_message.get("text"), str):
+                                raise ma.ValidationError(
+                                    "The `text` field in content must be a string."
+                                )
+                        # Image URL sub-message
+                        elif sub_message.get("type") == "image_url":
+                            if not isinstance(sub_message.get("image_url"), str):
+                                raise ma.ValidationError(
+                                    "The `image_url` field in content must be a string."
+                                )
+                        else:
+                            raise ma.ValidationError(
+                                "Invalid content type. Each item in the content list"
+                                " must be either 'text' or 'image_url' "
+                                f"type but got {type(content)}."
+                            )
 
 
 class TabularClassificationModelSchema(
