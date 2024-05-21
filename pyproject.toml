@@ -1,5 +1,5 @@
 [project]
-name = "openlayer-test"
+name = "openlayer"
 version = "0.1.0-alpha.2"
 description = "The official Python library for the openlayer API"
 dynamic = ["readme"]
