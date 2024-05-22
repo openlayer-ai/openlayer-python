@@ -139,16 +139,12 @@ def stream_chunks(
                 if delta.function_call.name:
                     collected_function_call["name"] += delta.function_call.name
                 if delta.function_call.arguments:
-                    collected_function_call[
-                        "arguments"
-                    ] += delta.function_call.arguments
+                    collected_function_call["arguments"] += delta.function_call.arguments
             elif delta.tool_calls:
                 if delta.tool_calls[0].function.name:
                     collected_function_call["name"] += delta.tool_calls[0].function.name
                 if delta.tool_calls[0].function.arguments:
-                    collected_function_call["arguments"] += delta.tool_calls[
-                        0
-                    ].function.arguments
+                    collected_function_call["arguments"] += delta.tool_calls[0].function.arguments
 
             yield chunk
         end_time = time.time()
@@ -159,22 +155,16 @@ def stream_chunks(
     finally:
         # Try to add step to the trace
         try:
-            collected_output_data = [
-                message for message in collected_output_data if message is not None
-            ]
+            collected_output_data = [message for message in collected_output_data if message is not None]
             if collected_output_data:
                 output_data = "".join(collected_output_data)
             else:
-                collected_function_call["arguments"] = json.loads(
-                    collected_function_call["arguments"]
-                )
+                collected_function_call["arguments"] = json.loads(collected_function_call["arguments"])
                 output_data = collected_function_call
             completion_cost = estimate_cost(
                 model=kwargs.get("model"),
                 prompt_tokens=0,
-                completion_tokens=(
-                    num_of_completion_tokens if num_of_completion_tokens else 0
-                ),
+                completion_tokens=(num_of_completion_tokens if num_of_completion_tokens else 0),
                 is_azure_openai=is_azure_openai,
             )
 
@@ -191,13 +181,7 @@ def stream_chunks(
                 model_parameters=get_model_parameters(kwargs),
                 raw_output=raw_outputs,
                 id=inference_id,
-                metadata={
-                    "timeToFirstToken": (
-                        (first_token_time - start_time) * 1000
-                        if first_token_time
-                        else None
-                    )
-                },
+                metadata={"timeToFirstToken": ((first_token_time - start_time) * 1000 if first_token_time else None)},
             )
             add_to_trace(
                 **trace_args,
@@ -223,10 +207,7 @@ def estimate_cost(
         cost_per_token = constants.AZURE_OPENAI_COST_PER_TOKEN[model]
     elif model in constants.OPENAI_COST_PER_TOKEN:
         cost_per_token = constants.OPENAI_COST_PER_TOKEN[model]
-        return (
-            cost_per_token["input"] * prompt_tokens
-            + cost_per_token["output"] * completion_tokens
-        )
+        return cost_per_token["input"] * prompt_tokens + cost_per_token["output"] * completion_tokens
     return None
 
 
@@ -285,12 +266,8 @@ def create_trace_args(
 def add_to_trace(is_azure_openai: bool = False, **kwargs) -> None:
     """Add a chat completion step to the trace."""
     if is_azure_openai:
-        tracer.add_chat_completion_step_to_trace(
-            **kwargs, name="Azure OpenAI Chat Completion", provider="Azure"
-        )
-    tracer.add_chat_completion_step_to_trace(
-        **kwargs, name="OpenAI Chat Completion", provider="OpenAI"
-    )
+        tracer.add_chat_completion_step_to_trace(**kwargs, name="Azure OpenAI Chat Completion", provider="Azure")
+    tracer.add_chat_completion_step_to_trace(**kwargs, name="OpenAI Chat Completion", provider="OpenAI")
 
 
 def handle_non_streaming_create(
@@ -350,9 +327,7 @@ def handle_non_streaming_create(
         )
     # pylint: disable=broad-except
     except Exception as e:
-        logger.error(
-            "Failed to trace the create chat completion request with Openlayer. %s", e
-        )
+        logger.error("Failed to trace the create chat completion request with Openlayer. %s", e)
 
     return response
 
@@ -394,9 +369,7 @@ def parse_non_streaming_output_data(
 
 
 # --------------------------- OpenAI Assistants API -------------------------- #
-def trace_openai_assistant_thread_run(
-    client: openai.OpenAI, run: "openai.types.beta.threads.run.Run"
-) -> None:
+def trace_openai_assistant_thread_run(client: openai.OpenAI, run: "openai.types.beta.threads.run.Run") -> None:
     """Trace a run from an OpenAI assistant.
 
     Once the run is completed, the thread data is published to Openlayer,
@@ -413,9 +386,7 @@ def trace_openai_assistant_thread_run(
         metadata = _extract_run_metadata(run)
 
         # Convert thread to prompt
-        messages = client.beta.threads.messages.list(
-            thread_id=run.thread_id, order="asc"
-        )
+        messages = client.beta.threads.messages.list(thread_id=run.thread_id, order="asc")
         prompt = _thread_messages_to_prompt(messages)
 
         # Add step to the trace
@@ -430,7 +401,7 @@ def trace_openai_assistant_thread_run(
 
     # pylint: disable=broad-except
     except Exception as e:
-        print(f"Failed to monitor run. {e}")
+        print(f"Failed to monitor run. {e}")  # noqa: T201
 
 
 def _type_check_run(run: "openai.types.beta.threads.run.Run") -> None:
