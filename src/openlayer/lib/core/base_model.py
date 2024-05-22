@@ -42,7 +42,9 @@ class OpenlayerModel(abc.ABC):
     def run_from_cli(self) -> None:
         """Run the model from the command line."""
         parser = argparse.ArgumentParser(description="Run data through a model.")
-        parser.add_argument("--dataset-path", type=str, required=True, help="Path to the dataset")
+        parser.add_argument(
+            "--dataset-path", type=str, required=True, help="Path to the dataset"
+        )
         parser.add_argument(
             "--output-dir",
             type=str,
@@ -83,7 +85,9 @@ class OpenlayerModel(abc.ABC):
             # Filter row_dict to only include keys that are valid parameters
             # for the 'run' method
             row_dict = row.to_dict()
-            filtered_kwargs = {k: v for k, v in row_dict.items() if k in run_signature.parameters}
+            filtered_kwargs = {
+                k: v for k, v in row_dict.items() if k in run_signature.parameters
+            }
 
             # Call the run method with filtered kwargs
             output = self.run(**filtered_kwargs)
