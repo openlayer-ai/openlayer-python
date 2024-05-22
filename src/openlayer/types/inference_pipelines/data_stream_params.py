@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Union, Iterable
+from typing import Dict, List, Union, Iterable, Optional
 from typing_extensions import Required, Annotated, TypedDict
 
 from ..._utils import PropertyInfo
@@ -68,6 +68,9 @@ class ConfigLlmData(TypedDict, total=False):
 
     metadata: object
     """Object with metadata."""
+
+    num_of_token_column_name: Annotated[Optional[str], PropertyInfo(alias="numOfTokenColumnName")]
+    """Name of the column with the total number of tokens."""
 
     prompt: Iterable[ConfigLlmDataPrompt]
     """Prompt for the LLM."""
