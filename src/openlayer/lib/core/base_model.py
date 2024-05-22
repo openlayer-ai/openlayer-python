@@ -42,9 +42,7 @@ class OpenlayerModel(abc.ABC):
     def run_from_cli(self) -> None:
         """Run the model from the command line."""
         parser = argparse.ArgumentParser(description="Run data through a model.")
-        parser.add_argument(
-            "--dataset-path", type=str, required=True, help="Path to the dataset"
-        )
+        parser.add_argument("--dataset-path", type=str, required=True, help="Path to the dataset")
         parser.add_argument(
             "--output-dir",
             type=str,
@@ -85,9 +83,7 @@ class OpenlayerModel(abc.ABC):
             # Filter row_dict to only include keys that are valid parameters
             # for the 'run' method
             row_dict = row.to_dict()
-            filtered_kwargs = {
-                k: v for k, v in row_dict.items() if k in run_signature.parameters
-            }
+            filtered_kwargs = {k: v for k, v in row_dict.items() if k in run_signature.parameters}
 
             # Call the run method with filtered kwargs
             output = self.run(**filtered_kwargs)
@@ -137,9 +133,8 @@ class OpenlayerModel(abc.ABC):
         """Writes the output DataFrame to a file in the specified directory based on the
         given format.
         """
-        os.makedirs(
-            output_dir, exist_ok=True
-        )  # Create the directory if it doesn't exist
+        # Create the directory if it doesn't exist
+        os.makedirs(output_dir, exist_ok=True)
 
         # Determine the filename based on the dataset name and format
         filename = f"dataset.{fmt}"
@@ -158,7 +153,7 @@ class OpenlayerModel(abc.ABC):
         else:
             raise ValueError("Unsupported format. Please choose 'csv' or 'json'.")
 
-        print(f"Output written to {output_path}")
+        print(f"Output written to {output_path}")  # noqa: T201
 
     @abc.abstractmethod
     def run(self, **kwargs) -> RunReturn:
