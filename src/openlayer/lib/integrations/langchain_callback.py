@@ -35,7 +35,9 @@ class OpenlayerHandler(BaseCallbackHandler):
         self.metatada: Dict[str, Any] = kwargs or {}
 
     # noqa arg002
-    def on_llm_start(self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any) -> Any:
+    def on_llm_start(
+        self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
+    ) -> Any:
         """Run when LLM starts running."""
         pass
 
@@ -79,19 +81,27 @@ class OpenlayerHandler(BaseCallbackHandler):
         """Run on new LLM token. Only available when streaming is enabled."""
         pass
 
-    def on_llm_end(self, response: langchain_schema.LLMResult, **kwargs: Any) -> Any:  # noqa: ARG002, E501
+    def on_llm_end(
+        self, response: langchain_schema.LLMResult, **kwargs: Any  # noqa: ARG002, E501
+    ) -> Any:
         """Run when LLM ends running."""
         self.end_time = time.time()
         self.latency = (self.end_time - self.start_time) * 1000
 
         if response.llm_output and "token_usage" in response.llm_output:
-            self.prompt_tokens = response.llm_output["token_usage"].get("prompt_tokens", 0)
-            self.completion_tokens = response.llm_output["token_usage"].get("completion_tokens", 0)
+            self.prompt_tokens = response.llm_output["token_usage"].get(
+                "prompt_tokens", 0
+            )
+            self.completion_tokens = response.llm_output["token_usage"].get(
+                "completion_tokens", 0
+            )
             self.cost = self._get_cost_estimate(
                 num_input_tokens=self.prompt_tokens,
                 num_output_tokens=self.completion_tokens,
             )
-            self.total_tokens = response.llm_output["token_usage"].get("total_tokens", 0)
+            self.total_tokens = response.llm_output["token_usage"].get(
+                "total_tokens", 0
+            )
 
         for generations in response.generations:
             for generation in generations:
@@ -99,12 +109,17 @@ class OpenlayerHandler(BaseCallbackHandler):
 
         self._add_to_trace()
 
-    def _get_cost_estimate(self, num_input_tokens: int, num_output_tokens: int) -> float:
+    def _get_cost_estimate(
+        self, num_input_tokens: int, num_output_tokens: int
+    ) -> float:
         """Returns the cost estimate for a given model and number of tokens."""
         if self.model not in constants.OPENAI_COST_PER_TOKEN:
             return None
         cost_per_token = constants.OPENAI_COST_PER_TOKEN[self.model]
-        return cost_per_token["input"] * num_input_tokens + cost_per_token["output"] * num_output_tokens
+        return (
+            cost_per_token["input"] * num_input_tokens
+            + cost_per_token["output"] * num_output_tokens
+        )
 
     def _add_to_trace(self) -> None:
         """Adds to the trace."""
@@ -126,11 +141,15 @@ class OpenlayerHandler(BaseCallbackHandler):
             metadata=self.metatada,
         )
 
-    def on_llm_error(self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any) -> Any:
+    def on_llm_error(
+        self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
+    ) -> Any:
         """Run when LLM errors."""
         pass
 
-    def on_chain_start(self, serialized: Dict[str, Any], inputs: Dict[str, Any], **kwargs: Any) -> Any:
+    def on_chain_start(
+        self, serialized: Dict[str, Any], inputs: Dict[str, Any], **kwargs: Any
+    ) -> Any:
         """Run when chain starts running."""
         pass
 
@@ -138,11 +157,15 @@ class OpenlayerHandler(BaseCallbackHandler):
         """Run when chain ends running."""
         pass
 
-    def on_chain_error(self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any) -> Any:
+    def on_chain_error(
+        self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
+    ) -> Any:
         """Run when chain errors."""
         pass
 
-    def on_tool_start(self, serialized: Dict[str, Any], input_str: str, **kwargs: Any) -> Any:
+    def on_tool_start(
+        self, serialized: Dict[str, Any], input_str: str, **kwargs: Any
+    ) -> Any:
         """Run when tool starts running."""
         pass
 
@@ -150,7 +173,9 @@ class OpenlayerHandler(BaseCallbackHandler):
         """Run when tool ends running."""
         pass
 
-    def on_tool_error(self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any) -> Any:
+    def on_tool_error(
+        self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
+    ) -> Any:
         """Run when tool errors."""
         pass
 
@@ -158,10 +183,14 @@ class OpenlayerHandler(BaseCallbackHandler):
         """Run on arbitrary text."""
         pass
 
-    def on_agent_action(self, action: langchain_schema.AgentAction, **kwargs: Any) -> Any:
+    def on_agent_action(
+        self, action: langchain_schema.AgentAction, **kwargs: Any
+    ) -> Any:
         """Run on agent action."""
         pass
 
-    def on_agent_finish(self, finish: langchain_schema.AgentFinish, **kwargs: Any) -> Any:
+    def on_agent_finish(
+        self, finish: langchain_schema.AgentFinish, **kwargs: Any
+    ) -> Any:
         """Run on agent end."""
         pass
