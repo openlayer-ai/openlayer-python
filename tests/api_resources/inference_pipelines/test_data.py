@@ -39,6 +39,7 @@ class TestData:
         data = client.inference_pipelines.data.stream(
             "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
             config={
+                "num_of_token_column_name": "tokens",
                 "context_column_name": "context",
                 "cost_column_name": "cost",
                 "ground_truth_column_name": "ground_truth",
@@ -155,6 +156,7 @@ class TestAsyncData:
         data = await async_client.inference_pipelines.data.stream(
             "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
             config={
+                "num_of_token_column_name": "tokens",
                 "context_column_name": "context",
                 "cost_column_name": "cost",
                 "ground_truth_column_name": "ground_truth",
