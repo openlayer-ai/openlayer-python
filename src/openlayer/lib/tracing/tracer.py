@@ -9,7 +9,9 @@ from functools import wraps
 from contextlib import contextmanager
 
 from . import enums, steps, traces
-from .. import Openlayer, ConfigLlmData, utils
+from .. import utils
+from ..._client import Openlayer
+from ...types.inference_pipelines.data_stream_params import ConfigLlmData
 
 logger = logging.getLogger(__name__)
 
@@ -227,9 +229,7 @@ def post_process_trace(
     return trace_data, input_variable_names
 
 
-def bubble_up_costs_and_tokens(
-    trace_dict: List[Dict[str, Any]]
-) -> List[Dict[str, Any]]:
+def bubble_up_costs_and_tokens(trace_dict: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Adds the cost and number of tokens of nested steps to their parent steps."""
 
     def add_step_costs_and_tokens(step: Dict[str, Any]) -> Tuple[float, int]:
