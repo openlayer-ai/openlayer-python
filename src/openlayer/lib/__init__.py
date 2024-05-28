@@ -5,14 +5,10 @@ __all__ = [
     "trace",
     "trace_openai",
     "trace_openai_assistant_thread_run",
-    "Openlayer",
-    "ConfigLlmData",
 ]
 
 # ---------------------------------- Tracing --------------------------------- #
 from .tracing import tracer
-from .._client import Openlayer
-from ..types.inference_pipelines.data_stream_params import ConfigLlmData
 
 trace = tracer.trace
 
