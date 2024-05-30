@@ -1,9 +1,18 @@
 import os
+from typing import Dict, Union, Iterable
 
 from openlayer import Openlayer
 
 # Let's say we want to stream the following row, which represents a model prediction:
-data = {"user_query": "what's the meaning of life?", "output": "42", "tokens": 7, "cost": 0.02, "timestamp": 1620000000}
+rows: Iterable[Dict[str, Union[str, int, float]]] = [
+    {
+        "user_query": "what's the meaning of life?",
+        "output": "42",
+        "tokens": 7,
+        "cost": 0.02,
+        "timestamp": 1620000000,
+    }
+]
 
 client = Openlayer(
     # This is the default and can be omitted
@@ -26,6 +35,6 @@ config = data_stream_params.ConfigLlmData(
 
 data_stream_response = client.inference_pipelines.data.stream(
     id="YOUR_INFERENCE_PIPELINE_ID",
-    rows=[data],
+    rows=rows,
     config=config,
 )
