@@ -133,9 +133,9 @@ pythonVersion = "3.7"
 exclude = [
     "_dev",
     ".venv",
-    ".nox",
+    ".nox"
 ]
-
+ignore = ["src/openlayer/lib", "examples"]
 reportImplicitOverride = true
 
 reportImportCycles = false
@@ -194,3 +194,5 @@ known-first-party = ["openlayer", "tests"]
 "scripts/**.py" = ["T201", "T203"]
 "tests/**.py" = ["T201", "T203"]
 "examples/**.py" = ["T201", "T203"]
+"src/openlayer/lib/*" = ["ALL"]
+
