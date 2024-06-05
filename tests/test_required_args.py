@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from openlayer._utils import required_args
+from openlayer_test._utils import required_args
 
 
 def test_too_many_positional_params() -> None:
