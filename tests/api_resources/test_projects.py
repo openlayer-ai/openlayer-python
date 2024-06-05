@@ -7,9 +7,9 @@ from typing import Any, cast
 
 import pytest
 
-from openlayer import Openlayer, AsyncOpenlayer
 from tests.utils import assert_matches_type
-from openlayer.types import ProjectListResponse
+from openlayer_test import Openlayer, AsyncOpenlayer
+from openlayer_test.types import ProjectListResponse
 
 base_url = os.environ.get("TEST_API_BASE_URL", "http://127.0.0.1:4010")
 

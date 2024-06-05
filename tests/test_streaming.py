@@ -5,8 +5,8 @@ from typing import Iterator, AsyncIterator
 import httpx
 import pytest
 
-from openlayer import Openlayer, AsyncOpenlayer
-from openlayer._streaming import Stream, AsyncStream, ServerSentEvent
+from openlayer_test import Openlayer, AsyncOpenlayer
+from openlayer_test._streaming import Stream, AsyncStream, ServerSentEvent
 
 
 @pytest.mark.asyncio
