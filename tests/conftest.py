@@ -7,14 +7,14 @@ from typing import TYPE_CHECKING, Iterator, AsyncIterator
 
 import pytest
 
-from openlayer_test import Openlayer, AsyncOpenlayer
+from openlayer import Openlayer, AsyncOpenlayer
 
 if TYPE_CHECKING:
     from _pytest.fixtures import FixtureRequest
 
 pytest.register_assert_rewrite("tests.utils")
 
-logging.getLogger("openlayer_test").setLevel(logging.DEBUG)
+logging.getLogger("openlayer").setLevel(logging.DEBUG)
 
 
 @pytest.fixture(scope="session")

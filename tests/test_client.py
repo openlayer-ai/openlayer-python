@@ -16,12 +16,12 @@ import pytest
 from respx import MockRouter
 from pydantic import ValidationError
 
-from openlayer_test import Openlayer, AsyncOpenlayer, APIResponseValidationError
-from openlayer_test._types import Omit
-from openlayer_test._models import BaseModel, FinalRequestOptions
-from openlayer_test._constants import RAW_RESPONSE_HEADER
-from openlayer_test._exceptions import APIStatusError, APITimeoutError, APIResponseValidationError
-from openlayer_test._base_client import (
+from openlayer import Openlayer, AsyncOpenlayer, APIResponseValidationError
+from openlayer._types import Omit
+from openlayer._models import BaseModel, FinalRequestOptions
+from openlayer._constants import RAW_RESPONSE_HEADER
+from openlayer._exceptions import APIStatusError, APITimeoutError, APIResponseValidationError
+from openlayer._base_client import (
     DEFAULT_TIMEOUT,
     HTTPX_DEFAULT_TIMEOUT,
     BaseClient,
@@ -225,10 +225,10 @@ class TestOpenlayer:
                         # to_raw_response_wrapper leaks through the @functools.wraps() decorator.
                         #
                         # removing the decorator fixes the leak for reasons we don't understand.
-                        "openlayer_test/_legacy_response.py",
-                        "openlayer_test/_response.py",
+                        "openlayer/_legacy_response.py",
+                        "openlayer/_response.py",
                         # pydantic.BaseModel.model_dump || pydantic.BaseModel.dict leak memory for some reason.
-                        "openlayer_test/_compat.py",
+                        "openlayer/_compat.py",
                         # Standard library leaks we don't care about.
                         "/logging/__init__.py",
                     ]
@@ -711,7 +711,7 @@ class TestOpenlayer:
         calculated = client._calculate_retry_timeout(remaining_retries, options, headers)
         assert calculated == pytest.approx(timeout, 0.5 * 0.875)  # pyright: ignore[reportUnknownMemberType]
 
-    @mock.patch("openlayer_test._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
+    @mock.patch("openlayer._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
     @pytest.mark.respx(base_url=base_url)
     def test_retrying_timeout_errors_doesnt_leak(self, respx_mock: MockRouter) -> None:
         respx_mock.post("/inference-pipelines/182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e/data-stream").mock(
@@ -748,7 +748,7 @@ class TestOpenlayer:
 
         assert _get_open_connections(self.client) == 0
 
-    @mock.patch("openlayer_test._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
+    @mock.patch("openlayer._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
     @pytest.mark.respx(base_url=base_url)
     def test_retrying_status_errors_doesnt_leak(self, respx_mock: MockRouter) -> None:
         respx_mock.post("/inference-pipelines/182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e/data-stream").mock(
@@ -961,10 +961,10 @@ class TestAsyncOpenlayer:
                         # to_raw_response_wrapper leaks through the @functools.wraps() decorator.
                         #
                         # removing the decorator fixes the leak for reasons we don't understand.
-                        "openlayer_test/_legacy_response.py",
-                        "openlayer_test/_response.py",
+                        "openlayer/_legacy_response.py",
+                        "openlayer/_response.py",
                         # pydantic.BaseModel.model_dump || pydantic.BaseModel.dict leak memory for some reason.
-                        "openlayer_test/_compat.py",
+                        "openlayer/_compat.py",
                         # Standard library leaks we don't care about.
                         "/logging/__init__.py",
                     ]
@@ -1461,7 +1461,7 @@ class TestAsyncOpenlayer:
         calculated = client._calculate_retry_timeout(remaining_retries, options, headers)
         assert calculated == pytest.approx(timeout, 0.5 * 0.875)  # pyright: ignore[reportUnknownMemberType]
 
-    @mock.patch("openlayer_test._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
+    @mock.patch("openlayer._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
     @pytest.mark.respx(base_url=base_url)
     async def test_retrying_timeout_errors_doesnt_leak(self, respx_mock: MockRouter) -> None:
         respx_mock.post("/inference-pipelines/182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e/data-stream").mock(
@@ -1498,7 +1498,7 @@ class TestAsyncOpenlayer:
 
         assert _get_open_connections(self.client) == 0
 
-    @mock.patch("openlayer_test._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
+    @mock.patch("openlayer._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
     @pytest.mark.respx(base_url=base_url)
     async def test_retrying_status_errors_doesnt_leak(self, respx_mock: MockRouter) -> None:
         respx_mock.post("/inference-pipelines/182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e/data-stream").mock(
