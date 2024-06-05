@@ -4,7 +4,7 @@ from urllib.parse import unquote
 
 import pytest
 
-from openlayer._qs import Querystring, stringify
+from openlayer-test._qs import Querystring, stringify
 
 
 def test_empty() -> None:
