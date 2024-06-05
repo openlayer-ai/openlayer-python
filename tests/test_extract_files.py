@@ -4,8 +4,8 @@ from typing import Sequence
 
 import pytest
 
-from openlayer_test._types import FileTypes
-from openlayer_test._utils import extract_files
+from openlayer._types import FileTypes
+from openlayer._utils import extract_files
 
 
 def test_removes_files_from_input() -> None:
