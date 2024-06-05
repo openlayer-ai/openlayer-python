@@ -136,6 +136,8 @@ exclude = [
     ".nox",
 ]
 
+ignore = ["src/openlayer/lib/*", "examples/*"]
+
 reportImplicitOverride = true
 
 reportImportCycles = false
@@ -193,4 +195,5 @@ known-first-party = ["openlayer", "tests"]
 "bin/**.py" = ["T201", "T203"]
 "scripts/**.py" = ["T201", "T203"]
 "tests/**.py" = ["T201", "T203"]
-"examples/**.py" = ["T201", "T203"]
+"examples/**.py" = ["ALL"]
+"src/**.py" = ["ALL"]
