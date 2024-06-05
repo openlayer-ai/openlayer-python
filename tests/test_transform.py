@@ -8,15 +8,15 @@ from typing_extensions import Required, Annotated, TypedDict
 
 import pytest
 
-from openlayer._types import Base64FileInput
-from openlayer._utils import (
+from openlayer_test._types import Base64FileInput
+from openlayer_test._utils import (
     PropertyInfo,
     transform as _transform,
     parse_datetime,
     async_transform as _async_transform,
 )
-from openlayer._compat import PYDANTIC_V2
-from openlayer._models import BaseModel
+from openlayer_test._compat import PYDANTIC_V2
+from openlayer_test._models import BaseModel
 
 _T = TypeVar("_T")
 
