@@ -1,6 +1,6 @@
 # Openlayer Python API library
 
-[![PyPI version](https://img.shields.io/pypi/v/openlayer.svg)](https://pypi.org/project/openlayer/)
+[![PyPI version](https://img.shields.io/pypi/v/openlayer-test.svg)](https://pypi.org/project/openlayer-test/)
 
 The Openlayer Python library provides convenient access to the Openlayer REST API from any Python 3.7+
 application. The library includes type definitions for all request params and response fields,
@@ -16,7 +16,7 @@ The REST API documentation can be found [on openlayer.com](https://openlayer.com
 
 ```sh
 # install from PyPI
-pip install --pre openlayer
+pip install --pre openlayer-test
 ```
 
 ## Usage
@@ -25,7 +25,7 @@ The full API of this library can be found in [api.md](api.md).
 
 ```python
 import os
-from openlayer import Openlayer
+from openlayer-test import Openlayer
 
 client = Openlayer(
     # This is the default and can be omitted
@@ -41,15 +41,13 @@ data_stream_response = client.inference_pipelines.data.stream(
         "cost_column_name": "cost",
         "timestamp_column_name": "timestamp",
     },
-    rows=[
-        {
-            "user_query": "what's the meaning of life?",
-            "output": "42",
-            "tokens": 7,
-            "cost": 0.02,
-            "timestamp": 1620000000,
-        }
-    ],
+    rows=[{
+        "user_query": "what's the meaning of life?",
+        "output": "42",
+        "tokens": 7,
+        "cost": 0.02,
+        "timestamp": 1620000000,
+    }],
 )
 print(data_stream_response.success)
 ```
@@ -66,36 +64,32 @@ Simply import `AsyncOpenlayer` instead of `Openlayer` and use `await` with each 
 ```python
 import os
 import asyncio
-from openlayer import AsyncOpenlayer
+from openlayer-test import AsyncOpenlayer
 
 client = AsyncOpenlayer(
     # This is the default and can be omitted
     api_key=os.environ.get("OPENLAYER_API_KEY"),
 )
 
-
 async def main() -> None:
-    data_stream_response = await client.inference_pipelines.data.stream(
-        "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
-        config={
-            "input_variable_names": ["user_query"],
-            "output_column_name": "output",
-            "num_of_token_column_name": "tokens",
-            "cost_column_name": "cost",
-            "timestamp_column_name": "timestamp",
-        },
-        rows=[
-            {
-                "user_query": "what's the meaning of life?",
-                "output": "42",
-                "tokens": 7,
-                "cost": 0.02,
-                "timestamp": 1620000000,
-            }
-        ],
-    )
-    print(data_stream_response.success)
-
+  data_stream_response = await client.inference_pipelines.data.stream(
+      "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+      config={
+          "input_variable_names": ["user_query"],
+          "output_column_name": "output",
+          "num_of_token_column_name": "tokens",
+          "cost_column_name": "cost",
+          "timestamp_column_name": "timestamp",
+      },
+      rows=[{
+          "user_query": "what's the meaning of life?",
+          "output": "42",
+          "tokens": 7,
+          "cost": 0.02,
+          "timestamp": 1620000000,
+      }],
+  )
+  print(data_stream_response.success)
 
 asyncio.run(main())
 ```
@@ -113,16 +107,16 @@ Typed requests and responses provide autocomplete and documentation within your 
 
 ## Handling errors
 
-When the library is unable to connect to the API (for example, due to network connection problems or a timeout), a subclass of `openlayer.APIConnectionError` is raised.
+When the library is unable to connect to the API (for example, due to network connection problems or a timeout), a subclass of `openlayer-test.APIConnectionError` is raised.
 
 When the API returns a non-success status code (that is, 4xx or 5xx
-response), a subclass of `openlayer.APIStatusError` is raised, containing `status_code` and `response` properties.
+response), a subclass of `openlayer-test.APIStatusError` is raised, containing `status_code` and `response` properties.
 
-All errors inherit from `openlayer.APIError`.
+All errors inherit from `openlayer-test.APIError`.
 
 ```python
-import openlayer
-from openlayer import Openlayer
+import openlayer-test
+from openlayer-test import Openlayer
 
 client = Openlayer()
 
@@ -136,22 +130,20 @@ try:
             "cost_column_name": "cost",
             "timestamp_column_name": "timestamp",
         },
-        rows=[
-            {
-                "user_query": "what's the meaning of life?",
-                "output": "42",
-                "tokens": 7,
-                "cost": 0.02,
-                "timestamp": 1620000000,
-            }
-        ],
+        rows=[{
+            "user_query": "what's the meaning of life?",
+            "output": "42",
+            "tokens": 7,
+            "cost": 0.02,
+            "timestamp": 1620000000,
+        }],
     )
-except openlayer.APIConnectionError as e:
+except openlayer-test.APIConnectionError as e:
     print("The server could not be reached")
-    print(e.__cause__)  # an underlying Exception, likely raised within httpx.
-except openlayer.RateLimitError as e:
+    print(e.__cause__) # an underlying Exception, likely raised within httpx.
+except openlayer-test.RateLimitError as e:
     print("A 429 status code was received; we should back off a bit.")
-except openlayer.APIStatusError as e:
+except openlayer-test.APIStatusError as e:
     print("Another non-200-range status code was received")
     print(e.status_code)
     print(e.response)
@@ -179,7 +171,7 @@ Connection errors (for example, due to a network connectivity problem), 408 Requ
 You can use the `max_retries` option to configure or disable retry settings:
 
 ```python
-from openlayer import Openlayer
+from openlayer-test import Openlayer
 
 # Configure the default for all requests:
 client = Openlayer(
@@ -188,7 +180,7 @@ client = Openlayer(
 )
 
 # Or, configure per-request:
-client.with_options(max_retries=5).inference_pipelines.data.stream(
+client.with_options(max_retries = 5).inference_pipelines.data.stream(
     "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
     config={
         "input_variable_names": ["user_query"],
@@ -197,15 +189,13 @@ client.with_options(max_retries=5).inference_pipelines.data.stream(
         "cost_column_name": "cost",
         "timestamp_column_name": "timestamp",
     },
-    rows=[
-        {
-            "user_query": "what's the meaning of life?",
-            "output": "42",
-            "tokens": 7,
-            "cost": 0.02,
-            "timestamp": 1620000000,
-        }
-    ],
+    rows=[{
+        "user_query": "what's the meaning of life?",
+        "output": "42",
+        "tokens": 7,
+        "cost": 0.02,
+        "timestamp": 1620000000,
+    }],
 )
 ```
 
@@ -215,7 +205,7 @@ By default requests time out after 1 minute. You can configure this with a `time
 which accepts a float or an [`httpx.Timeout`](https://www.python-httpx.org/advanced/#fine-tuning-the-configuration) object:
 
 ```python
-from openlayer import Openlayer
+from openlayer-test import Openlayer
 
 # Configure the default for all requests:
 client = Openlayer(
@@ -229,7 +219,7 @@ client = Openlayer(
 )
 
 # Override per-request:
-client.with_options(timeout=5.0).inference_pipelines.data.stream(
+client.with_options(timeout = 5.0).inference_pipelines.data.stream(
     "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
     config={
         "input_variable_names": ["user_query"],
@@ -238,15 +228,13 @@ client.with_options(timeout=5.0).inference_pipelines.data.stream(
         "cost_column_name": "cost",
         "timestamp_column_name": "timestamp",
     },
-    rows=[
-        {
-            "user_query": "what's the meaning of life?",
-            "output": "42",
-            "tokens": 7,
-            "cost": 0.02,
-            "timestamp": 1620000000,
-        }
-    ],
+    rows=[{
+        "user_query": "what's the meaning of life?",
+        "output": "42",
+        "tokens": 7,
+        "cost": 0.02,
+        "timestamp": 1620000000,
+    }],
 )
 ```
 
@@ -283,7 +271,7 @@ if response.my_field is None:
 The "raw" Response object can be accessed by prefixing `.with_raw_response.` to any HTTP method call, e.g.,
 
 ```py
-from openlayer import Openlayer
+from openlayer-test import Openlayer
 
 client = Openlayer()
 response = client.inference_pipelines.data.with_raw_response.stream(
@@ -309,9 +297,9 @@ data = response.parse()  # get the object that `inference_pipelines.data.stream(
 print(data.success)
 ```
 
-These methods return an [`APIResponse`](https://github.com/openlayer-ai/openlayer-python/tree/main/src/openlayer/_response.py) object.
+These methods return an [`APIResponse`](https://github.com/openlayer-ai/openlayer-python/tree/main/src/openlayer-test/_response.py) object.
 
-The async client returns an [`AsyncAPIResponse`](https://github.com/openlayer-ai/openlayer-python/tree/main/src/openlayer/_response.py) with the same structure, the only difference being `await`able methods for reading the response content.
+The async client returns an [`AsyncAPIResponse`](https://github.com/openlayer-ai/openlayer-python/tree/main/src/openlayer-test/_response.py) with the same structure, the only difference being `await`able methods for reading the response content.
 
 #### `.with_streaming_response`
 
@@ -329,20 +317,18 @@ with client.inference_pipelines.data.with_streaming_response.stream(
         "cost_column_name": "cost",
         "timestamp_column_name": "timestamp",
     },
-    rows=[
-        {
-            "user_query": "what's the meaning of life?",
-            "output": "42",
-            "tokens": 7,
-            "cost": 0.02,
-            "timestamp": 1620000000,
-        }
-    ],
-) as response:
-    print(response.headers.get("X-My-Header"))
+    rows=[{
+        "user_query": "what's the meaning of life?",
+        "output": "42",
+        "tokens": 7,
+        "cost": 0.02,
+        "timestamp": 1620000000,
+    }],
+) as response :
+    print(response.headers.get('X-My-Header'))
 
     for line in response.iter_lines():
-        print(line)
+      print(line)
 ```
 
 The context manager is required so that the response will reliably be closed.
@@ -391,15 +377,12 @@ You can directly override the [httpx client](https://www.python-httpx.org/api/#c
 - Additional [advanced](https://www.python-httpx.org/advanced/#client-instances) functionality
 
 ```python
-from openlayer import Openlayer, DefaultHttpxClient
+from openlayer-test import Openlayer, DefaultHttpxClient
 
 client = Openlayer(
     # Or use the `OPENLAYER_BASE_URL` env var
     base_url="http://my.test.server.example.com:8083",
-    http_client=DefaultHttpxClient(
-        proxies="http://my.test.proxy.example.com",
-        transport=httpx.HTTPTransport(local_address="0.0.0.0"),
-    ),
+    http_client=DefaultHttpxClient(proxies="http://my.test.proxy.example.com", transport=httpx.HTTPTransport(local_address="0.0.0.0")),
 )
 ```
 
