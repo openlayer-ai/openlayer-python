@@ -61,6 +61,6 @@
   ],
   "release-type": "python",
   "extra-files": [
-    "src/openlayer-test/_version.py"
+    "src/openlayer/_version.py"
   ]
 }
