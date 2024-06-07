@@ -8,8 +8,8 @@ from typing import Any, TypeVar, Iterator, cast
 from datetime import date, datetime
 from typing_extensions import Literal, get_args, get_origin, assert_type
 
-from openlayer_test._types import NoneType
-from openlayer_test._utils import (
+from openlayer._types import NoneType
+from openlayer._utils import (
     is_dict,
     is_list,
     is_list_type,
@@ -17,8 +17,8 @@ from openlayer_test._utils import (
     extract_type_arg,
     is_annotated_type,
 )
-from openlayer_test._compat import PYDANTIC_V2, field_outer_type, get_model_fields
-from openlayer_test._models import BaseModel
+from openlayer._compat import PYDANTIC_V2, field_outer_type, get_model_fields
+from openlayer._models import BaseModel
 
 BaseModelT = TypeVar("BaseModelT", bound=BaseModel)
 
