@@ -41,15 +41,13 @@ data_stream_response = client.inference_pipelines.data.stream(
         "cost_column_name": "cost",
         "timestamp_column_name": "timestamp",
     },
-    rows=[
-        {
-            "user_query": "what's the meaning of life?",
-            "output": "42",
-            "tokens": 7,
-            "cost": 0.02,
-            "timestamp": 1620000000,
-        }
-    ],
+    rows=[{
+        "user_query": "what's the meaning of life?",
+        "output": "42",
+        "tokens": 7,
+        "cost": 0.02,
+        "timestamp": 1620000000,
+    }],
 )
 print(data_stream_response.success)
 ```
@@ -73,29 +71,25 @@ client = AsyncOpenlayer(
     api_key=os.environ.get("OPENLAYER_API_KEY"),
 )
 
-
 async def main() -> None:
-    data_stream_response = await client.inference_pipelines.data.stream(
-        "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
-        config={
-            "input_variable_names": ["user_query"],
-            "output_column_name": "output",
-            "num_of_token_column_name": "tokens",
-            "cost_column_name": "cost",
-            "timestamp_column_name": "timestamp",
-        },
-        rows=[
-            {
-                "user_query": "what's the meaning of life?",
-                "output": "42",
-                "tokens": 7,
-                "cost": 0.02,
-                "timestamp": 1620000000,
-            }
-        ],
-    )
-    print(data_stream_response.success)
-
+  data_stream_response = await client.inference_pipelines.data.stream(
+      "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+      config={
+          "input_variable_names": ["user_query"],
+          "output_column_name": "output",
+          "num_of_token_column_name": "tokens",
+          "cost_column_name": "cost",
+          "timestamp_column_name": "timestamp",
+      },
+      rows=[{
+          "user_query": "what's the meaning of life?",
+          "output": "42",
+          "tokens": 7,
+          "cost": 0.02,
+          "timestamp": 1620000000,
+      }],
+  )
+  print(data_stream_response.success)
 
 asyncio.run(main())
 ```
@@ -136,19 +130,17 @@ try:
             "cost_column_name": "cost",
             "timestamp_column_name": "timestamp",
         },
-        rows=[
-            {
-                "user_query": "what's the meaning of life?",
-                "output": "42",
-                "tokens": 7,
-                "cost": 0.02,
-                "timestamp": 1620000000,
-            }
-        ],
+        rows=[{
+            "user_query": "what's the meaning of life?",
+            "output": "42",
+            "tokens": 7,
+            "cost": 0.02,
+            "timestamp": 1620000000,
+        }],
     )
 except openlayer.APIConnectionError as e:
     print("The server could not be reached")
-    print(e.__cause__)  # an underlying Exception, likely raised within httpx.
+    print(e.__cause__) # an underlying Exception, likely raised within httpx.
 except openlayer.RateLimitError as e:
     print("A 429 status code was received; we should back off a bit.")
 except openlayer.APIStatusError as e:
@@ -188,7 +180,7 @@ client = Openlayer(
 )
 
 # Or, configure per-request:
-client.with_options(max_retries=5).inference_pipelines.data.stream(
+client.with_options(max_retries = 5).inference_pipelines.data.stream(
     "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
     config={
         "input_variable_names": ["user_query"],
@@ -197,15 +189,13 @@ client.with_options(max_retries=5).inference_pipelines.data.stream(
         "cost_column_name": "cost",
         "timestamp_column_name": "timestamp",
     },
-    rows=[
-        {
-            "user_query": "what's the meaning of life?",
-            "output": "42",
-            "tokens": 7,
-            "cost": 0.02,
-            "timestamp": 1620000000,
-        }
-    ],
+    rows=[{
+        "user_query": "what's the meaning of life?",
+        "output": "42",
+        "tokens": 7,
+        "cost": 0.02,
+        "timestamp": 1620000000,
+    }],
 )
 ```
 
@@ -229,7 +219,7 @@ client = Openlayer(
 )
 
 # Override per-request:
-client.with_options(timeout=5.0).inference_pipelines.data.stream(
+client.with_options(timeout = 5.0).inference_pipelines.data.stream(
     "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
     config={
         "input_variable_names": ["user_query"],
@@ -238,15 +228,13 @@ client.with_options(timeout=5.0).inference_pipelines.data.stream(
         "cost_column_name": "cost",
         "timestamp_column_name": "timestamp",
     },
-    rows=[
-        {
-            "user_query": "what's the meaning of life?",
-            "output": "42",
-            "tokens": 7,
-            "cost": 0.02,
-            "timestamp": 1620000000,
-        }
-    ],
+    rows=[{
+        "user_query": "what's the meaning of life?",
+        "output": "42",
+        "tokens": 7,
+        "cost": 0.02,
+        "timestamp": 1620000000,
+    }],
 )
 ```
 
@@ -329,20 +317,18 @@ with client.inference_pipelines.data.with_streaming_response.stream(
         "cost_column_name": "cost",
         "timestamp_column_name": "timestamp",
     },
-    rows=[
-        {
-            "user_query": "what's the meaning of life?",
-            "output": "42",
-            "tokens": 7,
-            "cost": 0.02,
-            "timestamp": 1620000000,
-        }
-    ],
-) as response:
-    print(response.headers.get("X-My-Header"))
+    rows=[{
+        "user_query": "what's the meaning of life?",
+        "output": "42",
+        "tokens": 7,
+        "cost": 0.02,
+        "timestamp": 1620000000,
+    }],
+) as response :
+    print(response.headers.get('X-My-Header'))
 
     for line in response.iter_lines():
-        print(line)
+      print(line)
 ```
 
 The context manager is required so that the response will reliably be closed.
@@ -396,10 +382,7 @@ from openlayer import Openlayer, DefaultHttpxClient
 client = Openlayer(
     # Or use the `OPENLAYER_BASE_URL` env var
     base_url="http://my.test.server.example.com:8083",
-    http_client=DefaultHttpxClient(
-        proxies="http://my.test.proxy.example.com",
-        transport=httpx.HTTPTransport(local_address="0.0.0.0"),
-    ),
+    http_client=DefaultHttpxClient(proxies="http://my.test.proxy.example.com", transport=httpx.HTTPTransport(local_address="0.0.0.0")),
 )
 ```
 

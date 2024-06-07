@@ -2,5 +2,5 @@
 
 from __future__ import annotations
 
-from .test_result_list_params import TestResultListParams as TestResultListParams
 from .test_result_list_response import TestResultListResponse as TestResultListResponse
+from .test_result_list_params import TestResultListParams as TestResultListParams
