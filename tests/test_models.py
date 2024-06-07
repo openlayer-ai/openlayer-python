@@ -7,9 +7,9 @@ import pytest
 import pydantic
 from pydantic import Field
 
-from openlayer_test._utils import PropertyInfo
-from openlayer_test._compat import PYDANTIC_V2, parse_obj, model_dump, model_json
-from openlayer_test._models import BaseModel, construct_type
+from openlayer._utils import PropertyInfo
+from openlayer._compat import PYDANTIC_V2, parse_obj, model_dump, model_json
+from openlayer._models import BaseModel, construct_type
 
 
 class BasicModel(BaseModel):
