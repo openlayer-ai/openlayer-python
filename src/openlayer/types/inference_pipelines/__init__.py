@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .data_stream_response import DataStreamResponse as DataStreamResponse
 from .data_stream_params import DataStreamParams as DataStreamParams
-from .test_result_list_response import TestResultListResponse as TestResultListResponse
+from .data_stream_response import DataStreamResponse as DataStreamResponse
 from .test_result_list_params import TestResultListParams as TestResultListParams
+from .test_result_list_response import TestResultListResponse as TestResultListResponse

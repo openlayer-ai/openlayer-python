@@ -2,45 +2,33 @@
 
 from __future__ import annotations
 
-import httpx
-
-from openlayer import Openlayer, AsyncOpenlayer
-
-from openlayer._exceptions import APITimeoutError, APIStatusError, APIResponseValidationError
-
-from typing import Any, cast
-
-from pydantic import ValidationError
-
-import asyncio
 import gc
-import inspect
-import json
 import os
+import json
+import asyncio
+import inspect
 import tracemalloc
-from typing import Dict, Any, Union, cast
+from typing import Any, Union, cast
 from unittest import mock
 
 import httpx
 import pytest
 from respx import MockRouter
+from pydantic import ValidationError
 
 from openlayer import Openlayer, AsyncOpenlayer, APIResponseValidationError
-from openlayer._models import FinalRequestOptions, BaseModel
-from openlayer._types import NOT_GIVEN, Headers, NotGiven, Query, Body, Timeout, Omit
+from openlayer._types import Omit
+from openlayer._models import BaseModel, FinalRequestOptions
+from openlayer._constants import RAW_RESPONSE_HEADER
+from openlayer._exceptions import APIStatusError, APITimeoutError, APIResponseValidationError
 from openlayer._base_client import (
     DEFAULT_TIMEOUT,
     HTTPX_DEFAULT_TIMEOUT,
     BaseClient,
-    RequestOptions,
     make_request_options,
 )
-from openlayer._streaming import Stream, AsyncStream
-from openlayer._constants import RAW_RESPONSE_HEADER
-from openlayer._response import APIResponse, AsyncAPIResponse
+
 from .utils import update_env
-from typing import cast
-from typing import cast
 
 base_url = os.environ.get("TEST_API_BASE_URL", "http://127.0.0.1:4010")
 api_key = "My API Key"
