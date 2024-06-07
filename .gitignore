@@ -13,3 +13,6 @@ dist
 .envrc
 codegen.log
 Brewfile.lock.json
+
+.ipynb_checkpoints
+.DS_Store
