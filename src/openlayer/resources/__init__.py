@@ -1,24 +1,21 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from .commits import (
-    CommitsResource,
-    AsyncCommitsResource,
-    CommitsResourceWithRawResponse,
-    AsyncCommitsResourceWithRawResponse,
-    CommitsResourceWithStreamingResponse,
-    AsyncCommitsResourceWithStreamingResponse,
-)
+from .projects import ProjectsResource, AsyncProjectsResource
 from .projects import (
-    ProjectsResource,
-    AsyncProjectsResource,
     ProjectsResourceWithRawResponse,
     AsyncProjectsResourceWithRawResponse,
     ProjectsResourceWithStreamingResponse,
     AsyncProjectsResourceWithStreamingResponse,
 )
+from .commits import CommitsResource, AsyncCommitsResource
+from .commits import (
+    CommitsResourceWithRawResponse,
+    AsyncCommitsResourceWithRawResponse,
+    CommitsResourceWithStreamingResponse,
+    AsyncCommitsResourceWithStreamingResponse,
+)
+from .inference_pipelines import InferencePipelinesResource, AsyncInferencePipelinesResource
 from .inference_pipelines import (
-    InferencePipelinesResource,
-    AsyncInferencePipelinesResource,
     InferencePipelinesResourceWithRawResponse,
     AsyncInferencePipelinesResourceWithRawResponse,
     InferencePipelinesResourceWithStreamingResponse,
