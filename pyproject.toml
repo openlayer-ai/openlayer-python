@@ -15,7 +15,7 @@ dependencies = [
     "distro>=1.7.0, <2",
     "sniffio",
     "cached-property; python_version < '3.8'",
-
+    "pandas; python_version >= '3.7'",
 ]
 requires-python = ">= 3.7"
 classifiers = [
