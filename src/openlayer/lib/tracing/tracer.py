@@ -1,17 +1,18 @@
 """Module with the logic to create and manage traces and steps."""
 
-import time
+import asyncio
+import contextvars
 import inspect
 import logging
-import contextvars
-from typing import Any, Dict, List, Tuple, Optional, Generator
-from functools import wraps
+import time
 from contextlib import contextmanager
+from functools import wraps
+from typing import Any, Awaitable, Dict, Generator, List, Optional, Tuple
 
-from . import enums, steps, traces
-from .. import utils
 from ..._client import Openlayer
 from ...types.inference_pipelines.data_stream_params import ConfigLlmData
+from .. import utils
+from . import enums, steps, traces
 
 logger = logging.getLogger(__name__)
 
@@ -193,6 +194,100 @@ def trace(*step_args, **step_kwargs):
         return wrapper
 
     return decorator
+
+
+def trace_async(*step_args, **step_kwargs):
+    """Decorator to trace a function.
+
+    Examples
+    --------
+
+    To trace a function, simply decorate it with the ``@trace()`` decorator. By doing so,
+    the functions inputs, outputs, and metadata will be automatically logged to your
+    Openlayer project.
+
+    >>> import os
+    >>> from openlayer.tracing import tracer
+    >>>
+    >>> # Set the environment variables
+    >>> os.environ["OPENLAYER_API_KEY"] = "YOUR_OPENLAYER_API_KEY_HERE"
+    >>> os.environ["OPENLAYER_PROJECT_NAME"] = "YOUR_OPENLAYER_PROJECT_NAME_HERE"
+    >>>
+    >>> # Decorate all the functions you want to trace
+    >>> @tracer.trace_async()
+    >>> async def main(user_query: str) -> str:
+    >>>     context = retrieve_context(user_query)
+    >>>     answer = generate_answer(user_query, context)
+    >>>     return answer
+    >>>
+    >>> @tracer.trace_async()
+    >>> def retrieve_context(user_query: str) -> str:
+    >>>     return "Some context"
+    >>>
+    >>> @tracer.trace_async()
+    >>> def generate_answer(user_query: str, context: str) -> str:
+    >>>     return "Some answer"
+    >>>
+    >>> # Every time the main function is called, the data is automatically
+    >>> # streamed to your Openlayer project. E.g.:
+    >>> tracer.run_async_func(main("What is the meaning of life?"))
+    """
+
+    def decorator(func):
+        func_signature = inspect.signature(func)
+
+        @wraps(func)
+        async def wrapper(*func_args, **func_kwargs):
+            if step_kwargs.get("name") is None:
+                step_kwargs["name"] = func.__name__
+            with create_step(*step_args, **step_kwargs) as step:
+                output = exception = None
+                try:
+                    output = await func(*func_args, **func_kwargs)
+                # pylint: disable=broad-except
+                except Exception as exc:
+                    step.log(metadata={"Exceptions": str(exc)})
+                    exception = exc
+                end_time = time.time()
+                latency = (end_time - step.start_time) * 1000  # in ms
+
+                bound = func_signature.bind(*func_args, **func_kwargs)
+                bound.apply_defaults()
+                inputs = dict(bound.arguments)
+                inputs.pop("self", None)
+                inputs.pop("cls", None)
+
+                step.log(
+                    inputs=inputs,
+                    output=output,
+                    end_time=end_time,
+                    latency=latency,
+                )
+
+                if exception is not None:
+                    raise exception
+            return output
+
+        return wrapper
+
+    return decorator
+
+
+async def _invoke_with_context(coroutine: Awaitable[Any]) -> Tuple[contextvars.Context, Any]:
+    """Runs a coroutine and preserves the context variables set within it."""
+    result = await coroutine
+    context = contextvars.copy_context()
+    return context, result
+
+
+def run_async_func(coroutine: Awaitable[Any]) -> Any:
+    """Runs an async function while preserving the context. This is needed
+    for tracing async functions.
+    """
+    context, result = asyncio.run(_invoke_with_context(coroutine))
+    for key, value in context.items():
+        key.set(value)
+    return result
 
 
 # --------------------- Helper post-processing functions --------------------- #
