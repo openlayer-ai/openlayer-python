@@ -1,10 +1,10 @@
 """Module with methods used to trace OpenAI / Azure OpenAI LLMs."""
 
 import json
-import time
 import logging
-from typing import Any, Dict, List, Union, Iterator, Optional
+import time
 from functools import wraps
+from typing import Any, Dict, Iterator, List, Optional, Union
 
 import openai
 
