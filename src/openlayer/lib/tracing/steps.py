@@ -4,8 +4,8 @@ import time
 import uuid
 from typing import Any, Dict, Optional
 
-from . import enums
 from .. import utils
+from . import enums
 
 
 class Step:
