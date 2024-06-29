@@ -7,7 +7,6 @@ from typing import Any, Dict, List, Optional, Union
 from langchain import schema as langchain_schema
 from langchain.callbacks.base import BaseCallbackHandler
 
-from .. import constants
 from ..tracing import tracer
 
 LANGCHAIN_TO_OPENLAYER_PROVIDER_MAP = {"openai-chat": "OpenAI"}
@@ -27,7 +26,6 @@ class OpenlayerHandler(BaseCallbackHandler):
         self.provider: str = None
         self.model: Optional[str] = None
         self.model_parameters: Dict[str, Any] = None
-        self.cost: Optional[float] = None
         self.prompt_tokens: int = None
         self.completion_tokens: int = None
         self.total_tokens: int = None
@@ -87,10 +85,6 @@ class OpenlayerHandler(BaseCallbackHandler):
         if response.llm_output and "token_usage" in response.llm_output:
             self.prompt_tokens = response.llm_output["token_usage"].get("prompt_tokens", 0)
             self.completion_tokens = response.llm_output["token_usage"].get("completion_tokens", 0)
-            self.cost = self._get_cost_estimate(
-                num_input_tokens=self.prompt_tokens,
-                num_output_tokens=self.completion_tokens,
-            )
             self.total_tokens = response.llm_output["token_usage"].get("total_tokens", 0)
 
         for generations in response.generations:
@@ -98,13 +92,6 @@ class OpenlayerHandler(BaseCallbackHandler):
                 self.output += generation.text.replace("\n", " ")
 
         self._add_to_trace()
-
-    def _get_cost_estimate(self, num_input_tokens: int, num_output_tokens: int) -> float:
-        """Returns the cost estimate for a given model and number of tokens."""
-        if self.model not in constants.OPENAI_COST_PER_TOKEN:
-            return None
-        cost_per_token = constants.OPENAI_COST_PER_TOKEN[self.model]
-        return cost_per_token["input"] * num_input_tokens + cost_per_token["output"] * num_output_tokens
 
     def _add_to_trace(self) -> None:
         """Adds to the trace."""
@@ -114,7 +101,6 @@ class OpenlayerHandler(BaseCallbackHandler):
             provider=self.provider,
             inputs={"prompt": self.prompt},
             output=self.output,
-            cost=self.cost,
             tokens=self.total_tokens,
             latency=self.latency,
             start_time=self.start_time,
