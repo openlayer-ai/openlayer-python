@@ -306,7 +306,7 @@ def post_process_trace(
     else:
         input_variable_names = []
 
-    processed_steps = bubble_up_costs_and_tokens(trace_obj.to_dict())
+    processed_steps = trace_obj.to_dict()
 
     trace_data = {
         "inferenceTimestamp": root_step.start_time,
@@ -322,34 +322,3 @@ def post_process_trace(
         trace_data.update(input_variables)
 
     return trace_data, input_variable_names
-
-
-def bubble_up_costs_and_tokens(trace_dict: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Adds the cost and number of tokens of nested steps to their parent steps."""
-
-    def add_step_costs_and_tokens(step: Dict[str, Any]) -> Tuple[float, int]:
-        step_cost = step_tokens = 0
-
-        if "cost" in step and step["cost"] is not None:
-            step_cost += step["cost"]
-        if "tokens" in step and step["tokens"] is not None:
-            step_tokens += step["tokens"]
-
-        # Recursively add costs and tokens from nested steps
-        for nested_step in step.get("steps", []):
-            nested_cost, nested_tokens = add_step_costs_and_tokens(nested_step)
-            step_cost += nested_cost
-            step_tokens += nested_tokens
-
-        if "steps" in step:
-            if step_cost > 0 and "cost" not in step:
-                step["cost"] = step_cost
-            if step_tokens > 0 and "tokens" not in step:
-                step["tokens"] = step_tokens
-
-        return step_cost, step_tokens
-
-    for root_step_dict in trace_dict:
-        add_step_costs_and_tokens(root_step_dict)
-
-    return trace_dict

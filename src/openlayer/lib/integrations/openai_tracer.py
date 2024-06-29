@@ -8,7 +8,6 @@ from typing import Any, Dict, Iterator, List, Optional, Union
 
 import openai
 
-from .. import constants
 from ..tracing import tracer
 
 logger = logging.getLogger(__name__)
@@ -24,7 +23,6 @@ def trace_openai(
     - end_time: The time when the completion was received.
     - latency: The time it took to generate the completion.
     - tokens: The total number of tokens used to generate the completion.
-    - cost: The estimated cost of the completion.
     - prompt_tokens: The number of tokens in the prompt.
     - completion_tokens: The number of tokens in the completion.
     - model: The model used to generate the completion.
@@ -161,12 +159,6 @@ def stream_chunks(
             else:
                 collected_function_call["arguments"] = json.loads(collected_function_call["arguments"])
                 output_data = collected_function_call
-            completion_cost = estimate_cost(
-                model=kwargs.get("model"),
-                prompt_tokens=0,
-                completion_tokens=(num_of_completion_tokens if num_of_completion_tokens else 0),
-                is_azure_openai=is_azure_openai,
-            )
 
             trace_args = create_trace_args(
                 end_time=end_time,
@@ -174,7 +166,6 @@ def stream_chunks(
                 output=output_data,
                 latency=latency,
                 tokens=num_of_completion_tokens,
-                cost=completion_cost,
                 prompt_tokens=0,
                 completion_tokens=num_of_completion_tokens,
                 model=kwargs.get("model"),
@@ -194,21 +185,6 @@ def stream_chunks(
                 "Failed to trace the create chat completion request with Openlayer. %s",
                 e,
             )
-
-
-def estimate_cost(
-    prompt_tokens: int,
-    completion_tokens: int,
-    model: str,
-    is_azure_openai: bool = False,
-) -> float:
-    """Returns the cost estimate for a given OpenAI model and number of tokens."""
-    if is_azure_openai and model in constants.AZURE_OPENAI_COST_PER_TOKEN:
-        cost_per_token = constants.AZURE_OPENAI_COST_PER_TOKEN[model]
-    elif model in constants.OPENAI_COST_PER_TOKEN:
-        cost_per_token = constants.OPENAI_COST_PER_TOKEN[model]
-        return cost_per_token["input"] * prompt_tokens + cost_per_token["output"] * completion_tokens
-    return None
 
 
 def get_model_parameters(kwargs: Dict[str, Any]) -> Dict[str, Any]:
@@ -234,7 +210,6 @@ def create_trace_args(
     output: str,
     latency: float,
     tokens: int,
-    cost: float,
     prompt_tokens: int,
     completion_tokens: int,
     model: str,
@@ -250,7 +225,6 @@ def create_trace_args(
         "output": output,
         "latency": latency,
         "tokens": tokens,
-        "cost": cost,
         "prompt_tokens": prompt_tokens,
         "completion_tokens": completion_tokens,
         "model": model,
@@ -300,19 +274,12 @@ def handle_non_streaming_create(
     # Try to add step to the trace
     try:
         output_data = parse_non_streaming_output_data(response)
-        cost = estimate_cost(
-            model=response.model,
-            prompt_tokens=response.usage.prompt_tokens,
-            completion_tokens=response.usage.completion_tokens,
-            is_azure_openai=is_azure_openai,
-        )
         trace_args = create_trace_args(
             end_time=end_time,
             inputs={"prompt": kwargs["messages"]},
             output=output_data,
             latency=(end_time - start_time) * 1000,
             tokens=response.usage.total_tokens,
-            cost=cost,
             prompt_tokens=response.usage.prompt_tokens,
             completion_tokens=response.usage.completion_tokens,
             model=response.model,
@@ -373,7 +340,7 @@ def trace_openai_assistant_thread_run(client: openai.OpenAI, run: "openai.types.
     """Trace a run from an OpenAI assistant.
 
     Once the run is completed, the thread data is published to Openlayer,
-    along with the latency, cost, and number of tokens used."""
+    along with the latency, and number of tokens used."""
     _type_check_run(run)
 
     # Do nothing if the run is not completed
@@ -420,11 +387,6 @@ def _extract_run_vars(run: "openai.types.beta.threads.run.Run") -> Dict[str, any
         "completion_tokens": run.usage.completion_tokens,
         "tokens": run.usage.total_tokens,
         "model": run.model,
-        "cost": estimate_cost(
-            model=run.model,
-            prompt_tokens=run.usage.prompt_tokens,
-            completion_tokens=run.usage.completion_tokens,
-        ),
     }
 
 

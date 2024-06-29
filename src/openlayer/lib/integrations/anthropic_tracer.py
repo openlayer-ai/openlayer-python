@@ -23,7 +23,6 @@ def trace_anthropic(
     - end_time: The time when the completion was received.
     - latency: The time it took to generate the completion.
     - tokens: The total number of tokens used to generate the completion.
-    - cost: The estimated cost of the completion.
     - prompt_tokens: The number of tokens in the prompt.
     - completion_tokens: The number of tokens in the completion.
     - model: The model used to generate the completion.
@@ -152,15 +151,12 @@ def stream_chunks(
                 collected_function_call["inputs"] = json.loads(collected_function_call["inputs"])
                 output_data = collected_function_call
 
-            cost = 0
-
             trace_args = create_trace_args(
                 end_time=end_time,
                 inputs={"prompt": kwargs["messages"]},
                 output=output_data,
                 latency=latency,
                 tokens=num_of_completion_tokens,
-                cost=cost,
                 prompt_tokens=num_of_prompt_tokens,
                 completion_tokens=num_of_completion_tokens,
                 model=kwargs.get("model"),
@@ -206,14 +202,12 @@ def handle_non_streaming_create(
     # Try to add step to the trace
     try:
         output_data = parse_non_streaming_output_data(response)
-        cost = 0
         trace_args = create_trace_args(
             end_time=end_time,
             inputs={"prompt": kwargs["messages"]},
             output=output_data,
             latency=(end_time - start_time) * 1000,
             tokens=response.usage.input_tokens + response.usage.output_tokens,
-            cost=cost,
             prompt_tokens=response.usage.input_tokens,
             completion_tokens=response.usage.output_tokens,
             model=response.model,
@@ -275,7 +269,6 @@ def create_trace_args(
     output: str,
     latency: float,
     tokens: int,
-    cost: float,
     prompt_tokens: int,
     completion_tokens: int,
     model: str,
@@ -291,7 +284,6 @@ def create_trace_args(
         "output": output,
         "latency": latency,
         "tokens": tokens,
-        "cost": cost,
         "prompt_tokens": prompt_tokens,
         "completion_tokens": completion_tokens,
         "model": model,
