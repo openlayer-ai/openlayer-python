@@ -9,13 +9,65 @@ import pytest
 
 from openlayer import Openlayer, AsyncOpenlayer
 from tests.utils import assert_matches_type
-from openlayer.types import ProjectListResponse
+from openlayer.types import ProjectListResponse, ProjectCreateResponse
 
 base_url = os.environ.get("TEST_API_BASE_URL", "http://127.0.0.1:4010")
 
 
 class TestProjects:
     parametrize = pytest.mark.parametrize("client", [False, True], indirect=True, ids=["loose", "strict"])
+
+    @parametrize
+    def test_method_create(self, client: Openlayer) -> None:
+        project = client.projects.create(
+            name="My Project",
+            task_type="llm-base",
+        )
+        assert_matches_type(ProjectCreateResponse, project, path=["response"])
+
+    @parametrize
+    def test_method_create_with_all_params(self, client: Openlayer) -> None:
+        project = client.projects.create(
+            name="My Project",
+            task_type="llm-base",
+            description="My project description.",
+            git_repo={
+                "git_id": 0,
+                "branch": "string",
+                "root_dir": "string",
+                "git_account_id": "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            },
+            slack_channel_id="C01B2PZQX1Z",
+            slack_channel_name="#my-project",
+            slack_channel_notifications_enabled=True,
+        )
+        assert_matches_type(ProjectCreateResponse, project, path=["response"])
+
+    @parametrize
+    def test_raw_response_create(self, client: Openlayer) -> None:
+        response = client.projects.with_raw_response.create(
+            name="My Project",
+            task_type="llm-base",
+        )
+
+        assert response.is_closed is True
+        assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+        project = response.parse()
+        assert_matches_type(ProjectCreateResponse, project, path=["response"])
+
+    @parametrize
+    def test_streaming_response_create(self, client: Openlayer) -> None:
+        with client.projects.with_streaming_response.create(
+            name="My Project",
+            task_type="llm-base",
+        ) as response:
+            assert not response.is_closed
+            assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+
+            project = response.parse()
+            assert_matches_type(ProjectCreateResponse, project, path=["response"])
+
+        assert cast(Any, response.is_closed) is True
 
     @parametrize
     def test_method_list(self, client: Openlayer) -> None:
@@ -55,6 +107,58 @@ class TestProjects:
 
 class TestAsyncProjects:
     parametrize = pytest.mark.parametrize("async_client", [False, True], indirect=True, ids=["loose", "strict"])
+
+    @parametrize
+    async def test_method_create(self, async_client: AsyncOpenlayer) -> None:
+        project = await async_client.projects.create(
+            name="My Project",
+            task_type="llm-base",
+        )
+        assert_matches_type(ProjectCreateResponse, project, path=["response"])
+
+    @parametrize
+    async def test_method_create_with_all_params(self, async_client: AsyncOpenlayer) -> None:
+        project = await async_client.projects.create(
+            name="My Project",
+            task_type="llm-base",
+            description="My project description.",
+            git_repo={
+                "git_id": 0,
+                "branch": "string",
+                "root_dir": "string",
+                "git_account_id": "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            },
+            slack_channel_id="C01B2PZQX1Z",
+            slack_channel_name="#my-project",
+            slack_channel_notifications_enabled=True,
+        )
+        assert_matches_type(ProjectCreateResponse, project, path=["response"])
+
+    @parametrize
+    async def test_raw_response_create(self, async_client: AsyncOpenlayer) -> None:
+        response = await async_client.projects.with_raw_response.create(
+            name="My Project",
+            task_type="llm-base",
+        )
+
+        assert response.is_closed is True
+        assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+        project = await response.parse()
+        assert_matches_type(ProjectCreateResponse, project, path=["response"])
+
+    @parametrize
+    async def test_streaming_response_create(self, async_client: AsyncOpenlayer) -> None:
+        async with async_client.projects.with_streaming_response.create(
+            name="My Project",
+            task_type="llm-base",
+        ) as response:
+            assert not response.is_closed
+            assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+
+            project = await response.parse()
+            assert_matches_type(ProjectCreateResponse, project, path=["response"])
+
+        assert cast(Any, response.is_closed) is True
 
     @parametrize
     async def test_method_list(self, async_client: AsyncOpenlayer) -> None:

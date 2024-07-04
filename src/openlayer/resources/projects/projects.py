@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from typing import Optional
 from typing_extensions import Literal
 
 import httpx
 
-from ...types import project_list_params
+from ...types import project_list_params, project_create_params
 from .commits import (
     CommitsResource,
     AsyncCommitsResource,
@@ -40,6 +41,7 @@ from .inference_pipelines import (
     AsyncInferencePipelinesResourceWithStreamingResponse,
 )
 from ...types.project_list_response import ProjectListResponse
+from ...types.project_create_response import ProjectCreateResponse
 
 __all__ = ["ProjectsResource", "AsyncProjectsResource"]
 
@@ -60,6 +62,67 @@ class ProjectsResource(SyncAPIResource):
     @cached_property
     def with_streaming_response(self) -> ProjectsResourceWithStreamingResponse:
         return ProjectsResourceWithStreamingResponse(self)
+
+    def create(
+        self,
+        *,
+        name: str,
+        task_type: Literal["llm-base", "tabular-classification", "tabular-regression", "text-classification"],
+        description: Optional[str] | NotGiven = NOT_GIVEN,
+        git_repo: Optional[project_create_params.GitRepo] | NotGiven = NOT_GIVEN,
+        slack_channel_id: Optional[str] | NotGiven = NOT_GIVEN,
+        slack_channel_name: Optional[str] | NotGiven = NOT_GIVEN,
+        slack_channel_notifications_enabled: bool | NotGiven = NOT_GIVEN,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+    ) -> ProjectCreateResponse:
+        """
+        Create a project under the current workspace.
+
+        Args:
+          name: The project name.
+
+          task_type: The task type of the project.
+
+          description: The project description.
+
+          slack_channel_id: The slack channel id connected to the project.
+
+          slack_channel_name: The slack channel connected to the project.
+
+          slack_channel_notifications_enabled: Whether slack channel notifications are enabled for the project.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        return self._post(
+            "/projects",
+            body=maybe_transform(
+                {
+                    "name": name,
+                    "task_type": task_type,
+                    "description": description,
+                    "git_repo": git_repo,
+                    "slack_channel_id": slack_channel_id,
+                    "slack_channel_name": slack_channel_name,
+                    "slack_channel_notifications_enabled": slack_channel_notifications_enabled,
+                },
+                project_create_params.ProjectCreateParams,
+            ),
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=ProjectCreateResponse,
+        )
 
     def list(
         self,
@@ -134,6 +197,67 @@ class AsyncProjectsResource(AsyncAPIResource):
     def with_streaming_response(self) -> AsyncProjectsResourceWithStreamingResponse:
         return AsyncProjectsResourceWithStreamingResponse(self)
 
+    async def create(
+        self,
+        *,
+        name: str,
+        task_type: Literal["llm-base", "tabular-classification", "tabular-regression", "text-classification"],
+        description: Optional[str] | NotGiven = NOT_GIVEN,
+        git_repo: Optional[project_create_params.GitRepo] | NotGiven = NOT_GIVEN,
+        slack_channel_id: Optional[str] | NotGiven = NOT_GIVEN,
+        slack_channel_name: Optional[str] | NotGiven = NOT_GIVEN,
+        slack_channel_notifications_enabled: bool | NotGiven = NOT_GIVEN,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+    ) -> ProjectCreateResponse:
+        """
+        Create a project under the current workspace.
+
+        Args:
+          name: The project name.
+
+          task_type: The task type of the project.
+
+          description: The project description.
+
+          slack_channel_id: The slack channel id connected to the project.
+
+          slack_channel_name: The slack channel connected to the project.
+
+          slack_channel_notifications_enabled: Whether slack channel notifications are enabled for the project.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        return await self._post(
+            "/projects",
+            body=await async_maybe_transform(
+                {
+                    "name": name,
+                    "task_type": task_type,
+                    "description": description,
+                    "git_repo": git_repo,
+                    "slack_channel_id": slack_channel_id,
+                    "slack_channel_name": slack_channel_name,
+                    "slack_channel_notifications_enabled": slack_channel_notifications_enabled,
+                },
+                project_create_params.ProjectCreateParams,
+            ),
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=ProjectCreateResponse,
+        )
+
     async def list(
         self,
         *,
@@ -194,6 +318,9 @@ class ProjectsResourceWithRawResponse:
     def __init__(self, projects: ProjectsResource) -> None:
         self._projects = projects
 
+        self.create = to_raw_response_wrapper(
+            projects.create,
+        )
         self.list = to_raw_response_wrapper(
             projects.list,
         )
@@ -211,6 +338,9 @@ class AsyncProjectsResourceWithRawResponse:
     def __init__(self, projects: AsyncProjectsResource) -> None:
         self._projects = projects
 
+        self.create = async_to_raw_response_wrapper(
+            projects.create,
+        )
         self.list = async_to_raw_response_wrapper(
             projects.list,
         )
@@ -228,6 +358,9 @@ class ProjectsResourceWithStreamingResponse:
     def __init__(self, projects: ProjectsResource) -> None:
         self._projects = projects
 
+        self.create = to_streamed_response_wrapper(
+            projects.create,
+        )
         self.list = to_streamed_response_wrapper(
             projects.list,
         )
@@ -245,6 +378,9 @@ class AsyncProjectsResourceWithStreamingResponse:
     def __init__(self, projects: AsyncProjectsResource) -> None:
         self._projects = projects
 
+        self.create = async_to_streamed_response_wrapper(
+            projects.create,
+        )
         self.list = async_to_streamed_response_wrapper(
             projects.list,
         )
