@@ -16,14 +16,6 @@ from .projects import (
     ProjectsResourceWithStreamingResponse,
     AsyncProjectsResourceWithStreamingResponse,
 )
-from .inference_pipelines import (
-    InferencePipelinesResource,
-    AsyncInferencePipelinesResource,
-    InferencePipelinesResourceWithRawResponse,
-    AsyncInferencePipelinesResourceWithRawResponse,
-    InferencePipelinesResourceWithStreamingResponse,
-    AsyncInferencePipelinesResourceWithStreamingResponse,
-)
 
 __all__ = [
     "CommitsResource",
@@ -32,12 +24,6 @@ __all__ = [
     "AsyncCommitsResourceWithRawResponse",
     "CommitsResourceWithStreamingResponse",
     "AsyncCommitsResourceWithStreamingResponse",
-    "InferencePipelinesResource",
-    "AsyncInferencePipelinesResource",
-    "InferencePipelinesResourceWithRawResponse",
-    "AsyncInferencePipelinesResourceWithRawResponse",
-    "InferencePipelinesResourceWithStreamingResponse",
-    "AsyncInferencePipelinesResourceWithStreamingResponse",
     "ProjectsResource",
     "AsyncProjectsResource",
     "ProjectsResourceWithRawResponse",
