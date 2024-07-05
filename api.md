@@ -23,19 +23,6 @@ Methods:
 
 - <code title="get /projects/{id}/versions">client.projects.commits.<a href="./src/openlayer/resources/projects/commits.py">list</a>(id, \*\*<a href="src/openlayer/types/projects/commit_list_params.py">params</a>) -> <a href="./src/openlayer/types/projects/commit_list_response.py">CommitListResponse</a></code>
 
-## InferencePipelines
-
-Types:
-
-```python
-from openlayer.types.projects import InferencePipelineCreateResponse, InferencePipelineListResponse
-```
-
-Methods:
-
-- <code title="post /projects/{id}/inference-pipelines">client.projects.inference_pipelines.<a href="./src/openlayer/resources/projects/inference_pipelines.py">create</a>(id, \*\*<a href="src/openlayer/types/projects/inference_pipeline_create_params.py">params</a>) -> <a href="./src/openlayer/types/projects/inference_pipeline_create_response.py">InferencePipelineCreateResponse</a></code>
-- <code title="get /projects/{id}/inference-pipelines">client.projects.inference_pipelines.<a href="./src/openlayer/resources/projects/inference_pipelines.py">list</a>(id, \*\*<a href="src/openlayer/types/projects/inference_pipeline_list_params.py">params</a>) -> <a href="./src/openlayer/types/projects/inference_pipeline_list_response.py">InferencePipelineListResponse</a></code>
-
 # Commits
 
 ## TestResults
