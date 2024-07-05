@@ -714,34 +714,12 @@ class TestOpenlayer:
     @mock.patch("openlayer._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
     @pytest.mark.respx(base_url=base_url)
     def test_retrying_timeout_errors_doesnt_leak(self, respx_mock: MockRouter) -> None:
-        respx_mock.post("/inference-pipelines/182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e/data-stream").mock(
-            side_effect=httpx.TimeoutException("Test timeout error")
-        )
+        respx_mock.post("/projects").mock(side_effect=httpx.TimeoutException("Test timeout error"))
 
         with pytest.raises(APITimeoutError):
             self.client.post(
-                "/inference-pipelines/182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e/data-stream",
-                body=cast(
-                    object,
-                    dict(
-                        config={
-                            "input_variable_names": ["user_query"],
-                            "output_column_name": "output",
-                            "num_of_token_column_name": "tokens",
-                            "cost_column_name": "cost",
-                            "timestamp_column_name": "timestamp",
-                        },
-                        rows=[
-                            {
-                                "user_query": "what's the meaning of life?",
-                                "output": "42",
-                                "tokens": 7,
-                                "cost": 0.02,
-                                "timestamp": 1620000000,
-                            }
-                        ],
-                    ),
-                ),
+                "/projects",
+                body=cast(object, dict(name="My Project", task_type="llm-base")),
                 cast_to=httpx.Response,
                 options={"headers": {RAW_RESPONSE_HEADER: "stream"}},
             )
@@ -751,34 +729,12 @@ class TestOpenlayer:
     @mock.patch("openlayer._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
     @pytest.mark.respx(base_url=base_url)
     def test_retrying_status_errors_doesnt_leak(self, respx_mock: MockRouter) -> None:
-        respx_mock.post("/inference-pipelines/182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e/data-stream").mock(
-            return_value=httpx.Response(500)
-        )
+        respx_mock.post("/projects").mock(return_value=httpx.Response(500))
 
         with pytest.raises(APIStatusError):
             self.client.post(
-                "/inference-pipelines/182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e/data-stream",
-                body=cast(
-                    object,
-                    dict(
-                        config={
-                            "input_variable_names": ["user_query"],
-                            "output_column_name": "output",
-                            "num_of_token_column_name": "tokens",
-                            "cost_column_name": "cost",
-                            "timestamp_column_name": "timestamp",
-                        },
-                        rows=[
-                            {
-                                "user_query": "what's the meaning of life?",
-                                "output": "42",
-                                "tokens": 7,
-                                "cost": 0.02,
-                                "timestamp": 1620000000,
-                            }
-                        ],
-                    ),
-                ),
+                "/projects",
+                body=cast(object, dict(name="My Project", task_type="llm-base")),
                 cast_to=httpx.Response,
                 options={"headers": {RAW_RESPONSE_HEADER: "stream"}},
             )
@@ -1464,34 +1420,12 @@ class TestAsyncOpenlayer:
     @mock.patch("openlayer._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
     @pytest.mark.respx(base_url=base_url)
     async def test_retrying_timeout_errors_doesnt_leak(self, respx_mock: MockRouter) -> None:
-        respx_mock.post("/inference-pipelines/182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e/data-stream").mock(
-            side_effect=httpx.TimeoutException("Test timeout error")
-        )
+        respx_mock.post("/projects").mock(side_effect=httpx.TimeoutException("Test timeout error"))
 
         with pytest.raises(APITimeoutError):
             await self.client.post(
-                "/inference-pipelines/182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e/data-stream",
-                body=cast(
-                    object,
-                    dict(
-                        config={
-                            "input_variable_names": ["user_query"],
-                            "output_column_name": "output",
-                            "num_of_token_column_name": "tokens",
-                            "cost_column_name": "cost",
-                            "timestamp_column_name": "timestamp",
-                        },
-                        rows=[
-                            {
-                                "user_query": "what's the meaning of life?",
-                                "output": "42",
-                                "tokens": 7,
-                                "cost": 0.02,
-                                "timestamp": 1620000000,
-                            }
-                        ],
-                    ),
-                ),
+                "/projects",
+                body=cast(object, dict(name="My Project", task_type="llm-base")),
                 cast_to=httpx.Response,
                 options={"headers": {RAW_RESPONSE_HEADER: "stream"}},
             )
@@ -1501,34 +1435,12 @@ class TestAsyncOpenlayer:
     @mock.patch("openlayer._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
     @pytest.mark.respx(base_url=base_url)
     async def test_retrying_status_errors_doesnt_leak(self, respx_mock: MockRouter) -> None:
-        respx_mock.post("/inference-pipelines/182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e/data-stream").mock(
-            return_value=httpx.Response(500)
-        )
+        respx_mock.post("/projects").mock(return_value=httpx.Response(500))
 
         with pytest.raises(APIStatusError):
             await self.client.post(
-                "/inference-pipelines/182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e/data-stream",
-                body=cast(
-                    object,
-                    dict(
-                        config={
-                            "input_variable_names": ["user_query"],
-                            "output_column_name": "output",
-                            "num_of_token_column_name": "tokens",
-                            "cost_column_name": "cost",
-                            "timestamp_column_name": "timestamp",
-                        },
-                        rows=[
-                            {
-                                "user_query": "what's the meaning of life?",
-                                "output": "42",
-                                "tokens": 7,
-                                "cost": 0.02,
-                                "timestamp": 1620000000,
-                            }
-                        ],
-                    ),
-                ),
+                "/projects",
+                body=cast(object, dict(name="My Project", task_type="llm-base")),
                 cast_to=httpx.Response,
                 options={"headers": {RAW_RESPONSE_HEADER: "stream"}},
             )

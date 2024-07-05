@@ -37,9 +37,6 @@ class TestProjects:
                 "root_dir": "string",
                 "git_account_id": "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
             },
-            slack_channel_id="C01B2PZQX1Z",
-            slack_channel_name="#my-project",
-            slack_channel_notifications_enabled=True,
         )
         assert_matches_type(ProjectCreateResponse, project, path=["response"])
 
@@ -128,9 +125,6 @@ class TestAsyncProjects:
                 "root_dir": "string",
                 "git_account_id": "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
             },
-            slack_channel_id="C01B2PZQX1Z",
-            slack_channel_name="#my-project",
-            slack_channel_notifications_enabled=True,
         )
         assert_matches_type(ProjectCreateResponse, project, path=["response"])
 

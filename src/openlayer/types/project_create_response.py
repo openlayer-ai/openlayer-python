@@ -72,9 +72,6 @@ class ProjectCreateResponse(BaseModel):
     name: str
     """The project name."""
 
-    sample: bool
-    """Whether the project is a sample project or a user-created project."""
-
     source: Optional[Literal["web", "api", "null"]] = None
     """The source of the project."""
 
@@ -93,17 +90,3 @@ class ProjectCreateResponse(BaseModel):
     """The project description."""
 
     git_repo: Optional[GitRepo] = FieldInfo(alias="gitRepo", default=None)
-
-    slack_channel_id: Optional[str] = FieldInfo(alias="slackChannelId", default=None)
-    """The slack channel id connected to the project."""
-
-    slack_channel_name: Optional[str] = FieldInfo(alias="slackChannelName", default=None)
-    """The slack channel connected to the project."""
-
-    slack_channel_notifications_enabled: Optional[bool] = FieldInfo(
-        alias="slackChannelNotificationsEnabled", default=None
-    )
-    """Whether slack channel notifications are enabled for the project."""
-
-    unread_notification_count: Optional[int] = FieldInfo(alias="unreadNotificationCount", default=None)
-    """The number of unread notifications in the project."""
