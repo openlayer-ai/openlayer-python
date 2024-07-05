@@ -32,14 +32,6 @@ from ..._response import (
 from ..._base_client import (
     make_request_options,
 )
-from .inference_pipelines import (
-    InferencePipelinesResource,
-    AsyncInferencePipelinesResource,
-    InferencePipelinesResourceWithRawResponse,
-    AsyncInferencePipelinesResourceWithRawResponse,
-    InferencePipelinesResourceWithStreamingResponse,
-    AsyncInferencePipelinesResourceWithStreamingResponse,
-)
 from ...types.project_list_response import ProjectListResponse
 from ...types.project_create_response import ProjectCreateResponse
 
@@ -50,10 +42,6 @@ class ProjectsResource(SyncAPIResource):
     @cached_property
     def commits(self) -> CommitsResource:
         return CommitsResource(self._client)
-
-    @cached_property
-    def inference_pipelines(self) -> InferencePipelinesResource:
-        return InferencePipelinesResource(self._client)
 
     @cached_property
     def with_raw_response(self) -> ProjectsResourceWithRawResponse:
@@ -184,10 +172,6 @@ class AsyncProjectsResource(AsyncAPIResource):
     @cached_property
     def commits(self) -> AsyncCommitsResource:
         return AsyncCommitsResource(self._client)
-
-    @cached_property
-    def inference_pipelines(self) -> AsyncInferencePipelinesResource:
-        return AsyncInferencePipelinesResource(self._client)
 
     @cached_property
     def with_raw_response(self) -> AsyncProjectsResourceWithRawResponse:
@@ -329,10 +313,6 @@ class ProjectsResourceWithRawResponse:
     def commits(self) -> CommitsResourceWithRawResponse:
         return CommitsResourceWithRawResponse(self._projects.commits)
 
-    @cached_property
-    def inference_pipelines(self) -> InferencePipelinesResourceWithRawResponse:
-        return InferencePipelinesResourceWithRawResponse(self._projects.inference_pipelines)
-
 
 class AsyncProjectsResourceWithRawResponse:
     def __init__(self, projects: AsyncProjectsResource) -> None:
@@ -348,10 +328,6 @@ class AsyncProjectsResourceWithRawResponse:
     @cached_property
     def commits(self) -> AsyncCommitsResourceWithRawResponse:
         return AsyncCommitsResourceWithRawResponse(self._projects.commits)
-
-    @cached_property
-    def inference_pipelines(self) -> AsyncInferencePipelinesResourceWithRawResponse:
-        return AsyncInferencePipelinesResourceWithRawResponse(self._projects.inference_pipelines)
 
 
 class ProjectsResourceWithStreamingResponse:
@@ -369,10 +345,6 @@ class ProjectsResourceWithStreamingResponse:
     def commits(self) -> CommitsResourceWithStreamingResponse:
         return CommitsResourceWithStreamingResponse(self._projects.commits)
 
-    @cached_property
-    def inference_pipelines(self) -> InferencePipelinesResourceWithStreamingResponse:
-        return InferencePipelinesResourceWithStreamingResponse(self._projects.inference_pipelines)
-
 
 class AsyncProjectsResourceWithStreamingResponse:
     def __init__(self, projects: AsyncProjectsResource) -> None:
@@ -388,7 +360,3 @@ class AsyncProjectsResourceWithStreamingResponse:
     @cached_property
     def commits(self) -> AsyncCommitsResourceWithStreamingResponse:
         return AsyncCommitsResourceWithStreamingResponse(self._projects.commits)
-
-    @cached_property
-    def inference_pipelines(self) -> AsyncInferencePipelinesResourceWithStreamingResponse:
-        return AsyncInferencePipelinesResourceWithStreamingResponse(self._projects.inference_pipelines)
