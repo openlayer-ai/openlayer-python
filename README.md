@@ -32,26 +32,11 @@ client = Openlayer(
     api_key=os.environ.get("OPENLAYER_API_KEY"),
 )
 
-data_stream_response = client.inference_pipelines.data.stream(
-    "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
-    config={
-        "input_variable_names": ["user_query"],
-        "output_column_name": "output",
-        "num_of_token_column_name": "tokens",
-        "cost_column_name": "cost",
-        "timestamp_column_name": "timestamp",
-    },
-    rows=[
-        {
-            "user_query": "what's the meaning of life?",
-            "output": "42",
-            "tokens": 7,
-            "cost": 0.02,
-            "timestamp": 1620000000,
-        }
-    ],
+project_create_response = client.projects.create(
+    name="My Project",
+    task_type="llm-base",
 )
-print(data_stream_response.success)
+print(project_create_response.id)
 ```
 
 While you can provide an `api_key` keyword argument,
@@ -75,26 +60,11 @@ client = AsyncOpenlayer(
 
 
 async def main() -> None:
-    data_stream_response = await client.inference_pipelines.data.stream(
-        "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
-        config={
-            "input_variable_names": ["user_query"],
-            "output_column_name": "output",
-            "num_of_token_column_name": "tokens",
-            "cost_column_name": "cost",
-            "timestamp_column_name": "timestamp",
-        },
-        rows=[
-            {
-                "user_query": "what's the meaning of life?",
-                "output": "42",
-                "tokens": 7,
-                "cost": 0.02,
-                "timestamp": 1620000000,
-            }
-        ],
+    project_create_response = await client.projects.create(
+        name="My Project",
+        task_type="llm-base",
     )
-    print(data_stream_response.success)
+    print(project_create_response.id)
 
 
 asyncio.run(main())
@@ -127,24 +97,9 @@ from openlayer import Openlayer
 client = Openlayer()
 
 try:
-    client.inference_pipelines.data.stream(
-        "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
-        config={
-            "input_variable_names": ["user_query"],
-            "output_column_name": "output",
-            "num_of_token_column_name": "tokens",
-            "cost_column_name": "cost",
-            "timestamp_column_name": "timestamp",
-        },
-        rows=[
-            {
-                "user_query": "what's the meaning of life?",
-                "output": "42",
-                "tokens": 7,
-                "cost": 0.02,
-                "timestamp": 1620000000,
-            }
-        ],
+    client.projects.create(
+        name="My Project",
+        task_type="llm-base",
     )
 except openlayer.APIConnectionError as e:
     print("The server could not be reached")
@@ -188,24 +143,9 @@ client = Openlayer(
 )
 
 # Or, configure per-request:
-client.with_options(max_retries=5).inference_pipelines.data.stream(
-    "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
-    config={
-        "input_variable_names": ["user_query"],
-        "output_column_name": "output",
-        "num_of_token_column_name": "tokens",
-        "cost_column_name": "cost",
-        "timestamp_column_name": "timestamp",
-    },
-    rows=[
-        {
-            "user_query": "what's the meaning of life?",
-            "output": "42",
-            "tokens": 7,
-            "cost": 0.02,
-            "timestamp": 1620000000,
-        }
-    ],
+client.with_options(max_retries=5).projects.create(
+    name="My Project",
+    task_type="llm-base",
 )
 ```
 
@@ -229,24 +169,9 @@ client = Openlayer(
 )
 
 # Override per-request:
-client.with_options(timeout=5.0).inference_pipelines.data.stream(
-    "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
-    config={
-        "input_variable_names": ["user_query"],
-        "output_column_name": "output",
-        "num_of_token_column_name": "tokens",
-        "cost_column_name": "cost",
-        "timestamp_column_name": "timestamp",
-    },
-    rows=[
-        {
-            "user_query": "what's the meaning of life?",
-            "output": "42",
-            "tokens": 7,
-            "cost": 0.02,
-            "timestamp": 1620000000,
-        }
-    ],
+client.with_options(timeout=5.0).projects.create(
+    name="My Project",
+    task_type="llm-base",
 )
 ```
 
@@ -286,27 +211,14 @@ The "raw" Response object can be accessed by prefixing `.with_raw_response.` to 
 from openlayer import Openlayer
 
 client = Openlayer()
-response = client.inference_pipelines.data.with_raw_response.stream(
-    "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
-    config={
-        "input_variable_names": ["user_query"],
-        "output_column_name": "output",
-        "num_of_token_column_name": "tokens",
-        "cost_column_name": "cost",
-        "timestamp_column_name": "timestamp",
-    },
-    rows=[{
-        "user_query": "what's the meaning of life?",
-        "output": "42",
-        "tokens": 7,
-        "cost": 0.02,
-        "timestamp": 1620000000,
-    }],
+response = client.projects.with_raw_response.create(
+    name="My Project",
+    task_type="llm-base",
 )
 print(response.headers.get('X-My-Header'))
 
-data = response.parse()  # get the object that `inference_pipelines.data.stream()` would have returned
-print(data.success)
+project = response.parse()  # get the object that `projects.create()` would have returned
+print(project.id)
 ```
 
 These methods return an [`APIResponse`](https://github.com/openlayer-ai/openlayer-python/tree/main/src/openlayer/_response.py) object.
@@ -320,24 +232,9 @@ The above interface eagerly reads the full response body when you make the reque
 To stream the response body, use `.with_streaming_response` instead, which requires a context manager and only reads the response body once you call `.read()`, `.text()`, `.json()`, `.iter_bytes()`, `.iter_text()`, `.iter_lines()` or `.parse()`. In the async client, these are async methods.
 
 ```python
-with client.inference_pipelines.data.with_streaming_response.stream(
-    "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
-    config={
-        "input_variable_names": ["user_query"],
-        "output_column_name": "output",
-        "num_of_token_column_name": "tokens",
-        "cost_column_name": "cost",
-        "timestamp_column_name": "timestamp",
-    },
-    rows=[
-        {
-            "user_query": "what's the meaning of life?",
-            "output": "42",
-            "tokens": 7,
-            "cost": 0.02,
-            "timestamp": 1620000000,
-        }
-    ],
+with client.projects.with_streaming_response.create(
+    name="My Project",
+    task_type="llm-base",
 ) as response:
     print(response.headers.get("X-My-Header"))
 

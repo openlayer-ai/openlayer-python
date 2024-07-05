@@ -8,14 +8,6 @@ from typing_extensions import Literal
 import httpx
 
 from ...types import project_list_params, project_create_params
-from .commits import (
-    CommitsResource,
-    AsyncCommitsResource,
-    CommitsResourceWithRawResponse,
-    AsyncCommitsResourceWithRawResponse,
-    CommitsResourceWithStreamingResponse,
-    AsyncCommitsResourceWithStreamingResponse,
-)
 from ..._types import NOT_GIVEN, Body, Query, Headers, NotGiven
 from ..._utils import (
     maybe_transform,
@@ -40,10 +32,6 @@ __all__ = ["ProjectsResource", "AsyncProjectsResource"]
 
 class ProjectsResource(SyncAPIResource):
     @cached_property
-    def commits(self) -> CommitsResource:
-        return CommitsResource(self._client)
-
-    @cached_property
     def with_raw_response(self) -> ProjectsResourceWithRawResponse:
         return ProjectsResourceWithRawResponse(self)
 
@@ -58,9 +46,6 @@ class ProjectsResource(SyncAPIResource):
         task_type: Literal["llm-base", "tabular-classification", "tabular-regression", "text-classification"],
         description: Optional[str] | NotGiven = NOT_GIVEN,
         git_repo: Optional[project_create_params.GitRepo] | NotGiven = NOT_GIVEN,
-        slack_channel_id: Optional[str] | NotGiven = NOT_GIVEN,
-        slack_channel_name: Optional[str] | NotGiven = NOT_GIVEN,
-        slack_channel_notifications_enabled: bool | NotGiven = NOT_GIVEN,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -78,12 +63,6 @@ class ProjectsResource(SyncAPIResource):
 
           description: The project description.
 
-          slack_channel_id: The slack channel id connected to the project.
-
-          slack_channel_name: The slack channel connected to the project.
-
-          slack_channel_notifications_enabled: Whether slack channel notifications are enabled for the project.
-
           extra_headers: Send extra headers
 
           extra_query: Add additional query parameters to the request
@@ -100,9 +79,6 @@ class ProjectsResource(SyncAPIResource):
                     "task_type": task_type,
                     "description": description,
                     "git_repo": git_repo,
-                    "slack_channel_id": slack_channel_id,
-                    "slack_channel_name": slack_channel_name,
-                    "slack_channel_notifications_enabled": slack_channel_notifications_enabled,
                 },
                 project_create_params.ProjectCreateParams,
             ),
@@ -170,10 +146,6 @@ class ProjectsResource(SyncAPIResource):
 
 class AsyncProjectsResource(AsyncAPIResource):
     @cached_property
-    def commits(self) -> AsyncCommitsResource:
-        return AsyncCommitsResource(self._client)
-
-    @cached_property
     def with_raw_response(self) -> AsyncProjectsResourceWithRawResponse:
         return AsyncProjectsResourceWithRawResponse(self)
 
@@ -188,9 +160,6 @@ class AsyncProjectsResource(AsyncAPIResource):
         task_type: Literal["llm-base", "tabular-classification", "tabular-regression", "text-classification"],
         description: Optional[str] | NotGiven = NOT_GIVEN,
         git_repo: Optional[project_create_params.GitRepo] | NotGiven = NOT_GIVEN,
-        slack_channel_id: Optional[str] | NotGiven = NOT_GIVEN,
-        slack_channel_name: Optional[str] | NotGiven = NOT_GIVEN,
-        slack_channel_notifications_enabled: bool | NotGiven = NOT_GIVEN,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -208,12 +177,6 @@ class AsyncProjectsResource(AsyncAPIResource):
 
           description: The project description.
 
-          slack_channel_id: The slack channel id connected to the project.
-
-          slack_channel_name: The slack channel connected to the project.
-
-          slack_channel_notifications_enabled: Whether slack channel notifications are enabled for the project.
-
           extra_headers: Send extra headers
 
           extra_query: Add additional query parameters to the request
@@ -230,9 +193,6 @@ class AsyncProjectsResource(AsyncAPIResource):
                     "task_type": task_type,
                     "description": description,
                     "git_repo": git_repo,
-                    "slack_channel_id": slack_channel_id,
-                    "slack_channel_name": slack_channel_name,
-                    "slack_channel_notifications_enabled": slack_channel_notifications_enabled,
                 },
                 project_create_params.ProjectCreateParams,
             ),
@@ -309,10 +269,6 @@ class ProjectsResourceWithRawResponse:
             projects.list,
         )
 
-    @cached_property
-    def commits(self) -> CommitsResourceWithRawResponse:
-        return CommitsResourceWithRawResponse(self._projects.commits)
-
 
 class AsyncProjectsResourceWithRawResponse:
     def __init__(self, projects: AsyncProjectsResource) -> None:
@@ -324,10 +280,6 @@ class AsyncProjectsResourceWithRawResponse:
         self.list = async_to_raw_response_wrapper(
             projects.list,
         )
-
-    @cached_property
-    def commits(self) -> AsyncCommitsResourceWithRawResponse:
-        return AsyncCommitsResourceWithRawResponse(self._projects.commits)
 
 
 class ProjectsResourceWithStreamingResponse:
@@ -341,10 +293,6 @@ class ProjectsResourceWithStreamingResponse:
             projects.list,
         )
 
-    @cached_property
-    def commits(self) -> CommitsResourceWithStreamingResponse:
-        return CommitsResourceWithStreamingResponse(self._projects.commits)
-
 
 class AsyncProjectsResourceWithStreamingResponse:
     def __init__(self, projects: AsyncProjectsResource) -> None:
@@ -356,7 +304,3 @@ class AsyncProjectsResourceWithStreamingResponse:
         self.list = async_to_streamed_response_wrapper(
             projects.list,
         )
-
-    @cached_property
-    def commits(self) -> AsyncCommitsResourceWithStreamingResponse:
-        return AsyncCommitsResourceWithStreamingResponse(self._projects.commits)

@@ -27,15 +27,6 @@ class ProjectCreateParams(TypedDict, total=False):
 
     git_repo: Annotated[Optional[GitRepo], PropertyInfo(alias="gitRepo")]
 
-    slack_channel_id: Annotated[Optional[str], PropertyInfo(alias="slackChannelId")]
-    """The slack channel id connected to the project."""
-
-    slack_channel_name: Annotated[Optional[str], PropertyInfo(alias="slackChannelName")]
-    """The slack channel connected to the project."""
-
-    slack_channel_notifications_enabled: Annotated[bool, PropertyInfo(alias="slackChannelNotificationsEnabled")]
-    """Whether slack channel notifications are enabled for the project."""
-
 
 class GitRepo(TypedDict, total=False):
     git_account_id: Required[Annotated[str, PropertyInfo(alias="gitAccountId")]]

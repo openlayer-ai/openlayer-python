@@ -1,13 +1,5 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from .commits import (
-    CommitsResource,
-    AsyncCommitsResource,
-    CommitsResourceWithRawResponse,
-    AsyncCommitsResourceWithRawResponse,
-    CommitsResourceWithStreamingResponse,
-    AsyncCommitsResourceWithStreamingResponse,
-)
 from .projects import (
     ProjectsResource,
     AsyncProjectsResource,
@@ -18,12 +10,6 @@ from .projects import (
 )
 
 __all__ = [
-    "CommitsResource",
-    "AsyncCommitsResource",
-    "CommitsResourceWithRawResponse",
-    "AsyncCommitsResourceWithRawResponse",
-    "CommitsResourceWithStreamingResponse",
-    "AsyncCommitsResourceWithStreamingResponse",
     "ProjectsResource",
     "AsyncProjectsResource",
     "ProjectsResourceWithRawResponse",
