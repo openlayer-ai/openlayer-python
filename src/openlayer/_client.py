@@ -48,6 +48,8 @@ __all__ = [
 
 class Openlayer(SyncAPIClient):
     projects: resources.ProjectsResource
+    commits: resources.CommitsResource
+    inference_pipelines: resources.InferencePipelinesResource
     with_raw_response: OpenlayerWithRawResponse
     with_streaming_response: OpenlayerWithStreamedResponse
 
@@ -102,6 +104,8 @@ class Openlayer(SyncAPIClient):
         )
 
         self.projects = resources.ProjectsResource(self)
+        self.commits = resources.CommitsResource(self)
+        self.inference_pipelines = resources.InferencePipelinesResource(self)
         self.with_raw_response = OpenlayerWithRawResponse(self)
         self.with_streaming_response = OpenlayerWithStreamedResponse(self)
 
@@ -225,6 +229,8 @@ class Openlayer(SyncAPIClient):
 
 class AsyncOpenlayer(AsyncAPIClient):
     projects: resources.AsyncProjectsResource
+    commits: resources.AsyncCommitsResource
+    inference_pipelines: resources.AsyncInferencePipelinesResource
     with_raw_response: AsyncOpenlayerWithRawResponse
     with_streaming_response: AsyncOpenlayerWithStreamedResponse
 
@@ -279,6 +285,8 @@ class AsyncOpenlayer(AsyncAPIClient):
         )
 
         self.projects = resources.AsyncProjectsResource(self)
+        self.commits = resources.AsyncCommitsResource(self)
+        self.inference_pipelines = resources.AsyncInferencePipelinesResource(self)
         self.with_raw_response = AsyncOpenlayerWithRawResponse(self)
         self.with_streaming_response = AsyncOpenlayerWithStreamedResponse(self)
 
@@ -403,21 +411,31 @@ class AsyncOpenlayer(AsyncAPIClient):
 class OpenlayerWithRawResponse:
     def __init__(self, client: Openlayer) -> None:
         self.projects = resources.ProjectsResourceWithRawResponse(client.projects)
+        self.commits = resources.CommitsResourceWithRawResponse(client.commits)
+        self.inference_pipelines = resources.InferencePipelinesResourceWithRawResponse(client.inference_pipelines)
 
 
 class AsyncOpenlayerWithRawResponse:
     def __init__(self, client: AsyncOpenlayer) -> None:
         self.projects = resources.AsyncProjectsResourceWithRawResponse(client.projects)
+        self.commits = resources.AsyncCommitsResourceWithRawResponse(client.commits)
+        self.inference_pipelines = resources.AsyncInferencePipelinesResourceWithRawResponse(client.inference_pipelines)
 
 
 class OpenlayerWithStreamedResponse:
     def __init__(self, client: Openlayer) -> None:
         self.projects = resources.ProjectsResourceWithStreamingResponse(client.projects)
+        self.commits = resources.CommitsResourceWithStreamingResponse(client.commits)
+        self.inference_pipelines = resources.InferencePipelinesResourceWithStreamingResponse(client.inference_pipelines)
 
 
 class AsyncOpenlayerWithStreamedResponse:
     def __init__(self, client: AsyncOpenlayer) -> None:
         self.projects = resources.AsyncProjectsResourceWithStreamingResponse(client.projects)
+        self.commits = resources.AsyncCommitsResourceWithStreamingResponse(client.commits)
+        self.inference_pipelines = resources.AsyncInferencePipelinesResourceWithStreamingResponse(
+            client.inference_pipelines
+        )
 
 
 Client = Openlayer
