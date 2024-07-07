@@ -54,7 +54,7 @@ class ProjectsResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> ProjectCreateResponse:
         """
-        Create a project under the current workspace.
+        Create a project in your workspace.
 
         Args:
           name: The project name.
@@ -104,7 +104,7 @@ class ProjectsResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> ProjectListResponse:
         """
-        List the projects in a user's workspace.
+        List your workspace's projects.
 
         Args:
           name: Filter list of items by project name.
@@ -168,7 +168,7 @@ class AsyncProjectsResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> ProjectCreateResponse:
         """
-        Create a project under the current workspace.
+        Create a project in your workspace.
 
         Args:
           name: The project name.
@@ -218,7 +218,7 @@ class AsyncProjectsResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> ProjectListResponse:
         """
-        List the projects in a user's workspace.
+        List your workspace's projects.
 
         Args:
           name: Filter list of items by project name.
