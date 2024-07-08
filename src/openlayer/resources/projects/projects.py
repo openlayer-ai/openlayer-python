@@ -69,7 +69,6 @@ class ProjectsResource(SyncAPIResource):
         name: str,
         task_type: Literal["llm-base", "tabular-classification", "tabular-regression", "text-classification"],
         description: Optional[str] | NotGiven = NOT_GIVEN,
-        git_repo: Optional[project_create_params.GitRepo] | NotGiven = NOT_GIVEN,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -102,7 +101,6 @@ class ProjectsResource(SyncAPIResource):
                     "name": name,
                     "task_type": task_type,
                     "description": description,
-                    "git_repo": git_repo,
                 },
                 project_create_params.ProjectCreateParams,
             ),
@@ -191,7 +189,6 @@ class AsyncProjectsResource(AsyncAPIResource):
         name: str,
         task_type: Literal["llm-base", "tabular-classification", "tabular-regression", "text-classification"],
         description: Optional[str] | NotGiven = NOT_GIVEN,
-        git_repo: Optional[project_create_params.GitRepo] | NotGiven = NOT_GIVEN,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -224,7 +221,6 @@ class AsyncProjectsResource(AsyncAPIResource):
                     "name": name,
                     "task_type": task_type,
                     "description": description,
-                    "git_repo": git_repo,
                 },
                 project_create_params.ProjectCreateParams,
             ),
