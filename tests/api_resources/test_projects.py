@@ -31,12 +31,6 @@ class TestProjects:
             name="My Project",
             task_type="llm-base",
             description="My project description.",
-            git_repo={
-                "git_id": 0,
-                "branch": "string",
-                "root_dir": "string",
-                "git_account_id": "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
-            },
         )
         assert_matches_type(ProjectCreateResponse, project, path=["response"])
 
@@ -119,12 +113,6 @@ class TestAsyncProjects:
             name="My Project",
             task_type="llm-base",
             description="My project description.",
-            git_repo={
-                "git_id": 0,
-                "branch": "string",
-                "root_dir": "string",
-                "git_account_id": "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
-            },
         )
         assert_matches_type(ProjectCreateResponse, project, path=["response"])
 
