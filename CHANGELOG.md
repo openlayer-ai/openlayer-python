@@ -20,6 +20,23 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Removed
 * Deprecated and removed `publish_ground_truths` method. Use `update_data` instead.
 
+## 0.2.0-alpha.8 (2024-07-08)
+
+Full Changelog: [v0.2.0-alpha.7...v0.2.0-alpha.8](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.7...v0.2.0-alpha.8)
+
+### Features
+
+* **api:** OpenAPI spec update via Stainless API ([#256](https://github.com/openlayer-ai/openlayer-python/issues/256)) ([af3d1ee](https://github.com/openlayer-ai/openlayer-python/commit/af3d1ee07dd9102f743157d117cbd355f485dc94))
+* **api:** OpenAPI spec update via Stainless API ([#257](https://github.com/openlayer-ai/openlayer-python/issues/257)) ([38ac5ff](https://github.com/openlayer-ai/openlayer-python/commit/38ac5fff100fb0cfadd87b27f1b81ed23b7eba51))
+* **api:** update via SDK Studio ([#254](https://github.com/openlayer-ai/openlayer-python/issues/254)) ([ea55198](https://github.com/openlayer-ai/openlayer-python/commit/ea55198158b95c3c32bc7f9361ebd4ae2a15b1ff))
+* **api:** update via SDK Studio ([#258](https://github.com/openlayer-ai/openlayer-python/issues/258)) ([2b4eb5d](https://github.com/openlayer-ai/openlayer-python/commit/2b4eb5d340298559b2660d1a04456b8cc3edab3d))
+
+
+### Chores
+
+* go live ([#259](https://github.com/openlayer-ai/openlayer-python/issues/259)) ([ee2f102](https://github.com/openlayer-ai/openlayer-python/commit/ee2f1029f246ef9b70176b974d085166f7d9a322))
+* move cost estimation logic to the backend ([b9e1134](https://github.com/openlayer-ai/openlayer-python/commit/b9e113481e570101ba8e9512ee5ebb49e5a5732c))
+
 ## 0.2.0-alpha.7 (2024-07-04)
 
 Full Changelog: [v0.2.0-alpha.6...v0.2.0-alpha.7](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.6...v0.2.0-alpha.7)
