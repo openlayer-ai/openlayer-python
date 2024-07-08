@@ -7,7 +7,7 @@ from typing_extensions import Literal, Required, Annotated, TypedDict
 
 from .._utils import PropertyInfo
 
-__all__ = ["ProjectCreateParams", "GitRepo"]
+__all__ = ["ProjectCreateParams"]
 
 
 class ProjectCreateParams(TypedDict, total=False):
@@ -24,15 +24,3 @@ class ProjectCreateParams(TypedDict, total=False):
 
     description: Optional[str]
     """The project description."""
-
-    git_repo: Annotated[Optional[GitRepo], PropertyInfo(alias="gitRepo")]
-
-
-class GitRepo(TypedDict, total=False):
-    git_account_id: Required[Annotated[str, PropertyInfo(alias="gitAccountId")]]
-
-    git_id: Required[Annotated[int, PropertyInfo(alias="gitId")]]
-
-    branch: str
-
-    root_dir: Annotated[str, PropertyInfo(alias="rootDir")]
