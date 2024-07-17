@@ -7,10 +7,10 @@ from typing_extensions import Required, Annotated, TypedDict
 
 from ..._utils import PropertyInfo
 
-__all__ = ["RowStreamParams", "Config"]
+__all__ = ["RowUpdateParams", "Config"]
 
 
-class RowStreamParams(TypedDict, total=False):
+class RowUpdateParams(TypedDict, total=False):
     inference_id: Required[Annotated[str, PropertyInfo(alias="inferenceId")]]
     """Specify the inference id as a query param."""
 

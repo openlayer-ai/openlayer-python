@@ -69,12 +69,12 @@ Methods:
 Types:
 
 ```python
-from openlayer.types.inference_pipelines import RowStreamResponse
+from openlayer.types.inference_pipelines import RowUpdateResponse
 ```
 
 Methods:
 
-- <code title="put /inference-pipelines/{inferencePipelineId}/rows">client.inference_pipelines.rows.<a href="./src/openlayer/resources/inference_pipelines/rows.py">stream</a>(inference_pipeline_id, \*\*<a href="src/openlayer/types/inference_pipelines/row_stream_params.py">params</a>) -> <a href="./src/openlayer/types/inference_pipelines/row_stream_response.py">RowStreamResponse</a></code>
+- <code title="put /inference-pipelines/{inferencePipelineId}/rows">client.inference_pipelines.rows.<a href="./src/openlayer/resources/inference_pipelines/rows.py">update</a>(inference_pipeline_id, \*\*<a href="src/openlayer/types/inference_pipelines/row_update_params.py">params</a>) -> <a href="./src/openlayer/types/inference_pipelines/row_update_response.py">RowUpdateResponse</a></code>
 
 ## TestResults
 
