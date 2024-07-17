@@ -19,9 +19,7 @@ from ..._response import (
     async_to_raw_response_wrapper,
     async_to_streamed_response_wrapper,
 )
-from ..._base_client import (
-    make_request_options,
-)
+from ..._base_client import make_request_options
 from ...types.inference_pipelines import data_stream_params
 from ...types.inference_pipelines.data_stream_response import DataStreamResponse
 
@@ -51,13 +49,13 @@ class DataResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> DataStreamResponse:
         """
-        Stream production data to an inference pipeline.
+        Create an inference data point in an inference pipeline.
 
         Args:
           config: Configuration for the data stream. Depends on your **Openlayer project task
               type**.
 
-          rows: A list of entries that represent rows of a csv file
+          rows: A list of inference data points with inputs and outputs
 
           extra_headers: Send extra headers
 
@@ -110,13 +108,13 @@ class AsyncDataResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> DataStreamResponse:
         """
-        Stream production data to an inference pipeline.
+        Create an inference data point in an inference pipeline.
 
         Args:
           config: Configuration for the data stream. Depends on your **Openlayer project task
               type**.
 
-          rows: A list of entries that represent rows of a csv file
+          rows: A list of inference data points with inputs and outputs
 
           extra_headers: Send extra headers
 

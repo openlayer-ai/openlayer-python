@@ -20,7 +20,7 @@ class TestData:
     @parametrize
     def test_method_stream(self, client: Openlayer) -> None:
         data = client.inference_pipelines.data.stream(
-            "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
             config={"output_column_name": "output"},
             rows=[
                 {
@@ -37,7 +37,7 @@ class TestData:
     @parametrize
     def test_method_stream_with_all_params(self, client: Openlayer) -> None:
         data = client.inference_pipelines.data.stream(
-            "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
             config={
                 "num_of_token_column_name": "tokens",
                 "context_column_name": "context",
@@ -72,7 +72,7 @@ class TestData:
     @parametrize
     def test_raw_response_stream(self, client: Openlayer) -> None:
         response = client.inference_pipelines.data.with_raw_response.stream(
-            "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
             config={"output_column_name": "output"},
             rows=[
                 {
@@ -93,7 +93,7 @@ class TestData:
     @parametrize
     def test_streaming_response_stream(self, client: Openlayer) -> None:
         with client.inference_pipelines.data.with_streaming_response.stream(
-            "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
             config={"output_column_name": "output"},
             rows=[
                 {
@@ -117,7 +117,7 @@ class TestData:
     def test_path_params_stream(self, client: Openlayer) -> None:
         with pytest.raises(ValueError, match=r"Expected a non-empty value for `inference_pipeline_id` but received ''"):
             client.inference_pipelines.data.with_raw_response.stream(
-                "",
+                inference_pipeline_id="",
                 config={"output_column_name": "output"},
                 rows=[
                     {
@@ -137,7 +137,7 @@ class TestAsyncData:
     @parametrize
     async def test_method_stream(self, async_client: AsyncOpenlayer) -> None:
         data = await async_client.inference_pipelines.data.stream(
-            "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
             config={"output_column_name": "output"},
             rows=[
                 {
@@ -154,7 +154,7 @@ class TestAsyncData:
     @parametrize
     async def test_method_stream_with_all_params(self, async_client: AsyncOpenlayer) -> None:
         data = await async_client.inference_pipelines.data.stream(
-            "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
             config={
                 "num_of_token_column_name": "tokens",
                 "context_column_name": "context",
@@ -189,7 +189,7 @@ class TestAsyncData:
     @parametrize
     async def test_raw_response_stream(self, async_client: AsyncOpenlayer) -> None:
         response = await async_client.inference_pipelines.data.with_raw_response.stream(
-            "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
             config={"output_column_name": "output"},
             rows=[
                 {
@@ -210,7 +210,7 @@ class TestAsyncData:
     @parametrize
     async def test_streaming_response_stream(self, async_client: AsyncOpenlayer) -> None:
         async with async_client.inference_pipelines.data.with_streaming_response.stream(
-            "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
             config={"output_column_name": "output"},
             rows=[
                 {
@@ -234,7 +234,7 @@ class TestAsyncData:
     async def test_path_params_stream(self, async_client: AsyncOpenlayer) -> None:
         with pytest.raises(ValueError, match=r"Expected a non-empty value for `inference_pipeline_id` but received ''"):
             await async_client.inference_pipelines.data.with_raw_response.stream(
-                "",
+                inference_pipeline_id="",
                 config={"output_column_name": "output"},
                 rows=[
                     {

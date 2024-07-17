@@ -26,7 +26,7 @@ class DataStreamParams(TypedDict, total=False):
     """
 
     rows: Required[Iterable[Dict[str, object]]]
-    """A list of entries that represent rows of a csv file"""
+    """A list of inference data points with inputs and outputs"""
 
 
 class ConfigLlmDataPrompt(TypedDict, total=False):

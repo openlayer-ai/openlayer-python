@@ -19,9 +19,7 @@ from ..._response import (
     async_to_raw_response_wrapper,
     async_to_streamed_response_wrapper,
 )
-from ..._base_client import (
-    make_request_options,
-)
+from ..._base_client import make_request_options
 from ...types.commits import test_result_list_params
 from ...types.commits.test_result_list_response import TestResultListResponse
 
