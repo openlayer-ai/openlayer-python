@@ -19,9 +19,7 @@ from ..._response import (
     async_to_raw_response_wrapper,
     async_to_streamed_response_wrapper,
 )
-from ..._base_client import (
-    make_request_options,
-)
+from ..._base_client import make_request_options
 from ...types.projects import inference_pipeline_list_params, inference_pipeline_create_params
 from ...types.projects.inference_pipeline_list_response import InferencePipelineListResponse
 from ...types.projects.inference_pipeline_create_response import InferencePipelineCreateResponse

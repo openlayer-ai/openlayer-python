@@ -20,14 +20,14 @@ class TestTestResults:
     @parametrize
     def test_method_list(self, client: Openlayer) -> None:
         test_result = client.inference_pipelines.test_results.list(
-            "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
         )
         assert_matches_type(TestResultListResponse, test_result, path=["response"])
 
     @parametrize
     def test_method_list_with_all_params(self, client: Openlayer) -> None:
         test_result = client.inference_pipelines.test_results.list(
-            "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
             page=1,
             per_page=1,
             status="passing",
@@ -38,7 +38,7 @@ class TestTestResults:
     @parametrize
     def test_raw_response_list(self, client: Openlayer) -> None:
         response = client.inference_pipelines.test_results.with_raw_response.list(
-            "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
         )
 
         assert response.is_closed is True
@@ -49,7 +49,7 @@ class TestTestResults:
     @parametrize
     def test_streaming_response_list(self, client: Openlayer) -> None:
         with client.inference_pipelines.test_results.with_streaming_response.list(
-            "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
         ) as response:
             assert not response.is_closed
             assert response.http_request.headers.get("X-Stainless-Lang") == "python"
@@ -63,7 +63,7 @@ class TestTestResults:
     def test_path_params_list(self, client: Openlayer) -> None:
         with pytest.raises(ValueError, match=r"Expected a non-empty value for `inference_pipeline_id` but received ''"):
             client.inference_pipelines.test_results.with_raw_response.list(
-                "",
+                inference_pipeline_id="",
             )
 
 
@@ -73,14 +73,14 @@ class TestAsyncTestResults:
     @parametrize
     async def test_method_list(self, async_client: AsyncOpenlayer) -> None:
         test_result = await async_client.inference_pipelines.test_results.list(
-            "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
         )
         assert_matches_type(TestResultListResponse, test_result, path=["response"])
 
     @parametrize
     async def test_method_list_with_all_params(self, async_client: AsyncOpenlayer) -> None:
         test_result = await async_client.inference_pipelines.test_results.list(
-            "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
             page=1,
             per_page=1,
             status="passing",
@@ -91,7 +91,7 @@ class TestAsyncTestResults:
     @parametrize
     async def test_raw_response_list(self, async_client: AsyncOpenlayer) -> None:
         response = await async_client.inference_pipelines.test_results.with_raw_response.list(
-            "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
         )
 
         assert response.is_closed is True
@@ -102,7 +102,7 @@ class TestAsyncTestResults:
     @parametrize
     async def test_streaming_response_list(self, async_client: AsyncOpenlayer) -> None:
         async with async_client.inference_pipelines.test_results.with_streaming_response.list(
-            "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
         ) as response:
             assert not response.is_closed
             assert response.http_request.headers.get("X-Stainless-Lang") == "python"
@@ -116,5 +116,5 @@ class TestAsyncTestResults:
     async def test_path_params_list(self, async_client: AsyncOpenlayer) -> None:
         with pytest.raises(ValueError, match=r"Expected a non-empty value for `inference_pipeline_id` but received ''"):
             await async_client.inference_pipelines.test_results.with_raw_response.list(
-                "",
+                inference_pipeline_id="",
             )
