@@ -10,7 +10,7 @@ It is generated with [Stainless](https://www.stainlessapi.com/).
 
 ## Documentation
 
-The REST API documentation can be found [on openlayer.com](https://openlayer.com/docs/api-reference/rest/overview). The full API of this library can be found in [api.md](api.md).
+The REST API documentation can be found on [openlayer.com](https://openlayer.com/docs/api-reference/rest/overview). The full API of this library can be found in [api.md](api.md).
 
 ## Installation
 
@@ -33,7 +33,7 @@ client = Openlayer(
 )
 
 data_stream_response = client.inference_pipelines.data.stream(
-    "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+    inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
     config={
         "input_variable_names": ["user_query"],
         "output_column_name": "output",
@@ -76,7 +76,7 @@ client = AsyncOpenlayer(
 
 async def main() -> None:
     data_stream_response = await client.inference_pipelines.data.stream(
-        "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+        inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
         config={
             "input_variable_names": ["user_query"],
             "output_column_name": "output",
@@ -128,7 +128,7 @@ client = Openlayer()
 
 try:
     client.inference_pipelines.data.stream(
-        "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+        inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
         config={
             "input_variable_names": ["user_query"],
             "output_column_name": "output",
@@ -189,7 +189,7 @@ client = Openlayer(
 
 # Or, configure per-request:
 client.with_options(max_retries=5).inference_pipelines.data.stream(
-    "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+    inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
     config={
         "input_variable_names": ["user_query"],
         "output_column_name": "output",
@@ -230,7 +230,7 @@ client = Openlayer(
 
 # Override per-request:
 client.with_options(timeout=5.0).inference_pipelines.data.stream(
-    "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+    inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
     config={
         "input_variable_names": ["user_query"],
         "output_column_name": "output",
@@ -287,7 +287,7 @@ from openlayer import Openlayer
 
 client = Openlayer()
 response = client.inference_pipelines.data.with_raw_response.stream(
-    "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+    inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
     config={
         "input_variable_names": ["user_query"],
         "output_column_name": "output",
@@ -321,7 +321,7 @@ To stream the response body, use `.with_streaming_response` instead, which requi
 
 ```python
 with client.inference_pipelines.data.with_streaming_response.stream(
-    "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+    inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
     config={
         "input_variable_names": ["user_query"],
         "output_column_name": "output",

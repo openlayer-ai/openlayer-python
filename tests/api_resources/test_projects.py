@@ -68,7 +68,7 @@ class TestProjects:
     @parametrize
     def test_method_list_with_all_params(self, client: Openlayer) -> None:
         project = client.projects.list(
-            name="string",
+            name="name",
             page=1,
             per_page=1,
             task_type="llm-base",
@@ -150,7 +150,7 @@ class TestAsyncProjects:
     @parametrize
     async def test_method_list_with_all_params(self, async_client: AsyncOpenlayer) -> None:
         project = await async_client.projects.list(
-            name="string",
+            name="name",
             page=1,
             per_page=1,
             task_type="llm-base",
