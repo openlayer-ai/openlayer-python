@@ -20,6 +20,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Removed
 * Deprecated and removed `publish_ground_truths` method. Use `update_data` instead.
 
+## 0.2.0-alpha.9 (2024-07-17)
+
+Full Changelog: [v0.2.0-alpha.8...v0.2.0-alpha.9](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.8...v0.2.0-alpha.9)
+
+### Features
+
+* **api:** codegen updates ([006edb5](https://github.com/openlayer-ai/openlayer-python/commit/006edb56e4cd3ec6e2ba8e3d79b326b3f08526db))
+* **api:** OpenAPI spec update via Stainless API ([#261](https://github.com/openlayer-ai/openlayer-python/issues/261)) ([b8bcee3](https://github.com/openlayer-ai/openlayer-python/commit/b8bcee347e9355dcb904b9d531be766bd787285e))
+* **api:** update via SDK Studio ([#262](https://github.com/openlayer-ai/openlayer-python/issues/262)) ([b8718de](https://github.com/openlayer-ai/openlayer-python/commit/b8718de4e1bd37e3c44180523bd46928579f64a0))
+* **api:** update via SDK Studio ([#263](https://github.com/openlayer-ai/openlayer-python/issues/263)) ([6852bd4](https://github.com/openlayer-ai/openlayer-python/commit/6852bd4a0b9b64edd41ff6ea9eec24d396fe9528))
+
 ## 0.2.0-alpha.8 (2024-07-08)
 
 Full Changelog: [v0.2.0-alpha.7...v0.2.0-alpha.8](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.7...v0.2.0-alpha.8)
