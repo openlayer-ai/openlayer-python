@@ -64,6 +64,18 @@ Methods:
 
 - <code title="post /inference-pipelines/{inferencePipelineId}/data-stream">client.inference_pipelines.data.<a href="./src/openlayer/resources/inference_pipelines/data.py">stream</a>(inference_pipeline_id, \*\*<a href="src/openlayer/types/inference_pipelines/data_stream_params.py">params</a>) -> <a href="./src/openlayer/types/inference_pipelines/data_stream_response.py">DataStreamResponse</a></code>
 
+## Rows
+
+Types:
+
+```python
+from openlayer.types.inference_pipelines import RowStreamResponse
+```
+
+Methods:
+
+- <code title="put /inference-pipelines/{inferencePipelineId}/rows">client.inference_pipelines.rows.<a href="./src/openlayer/resources/inference_pipelines/rows.py">stream</a>(inference_pipeline_id, \*\*<a href="src/openlayer/types/inference_pipelines/row_stream_params.py">params</a>) -> <a href="./src/openlayer/types/inference_pipelines/row_stream_response.py">RowStreamResponse</a></code>
+
 ## TestResults
 
 Types:

@@ -8,6 +8,14 @@ from .data import (
     DataResourceWithStreamingResponse,
     AsyncDataResourceWithStreamingResponse,
 )
+from .rows import (
+    RowsResource,
+    AsyncRowsResource,
+    RowsResourceWithRawResponse,
+    AsyncRowsResourceWithRawResponse,
+    RowsResourceWithStreamingResponse,
+    AsyncRowsResourceWithStreamingResponse,
+)
 from .test_results import (
     TestResultsResource,
     AsyncTestResultsResource,
@@ -32,6 +40,12 @@ __all__ = [
     "AsyncDataResourceWithRawResponse",
     "DataResourceWithStreamingResponse",
     "AsyncDataResourceWithStreamingResponse",
+    "RowsResource",
+    "AsyncRowsResource",
+    "RowsResourceWithRawResponse",
+    "AsyncRowsResourceWithRawResponse",
+    "RowsResourceWithStreamingResponse",
+    "AsyncRowsResourceWithStreamingResponse",
     "TestResultsResource",
     "AsyncTestResultsResource",
     "TestResultsResourceWithRawResponse",
