@@ -4,8 +4,8 @@ from typing_extensions import Literal
 
 from ..._models import BaseModel
 
-__all__ = ["RowStreamResponse"]
+__all__ = ["RowUpdateResponse"]
 
 
-class RowStreamResponse(BaseModel):
+class RowUpdateResponse(BaseModel):
     success: Literal[True]

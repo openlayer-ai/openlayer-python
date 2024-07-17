@@ -20,8 +20,8 @@ from ..._response import (
     async_to_streamed_response_wrapper,
 )
 from ..._base_client import make_request_options
-from ...types.inference_pipelines import row_stream_params
-from ...types.inference_pipelines.row_stream_response import RowStreamResponse
+from ...types.inference_pipelines import row_update_params
+from ...types.inference_pipelines.row_update_response import RowUpdateResponse
 
 __all__ = ["RowsResource", "AsyncRowsResource"]
 
@@ -35,20 +35,20 @@ class RowsResource(SyncAPIResource):
     def with_streaming_response(self) -> RowsResourceWithStreamingResponse:
         return RowsResourceWithStreamingResponse(self)
 
-    def stream(
+    def update(
         self,
         inference_pipeline_id: str,
         *,
         inference_id: str,
         row: object,
-        config: Optional[row_stream_params.Config] | NotGiven = NOT_GIVEN,
+        config: Optional[row_update_params.Config] | NotGiven = NOT_GIVEN,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
         extra_query: Query | None = None,
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
-    ) -> RowStreamResponse:
+    ) -> RowUpdateResponse:
         """
         Update an inference data point in an inference pipeline.
 
@@ -74,16 +74,16 @@ class RowsResource(SyncAPIResource):
                     "row": row,
                     "config": config,
                 },
-                row_stream_params.RowStreamParams,
+                row_update_params.RowUpdateParams,
             ),
             options=make_request_options(
                 extra_headers=extra_headers,
                 extra_query=extra_query,
                 extra_body=extra_body,
                 timeout=timeout,
-                query=maybe_transform({"inference_id": inference_id}, row_stream_params.RowStreamParams),
+                query=maybe_transform({"inference_id": inference_id}, row_update_params.RowUpdateParams),
             ),
-            cast_to=RowStreamResponse,
+            cast_to=RowUpdateResponse,
         )
 
 
@@ -96,20 +96,20 @@ class AsyncRowsResource(AsyncAPIResource):
     def with_streaming_response(self) -> AsyncRowsResourceWithStreamingResponse:
         return AsyncRowsResourceWithStreamingResponse(self)
 
-    async def stream(
+    async def update(
         self,
         inference_pipeline_id: str,
         *,
         inference_id: str,
         row: object,
-        config: Optional[row_stream_params.Config] | NotGiven = NOT_GIVEN,
+        config: Optional[row_update_params.Config] | NotGiven = NOT_GIVEN,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
         extra_query: Query | None = None,
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
-    ) -> RowStreamResponse:
+    ) -> RowUpdateResponse:
         """
         Update an inference data point in an inference pipeline.
 
@@ -135,16 +135,16 @@ class AsyncRowsResource(AsyncAPIResource):
                     "row": row,
                     "config": config,
                 },
-                row_stream_params.RowStreamParams,
+                row_update_params.RowUpdateParams,
             ),
             options=make_request_options(
                 extra_headers=extra_headers,
                 extra_query=extra_query,
                 extra_body=extra_body,
                 timeout=timeout,
-                query=await async_maybe_transform({"inference_id": inference_id}, row_stream_params.RowStreamParams),
+                query=await async_maybe_transform({"inference_id": inference_id}, row_update_params.RowUpdateParams),
             ),
-            cast_to=RowStreamResponse,
+            cast_to=RowUpdateResponse,
         )
 
 
@@ -152,8 +152,8 @@ class RowsResourceWithRawResponse:
     def __init__(self, rows: RowsResource) -> None:
         self._rows = rows
 
-        self.stream = to_raw_response_wrapper(
-            rows.stream,
+        self.update = to_raw_response_wrapper(
+            rows.update,
         )
 
 
@@ -161,8 +161,8 @@ class AsyncRowsResourceWithRawResponse:
     def __init__(self, rows: AsyncRowsResource) -> None:
         self._rows = rows
 
-        self.stream = async_to_raw_response_wrapper(
-            rows.stream,
+        self.update = async_to_raw_response_wrapper(
+            rows.update,
         )
 
 
@@ -170,8 +170,8 @@ class RowsResourceWithStreamingResponse:
     def __init__(self, rows: RowsResource) -> None:
         self._rows = rows
 
-        self.stream = to_streamed_response_wrapper(
-            rows.stream,
+        self.update = to_streamed_response_wrapper(
+            rows.update,
         )
 
 
@@ -179,6 +179,6 @@ class AsyncRowsResourceWithStreamingResponse:
     def __init__(self, rows: AsyncRowsResource) -> None:
         self._rows = rows
 
-        self.stream = async_to_streamed_response_wrapper(
-            rows.stream,
+        self.update = async_to_streamed_response_wrapper(
+            rows.update,
         )
