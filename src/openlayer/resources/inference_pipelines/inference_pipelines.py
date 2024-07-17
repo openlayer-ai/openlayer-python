@@ -10,6 +10,14 @@ from .data import (
     DataResourceWithStreamingResponse,
     AsyncDataResourceWithStreamingResponse,
 )
+from .rows import (
+    RowsResource,
+    AsyncRowsResource,
+    RowsResourceWithRawResponse,
+    AsyncRowsResourceWithRawResponse,
+    RowsResourceWithStreamingResponse,
+    AsyncRowsResourceWithStreamingResponse,
+)
 from ..._compat import cached_property
 from ..._resource import SyncAPIResource, AsyncAPIResource
 from .test_results import (
@@ -30,6 +38,10 @@ class InferencePipelinesResource(SyncAPIResource):
         return DataResource(self._client)
 
     @cached_property
+    def rows(self) -> RowsResource:
+        return RowsResource(self._client)
+
+    @cached_property
     def test_results(self) -> TestResultsResource:
         return TestResultsResource(self._client)
 
@@ -46,6 +58,10 @@ class AsyncInferencePipelinesResource(AsyncAPIResource):
     @cached_property
     def data(self) -> AsyncDataResource:
         return AsyncDataResource(self._client)
+
+    @cached_property
+    def rows(self) -> AsyncRowsResource:
+        return AsyncRowsResource(self._client)
 
     @cached_property
     def test_results(self) -> AsyncTestResultsResource:
@@ -69,6 +85,10 @@ class InferencePipelinesResourceWithRawResponse:
         return DataResourceWithRawResponse(self._inference_pipelines.data)
 
     @cached_property
+    def rows(self) -> RowsResourceWithRawResponse:
+        return RowsResourceWithRawResponse(self._inference_pipelines.rows)
+
+    @cached_property
     def test_results(self) -> TestResultsResourceWithRawResponse:
         return TestResultsResourceWithRawResponse(self._inference_pipelines.test_results)
 
@@ -80,6 +100,10 @@ class AsyncInferencePipelinesResourceWithRawResponse:
     @cached_property
     def data(self) -> AsyncDataResourceWithRawResponse:
         return AsyncDataResourceWithRawResponse(self._inference_pipelines.data)
+
+    @cached_property
+    def rows(self) -> AsyncRowsResourceWithRawResponse:
+        return AsyncRowsResourceWithRawResponse(self._inference_pipelines.rows)
 
     @cached_property
     def test_results(self) -> AsyncTestResultsResourceWithRawResponse:
@@ -95,6 +119,10 @@ class InferencePipelinesResourceWithStreamingResponse:
         return DataResourceWithStreamingResponse(self._inference_pipelines.data)
 
     @cached_property
+    def rows(self) -> RowsResourceWithStreamingResponse:
+        return RowsResourceWithStreamingResponse(self._inference_pipelines.rows)
+
+    @cached_property
     def test_results(self) -> TestResultsResourceWithStreamingResponse:
         return TestResultsResourceWithStreamingResponse(self._inference_pipelines.test_results)
 
@@ -106,6 +134,10 @@ class AsyncInferencePipelinesResourceWithStreamingResponse:
     @cached_property
     def data(self) -> AsyncDataResourceWithStreamingResponse:
         return AsyncDataResourceWithStreamingResponse(self._inference_pipelines.data)
+
+    @cached_property
+    def rows(self) -> AsyncRowsResourceWithStreamingResponse:
+        return AsyncRowsResourceWithStreamingResponse(self._inference_pipelines.rows)
 
     @cached_property
     def test_results(self) -> AsyncTestResultsResourceWithStreamingResponse:
