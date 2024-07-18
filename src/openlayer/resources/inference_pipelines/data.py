@@ -49,7 +49,7 @@ class DataResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> DataStreamResponse:
         """
-        Create an inference data point in an inference pipeline.
+        Publish an inference data point to an inference pipeline.
 
         Args:
           config: Configuration for the data stream. Depends on your **Openlayer project task
@@ -108,7 +108,7 @@ class AsyncDataResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> DataStreamResponse:
         """
-        Create an inference data point in an inference pipeline.
+        Publish an inference data point to an inference pipeline.
 
         Args:
           config: Configuration for the data stream. Depends on your **Openlayer project task
