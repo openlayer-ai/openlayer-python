@@ -7,7 +7,7 @@ import argparse
 import json
 import os
 from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Set
 
 import pandas as pd
 
@@ -25,6 +25,9 @@ class MetricReturn:
     meta: Dict[str, Any] = field(default_factory=dict)
     """Any useful metadata in a JSON serializable dict."""
 
+    added_cols: Set[str] = field(default_factory=set)
+    """Columns added to the dataset."""
+
 
 @dataclass
 class Dataset:
@@ -41,6 +44,12 @@ class Dataset:
 
     output_path: str
     """The path to the dataset outputs."""
+
+    data_format: str
+    """The format of the written dataset. E.g. 'csv' or 'json'."""
+
+    added_cols: Set[str] = field(default_factory=set)
+    """Columns added to the dataset."""
 
 
 class MetricRunner:
@@ -67,6 +76,9 @@ class MetricRunner:
         # TODO: Auto-load all the metrics in the current directory
 
         self._compute_metrics(metrics)
+
+        # Write the updated datasets to the output location
+        self._write_updated_datasets_to_output()
 
     def _parse_args(self) -> None:
         parser = argparse.ArgumentParser(description="Compute custom metrics.")
@@ -124,13 +136,21 @@ class MetricRunner:
                 # Load the dataset into a pandas DataFrame
                 if os.path.exists(os.path.join(dataset_path, "dataset.csv")):
                     dataset_df = pd.read_csv(os.path.join(dataset_path, "dataset.csv"))
+                    data_format = "csv"
                 elif os.path.exists(os.path.join(dataset_path, "dataset.json")):
                     dataset_df = pd.read_json(os.path.join(dataset_path, "dataset.json"), orient="records")
+                    data_format = "json"
                 else:
                     raise ValueError(f"No dataset found in {dataset_folder}.")
 
                 datasets.append(
-                    Dataset(name=dataset_folder, config=dataset_config, df=dataset_df, output_path=dataset_path)
+                    Dataset(
+                        name=dataset_folder,
+                        config=dataset_config,
+                        df=dataset_df,
+                        output_path=dataset_path,
+                        data_format=data_format,
+                    )
                 )
         else:
             raise ValueError("No model found in the openlayer.json file. Cannot compute metric.")
@@ -148,6 +168,31 @@ class MetricRunner:
                 continue
             metric.compute(self.datasets)
 
+    def _write_updated_datasets_to_output(self) -> None:
+        """Write the updated datasets to the output location."""
+        for dataset in self.datasets:
+            if dataset.added_cols:
+                self._write_updated_dataset_to_output(dataset)
+
+    def _write_updated_dataset_to_output(self, dataset: Dataset) -> None:
+        """Write the updated dataset to the output location."""
+
+        # Determine the filename based on the dataset name and format
+        filename = f"dataset.{dataset.data_format}"
+        data_path = os.path.join(dataset.output_path, filename)
+
+        # TODO: Read the dataset again and only include the added columns
+
+        # Write the DataFrame to the file based on the specified format
+        if dataset.data_format == "csv":
+            dataset.df.to_csv(data_path, index=False)
+        elif dataset.data_format == "json":
+            dataset.df.to_json(data_path, orient="records", indent=4, index=False)
+        else:
+            raise ValueError("Unsupported format. Please choose 'csv' or 'json'.")
+
+        print(f"Updated dataset {dataset.name} written to {data_path}")
+
 
 class BaseMetric(abc.ABC):
     """Interface for the Base metric.
@@ -163,7 +208,7 @@ class BaseMetric(abc.ABC):
     def compute(self, datasets: List[Dataset]) -> None:
         """Compute the metric on the model outputs."""
         for dataset in datasets:
-            metric_return = self.compute_on_dataset(dataset.config, dataset.df)
+            metric_return = self.compute_on_dataset(dataset)
             metric_value = metric_return.value
             if metric_return.unit:
                 metric_value = f"{metric_value} {metric_return.unit}"
@@ -172,8 +217,12 @@ class BaseMetric(abc.ABC):
             output_dir = os.path.join(dataset.output_path, "metrics")
             self._write_metric_return_to_file(metric_return, output_dir)
 
+            # Add the added columns to the dataset
+            if metric_return.added_cols:
+                dataset.added_cols.update(metric_return.added_cols)
+
     @abc.abstractmethod
-    def compute_on_dataset(self, config: dict, df: pd.DataFrame) -> MetricReturn:
+    def compute_on_dataset(self, dataset: Dataset) -> MetricReturn:
         """Compute the metric on a specific dataset."""
         pass
 
@@ -183,6 +232,9 @@ class BaseMetric(abc.ABC):
         # Create the directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
 
+        # Turn the metric return to a dict
+        metric_return_dict = asdict(metric_return)
+
         with open(os.path.join(output_dir, f"{self.key}.json"), "w", encoding="utf-8") as f:
-            json.dump(asdict(metric_return), f, indent=4)
+            json.dump(metric_return_dict, f, indent=4)
         print(f"Metric ({self.key}) value written to {output_dir}/{self.key}.json")
