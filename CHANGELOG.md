@@ -20,6 +20,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Removed
 * Deprecated and removed `publish_ground_truths` method. Use `update_data` instead.
 
+## 0.2.0-alpha.10 (2024-07-19)
+
+Full Changelog: [v0.2.0-alpha.9...v0.2.0-alpha.10](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.9...v0.2.0-alpha.10)
+
+### Features
+
+* **api:** OpenAPI spec update via Stainless API ([#265](https://github.com/openlayer-ai/openlayer-python/issues/265)) ([58a602f](https://github.com/openlayer-ai/openlayer-python/commit/58a602f3fa3ab61466b90bcfe1a1ce8db4a83fb9))
+* feat: add new columns to dataset when running custom metrics ([9c0d94c](https://github.com/openlayer-ai/openlayer-python/commit/9c0d94c1ab79ab8d3f94aa21f8c460e4d7e029f7))
+
 ## 0.2.0-alpha.9 (2024-07-17)
 
 Full Changelog: [v0.2.0-alpha.8...v0.2.0-alpha.9](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.8...v0.2.0-alpha.9)
