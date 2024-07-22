@@ -20,6 +20,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Removed
 * Deprecated and removed `publish_ground_truths` method. Use `update_data` instead.
 
+## 0.2.0-alpha.11 (2024-07-22)
+
+Full Changelog: [v0.2.0-alpha.10...v0.2.0-alpha.11](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.10...v0.2.0-alpha.11)
+
+### Features
+
+* **api:** update via SDK Studio ([#270](https://github.com/openlayer-ai/openlayer-python/issues/270)) ([b5d333b](https://github.com/openlayer-ai/openlayer-python/commit/b5d333bc6c654cbe0d0952f949da0bfd9bc91cf4))
+
+
+### Chores
+
+* **internal:** refactor release doctor script ([#269](https://github.com/openlayer-ai/openlayer-python/issues/269)) ([11a5605](https://github.com/openlayer-ai/openlayer-python/commit/11a5605b48310b1bc9fa840865e375a74c93e55b))
+* **internal:** version bump ([#267](https://github.com/openlayer-ai/openlayer-python/issues/267)) ([932aac4](https://github.com/openlayer-ai/openlayer-python/commit/932aac43080f81ac5f5e3725f068bb4a628d8c88))
+
 ## 0.2.0-alpha.10 (2024-07-19)
 
 Full Changelog: [v0.2.0-alpha.9...v0.2.0-alpha.10](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.9...v0.2.0-alpha.10)
