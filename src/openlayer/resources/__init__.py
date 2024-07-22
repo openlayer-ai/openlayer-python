@@ -8,6 +8,14 @@ from .commits import (
     CommitsResourceWithStreamingResponse,
     AsyncCommitsResourceWithStreamingResponse,
 )
+from .storage import (
+    StorageResource,
+    AsyncStorageResource,
+    StorageResourceWithRawResponse,
+    AsyncStorageResourceWithRawResponse,
+    StorageResourceWithStreamingResponse,
+    AsyncStorageResourceWithStreamingResponse,
+)
 from .projects import (
     ProjectsResource,
     AsyncProjectsResource,
@@ -44,4 +52,10 @@ __all__ = [
     "AsyncInferencePipelinesResourceWithRawResponse",
     "InferencePipelinesResourceWithStreamingResponse",
     "AsyncInferencePipelinesResourceWithStreamingResponse",
+    "StorageResource",
+    "AsyncStorageResource",
+    "StorageResourceWithRawResponse",
+    "AsyncStorageResourceWithRawResponse",
+    "StorageResourceWithStreamingResponse",
+    "AsyncStorageResourceWithStreamingResponse",
 ]
