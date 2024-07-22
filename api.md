@@ -87,3 +87,17 @@ from openlayer.types.inference_pipelines import TestResultListResponse
 Methods:
 
 - <code title="get /inference-pipelines/{inferencePipelineId}/results">client.inference_pipelines.test_results.<a href="./src/openlayer/resources/inference_pipelines/test_results.py">list</a>(inference_pipeline_id, \*\*<a href="src/openlayer/types/inference_pipelines/test_result_list_params.py">params</a>) -> <a href="./src/openlayer/types/inference_pipelines/test_result_list_response.py">TestResultListResponse</a></code>
+
+# Storage
+
+## PresignedURL
+
+Types:
+
+```python
+from openlayer.types.storage import PresignedURLCreateResponse
+```
+
+Methods:
+
+- <code title="post /storage/presigned-url">client.storage.presigned_url.<a href="./src/openlayer/resources/storage/presigned_url.py">create</a>(\*\*<a href="src/openlayer/types/storage/presigned_url_create_params.py">params</a>) -> <a href="./src/openlayer/types/storage/presigned_url_create_response.py">PresignedURLCreateResponse</a></code>
