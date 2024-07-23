@@ -42,6 +42,7 @@ def create_step(
     inputs: Optional[Any] = None,
     output: Optional[Any] = None,
     metadata: Optional[Dict[str, Any]] = None,
+    inference_pipeline_id: Optional[str] = None,
 ) -> Generator[steps.Step, None, None]:
     """Starts a trace and yields a Step object."""
     new_step: steps.Step = steps.step_factory(
@@ -99,7 +100,8 @@ def create_step(
             if _publish:
                 try:
                     _client.inference_pipelines.data.stream(
-                        id=utils.get_env_variable("OPENLAYER_INFERENCE_PIPELINE_ID"),
+                        inference_pipeline_id=inference_pipeline_id
+                        or utils.get_env_variable("OPENLAYER_INFERENCE_PIPELINE_ID"),
                         rows=[trace_data],
                         config=config,
                     )
@@ -119,7 +121,7 @@ def add_chat_completion_step_to_trace(**kwargs) -> None:
 
 
 # ----------------------------- Tracing decorator ---------------------------- #
-def trace(*step_args, **step_kwargs):
+def trace(*step_args, inference_pipeline_id: Optional[str] = None, **step_kwargs):
     """Decorator to trace a function.
 
     Examples
@@ -163,7 +165,7 @@ def trace(*step_args, **step_kwargs):
         def wrapper(*func_args, **func_kwargs):
             if step_kwargs.get("name") is None:
                 step_kwargs["name"] = func.__name__
-            with create_step(*step_args, **step_kwargs) as step:
+            with create_step(*step_args, inference_pipeline_id=inference_pipeline_id, **step_kwargs) as step:
                 output = exception = None
                 try:
                     output = func(*func_args, **func_kwargs)
@@ -196,7 +198,7 @@ def trace(*step_args, **step_kwargs):
     return decorator
 
 
-def trace_async(*step_args, **step_kwargs):
+def trace_async(*step_args, inference_pipeline_id: Optional[str] = None, **step_kwargs):
     """Decorator to trace a function.
 
     Examples
@@ -240,7 +242,7 @@ def trace_async(*step_args, **step_kwargs):
         async def wrapper(*func_args, **func_kwargs):
             if step_kwargs.get("name") is None:
                 step_kwargs["name"] = func.__name__
-            with create_step(*step_args, **step_kwargs) as step:
+            with create_step(*step_args, inference_pipeline_id=inference_pipeline_id, **step_kwargs) as step:
                 output = exception = None
                 try:
                     output = await func(*func_args, **func_kwargs)
