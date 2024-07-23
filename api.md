@@ -52,6 +52,17 @@ Methods:
 
 # InferencePipelines
 
+Types:
+
+```python
+from openlayer.types import InferencePipelineRetrieveResponse
+```
+
+Methods:
+
+- <code title="get /inference-pipelines/{inferencePipelineId}">client.inference_pipelines.<a href="./src/openlayer/resources/inference_pipelines/inference_pipelines.py">retrieve</a>(inference_pipeline_id) -> <a href="./src/openlayer/types/inference_pipeline_retrieve_response.py">InferencePipelineRetrieveResponse</a></code>
+- <code title="delete /inference-pipelines/{inferencePipelineId}">client.inference_pipelines.<a href="./src/openlayer/resources/inference_pipelines/inference_pipelines.py">delete</a>(inference_pipeline_id) -> None</code>
+
 ## Data
 
 Types:
