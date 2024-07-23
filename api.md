@@ -55,12 +55,13 @@ Methods:
 Types:
 
 ```python
-from openlayer.types import InferencePipelineRetrieveResponse
+from openlayer.types import InferencePipelineRetrieveResponse, InferencePipelineUpdateResponse
 ```
 
 Methods:
 
 - <code title="get /inference-pipelines/{inferencePipelineId}">client.inference_pipelines.<a href="./src/openlayer/resources/inference_pipelines/inference_pipelines.py">retrieve</a>(inference_pipeline_id) -> <a href="./src/openlayer/types/inference_pipeline_retrieve_response.py">InferencePipelineRetrieveResponse</a></code>
+- <code title="put /inference-pipelines/{inferencePipelineId}">client.inference_pipelines.<a href="./src/openlayer/resources/inference_pipelines/inference_pipelines.py">update</a>(inference_pipeline_id, \*\*<a href="src/openlayer/types/inference_pipeline_update_params.py">params</a>) -> <a href="./src/openlayer/types/inference_pipeline_update_response.py">InferencePipelineUpdateResponse</a></code>
 - <code title="delete /inference-pipelines/{inferencePipelineId}">client.inference_pipelines.<a href="./src/openlayer/resources/inference_pipelines/inference_pipelines.py">delete</a>(inference_pipeline_id) -> None</code>
 
 ## Data
