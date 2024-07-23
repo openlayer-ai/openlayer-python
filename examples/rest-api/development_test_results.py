@@ -9,6 +9,6 @@ client = Openlayer(
     # This is the default and can be omitted
     api_key=os.environ.get("OPENLAYER_API_KEY"),
 )
-response = client.commits.test_results.list(id=commit_id)
+response = client.commits.test_results.list(commit_id=commit_id)
 
 print(response.items)
