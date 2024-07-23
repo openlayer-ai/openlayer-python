@@ -22,7 +22,7 @@ df = pd.DataFrame(
         "EstimatedSalary": [50000],
         "AggregateRate": [0.5],
         "Year": [2020],
-        "Exited": [0],
+        "Prediction": [0],
     }
 )
 
@@ -43,10 +43,10 @@ config = data_stream_params.ConfigTabularClassificationData(
         "AggregateRate",
         "Year",
     ],
-    label_column_name="Exited",
+    predictions_column_name="Prediction",
 )
 
-data.upload_reference_dataframe(
+data.upload_batch_inferences(
     client=Openlayer(),
     inference_pipeline_id=pipeline_id,
     dataset_df=df,

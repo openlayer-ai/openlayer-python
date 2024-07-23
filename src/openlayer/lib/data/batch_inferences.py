@@ -1,10 +1,11 @@
-"""Upload reference datasets to the Openlayer platform."""
+"""Upload a batch of inferences to the Openlayer platform."""
 
 import os
 import tarfile
 import tempfile
 import time
 from typing import Optional
+import httpx
 
 import pandas as pd
 
@@ -15,16 +16,16 @@ from .. import utils
 from . import StorageType, _upload
 
 
-def upload_reference_dataframe(
+def upload_batch_inferences(
     client: Openlayer,
     inference_pipeline_id: str,
     dataset_df: pd.DataFrame,
     config: data_stream_params.Config,
     storage_type: Optional[StorageType] = None,
 ) -> None:
-    """Uploads a reference dataset to the Openlayer platform."""
+    """Uploads a batch of inferences to the Openlayer platform."""
     uploader = _upload.Uploader(client, storage_type)
-    object_name = f"reference_dataset_{time.time()}_{inference_pipeline_id}.tar.gz"
+    object_name = f"batch_data_{time.time()}_{inference_pipeline_id}.tar.gz"
 
     # Fetch presigned url
     presigned_url_response = client.storage.presigned_url.create(
@@ -37,7 +38,7 @@ def upload_reference_dataframe(
         dataset_df.to_csv(temp_file_path, index=False)
 
         # Copy relevant files to tmp dir
-        config["label"] = "reference"
+        config["label"] = "production"
         utils.write_yaml(
             maybe_transform(config, data_stream_params.Config),
             f"{tmp_dir}/dataset_config.yaml",
@@ -45,7 +46,7 @@ def upload_reference_dataframe(
 
         tar_file_path = os.path.join(tmp_dir, object_name)
         with tarfile.open(tar_file_path, mode="w:gz") as tar:
-            tar.add(tmp_dir, arcname=os.path.basename("reference_dataset"))
+            tar.add(tmp_dir, arcname=os.path.basename("monitoring_data"))
 
         # Upload to storage
         uploader.upload(
@@ -55,7 +56,11 @@ def upload_reference_dataframe(
         )
 
     # Notify the backend
-    client.inference_pipelines.update(
-        inference_pipeline_id=inference_pipeline_id,
-        reference_dataset_uri=presigned_url_response.storage_uri,
+    client.post(
+        f"/inference-pipelines/{inference_pipeline_id}/data",
+        cast_to=httpx.Response,
+        body={
+            "storageUri": presigned_url_response.storage_uri,
+            "performDataMerge": False,
+        },
     )
