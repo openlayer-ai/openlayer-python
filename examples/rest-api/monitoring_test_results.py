@@ -9,6 +9,6 @@ client = Openlayer(
     # This is the default and can be omitted
     api_key=os.environ.get("OPENLAYER_API_KEY"),
 )
-response = client.inference_pipelines.test_results.list(id=inference_pipeline_id)
+response = client.inference_pipelines.test_results.list(inference_pipeline_id=inference_pipeline_id)
 
 print(response.items)

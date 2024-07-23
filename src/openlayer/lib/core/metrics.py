@@ -7,7 +7,7 @@ import argparse
 import json
 import os
 from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, List, Optional, Union, Set
+from typing import Any, Dict, List, Optional, Set, Union
 
 import pandas as pd
 

@@ -6,6 +6,8 @@ import json
 import os
 from typing import Optional
 
+import yaml
+
 
 # ----------------------------- Helper functions ----------------------------- #
 def get_env_variable(name: str) -> Optional[str]:
@@ -21,6 +23,17 @@ def get_env_variable(name: str) -> Optional[str]:
         return os.environ[name]
     except KeyError:
         return None
+
+
+def write_yaml(dictionary: dict, filename: str):
+    """Writes the dictionary to a YAML file in the specified directory (`dir`).
+
+    Args:
+        dictionary (dict): the dictionary to write to a YAML file.
+        dir (str): the directory to write the file to.
+    """
+    with open(filename, "w", encoding="UTF-8") as stream:
+        yaml.dump(dictionary, stream)
 
 
 def json_serialize(data):
