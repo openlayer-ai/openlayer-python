@@ -20,6 +20,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Removed
 * Deprecated and removed `publish_ground_truths` method. Use `update_data` instead.
 
+## 0.2.0-alpha.14 (2024-07-29)
+
+Full Changelog: [v0.2.0-alpha.13...v0.2.0-alpha.14](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.13...v0.2.0-alpha.14)
+
+### Features
+
+* feat: allow inference_pipeline_id to be specified as a kwarg for tracing ([e2b9ace](https://github.com/openlayer-ai/openlayer-python/commit/e2b9ace1225db6630b7ab6546c542176567673ca))
+
+
+### Chores
+
+* **tests:** update prism version ([#279](https://github.com/openlayer-ai/openlayer-python/issues/279)) ([e2fe88f](https://github.com/openlayer-ai/openlayer-python/commit/e2fe88f8722769ca4e849596b78e983b82f36ac1))
+
 ## 0.2.0-alpha.13 (2024-07-23)
 
 Full Changelog: [v0.2.0-alpha.12...v0.2.0-alpha.13](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.12...v0.2.0-alpha.13)
