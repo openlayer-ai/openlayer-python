@@ -99,7 +99,7 @@ def create_step(
             if _publish:
                 try:
                     _client.inference_pipelines.data.stream(
-                        id=utils.get_env_variable("OPENLAYER_INFERENCE_PIPELINE_ID"),
+                        inference_pipeline_id=utils.get_env_variable("OPENLAYER_INFERENCE_PIPELINE_ID"),
                         rows=[trace_data],
                         config=config,
                     )
