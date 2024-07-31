@@ -20,6 +20,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Removed
 * Deprecated and removed `publish_ground_truths` method. Use `update_data` instead.
 
+## 0.2.0-alpha.15 (2024-07-31)
+
+Full Changelog: [v0.2.0-alpha.14...v0.2.0-alpha.15](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.14...v0.2.0-alpha.15)
+
+### Features
+
+* improvement: allow specifying dataset as path for uploads ([a4d126f](https://github.com/openlayer-ai/openlayer-python/commit/a4d126f2c0b3bdf67fefbb06fb3ffa9107ea1387))
+* improvement: include method to update batch of inferences ([a8f3d82](https://github.com/openlayer-ai/openlayer-python/commit/a8f3d8246c75ff8ebff8f5e92212044fd3433d47))
+
+
+### Chores
+
+* **internal:** add type construction helper ([#287](https://github.com/openlayer-ai/openlayer-python/issues/287)) ([39fbda1](https://github.com/openlayer-ai/openlayer-python/commit/39fbda1bcaacbd8546926e7d32b7fc2ae1ad058e))
+* **internal:** version bump ([#284](https://github.com/openlayer-ai/openlayer-python/issues/284)) ([73c3067](https://github.com/openlayer-ai/openlayer-python/commit/73c30676b1e49e2355cffd232305c5aab1a0b309))
+* **tests:** update prism version ([#285](https://github.com/openlayer-ai/openlayer-python/issues/285)) ([3c0fcbb](https://github.com/openlayer-ai/openlayer-python/commit/3c0fcbbe9199b68ef5bc92247df751bfd4ae3649))
+
 ## 0.2.0-alpha.14 (2024-07-29)
 
 Full Changelog: [v0.2.0-alpha.13...v0.2.0-alpha.14](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.13...v0.2.0-alpha.14)
