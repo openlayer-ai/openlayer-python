@@ -5,8 +5,8 @@ import tarfile
 import tempfile
 import time
 from typing import Optional
-import httpx
 
+import httpx
 import pandas as pd
 
 from ... import Openlayer
@@ -22,6 +22,7 @@ def upload_batch_inferences(
     dataset_df: pd.DataFrame,
     config: data_stream_params.Config,
     storage_type: Optional[StorageType] = None,
+    merge: bool = False,
 ) -> None:
     """Uploads a batch of inferences to the Openlayer platform."""
     uploader = _upload.Uploader(client, storage_type)
@@ -61,6 +62,26 @@ def upload_batch_inferences(
         cast_to=httpx.Response,
         body={
             "storageUri": presigned_url_response.storage_uri,
-            "performDataMerge": False,
+            "performDataMerge": merge,
         },
+    )
+
+
+def update_batch_inferences(
+    client: Openlayer,
+    inference_pipeline_id: str,
+    dataset_df: pd.DataFrame,
+    config: data_stream_params.Config,
+    storage_type: Optional[StorageType] = None,
+) -> None:
+    """Updates a batch of inferences on the Openlayer platform."""
+    if config["inference_id_column_name"] is None:
+        raise ValueError("inference_id_column_name must be set in config")
+    upload_batch_inferences(
+        client=client,
+        inference_pipeline_id=inference_pipeline_id,
+        dataset_df=dataset_df,
+        config=config,
+        storage_type=storage_type,
+        merge=True,
     )
