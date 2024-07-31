@@ -1,19 +1,20 @@
 """Upload a batch of inferences to the Openlayer platform."""
 
 import os
+import time
+import shutil
 import tarfile
 import tempfile
-import time
 from typing import Optional
 
 import httpx
 import pandas as pd
 
+from . import StorageType, _upload
+from .. import utils
 from ... import Openlayer
 from ..._utils import maybe_transform
 from ...types.inference_pipelines import data_stream_params
-from .. import utils
-from . import StorageType, _upload
 
 
 def upload_batch_inferences(
@@ -41,11 +42,11 @@ def upload_batch_inferences(
 
     # Write dataset and config to temp directory
     with tempfile.TemporaryDirectory() as tmp_dir:
+        temp_file_path = f"{tmp_dir}/dataset.csv"
         if dataset_df is not None:
-            temp_file_path = f"{tmp_dir}/dataset.csv"
             dataset_df.to_csv(temp_file_path, index=False)
         else:
-            temp_file_path = dataset_path
+            shutil.copy(dataset_path, temp_file_path)
 
         # Copy relevant files to tmp dir
         config["label"] = "production"
@@ -56,11 +57,7 @@ def upload_batch_inferences(
 
         tar_file_path = os.path.join(tmp_dir, object_name)
         with tarfile.open(tar_file_path, mode="w:gz") as tar:
-            tar.add(temp_file_path, arcname=os.path.basename("dataset.csv"))
-            tar.add(
-                f"{tmp_dir}/dataset_config.yaml",
-                arcname=os.path.basename("dataset_config.yaml"),
-            )
+            tar.add(tmp_dir, arcname=os.path.basename("monitoring_data"))
 
         # Upload to storage
         uploader.upload(
