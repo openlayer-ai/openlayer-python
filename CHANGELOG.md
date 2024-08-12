@@ -20,6 +20,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Removed
 * Deprecated and removed `publish_ground_truths` method. Use `update_data` instead.
 
+## 0.2.0-alpha.18 (2024-08-12)
+
+Full Changelog: [v0.2.0-alpha.17...v0.2.0-alpha.18](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.17...v0.2.0-alpha.18)
+
+### Chores
+
+* **ci:** bump prism mock server version ([#299](https://github.com/openlayer-ai/openlayer-python/issues/299)) ([c97393c](https://github.com/openlayer-ai/openlayer-python/commit/c97393cd131112cb8f2038fef57513f9c5774064))
+* **internal:** codegen related update ([#296](https://github.com/openlayer-ai/openlayer-python/issues/296)) ([4025f65](https://github.com/openlayer-ai/openlayer-python/commit/4025f65af981a377bee7887d1ef71d2a16f2edeb))
+* **internal:** ensure package is importable in lint cmd ([#300](https://github.com/openlayer-ai/openlayer-python/issues/300)) ([8033a12](https://github.com/openlayer-ai/openlayer-python/commit/8033a1291ce6f3c6db18ec51e228b5b45976bd80))
+* **internal:** remove deprecated ruff config ([#298](https://github.com/openlayer-ai/openlayer-python/issues/298)) ([8d2604b](https://github.com/openlayer-ai/openlayer-python/commit/8d2604bec7d5d1489a7208211c0be9e2a78dc465))
+
 ## 0.2.0-alpha.17 (2024-08-12)
 
 Full Changelog: [v0.2.0-alpha.16...v0.2.0-alpha.17](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.16...v0.2.0-alpha.17)
