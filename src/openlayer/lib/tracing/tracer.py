@@ -23,6 +23,7 @@ if _publish:
 
 _current_step = contextvars.ContextVar("current_step")
 _current_trace = contextvars.ContextVar("current_trace")
+_rag_context = contextvars.ContextVar("rag_context")
 
 
 def get_current_trace() -> Optional[traces.Trace]:
@@ -33,6 +34,11 @@ def get_current_trace() -> Optional[traces.Trace]:
 def get_current_step() -> Optional[steps.Step]:
     """Returns the current step."""
     return _current_step.get(None)
+
+
+def get_rag_context() -> Optional[Dict[str, Any]]:
+    """Returns the current context."""
+    return _rag_context.get(None)
 
 
 @contextmanager
@@ -57,6 +63,7 @@ def create_step(
         logger.debug("Starting a new trace...")
         current_trace = traces.Trace()
         _current_trace.set(current_trace)  # Set the current trace in context
+        _rag_context.set(None)  # Reset the context
         current_trace.add_step(new_step)
     else:
         logger.debug("Adding step %s to parent step %s", name, parent_step.name)
@@ -91,6 +98,9 @@ def create_step(
                 )
             )
 
+            if "context" in trace_data:
+                config.update({"context_column_name": "context"})
+
             if isinstance(new_step, steps.ChatCompletionStep):
                 config.update(
                     {
@@ -121,7 +131,7 @@ def add_chat_completion_step_to_trace(**kwargs) -> None:
 
 
 # ----------------------------- Tracing decorator ---------------------------- #
-def trace(*step_args, inference_pipeline_id: Optional[str] = None, **step_kwargs):
+def trace(*step_args, inference_pipeline_id: Optional[str] = None, context_kwarg: Optional[str] = None, **step_kwargs):
     """Decorator to trace a function.
 
     Examples
@@ -182,6 +192,12 @@ def trace(*step_args, inference_pipeline_id: Optional[str] = None, **step_kwargs
                 inputs.pop("self", None)
                 inputs.pop("cls", None)
 
+                if context_kwarg:
+                    if context_kwarg in inputs:
+                        log_context(inputs.get(context_kwarg))
+                    else:
+                        logger.warning("Context kwarg `%s` not found in inputs of the current function.", context_kwarg)
+
                 step.log(
                     inputs=inputs,
                     output=output,
@@ -198,7 +214,9 @@ def trace(*step_args, inference_pipeline_id: Optional[str] = None, **step_kwargs
     return decorator
 
 
-def trace_async(*step_args, inference_pipeline_id: Optional[str] = None, **step_kwargs):
+def trace_async(
+    *step_args, inference_pipeline_id: Optional[str] = None, context_kwarg: Optional[str] = None, **step_kwargs
+):
     """Decorator to trace a function.
 
     Examples
@@ -259,6 +277,12 @@ def trace_async(*step_args, inference_pipeline_id: Optional[str] = None, **step_
                 inputs.pop("self", None)
                 inputs.pop("cls", None)
 
+                if context_kwarg:
+                    if context_kwarg in inputs:
+                        log_context(inputs.get(context_kwarg))
+                    else:
+                        logger.warning("Context kwarg `%s` not found in inputs of the current function.", context_kwarg)
+
                 step.log(
                     inputs=inputs,
                     output=output,
@@ -292,6 +316,19 @@ def run_async_func(coroutine: Awaitable[Any]) -> Any:
     return result
 
 
+def log_context(context: List[str]) -> None:
+    """Logs context information to the current step of the trace.
+
+    The `context` parameter should be a list of strings representing the
+    context chunks retrieved by the context retriever."""
+    current_step = get_current_step()
+    if current_step:
+        _rag_context.set(context)
+        current_step.log(metadata={"context": context})
+    else:
+        logger.warning("No current step found to log context.")
+
+
 # --------------------- Helper post-processing functions --------------------- #
 def post_process_trace(
     trace_obj: traces.Trace,
@@ -322,5 +359,9 @@ def post_process_trace(
     }
     if input_variables:
         trace_data.update(input_variables)
+
+    context = get_rag_context()
+    if context:
+        trace_data["context"] = context
 
     return trace_data, input_variable_names
