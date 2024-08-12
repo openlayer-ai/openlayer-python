@@ -20,6 +20,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Removed
 * Deprecated and removed `publish_ground_truths` method. Use `update_data` instead.
 
+## 0.2.0-alpha.17 (2024-08-12)
+
+Full Changelog: [v0.2.0-alpha.16...v0.2.0-alpha.17](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.16...v0.2.0-alpha.17)
+
+### Features
+
+* feat: support Ollama models via LangChain callback handler ([2865b34](https://github.com/openlayer-ai/openlayer-python/commit/2865b34e70f2f2437bcd2459520a1ee0f7985925))
+
 ## 0.2.0-alpha.16 (2024-07-31)
 
 Full Changelog: [v0.2.0-alpha.15...v0.2.0-alpha.16](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.15...v0.2.0-alpha.16)
