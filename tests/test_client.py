@@ -334,7 +334,8 @@ class TestOpenlayer:
         request = client._build_request(FinalRequestOptions(method="get", url="/foo"))
         assert request.headers.get("Authorization") == f"Bearer {api_key}"
 
-        client2 = Openlayer(base_url=base_url, api_key=None, _strict_response_validation=True)
+        with update_env(**{"OPENLAYER_API_KEY": Omit()}):
+            client2 = Openlayer(base_url=base_url, api_key=None, _strict_response_validation=True)
 
         with pytest.raises(
             TypeError,
@@ -785,6 +786,41 @@ class TestOpenlayer:
 
         assert _get_open_connections(self.client) == 0
 
+    @pytest.mark.parametrize("failures_before_success", [0, 2, 4])
+    @mock.patch("openlayer._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
+    @pytest.mark.respx(base_url=base_url)
+    def test_retries_taken(self, client: Openlayer, failures_before_success: int, respx_mock: MockRouter) -> None:
+        client = client.with_options(max_retries=4)
+
+        nb_retries = 0
+
+        def retry_handler(_request: httpx.Request) -> httpx.Response:
+            nonlocal nb_retries
+            if nb_retries < failures_before_success:
+                nb_retries += 1
+                return httpx.Response(500)
+            return httpx.Response(200)
+
+        respx_mock.post("/inference-pipelines/182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e/data-stream").mock(
+            side_effect=retry_handler
+        )
+
+        response = client.inference_pipelines.data.with_raw_response.stream(
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            config={"output_column_name": "output"},
+            rows=[
+                {
+                    "user_query": "bar",
+                    "output": "bar",
+                    "tokens": "bar",
+                    "cost": "bar",
+                    "timestamp": "bar",
+                }
+            ],
+        )
+
+        assert response.retries_taken == failures_before_success
+
 
 class TestAsyncOpenlayer:
     client = AsyncOpenlayer(base_url=base_url, api_key=api_key, _strict_response_validation=True)
@@ -1070,7 +1106,8 @@ class TestAsyncOpenlayer:
         request = client._build_request(FinalRequestOptions(method="get", url="/foo"))
         assert request.headers.get("Authorization") == f"Bearer {api_key}"
 
-        client2 = AsyncOpenlayer(base_url=base_url, api_key=None, _strict_response_validation=True)
+        with update_env(**{"OPENLAYER_API_KEY": Omit()}):
+            client2 = AsyncOpenlayer(base_url=base_url, api_key=None, _strict_response_validation=True)
 
         with pytest.raises(
             TypeError,
@@ -1534,3 +1571,41 @@ class TestAsyncOpenlayer:
             )
 
         assert _get_open_connections(self.client) == 0
+
+    @pytest.mark.parametrize("failures_before_success", [0, 2, 4])
+    @mock.patch("openlayer._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
+    @pytest.mark.respx(base_url=base_url)
+    @pytest.mark.asyncio
+    async def test_retries_taken(
+        self, async_client: AsyncOpenlayer, failures_before_success: int, respx_mock: MockRouter
+    ) -> None:
+        client = async_client.with_options(max_retries=4)
+
+        nb_retries = 0
+
+        def retry_handler(_request: httpx.Request) -> httpx.Response:
+            nonlocal nb_retries
+            if nb_retries < failures_before_success:
+                nb_retries += 1
+                return httpx.Response(500)
+            return httpx.Response(200)
+
+        respx_mock.post("/inference-pipelines/182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e/data-stream").mock(
+            side_effect=retry_handler
+        )
+
+        response = await client.inference_pipelines.data.with_raw_response.stream(
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            config={"output_column_name": "output"},
+            rows=[
+                {
+                    "user_query": "bar",
+                    "output": "bar",
+                    "tokens": "bar",
+                    "cost": "bar",
+                    "timestamp": "bar",
+                }
+            ],
+        )
+
+        assert response.retries_taken == failures_before_success

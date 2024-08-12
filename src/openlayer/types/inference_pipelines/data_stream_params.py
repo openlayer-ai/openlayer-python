@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import Dict, List, Union, Iterable, Optional
-from typing_extensions import Required, Annotated, TypedDict
+from typing_extensions import Required, Annotated, TypeAlias, TypedDict
 
 from ..._utils import PropertyInfo
 
@@ -226,6 +226,6 @@ class ConfigTextClassificationData(TypedDict, total=False):
     """
 
 
-Config = Union[
+Config: TypeAlias = Union[
     ConfigLlmData, ConfigTabularClassificationData, ConfigTabularRegressionData, ConfigTextClassificationData
 ]
