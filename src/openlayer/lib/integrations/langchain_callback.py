@@ -9,8 +9,8 @@ from langchain.callbacks.base import BaseCallbackHandler
 
 from ..tracing import tracer
 
-LANGCHAIN_TO_OPENLAYER_PROVIDER_MAP = {"openai-chat": "OpenAI"}
-PROVIDER_TO_STEP_NAME = {"OpenAI": "OpenAI Chat Completion"}
+LANGCHAIN_TO_OPENLAYER_PROVIDER_MAP = {"openai-chat": "OpenAI", "chat-ollama": "Ollama"}
+PROVIDER_TO_STEP_NAME = {"OpenAI": "OpenAI Chat Completion", "Ollama": "Ollama Chat Completion"}
 
 
 class OpenlayerHandler(BaseCallbackHandler):
@@ -45,13 +45,16 @@ class OpenlayerHandler(BaseCallbackHandler):
     ) -> Any:
         """Run when Chat Model starts running."""
         self.model_parameters = kwargs.get("invocation_params", {})
+        self.metadata = kwargs.get("metadata", {})
 
         provider = self.model_parameters.get("_type", None)
         if provider in LANGCHAIN_TO_OPENLAYER_PROVIDER_MAP:
             self.provider = LANGCHAIN_TO_OPENLAYER_PROVIDER_MAP[provider]
             self.model_parameters.pop("_type")
+            self.metadata.pop("ls_provider", None)
+            self.metadata.pop("ls_model_type", None)
 
-        self.model = self.model_parameters.get("model_name", None)
+        self.model = self.model_parameters.get("model_name", None) or self.metadata.pop("ls_model_name", None)
         self.output = ""
         self.prompt = self._langchain_messages_to_prompt(messages)
         self.start_time = time.time()
@@ -82,16 +85,31 @@ class OpenlayerHandler(BaseCallbackHandler):
         self.end_time = time.time()
         self.latency = (self.end_time - self.start_time) * 1000
 
-        if response.llm_output and "token_usage" in response.llm_output:
-            self.prompt_tokens = response.llm_output["token_usage"].get("prompt_tokens", 0)
-            self.completion_tokens = response.llm_output["token_usage"].get("completion_tokens", 0)
-            self.total_tokens = response.llm_output["token_usage"].get("total_tokens", 0)
+        if self.provider == "OpenAI":
+            self._openai_token_information(response)
+        elif self.provider == "Ollama":
+            self._ollama_token_information(response)
 
         for generations in response.generations:
             for generation in generations:
                 self.output += generation.text.replace("\n", " ")
 
         self._add_to_trace()
+
+    def _openai_token_information(self, response: langchain_schema.LLMResult) -> None:
+        """Extracts OpenAI's token information."""
+        if response.llm_output and "token_usage" in response.llm_output:
+            self.prompt_tokens = response.llm_output["token_usage"].get("prompt_tokens", 0)
+            self.completion_tokens = response.llm_output["token_usage"].get("completion_tokens", 0)
+            self.total_tokens = response.llm_output["token_usage"].get("total_tokens", 0)
+
+    def _ollama_token_information(self, response: langchain_schema.LLMResult) -> None:
+        """Extracts Ollama's token information."""
+        generation_info = response.generations[0][0].generation_info
+        if generation_info:
+            self.prompt_tokens = generation_info.get("prompt_eval_count", 0)
+            self.completion_tokens = generation_info.get("eval_count", 0)
+            self.total_tokens = self.prompt_tokens + self.completion_tokens
 
     def _add_to_trace(self) -> None:
         """Adds to the trace."""
@@ -109,7 +127,7 @@ class OpenlayerHandler(BaseCallbackHandler):
             model_parameters=self.model_parameters,
             prompt_tokens=self.prompt_tokens,
             completion_tokens=self.completion_tokens,
-            metadata=self.metatada,
+            metadata=self.metadata,
         )
 
     def on_llm_error(self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any) -> Any:
