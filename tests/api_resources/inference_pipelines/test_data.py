@@ -39,7 +39,7 @@ class TestData:
         data = client.inference_pipelines.data.stream(
             inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
             config={
-                "num_of_token_column_name": "tokens",
+                "output_column_name": "output",
                 "context_column_name": "context",
                 "cost_column_name": "cost",
                 "ground_truth_column_name": "ground_truth",
@@ -47,11 +47,11 @@ class TestData:
                 "input_variable_names": ["user_query"],
                 "latency_column_name": "latency",
                 "metadata": {},
-                "output_column_name": "output",
+                "num_of_token_column_name": "tokens",
                 "prompt": [
                     {
-                        "role": "user",
                         "content": "{{ user_query }}",
+                        "role": "user",
                     }
                 ],
                 "question_column_name": "question",
@@ -156,7 +156,7 @@ class TestAsyncData:
         data = await async_client.inference_pipelines.data.stream(
             inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
             config={
-                "num_of_token_column_name": "tokens",
+                "output_column_name": "output",
                 "context_column_name": "context",
                 "cost_column_name": "cost",
                 "ground_truth_column_name": "ground_truth",
@@ -164,11 +164,11 @@ class TestAsyncData:
                 "input_variable_names": ["user_query"],
                 "latency_column_name": "latency",
                 "metadata": {},
-                "output_column_name": "output",
+                "num_of_token_column_name": "tokens",
                 "prompt": [
                     {
-                        "role": "user",
                         "content": "{{ user_query }}",
+                        "role": "user",
                     }
                 ],
                 "question_column_name": "question",
