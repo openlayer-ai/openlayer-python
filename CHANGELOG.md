@@ -20,6 +20,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Removed
 * Deprecated and removed `publish_ground_truths` method. Use `update_data` instead.
 
+## 0.2.0-alpha.19 (2024-08-13)
+
+Full Changelog: [v0.2.0-alpha.18...v0.2.0-alpha.19](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.18...v0.2.0-alpha.19)
+
+### Features
+
+* feat: allow specification of context column name when using tracers ([05c5df5](https://github.com/openlayer-ai/openlayer-python/commit/05c5df55a10eaed48b5d54c4b7fe4f5406b8ae39))
+* feat: support Vertex AI models via LangChain callback handler ([0e53043](https://github.com/openlayer-ai/openlayer-python/commit/0e5304358869b400d54b9abe5bd0158dd5a94bf0))
+
 ## 0.2.0-alpha.18 (2024-08-12)
 
 Full Changelog: [v0.2.0-alpha.17...v0.2.0-alpha.18](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.17...v0.2.0-alpha.18)
