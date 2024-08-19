@@ -20,6 +20,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Removed
 * Deprecated and removed `publish_ground_truths` method. Use `update_data` instead.
 
+## 0.2.0-alpha.21 (2024-08-19)
+
+Full Changelog: [v0.2.0-alpha.20...v0.2.0-alpha.21](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.20...v0.2.0-alpha.21)
+
+### Features
+
+* fix: add missing dependencies for LangChain notebook example ([fa382eb](https://github.com/openlayer-ai/openlayer-python/commit/fa382eb455c1e7f629314b06f0ddf2e6dc0fccc6))
+
+
+### Chores
+
+* **internal:** use different 32bit detection method ([#311](https://github.com/openlayer-ai/openlayer-python/issues/311)) ([389516d](https://github.com/openlayer-ai/openlayer-python/commit/389516d55843bc0e765cde855afa4759d67b5820))
+
 ## 0.2.0-alpha.20 (2024-08-19)
 
 Full Changelog: [v0.2.0-alpha.19...v0.2.0-alpha.20](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.19...v0.2.0-alpha.20)
