@@ -16,6 +16,7 @@ dependencies = [
     "sniffio",
     "cached-property; python_version < '3.8'",
     "pandas; python_version >= '3.7'",
+    "pyyaml>=6.0",
 ]
 requires-python = ">= 3.7"
 classifiers = [
