@@ -59,7 +59,7 @@ class MetricRunner:
         self.config_path: str = ""
         self.config: Dict[str, Any] = {}
         self.datasets: List[Dataset] = []
-        self.selected_metrics: Optional[List[str]] = None
+        self.likely_dir: str = ""
 
     def run_metrics(self, metrics: List[BaseMetric]) -> None:
         """Run a list of metrics."""
@@ -87,29 +87,27 @@ class MetricRunner:
             type=str,
             required=False,
             default="",
-            help="The path to your openlayer.json. Uses working dir if not provided.",
+            help=(
+                "The path to your openlayer.json. Uses parent parent dir if not "
+                "provided (assuming location is metrics/metric_name/run.py)."
+            ),
         )
 
         # Parse the arguments
         args = parser.parse_args()
         self.config_path = args.config_path
+        self.likely_dir = os.path.dirname(os.path.dirname(os.getcwd()))
 
     def _load_openlayer_json(self) -> None:
         """Load the openlayer.json file."""
 
         if not self.config_path:
-            openlayer_json_path = os.path.join(os.getcwd(), "openlayer.json")
+            openlayer_json_path = os.path.join(self.likely_dir, "openlayer.json")
         else:
             openlayer_json_path = self.config_path
 
         with open(openlayer_json_path, "r", encoding="utf-8") as f:
             self.config = json.load(f)
-
-        # Extract selected metrics
-        if "metrics" in self.config and "settings" in self.config["metrics"]:
-            self.selected_metrics = [
-                metric["key"] for metric in self.config["metrics"]["settings"] if metric["selected"]
-            ]
 
     def _load_datasets(self) -> None:
         """Compute the metric from the command line."""
@@ -125,20 +123,34 @@ class MetricRunner:
             # Read the outputs directory for dataset folders. For each, load
             # the config.json and the dataset.json files into a dict and a dataframe
 
-            for dataset_folder in os.listdir(output_directory):
+            full_output_dir = os.path.join(self.likely_dir, output_directory)
+
+            for dataset_folder in os.listdir(full_output_dir):
                 if dataset_folder not in dataset_names:
                     continue
-                dataset_path = os.path.join(output_directory, dataset_folder)
+                dataset_path = os.path.join(full_output_dir, dataset_folder)
                 config_path = os.path.join(dataset_path, "config.json")
                 with open(config_path, "r", encoding="utf-8") as f:
                     dataset_config = json.load(f)
+                    # Merge with the dataset fields from the openlayer.json
+                    dataset_dict = next(
+                        (
+                            item
+                            for item in datasets_list
+                            if item["name"] == dataset_folder
+                        ),
+                        None,
+                    )
+                    dataset_config = {**dataset_dict, **dataset_config}
 
                 # Load the dataset into a pandas DataFrame
                 if os.path.exists(os.path.join(dataset_path, "dataset.csv")):
                     dataset_df = pd.read_csv(os.path.join(dataset_path, "dataset.csv"))
                     data_format = "csv"
                 elif os.path.exists(os.path.join(dataset_path, "dataset.json")):
-                    dataset_df = pd.read_json(os.path.join(dataset_path, "dataset.json"), orient="records")
+                    dataset_df = pd.read_json(
+                        os.path.join(dataset_path, "dataset.json"), orient="records"
+                    )
                     data_format = "json"
                 else:
                     raise ValueError(f"No dataset found in {dataset_folder}.")
@@ -153,19 +165,20 @@ class MetricRunner:
                     )
                 )
         else:
-            raise ValueError("No model found in the openlayer.json file. Cannot compute metric.")
+            raise ValueError(
+                "No model found in the openlayer.json file. Cannot compute metric."
+            )
 
         if not datasets:
-            raise ValueError("No datasets found in the openlayer.json file. Cannot compute metric.")
+            raise ValueError(
+                "No datasets found in the openlayer.json file. Cannot compute metric."
+            )
 
         self.datasets = datasets
 
     def _compute_metrics(self, metrics: List[BaseMetric]) -> None:
         """Compute the metrics."""
         for metric in metrics:
-            if self.selected_metrics and metric.key not in self.selected_metrics:
-                print(f"Skipping metric {metric.key} as it is not a selected metric.")
-                continue
             metric.compute(self.datasets)
 
     def _write_updated_datasets_to_output(self) -> None:
@@ -200,10 +213,14 @@ class BaseMetric(abc.ABC):
     Your metric's class should inherit from this class and implement the compute method.
     """
 
+    @abc.abstractmethod
+    def get_key(self) -> str:
+        """Return the key of the metric. This should correspond to the folder name."""
+        pass
+
     @property
     def key(self) -> str:
-        """Return the key of the metric."""
-        return self.__class__.__name__
+        return self.get_key()
 
     def compute(self, datasets: List[Dataset]) -> None:
         """Compute the metric on the model outputs."""
@@ -226,7 +243,9 @@ class BaseMetric(abc.ABC):
         """Compute the metric on a specific dataset."""
         pass
 
-    def _write_metric_return_to_file(self, metric_return: MetricReturn, output_dir: str) -> None:
+    def _write_metric_return_to_file(
+        self, metric_return: MetricReturn, output_dir: str
+    ) -> None:
         """Write the metric return to a file."""
 
         # Create the directory if it doesn't exist
@@ -234,7 +253,16 @@ class BaseMetric(abc.ABC):
 
         # Turn the metric return to a dict
         metric_return_dict = asdict(metric_return)
+        # Convert the set to a list
+        metric_return_dict["added_cols"] = list(metric_return.added_cols)
 
-        with open(os.path.join(output_dir, f"{self.key}.json"), "w", encoding="utf-8") as f:
+        with open(
+            os.path.join(output_dir, f"{self.key}.json"), "w", encoding="utf-8"
+        ) as f:
             json.dump(metric_return_dict, f, indent=4)
         print(f"Metric ({self.key}) value written to {output_dir}/{self.key}.json")
+
+    def run(self) -> None:
+        """Run the metric."""
+        metric_runner = MetricRunner()
+        metric_runner.run_metrics([self])
