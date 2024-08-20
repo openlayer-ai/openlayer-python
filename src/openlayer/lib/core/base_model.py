@@ -42,7 +42,9 @@ class OpenlayerModel(abc.ABC):
     def run_from_cli(self) -> None:
         """Run the model from the command line."""
         parser = argparse.ArgumentParser(description="Run data through a model.")
-        parser.add_argument("--dataset-path", type=str, required=True, help="Path to the dataset")
+        parser.add_argument(
+            "--dataset-path", type=str, required=True, help="Path to the dataset"
+        )
         parser.add_argument(
             "--output-dir",
             type=str,
@@ -61,14 +63,16 @@ class OpenlayerModel(abc.ABC):
     def batch(self, dataset_path: str, output_dir: str) -> None:
         """Reads the dataset from a file and runs the model on it."""
         # Load the dataset into a pandas DataFrame
+        fmt = "csv"
         if dataset_path.endswith(".csv"):
             df = pd.read_csv(dataset_path)
         elif dataset_path.endswith(".json"):
             df = pd.read_json(dataset_path, orient="records")
+            fmt = "json"
 
         # Call the model's run_batch method, passing in the DataFrame
         output_df, config = self.run_batch_from_df(df)
-        self.write_output_to_directory(output_df, config, output_dir)
+        self.write_output_to_directory(output_df, config, output_dir, fmt)
 
     def run_batch_from_df(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, dict]:
         """Function that runs the model and returns the result."""
@@ -83,7 +87,9 @@ class OpenlayerModel(abc.ABC):
             # Filter row_dict to only include keys that are valid parameters
             # for the 'run' method
             row_dict = row.to_dict()
-            filtered_kwargs = {k: v for k, v in row_dict.items() if k in run_signature.parameters}
+            filtered_kwargs = {
+                k: v for k, v in row_dict.items() if k in run_signature.parameters
+            }
 
             # Call the run method with filtered kwargs
             output = self.run(**filtered_kwargs)
