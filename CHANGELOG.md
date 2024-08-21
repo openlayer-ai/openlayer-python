@@ -20,6 +20,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Removed
 * Deprecated and removed `publish_ground_truths` method. Use `update_data` instead.
 
+## 0.2.0-alpha.22 (2024-08-21)
+
+Full Changelog: [v0.2.0-alpha.21...v0.2.0-alpha.22](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.21...v0.2.0-alpha.22)
+
+### Bug Fixes
+
+* add missing dependency for Anthropic notebook example ([eddc160](https://github.com/openlayer-ai/openlayer-python/commit/eddc160a8d40478655c241d682cfe12afa851d91))
+
+
+### Chores
+
+* **ci:** also run pydantic v1 tests ([#319](https://github.com/openlayer-ai/openlayer-python/issues/319)) ([6959e23](https://github.com/openlayer-ai/openlayer-python/commit/6959e230ac798a1ad3b8a00e0483000962bece93))
+* **client:** fix parsing union responses when non-json is returned ([#318](https://github.com/openlayer-ai/openlayer-python/issues/318)) ([1b18e64](https://github.com/openlayer-ai/openlayer-python/commit/1b18e646a353d20ccfd4d2ba98f6f855c6e4aa3a))
+
 ## 0.2.0-alpha.21 (2024-08-19)
 
 Full Changelog: [v0.2.0-alpha.20...v0.2.0-alpha.21](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.20...v0.2.0-alpha.21)
