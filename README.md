@@ -43,7 +43,7 @@ data_stream_response = client.inference_pipelines.data.stream(
     },
     rows=[
         {
-            "user_query": "what's the meaning of life?",
+            "user_query": "what is the meaning of life?",
             "output": "42",
             "tokens": 7,
             "cost": 0.02,
@@ -86,7 +86,7 @@ async def main() -> None:
         },
         rows=[
             {
-                "user_query": "what's the meaning of life?",
+                "user_query": "what is the meaning of life?",
                 "output": "42",
                 "tokens": 7,
                 "cost": 0.02,
@@ -138,7 +138,7 @@ try:
         },
         rows=[
             {
-                "user_query": "what's the meaning of life?",
+                "user_query": "what is the meaning of life?",
                 "output": "42",
                 "tokens": 7,
                 "cost": 0.02,
@@ -199,7 +199,7 @@ client.with_options(max_retries=5).inference_pipelines.data.stream(
     },
     rows=[
         {
-            "user_query": "what's the meaning of life?",
+            "user_query": "what is the meaning of life?",
             "output": "42",
             "tokens": 7,
             "cost": 0.02,
@@ -240,7 +240,7 @@ client.with_options(timeout=5.0).inference_pipelines.data.stream(
     },
     rows=[
         {
-            "user_query": "what's the meaning of life?",
+            "user_query": "what is the meaning of life?",
             "output": "42",
             "tokens": 7,
             "cost": 0.02,
@@ -296,7 +296,7 @@ response = client.inference_pipelines.data.with_raw_response.stream(
         "timestamp_column_name": "timestamp",
     },
     rows=[{
-        "user_query": "what's the meaning of life?",
+        "user_query": "what is the meaning of life?",
         "output": "42",
         "tokens": 7,
         "cost": 0.02,
@@ -331,7 +331,7 @@ with client.inference_pipelines.data.with_streaming_response.stream(
     },
     rows=[
         {
-            "user_query": "what's the meaning of life?",
+            "user_query": "what is the meaning of life?",
             "output": "42",
             "tokens": 7,
             "cost": 0.02,

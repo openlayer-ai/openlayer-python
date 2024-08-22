@@ -734,7 +734,7 @@ class TestOpenlayer:
                         },
                         rows=[
                             {
-                                "user_query": "what's the meaning of life?",
+                                "user_query": "what is the meaning of life?",
                                 "output": "42",
                                 "tokens": 7,
                                 "cost": 0.02,
@@ -771,7 +771,7 @@ class TestOpenlayer:
                         },
                         rows=[
                             {
-                                "user_query": "what's the meaning of life?",
+                                "user_query": "what is the meaning of life?",
                                 "output": "42",
                                 "tokens": 7,
                                 "cost": 0.02,
@@ -1520,7 +1520,7 @@ class TestAsyncOpenlayer:
                         },
                         rows=[
                             {
-                                "user_query": "what's the meaning of life?",
+                                "user_query": "what is the meaning of life?",
                                 "output": "42",
                                 "tokens": 7,
                                 "cost": 0.02,
@@ -1557,7 +1557,7 @@ class TestAsyncOpenlayer:
                         },
                         rows=[
                             {
-                                "user_query": "what's the meaning of life?",
+                                "user_query": "what is the meaning of life?",
                                 "output": "42",
                                 "tokens": 7,
                                 "cost": 0.02,
