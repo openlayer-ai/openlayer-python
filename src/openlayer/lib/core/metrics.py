@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 from dataclasses import asdict, dataclass, field
+import traceback
 from typing import Any, Dict, List, Optional, Set, Union
 
 import pandas as pd
@@ -16,7 +17,7 @@ import pandas as pd
 class MetricReturn:
     """The return type of the `run` method in the BaseMetric."""
 
-    value: Union[float, int, bool]
+    value: Optional[Union[float, int, bool]]
     """The value of the metric."""
 
     unit: Optional[str] = None
@@ -24,6 +25,9 @@ class MetricReturn:
 
     meta: Dict[str, Any] = field(default_factory=dict)
     """Any useful metadata in a JSON serializable dict."""
+
+    error: Optional[str] = None
+    """An error message if the metric computation failed."""
 
     added_cols: Set[str] = field(default_factory=set)
     """Columns added to the dataset."""
@@ -73,8 +77,7 @@ class MetricRunner:
         # Load the datasets from the openlayer.json file
         self._load_datasets()
 
-        # TODO: Auto-load all the metrics in the current directory
-
+        # Compute the metric values
         self._compute_metrics(metrics)
 
         # Write the updated datasets to the output location
@@ -213,10 +216,9 @@ class BaseMetric(abc.ABC):
     Your metric's class should inherit from this class and implement the compute method.
     """
 
-    @abc.abstractmethod
     def get_key(self) -> str:
         """Return the key of the metric. This should correspond to the folder name."""
-        pass
+        return os.path.basename(os.getcwd())
 
     @property
     def key(self) -> str:
@@ -225,11 +227,27 @@ class BaseMetric(abc.ABC):
     def compute(self, datasets: List[Dataset]) -> None:
         """Compute the metric on the model outputs."""
         for dataset in datasets:
-            metric_return = self.compute_on_dataset(dataset)
+            # Check if the metric has already been computed
+            if os.path.exists(
+                os.path.join(dataset.output_path, "metrics", f"{self.key}.json")
+            ):
+                print(
+                    f"Metric ({self.key}) already computed on {dataset.name}. "
+                    "Skipping."
+                )
+                continue
+
+            try:
+                metric_return = self.compute_on_dataset(dataset)
+            except Exception as e:  # pylint: disable=broad-except
+                print(f"Error computing metric ({self.key}) on {dataset.name}:")
+                print(traceback.format_exc())
+                metric_return = MetricReturn(error=str(e), value=None)
+
             metric_value = metric_return.value
             if metric_return.unit:
                 metric_value = f"{metric_value} {metric_return.unit}"
-            print(f"Metric ({self.key}) value for {dataset.name}: {metric_value}")
+            print(f"Metric ({self.key}) value on {dataset.name}: {metric_value}")
 
             output_dir = os.path.join(dataset.output_path, "metrics")
             self._write_metric_return_to_file(metric_return, output_dir)
