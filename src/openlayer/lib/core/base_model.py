@@ -1,13 +1,13 @@
 """Base class for an Openlayer model."""
 
-import abc
-import argparse
-import inspect
-import json
 import os
+import abc
+import json
 import time
-from dataclasses import dataclass, field
+import inspect
+import argparse
 from typing import Any, Dict, Tuple
+from dataclasses import field, dataclass
 
 import pandas as pd
 
