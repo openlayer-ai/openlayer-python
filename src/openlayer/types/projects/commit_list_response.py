@@ -8,21 +8,7 @@ from pydantic import Field as FieldInfo
 
 from ..._models import BaseModel
 
-__all__ = ["CommitListResponse", "_Meta", "Item", "ItemCommit", "ItemLinks"]
-
-
-class _Meta(BaseModel):
-    page: int
-    """The current page."""
-
-    per_page: int = FieldInfo(alias="perPage")
-    """The number of items per page."""
-
-    total_items: int = FieldInfo(alias="totalItems")
-    """The total number of items."""
-
-    total_pages: int = FieldInfo(alias="totalPages")
-    """The total number of pages."""
+__all__ = ["CommitListResponse", "Item", "ItemCommit", "ItemLinks"]
 
 
 class ItemCommit(BaseModel):
@@ -121,6 +107,4 @@ class Item(BaseModel):
 
 
 class CommitListResponse(BaseModel):
-    api_meta: _Meta = FieldInfo(alias="_meta")
-
     items: List[Item]
