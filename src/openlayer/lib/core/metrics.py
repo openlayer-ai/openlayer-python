@@ -95,10 +95,19 @@ class MetricRunner:
                 "provided (assuming location is metrics/metric_name/run.py)."
             ),
         )
+        parser.add_argument(
+            "--dataset",
+            type=str,
+            required=False,
+            default="",
+            help="The name of the dataset to compute the metric on. Runs on all "
+            "datasets if not provided.",
+        )
 
         # Parse the arguments
         args = parser.parse_args()
         self.config_path = args.config_path
+        self.dataset_name = args.dataset
         self.likely_dir = os.path.dirname(os.path.dirname(os.getcwd()))
 
     def _load_openlayer_json(self) -> None:
@@ -122,6 +131,12 @@ class MetricRunner:
             model = self.config["model"]
             datasets_list = self.config["datasets"]
             dataset_names = [dataset["name"] for dataset in datasets_list]
+            if self.dataset_name:
+                if self.dataset_name not in dataset_names:
+                    raise ValueError(
+                        f"Dataset {self.dataset_name} not found in the openlayer.json."
+                    )
+                dataset_names = [self.dataset_name]
             output_directory = model["outputDirectory"]
             # Read the outputs directory for dataset folders. For each, load
             # the config.json and the dataset.json files into a dict and a dataframe
