@@ -1,7 +1,14 @@
 """Openlayer lib.
 """
 
-__all__ = ["trace", "trace_anthropic", "trace_openai", "trace_openai_assistant_thread_run", "trace_mistral"]
+__all__ = [
+    "trace",
+    "trace_anthropic",
+    "trace_openai",
+    "trace_openai_assistant_thread_run",
+    "trace_mistral",
+    "trace_groq",
+]
 
 # ---------------------------------- Tracing --------------------------------- #
 from .tracing import tracer
@@ -51,3 +58,15 @@ def trace_mistral(client):
     if not isinstance(client, mistralai.Mistral):
         raise ValueError("Invalid client. Please provide a Mistral client.")
     return mistral_tracer.trace_mistral(client)
+
+
+def trace_groq(client):
+    """Trace Groq queries."""
+    # pylint: disable=import-outside-toplevel
+    import groq
+
+    from .integrations import groq_tracer
+
+    if not isinstance(client, groq.Groq):
+        raise ValueError("Invalid client. Please provide a Groq client.")
+    return groq_tracer.trace_groq(client)
