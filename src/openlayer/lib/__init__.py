@@ -1,12 +1,7 @@
 """Openlayer lib.
 """
 
-__all__ = [
-    "trace",
-    "trace_anthropic",
-    "trace_openai",
-    "trace_openai_assistant_thread_run",
-]
+__all__ = ["trace", "trace_anthropic", "trace_openai", "trace_openai_assistant_thread_run", "trace_mistral"]
 
 # ---------------------------------- Tracing --------------------------------- #
 from .tracing import tracer
@@ -44,3 +39,15 @@ def trace_openai_assistant_thread_run(client, run):
     from .integrations import openai_tracer
 
     return openai_tracer.trace_openai_assistant_thread_run(client, run)
+
+
+def trace_mistral(client):
+    """Trace Mistral chat completions."""
+    # pylint: disable=import-outside-toplevel
+    import mistralai
+
+    from .integrations import mistral_tracer
+
+    if not isinstance(client, mistralai.Mistral):
+        raise ValueError("Invalid client. Please provide a Mistral client.")
+    return mistral_tracer.trace_mistral(client)
