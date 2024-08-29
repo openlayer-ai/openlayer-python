@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.24 (2024-08-29)
+
+Full Changelog: [v0.2.0-alpha.23...v0.2.0-alpha.24](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.23...v0.2.0-alpha.24)
+
+### Features
+
+* **api:** OpenAPI spec update via Stainless API ([#325](https://github.com/openlayer-ai/openlayer-python/issues/325)) ([24230df](https://github.com/openlayer-ai/openlayer-python/commit/24230dffda1fe7e37068fd98d59647bf085bda54))
+* **api:** update via SDK Studio ([#323](https://github.com/openlayer-ai/openlayer-python/issues/323)) ([0090a06](https://github.com/openlayer-ai/openlayer-python/commit/0090a0691d6c3eb988bf669ca8869913ffc57d24))
+* feat: add tracer for Mistral AI ([a1b8729](https://github.com/openlayer-ai/openlayer-python/commit/a1b8729773bb2b78ae73c4900d4020c5a09ea42e))
+
 ## 0.2.0-alpha.23 (2024-08-26)
 
 Full Changelog: [v0.2.0-alpha.22...v0.2.0-alpha.23](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.22...v0.2.0-alpha.23)
