@@ -78,8 +78,9 @@ class Uploader:
                 presigned_url_response=presigned_url_response,
             )
         else:
-            return self.transfer_blob(
+            return self.upload_blob_local(
                 file_path=file_path,
+                object_name=object_name,
                 presigned_url_response=presigned_url_response,
             )
 
@@ -105,7 +106,9 @@ class Uploader:
                 fields = presigned_url_response.fields
                 fields["file"] = (object_name, f, "application/x-tar")
                 e = MultipartEncoder(fields=fields)
-                m = MultipartEncoderMonitor(e, lambda monitor: t.update(min(t.total, monitor.bytes_read) - t.n))
+                m = MultipartEncoderMonitor(
+                    e, lambda monitor: t.update(min(t.total, monitor.bytes_read) - t.n)
+                )
                 headers = {"Content-Type": m.content_type}
                 res = requests.post(
                     presigned_url_response.url,
@@ -116,7 +119,9 @@ class Uploader:
                 )
         return res
 
-    def upload_blob_gcs(self, file_path: str, presigned_url_response: PresignedURLCreateResponse):
+    def upload_blob_gcs(
+        self, file_path: str, presigned_url_response: PresignedURLCreateResponse
+    ):
         """Generic method to upload data to Google Cloud Storage and create the
         appropriate resource in the backend.
         """
@@ -137,7 +142,9 @@ class Uploader:
                 )
         return res
 
-    def upload_blob_azure(self, file_path: str, presigned_url_response: PresignedURLCreateResponse):
+    def upload_blob_azure(
+        self, file_path: str, presigned_url_response: PresignedURLCreateResponse
+    ):
         """Generic method to upload data to Azure Blob Storage and create the
         appropriate resource in the backend.
         """
@@ -161,19 +168,34 @@ class Uploader:
                 )
         return res
 
-    def transfer_blob(
+    def upload_blob_local(
         self,
         file_path: str,
+        object_name: str,
         presigned_url_response: PresignedURLCreateResponse,
     ):
         """Generic method to transfer data to the openlayer folder and create the
         appropriate resource in the backend when using a local deployment.
         """
-        blob_path = presigned_url_response.storage_uri.replace("local://", "")
-        dir_path = os.path.dirname(blob_path)
-        try:
-            os.makedirs(dir_path, exist_ok=True)
-        except OSError as exc:
-            raise _exceptions.OpenlayerError(f"Directory {dir_path} cannot be created") from exc
-        shutil.copyfile(file_path, blob_path)
-        return None
+        with tqdm(
+            total=os.stat(file_path).st_size,
+            unit="B",
+            unit_scale=True,
+            unit_divisor=1024,
+            colour="BLUE",
+        ) as t:
+            with open(file_path, "rb") as f:
+                fields = {"file": (object_name, f, "application/x-tar")}
+                e = MultipartEncoder(fields=fields)
+                m = MultipartEncoderMonitor(
+                    e, lambda monitor: t.update(min(t.total, monitor.bytes_read) - t.n)
+                )
+                headers = {"Content-Type": m.content_type}
+                res = requests.post(
+                    presigned_url_response.url,
+                    data=m,
+                    headers=headers,
+                    verify=VERIFY_REQUESTS,
+                    timeout=REQUESTS_TIMEOUT,
+                )
+        return res
