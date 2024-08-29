@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.26 (2024-08-29)
+
+Full Changelog: [v0.2.0-alpha.25...v0.2.0-alpha.26](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.25...v0.2.0-alpha.26)
+
+### Features
+
+* feat: add Groq tracer ([bdf3f36](https://github.com/openlayer-ai/openlayer-python/commit/bdf3f368da9e1608cc6b56233563cce57d9b7af7))
+
+
+### Chores
+
+* **internal:** codegen related update ([#333](https://github.com/openlayer-ai/openlayer-python/issues/333)) ([e1e2237](https://github.com/openlayer-ai/openlayer-python/commit/e1e223797c569a7db65f8a0fdb08bc480200788b))
+
 ## 0.2.0-alpha.25 (2024-08-29)
 
 Full Changelog: [v0.2.0-alpha.24...v0.2.0-alpha.25](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.24...v0.2.0-alpha.25)
