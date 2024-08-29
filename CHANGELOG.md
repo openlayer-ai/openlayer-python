@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.25 (2024-08-29)
+
+Full Changelog: [v0.2.0-alpha.24...v0.2.0-alpha.25](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.24...v0.2.0-alpha.25)
+
+### Features
+
+* fix: batch uploads to VMs broken when using filesystem storage ([31e4195](https://github.com/openlayer-ai/openlayer-python/commit/31e4195f6626d0f789ad6d8f9eeee7b371b144fa))
+
+
+### Chores
+
+* **internal:** codegen related update ([#333](https://github.com/openlayer-ai/openlayer-python/issues/333)) ([ad43d95](https://github.com/openlayer-ai/openlayer-python/commit/ad43d954c6066f0d0a7518054739cb20cf90ac19))
+
 ## 0.2.0-alpha.24 (2024-08-29)
 
 Full Changelog: [v0.2.0-alpha.23...v0.2.0-alpha.24](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.23...v0.2.0-alpha.24)
