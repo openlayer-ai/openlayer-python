@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.27 (2024-09-12)
+
+Full Changelog: [v0.2.0-alpha.26...v0.2.0-alpha.27](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.26...v0.2.0-alpha.27)
+
+### Chores
+
+* **internal:** codegen related update ([#333](https://github.com/openlayer-ai/openlayer-python/issues/333)) ([ad7b567](https://github.com/openlayer-ai/openlayer-python/commit/ad7b56761fed6576424bdaf6f49cb4ae604936bc))
+* **internal:** codegen related update ([#340](https://github.com/openlayer-ai/openlayer-python/issues/340)) ([4bd2cb2](https://github.com/openlayer-ai/openlayer-python/commit/4bd2cb2a601b20f2673206031acf3cef0190de4a))
+
 ## 0.2.0-alpha.26 (2024-08-29)
 
 Full Changelog: [v0.2.0-alpha.25...v0.2.0-alpha.26](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.25...v0.2.0-alpha.26)
