@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.28 (2024-09-25)
+
+Full Changelog: [v0.2.0-alpha.27...v0.2.0-alpha.28](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.27...v0.2.0-alpha.28)
+
+### Features
+
+* chore: show how to log context in RAG notebook example ([5610593](https://github.com/openlayer-ai/openlayer-python/commit/5610593bc124d601c0dda0c2e507cf9bfafdfd77))
+* fix: make sure that context logging works in development mode ([11f5267](https://github.com/openlayer-ai/openlayer-python/commit/11f526701591ee36d8f6e56b651397360ef589f1))
+
 ## 0.2.0-alpha.27 (2024-09-12)
 
 Full Changelog: [v0.2.0-alpha.26...v0.2.0-alpha.27](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.26...v0.2.0-alpha.27)
