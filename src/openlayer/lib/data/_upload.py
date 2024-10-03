@@ -5,7 +5,6 @@ different storage backends.
 """
 
 import os
-import shutil
 from enum import Enum
 from typing import Optional
 
