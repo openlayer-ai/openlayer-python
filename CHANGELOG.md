@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.29 (2024-10-03)
+
+Full Changelog: [v0.2.0-alpha.28...v0.2.0-alpha.29](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.28...v0.2.0-alpha.29)
+
+### Features
+
+* feat: add async batch uploads & improve client-side upload latency ([7e7261d](https://github.com/openlayer-ai/openlayer-python/commit/7e7261d9c8eab2ee0f781500502483f316009a1e))
+* improvement: make data stream example about tabular classification ([03f1f31](https://github.com/openlayer-ai/openlayer-python/commit/03f1f316bedb9c6fef39e2fbe853eed53266c1f2))
+
 ## 0.2.0-alpha.28 (2024-09-25)
 
 Full Changelog: [v0.2.0-alpha.27...v0.2.0-alpha.28](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.27...v0.2.0-alpha.28)
