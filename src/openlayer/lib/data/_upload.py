@@ -103,7 +103,7 @@ class Uploader:
             with open(file_path, "rb") as f:
                 # Avoid logging here as it will break the progress bar
                 fields = presigned_url_response.fields
-                fields["file"] = (object_name, f, "application/x-tar")
+                fields["file"] = (object_name, f, "application/vnd.apache.arrow.file")
                 e = MultipartEncoder(fields=fields)
                 m = MultipartEncoderMonitor(
                     e, lambda monitor: t.update(min(t.total, monitor.bytes_read) - t.n)

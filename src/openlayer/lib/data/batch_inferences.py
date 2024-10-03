@@ -12,10 +12,9 @@ from . import StorageType, _upload
 from ... import Openlayer
 from ..._utils import maybe_transform
 from ...types.inference_pipelines import data_stream_params
-import asyncio
 
 
-async def upload_batch_inferences_async(
+def upload_batch_inferences(
     client: Openlayer,
     inference_pipeline_id: str,
     config: data_stream_params.Config,
@@ -67,11 +66,14 @@ async def upload_batch_inferences_async(
         # Upload tarball to storage
         if verbose:
             print("Uploading dataset to storage via presigned URL...")
-        uploader.upload(
+        response = uploader.upload(
             file_path=temp_file_path,
             object_name=object_name,
             presigned_url_response=presigned_url_response,
         )
+        print(response.status_code)
+        print(response.text)
+        print(response.content)
 
     # Notify the backend
     client.post(
@@ -82,30 +84,6 @@ async def upload_batch_inferences_async(
             "performDataMerge": merge,
             "config": config,
         },
-    )
-
-
-def upload_batch_inferences(
-    client: Openlayer,
-    inference_pipeline_id: str,
-    config: data_stream_params.Config,
-    dataset_df: Optional[pd.DataFrame] = None,
-    dataset_path: Optional[str] = None,
-    storage_type: Optional[StorageType] = None,
-    merge: bool = False,
-    verbose: bool = False,
-) -> None:
-    asyncio.run(
-        upload_batch_inferences_async(
-            client,
-            inference_pipeline_id,
-            config,
-            dataset_df,
-            dataset_path,
-            storage_type,
-            merge,
-            verbose,
-        )
     )
 
 
