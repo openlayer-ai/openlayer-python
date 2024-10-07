@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.31 (2024-10-07)
+
+Full Changelog: [v0.2.0-alpha.30...v0.2.0-alpha.31](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.30...v0.2.0-alpha.31)
+
+### Features
+
+* fix: adjust storage upload error code range ([867b3d2](https://github.com/openlayer-ai/openlayer-python/commit/867b3d2a193bc5c6626056ac5782e2e8f5b30ae0))
+
 ## 0.2.0-alpha.30 (2024-10-05)
 
 Full Changelog: [v0.2.0-alpha.29...v0.2.0-alpha.30](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.29...v0.2.0-alpha.30)
