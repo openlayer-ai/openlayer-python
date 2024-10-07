@@ -1,6 +1,6 @@
 [project]
 name = "openlayer"
-version = "0.2.0-alpha.26"
+version = "0.2.0-alpha.31"
 description = "The official Python library for the openlayer API"
 dynamic = ["readme"]
 license = "Apache-2.0"
@@ -15,7 +15,10 @@ dependencies = [
     "distro>=1.7.0, <2",
     "sniffio",
     "cached-property; python_version < '3.8'",
-
+    "pandas; python_version >= '3.7'",
+    "pyarrow>=11.0.0",
+    "pyyaml>=6.0",
+    "requests_toolbelt>=1.0.0",
 ]
 requires-python = ">= 3.7"
 classifiers = [
@@ -155,6 +158,8 @@ exclude = [
     ".nox",
 ]
 
+ignore = ["src/openlayer/lib/*", "examples/*"]
+
 reportImplicitOverride = true
 
 reportImportCycles = false
@@ -213,4 +218,5 @@ known-first-party = ["openlayer", "tests"]
 "bin/**.py" = ["T201", "T203"]
 "scripts/**.py" = ["T201", "T203"]
 "tests/**.py" = ["T201", "T203"]
-"examples/**.py" = ["T201", "T203"]
+"examples/**.py" = ["ALL"]
+"src/**.py" = ["ALL"]
