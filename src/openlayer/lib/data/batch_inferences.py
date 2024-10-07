@@ -65,7 +65,7 @@ def upload_batch_inferences(
             object_name=object_name,
             presigned_url_response=presigned_url_response,
         )
-        if response.status_code != 200:
+        if response.status_code >= 300 or response.status_code < 200:
             raise ValueError(f"Failed to upload file to storage: {response.text}")
 
     # Notify the backend
