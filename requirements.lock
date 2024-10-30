@@ -19,7 +19,7 @@ certifi==2023.7.22
     # via httpx
 distro==1.8.0
     # via openlayer
-exceptiongroup==1.1.3
+exceptiongroup==1.2.2
     # via anyio
 h11==0.14.0
     # via httpcore
@@ -34,9 +34,9 @@ numpy==1.26.4
     # via pandas
 pandas==2.2.2
     # via openlayer
-pydantic==2.7.1
+pydantic==2.9.2
     # via openlayer
-pydantic-core==2.18.2
+pydantic-core==2.23.4
     # via pydantic
 python-dateutil==2.9.0.post0
     # via pandas
@@ -48,7 +48,7 @@ sniffio==1.3.0
     # via anyio
     # via httpx
     # via openlayer
-typing-extensions==4.8.0
+typing-extensions==4.12.2
     # via anyio
     # via openlayer
     # via pydantic

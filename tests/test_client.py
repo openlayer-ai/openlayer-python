@@ -10,6 +10,7 @@ import inspect
 import tracemalloc
 from typing import Any, Union, cast
 from unittest import mock
+from typing_extensions import Literal
 
 import httpx
 import pytest
@@ -701,6 +702,7 @@ class TestOpenlayer:
             [3, "", 0.5],
             [2, "", 0.5 * 2.0],
             [1, "", 0.5 * 4.0],
+            [-1100, "", 7.8],  # test large number potentially overflowing
         ],
     )
     @mock.patch("time.time", mock.MagicMock(return_value=1696004797))
@@ -738,7 +740,7 @@ class TestOpenlayer:
                                 "output": "42",
                                 "tokens": 7,
                                 "cost": 0.02,
-                                "timestamp": 1620000000,
+                                "timestamp": 1610000000,
                             }
                         ],
                     ),
@@ -775,7 +777,7 @@ class TestOpenlayer:
                                 "output": "42",
                                 "tokens": 7,
                                 "cost": 0.02,
-                                "timestamp": 1620000000,
+                                "timestamp": 1610000000,
                             }
                         ],
                     ),
@@ -789,7 +791,54 @@ class TestOpenlayer:
     @pytest.mark.parametrize("failures_before_success", [0, 2, 4])
     @mock.patch("openlayer._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
     @pytest.mark.respx(base_url=base_url)
-    def test_retries_taken(self, client: Openlayer, failures_before_success: int, respx_mock: MockRouter) -> None:
+    @pytest.mark.parametrize("failure_mode", ["status", "exception"])
+    def test_retries_taken(
+        self,
+        client: Openlayer,
+        failures_before_success: int,
+        failure_mode: Literal["status", "exception"],
+        respx_mock: MockRouter,
+    ) -> None:
+        client = client.with_options(max_retries=4)
+
+        nb_retries = 0
+
+        def retry_handler(_request: httpx.Request) -> httpx.Response:
+            nonlocal nb_retries
+            if nb_retries < failures_before_success:
+                nb_retries += 1
+                if failure_mode == "exception":
+                    raise RuntimeError("oops")
+                return httpx.Response(500)
+            return httpx.Response(200)
+
+        respx_mock.post("/inference-pipelines/182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e/data-stream").mock(
+            side_effect=retry_handler
+        )
+
+        response = client.inference_pipelines.data.with_raw_response.stream(
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            config={"output_column_name": "output"},
+            rows=[
+                {
+                    "user_query": "bar",
+                    "output": "bar",
+                    "tokens": "bar",
+                    "cost": "bar",
+                    "timestamp": "bar",
+                }
+            ],
+        )
+
+        assert response.retries_taken == failures_before_success
+        assert int(response.http_request.headers.get("x-stainless-retry-count")) == failures_before_success
+
+    @pytest.mark.parametrize("failures_before_success", [0, 2, 4])
+    @mock.patch("openlayer._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
+    @pytest.mark.respx(base_url=base_url)
+    def test_omit_retry_count_header(
+        self, client: Openlayer, failures_before_success: int, respx_mock: MockRouter
+    ) -> None:
         client = client.with_options(max_retries=4)
 
         nb_retries = 0
@@ -817,9 +866,48 @@ class TestOpenlayer:
                     "timestamp": "bar",
                 }
             ],
+            extra_headers={"x-stainless-retry-count": Omit()},
         )
 
-        assert response.retries_taken == failures_before_success
+        assert len(response.http_request.headers.get_list("x-stainless-retry-count")) == 0
+
+    @pytest.mark.parametrize("failures_before_success", [0, 2, 4])
+    @mock.patch("openlayer._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
+    @pytest.mark.respx(base_url=base_url)
+    def test_overwrite_retry_count_header(
+        self, client: Openlayer, failures_before_success: int, respx_mock: MockRouter
+    ) -> None:
+        client = client.with_options(max_retries=4)
+
+        nb_retries = 0
+
+        def retry_handler(_request: httpx.Request) -> httpx.Response:
+            nonlocal nb_retries
+            if nb_retries < failures_before_success:
+                nb_retries += 1
+                return httpx.Response(500)
+            return httpx.Response(200)
+
+        respx_mock.post("/inference-pipelines/182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e/data-stream").mock(
+            side_effect=retry_handler
+        )
+
+        response = client.inference_pipelines.data.with_raw_response.stream(
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            config={"output_column_name": "output"},
+            rows=[
+                {
+                    "user_query": "bar",
+                    "output": "bar",
+                    "tokens": "bar",
+                    "cost": "bar",
+                    "timestamp": "bar",
+                }
+            ],
+            extra_headers={"x-stainless-retry-count": "42"},
+        )
+
+        assert response.http_request.headers.get("x-stainless-retry-count") == "42"
 
 
 class TestAsyncOpenlayer:
@@ -1486,6 +1574,7 @@ class TestAsyncOpenlayer:
             [3, "", 0.5],
             [2, "", 0.5 * 2.0],
             [1, "", 0.5 * 4.0],
+            [-1100, "", 7.8],  # test large number potentially overflowing
         ],
     )
     @mock.patch("time.time", mock.MagicMock(return_value=1696004797))
@@ -1524,7 +1613,7 @@ class TestAsyncOpenlayer:
                                 "output": "42",
                                 "tokens": 7,
                                 "cost": 0.02,
-                                "timestamp": 1620000000,
+                                "timestamp": 1610000000,
                             }
                         ],
                     ),
@@ -1561,7 +1650,7 @@ class TestAsyncOpenlayer:
                                 "output": "42",
                                 "tokens": 7,
                                 "cost": 0.02,
-                                "timestamp": 1620000000,
+                                "timestamp": 1610000000,
                             }
                         ],
                     ),
@@ -1576,7 +1665,53 @@ class TestAsyncOpenlayer:
     @mock.patch("openlayer._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
     @pytest.mark.respx(base_url=base_url)
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("failure_mode", ["status", "exception"])
     async def test_retries_taken(
+        self,
+        async_client: AsyncOpenlayer,
+        failures_before_success: int,
+        failure_mode: Literal["status", "exception"],
+        respx_mock: MockRouter,
+    ) -> None:
+        client = async_client.with_options(max_retries=4)
+
+        nb_retries = 0
+
+        def retry_handler(_request: httpx.Request) -> httpx.Response:
+            nonlocal nb_retries
+            if nb_retries < failures_before_success:
+                nb_retries += 1
+                if failure_mode == "exception":
+                    raise RuntimeError("oops")
+                return httpx.Response(500)
+            return httpx.Response(200)
+
+        respx_mock.post("/inference-pipelines/182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e/data-stream").mock(
+            side_effect=retry_handler
+        )
+
+        response = await client.inference_pipelines.data.with_raw_response.stream(
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            config={"output_column_name": "output"},
+            rows=[
+                {
+                    "user_query": "bar",
+                    "output": "bar",
+                    "tokens": "bar",
+                    "cost": "bar",
+                    "timestamp": "bar",
+                }
+            ],
+        )
+
+        assert response.retries_taken == failures_before_success
+        assert int(response.http_request.headers.get("x-stainless-retry-count")) == failures_before_success
+
+    @pytest.mark.parametrize("failures_before_success", [0, 2, 4])
+    @mock.patch("openlayer._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
+    @pytest.mark.respx(base_url=base_url)
+    @pytest.mark.asyncio
+    async def test_omit_retry_count_header(
         self, async_client: AsyncOpenlayer, failures_before_success: int, respx_mock: MockRouter
     ) -> None:
         client = async_client.with_options(max_retries=4)
@@ -1606,6 +1741,46 @@ class TestAsyncOpenlayer:
                     "timestamp": "bar",
                 }
             ],
+            extra_headers={"x-stainless-retry-count": Omit()},
         )
 
-        assert response.retries_taken == failures_before_success
+        assert len(response.http_request.headers.get_list("x-stainless-retry-count")) == 0
+
+    @pytest.mark.parametrize("failures_before_success", [0, 2, 4])
+    @mock.patch("openlayer._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
+    @pytest.mark.respx(base_url=base_url)
+    @pytest.mark.asyncio
+    async def test_overwrite_retry_count_header(
+        self, async_client: AsyncOpenlayer, failures_before_success: int, respx_mock: MockRouter
+    ) -> None:
+        client = async_client.with_options(max_retries=4)
+
+        nb_retries = 0
+
+        def retry_handler(_request: httpx.Request) -> httpx.Response:
+            nonlocal nb_retries
+            if nb_retries < failures_before_success:
+                nb_retries += 1
+                return httpx.Response(500)
+            return httpx.Response(200)
+
+        respx_mock.post("/inference-pipelines/182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e/data-stream").mock(
+            side_effect=retry_handler
+        )
+
+        response = await client.inference_pipelines.data.with_raw_response.stream(
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            config={"output_column_name": "output"},
+            rows=[
+                {
+                    "user_query": "bar",
+                    "output": "bar",
+                    "tokens": "bar",
+                    "cost": "bar",
+                    "timestamp": "bar",
+                }
+            ],
+            extra_headers={"x-stainless-retry-count": "42"},
+        )
+
+        assert response.http_request.headers.get("x-stainless-retry-count") == "42"
