@@ -31,10 +31,21 @@ class TestResultsResource(SyncAPIResource):
 
     @cached_property
     def with_raw_response(self) -> TestResultsResourceWithRawResponse:
+        """
+        This property can be used as a prefix for any HTTP method call to return the
+        the raw response object instead of the parsed content.
+
+        For more information, see https://www.github.com/openlayer-ai/openlayer-python#accessing-raw-response-data-eg-headers
+        """
         return TestResultsResourceWithRawResponse(self)
 
     @cached_property
     def with_streaming_response(self) -> TestResultsResourceWithStreamingResponse:
+        """
+        An alternative to `.with_raw_response` that doesn't eagerly read the response body.
+
+        For more information, see https://www.github.com/openlayer-ai/openlayer-python#with_streaming_response
+        """
         return TestResultsResourceWithStreamingResponse(self)
 
     def list(
@@ -102,10 +113,21 @@ class TestResultsResource(SyncAPIResource):
 class AsyncTestResultsResource(AsyncAPIResource):
     @cached_property
     def with_raw_response(self) -> AsyncTestResultsResourceWithRawResponse:
+        """
+        This property can be used as a prefix for any HTTP method call to return the
+        the raw response object instead of the parsed content.
+
+        For more information, see https://www.github.com/openlayer-ai/openlayer-python#accessing-raw-response-data-eg-headers
+        """
         return AsyncTestResultsResourceWithRawResponse(self)
 
     @cached_property
     def with_streaming_response(self) -> AsyncTestResultsResourceWithStreamingResponse:
+        """
+        An alternative to `.with_raw_response` that doesn't eagerly read the response body.
+
+        For more information, see https://www.github.com/openlayer-ai/openlayer-python#with_streaming_response
+        """
         return AsyncTestResultsResourceWithStreamingResponse(self)
 
     async def list(

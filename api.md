@@ -38,6 +38,16 @@ Methods:
 
 # Commits
 
+Types:
+
+```python
+from openlayer.types import CommitCreateResponse
+```
+
+Methods:
+
+- <code title="post /projects/{projectId}/versions">client.commits.<a href="./src/openlayer/resources/commits/commits.py">create</a>(project_id, \*\*<a href="src/openlayer/types/commit_create_params.py">params</a>) -> <a href="./src/openlayer/types/commit_create_response.py">CommitCreateResponse</a></code>
+
 ## TestResults
 
 Types:
