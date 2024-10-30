@@ -27,10 +27,21 @@ __all__ = ["PresignedURLResource", "AsyncPresignedURLResource"]
 class PresignedURLResource(SyncAPIResource):
     @cached_property
     def with_raw_response(self) -> PresignedURLResourceWithRawResponse:
+        """
+        This property can be used as a prefix for any HTTP method call to return the
+        the raw response object instead of the parsed content.
+
+        For more information, see https://www.github.com/openlayer-ai/openlayer-python#accessing-raw-response-data-eg-headers
+        """
         return PresignedURLResourceWithRawResponse(self)
 
     @cached_property
     def with_streaming_response(self) -> PresignedURLResourceWithStreamingResponse:
+        """
+        An alternative to `.with_raw_response` that doesn't eagerly read the response body.
+
+        For more information, see https://www.github.com/openlayer-ai/openlayer-python#with_streaming_response
+        """
         return PresignedURLResourceWithStreamingResponse(self)
 
     def create(
@@ -76,10 +87,21 @@ class PresignedURLResource(SyncAPIResource):
 class AsyncPresignedURLResource(AsyncAPIResource):
     @cached_property
     def with_raw_response(self) -> AsyncPresignedURLResourceWithRawResponse:
+        """
+        This property can be used as a prefix for any HTTP method call to return the
+        the raw response object instead of the parsed content.
+
+        For more information, see https://www.github.com/openlayer-ai/openlayer-python#accessing-raw-response-data-eg-headers
+        """
         return AsyncPresignedURLResourceWithRawResponse(self)
 
     @cached_property
     def with_streaming_response(self) -> AsyncPresignedURLResourceWithStreamingResponse:
+        """
+        An alternative to `.with_raw_response` that doesn't eagerly read the response body.
+
+        For more information, see https://www.github.com/openlayer-ai/openlayer-python#with_streaming_response
+        """
         return AsyncPresignedURLResourceWithStreamingResponse(self)
 
     async def create(

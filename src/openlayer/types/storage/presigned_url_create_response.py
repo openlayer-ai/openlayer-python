@@ -17,4 +17,4 @@ class PresignedURLCreateResponse(BaseModel):
     """The presigned url."""
 
     fields: Optional[object] = None
-    """Fields to include in the body of the upload. Only needed by s3."""
+    """Fields to include in the body of the upload. Only needed by s3"""
