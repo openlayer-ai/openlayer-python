@@ -30,10 +30,21 @@ __all__ = ["InferencePipelinesResource", "AsyncInferencePipelinesResource"]
 class InferencePipelinesResource(SyncAPIResource):
     @cached_property
     def with_raw_response(self) -> InferencePipelinesResourceWithRawResponse:
+        """
+        This property can be used as a prefix for any HTTP method call to return the
+        the raw response object instead of the parsed content.
+
+        For more information, see https://www.github.com/openlayer-ai/openlayer-python#accessing-raw-response-data-eg-headers
+        """
         return InferencePipelinesResourceWithRawResponse(self)
 
     @cached_property
     def with_streaming_response(self) -> InferencePipelinesResourceWithStreamingResponse:
+        """
+        An alternative to `.with_raw_response` that doesn't eagerly read the response body.
+
+        For more information, see https://www.github.com/openlayer-ai/openlayer-python#with_streaming_response
+        """
         return InferencePipelinesResourceWithStreamingResponse(self)
 
     def create(
@@ -139,10 +150,21 @@ class InferencePipelinesResource(SyncAPIResource):
 class AsyncInferencePipelinesResource(AsyncAPIResource):
     @cached_property
     def with_raw_response(self) -> AsyncInferencePipelinesResourceWithRawResponse:
+        """
+        This property can be used as a prefix for any HTTP method call to return the
+        the raw response object instead of the parsed content.
+
+        For more information, see https://www.github.com/openlayer-ai/openlayer-python#accessing-raw-response-data-eg-headers
+        """
         return AsyncInferencePipelinesResourceWithRawResponse(self)
 
     @cached_property
     def with_streaming_response(self) -> AsyncInferencePipelinesResourceWithStreamingResponse:
+        """
+        An alternative to `.with_raw_response` that doesn't eagerly read the response body.
+
+        For more information, see https://www.github.com/openlayer-ai/openlayer-python#with_streaming_response
+        """
         return AsyncInferencePipelinesResourceWithStreamingResponse(self)
 
     async def create(

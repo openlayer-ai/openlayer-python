@@ -29,10 +29,21 @@ __all__ = ["RowsResource", "AsyncRowsResource"]
 class RowsResource(SyncAPIResource):
     @cached_property
     def with_raw_response(self) -> RowsResourceWithRawResponse:
+        """
+        This property can be used as a prefix for any HTTP method call to return the
+        the raw response object instead of the parsed content.
+
+        For more information, see https://www.github.com/openlayer-ai/openlayer-python#accessing-raw-response-data-eg-headers
+        """
         return RowsResourceWithRawResponse(self)
 
     @cached_property
     def with_streaming_response(self) -> RowsResourceWithStreamingResponse:
+        """
+        An alternative to `.with_raw_response` that doesn't eagerly read the response body.
+
+        For more information, see https://www.github.com/openlayer-ai/openlayer-python#with_streaming_response
+        """
         return RowsResourceWithStreamingResponse(self)
 
     def update(
@@ -90,10 +101,21 @@ class RowsResource(SyncAPIResource):
 class AsyncRowsResource(AsyncAPIResource):
     @cached_property
     def with_raw_response(self) -> AsyncRowsResourceWithRawResponse:
+        """
+        This property can be used as a prefix for any HTTP method call to return the
+        the raw response object instead of the parsed content.
+
+        For more information, see https://www.github.com/openlayer-ai/openlayer-python#accessing-raw-response-data-eg-headers
+        """
         return AsyncRowsResourceWithRawResponse(self)
 
     @cached_property
     def with_streaming_response(self) -> AsyncRowsResourceWithStreamingResponse:
+        """
+        An alternative to `.with_raw_response` that doesn't eagerly read the response body.
+
+        For more information, see https://www.github.com/openlayer-ai/openlayer-python#with_streaming_response
+        """
         return AsyncRowsResourceWithStreamingResponse(self)
 
     async def update(

@@ -32,7 +32,7 @@ client = Openlayer(
     api_key=os.environ.get("OPENLAYER_API_KEY"),
 )
 
-data_stream_response = client.inference_pipelines.data.stream(
+response = client.inference_pipelines.data.stream(
     inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
     config={
         "input_variable_names": ["user_query"],
@@ -47,11 +47,11 @@ data_stream_response = client.inference_pipelines.data.stream(
             "output": "42",
             "tokens": 7,
             "cost": 0.02,
-            "timestamp": 1620000000,
+            "timestamp": 1610000000,
         }
     ],
 )
-print(data_stream_response.success)
+print(response.success)
 ```
 
 While you can provide an `api_key` keyword argument,
@@ -75,7 +75,7 @@ client = AsyncOpenlayer(
 
 
 async def main() -> None:
-    data_stream_response = await client.inference_pipelines.data.stream(
+    response = await client.inference_pipelines.data.stream(
         inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
         config={
             "input_variable_names": ["user_query"],
@@ -90,11 +90,11 @@ async def main() -> None:
                 "output": "42",
                 "tokens": 7,
                 "cost": 0.02,
-                "timestamp": 1620000000,
+                "timestamp": 1610000000,
             }
         ],
     )
-    print(data_stream_response.success)
+    print(response.success)
 
 
 asyncio.run(main())
@@ -142,7 +142,7 @@ try:
                 "output": "42",
                 "tokens": 7,
                 "cost": 0.02,
-                "timestamp": 1620000000,
+                "timestamp": 1610000000,
             }
         ],
     )
@@ -203,7 +203,7 @@ client.with_options(max_retries=5).inference_pipelines.data.stream(
             "output": "42",
             "tokens": 7,
             "cost": 0.02,
-            "timestamp": 1620000000,
+            "timestamp": 1610000000,
         }
     ],
 )
@@ -244,7 +244,7 @@ client.with_options(timeout=5.0).inference_pipelines.data.stream(
             "output": "42",
             "tokens": 7,
             "cost": 0.02,
-            "timestamp": 1620000000,
+            "timestamp": 1610000000,
         }
     ],
 )
@@ -300,7 +300,7 @@ response = client.inference_pipelines.data.with_raw_response.stream(
         "output": "42",
         "tokens": 7,
         "cost": 0.02,
-        "timestamp": 1620000000,
+        "timestamp": 1610000000,
     }],
 )
 print(response.headers.get('X-My-Header'))
@@ -335,7 +335,7 @@ with client.inference_pipelines.data.with_streaming_response.stream(
             "output": "42",
             "tokens": 7,
             "cost": 0.02,
-            "timestamp": 1620000000,
+            "timestamp": 1610000000,
         }
     ],
 ) as response:
@@ -425,6 +425,21 @@ We take backwards-compatibility seriously and work hard to ensure you can rely o
 
 We are keen for your feedback; please open an [issue](https://www.github.com/openlayer-ai/openlayer-python/issues) with questions, bugs, or suggestions.
 
+### Determining the installed version
+
+If you've upgraded to the latest version but aren't seeing any new features you were expecting then your python environment is likely still using an older version.
+
+You can determine the version that is being used at runtime with:
+
+```py
+import openlayer
+print(openlayer.__version__)
+```
+
 ## Requirements
 
 Python 3.7 or higher.
+
+## Contributing
+
+See [the contributing documentation](./CONTRIBUTING.md).
