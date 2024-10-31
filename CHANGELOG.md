@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.32 (2024-10-31)
+
+Full Changelog: [v0.2.0-alpha.31...v0.2.0-alpha.32](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.31...v0.2.0-alpha.32)
+
+### Features
+
+* **api:** manual updates ([#360](https://github.com/openlayer-ai/openlayer-python/issues/360)) ([4641235](https://github.com/openlayer-ai/openlayer-python/commit/4641235bf842a5d6d132870517aa1ac523867fc9))
+
+
+### Bug Fixes
+
+* **docs:** remove old examples from next branch ([534b732](https://github.com/openlayer-ai/openlayer-python/commit/534b73224f9adb3b287fac1f4abd285eed65c047))
+* **docs:** ruff linting issues ([728a7dc](https://github.com/openlayer-ai/openlayer-python/commit/728a7dc71ddb0edb1f8cfa7c0d6889801d1486a0))
+
 ## 0.2.0-alpha.31 (2024-10-07)
 
 Full Changelog: [v0.2.0-alpha.30...v0.2.0-alpha.31](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.30...v0.2.0-alpha.31)
