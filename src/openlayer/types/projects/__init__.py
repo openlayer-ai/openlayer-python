@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from .commit_list_params import CommitListParams as CommitListParams
+from .commit_create_params import CommitCreateParams as CommitCreateParams
 from .commit_list_response import CommitListResponse as CommitListResponse
+from .commit_create_response import CommitCreateResponse as CommitCreateResponse
 from .inference_pipeline_list_params import InferencePipelineListParams as InferencePipelineListParams
 from .inference_pipeline_create_params import InferencePipelineCreateParams as InferencePipelineCreateParams
 from .inference_pipeline_list_response import InferencePipelineListResponse as InferencePipelineListResponse
