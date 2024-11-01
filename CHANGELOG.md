@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.34 (2024-11-01)
+
+Full Changelog: [v0.2.0-alpha.33...v0.2.0-alpha.34](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.33...v0.2.0-alpha.34)
+
+### Chores
+
+* **internal:** version bump ([#368](https://github.com/openlayer-ai/openlayer-python/issues/368)) ([4559716](https://github.com/openlayer-ai/openlayer-python/commit/4559716e585852866ecec7413da146503b324717))
+
 ## 0.2.0-alpha.33 (2024-10-31)
 
 Full Changelog: [v0.2.0-alpha.32...v0.2.0-alpha.33](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.32...v0.2.0-alpha.33)
