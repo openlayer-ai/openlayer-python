@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.35 (2024-11-04)
+
+Full Changelog: [v0.2.0-alpha.34...v0.2.0-alpha.35](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.34...v0.2.0-alpha.35)
+
+### Features
+
+* feat(data): add function to push a commit to the platform ([7b5a29e](https://github.com/openlayer-ai/openlayer-python/commit/7b5a29e7622fec7185b6eb9eec705ac298888d5e))
+
+
+### Chores
+
+* **internal:** version bump ([#370](https://github.com/openlayer-ai/openlayer-python/issues/370)) ([5b3bd38](https://github.com/openlayer-ai/openlayer-python/commit/5b3bd3887d10dea9371ea1c7e417e32e047a7462))
+
 ## 0.2.0-alpha.34 (2024-11-01)
 
 Full Changelog: [v0.2.0-alpha.33...v0.2.0-alpha.34](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.33...v0.2.0-alpha.34)
