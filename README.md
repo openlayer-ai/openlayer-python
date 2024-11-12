@@ -28,8 +28,7 @@ import os
 from openlayer import Openlayer
 
 client = Openlayer(
-    # This is the default and can be omitted
-    api_key=os.environ.get("OPENLAYER_API_KEY"),
+    api_key=os.environ.get("OPENLAYER_API_KEY"),  # This is the default and can be omitted
 )
 
 response = client.inference_pipelines.data.stream(
@@ -69,8 +68,7 @@ import asyncio
 from openlayer import AsyncOpenlayer
 
 client = AsyncOpenlayer(
-    # This is the default and can be omitted
-    api_key=os.environ.get("OPENLAYER_API_KEY"),
+    api_key=os.environ.get("OPENLAYER_API_KEY"),  # This is the default and can be omitted
 )
 
 
