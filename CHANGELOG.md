@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.37 (2024-11-13)
+
+Full Changelog: [v0.2.0-alpha.36...v0.2.0-alpha.37](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.36...v0.2.0-alpha.37)
+
+### Chores
+
+* add Vertex AI example ([b668aeb](https://github.com/openlayer-ai/openlayer-python/commit/b668aeb58f7b78f85136c3635d1c8959df5bec21))
+* **internal:** version bump ([#375](https://github.com/openlayer-ai/openlayer-python/issues/375)) ([fcd0205](https://github.com/openlayer-ai/openlayer-python/commit/fcd0205203eb54776bf7d3b361db82c2681816ff))
+* rebuild project due to codegen change ([#378](https://github.com/openlayer-ai/openlayer-python/issues/378)) ([01ba806](https://github.com/openlayer-ai/openlayer-python/commit/01ba806143e8cb0e2d718501226e62e55cb7a1de))
+* rebuild project due to codegen change ([#379](https://github.com/openlayer-ai/openlayer-python/issues/379)) ([a6fc82b](https://github.com/openlayer-ai/openlayer-python/commit/a6fc82b48729044f8a00d2947b751414f4b423af))
+
 ## 0.2.0-alpha.36 (2024-11-04)
 
 Full Changelog: [v0.2.0-alpha.35...v0.2.0-alpha.36](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.35...v0.2.0-alpha.36)
