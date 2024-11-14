@@ -16,7 +16,7 @@ dependencies = [
     "sniffio",
     "cached-property; python_version < '3.8'",
     "pandas; python_version >= '3.7'",
-    "pyarrow>=11.0.0",
+    "pyarrow==11.0.0",
     "pyyaml>=6.0",
     "requests_toolbelt>=1.0.0",
 ]
