@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.38 (2024-11-19)
+
+Full Changelog: [v0.2.0-alpha.37...v0.2.0-alpha.38](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.37...v0.2.0-alpha.38)
+
+### Bug Fixes
+
+* pin pyarrow version to avoid installation issues with latest versions ([37af76c](https://github.com/openlayer-ai/openlayer-python/commit/37af76c534ac831469e488f964b7949df72a3a93))
+* update to pyarrow==14.0.1 to avoid dependabot issues ([a226ca2](https://github.com/openlayer-ai/openlayer-python/commit/a226ca2c18b75232099f628246b3ae2158e97cb2))
+
+
+### Chores
+
+* rebuild project due to codegen change ([#384](https://github.com/openlayer-ai/openlayer-python/issues/384)) ([b6873de](https://github.com/openlayer-ai/openlayer-python/commit/b6873de3f5de327b1db17451ab328d93e0ee214f))
+
 ## 0.2.0-alpha.37 (2024-11-13)
 
 Full Changelog: [v0.2.0-alpha.36...v0.2.0-alpha.37](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.36...v0.2.0-alpha.37)
