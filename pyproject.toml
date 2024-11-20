@@ -19,6 +19,8 @@ dependencies = [
     "pyarrow==14.0.1",
     "pyyaml>=6.0",
     "requests_toolbelt>=1.0.0",
+    "tqdm",
+    "numpy<2"
 ]
 requires-python = ">= 3.8"
 classifiers = [
