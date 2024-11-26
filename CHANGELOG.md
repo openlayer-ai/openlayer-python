@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.39 (2024-11-26)
+
+Full Changelog: [v0.2.0-alpha.38...v0.2.0-alpha.39](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.38...v0.2.0-alpha.39)
+
+### Bug Fixes
+
+* add missing dependencies (tqdm and numpy&lt;2) ([298eedb](https://github.com/openlayer-ai/openlayer-python/commit/298eedb4861ac74859da3b167390cd4897c5ad32))
+
+
+### Chores
+
+* **internal:** codegen related update ([#388](https://github.com/openlayer-ai/openlayer-python/issues/388)) ([2dec899](https://github.com/openlayer-ai/openlayer-python/commit/2dec8992b9bc0003af4d61a4972ca4c9eac0d8ea))
+* remove now unused `cached-property` dep ([#389](https://github.com/openlayer-ai/openlayer-python/issues/389)) ([c6e03c8](https://github.com/openlayer-ai/openlayer-python/commit/c6e03c84fa2f1dd564c19f45e1addba74b7540e8))
+
 ## 0.2.0-alpha.38 (2024-11-19)
 
 Full Changelog: [v0.2.0-alpha.37...v0.2.0-alpha.38](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.37...v0.2.0-alpha.38)
