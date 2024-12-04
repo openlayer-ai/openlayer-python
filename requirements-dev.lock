@@ -19,6 +19,9 @@ argcomplete==3.1.2
 certifi==2023.7.22
     # via httpcore
     # via httpx
+    # via requests
+charset-normalizer==3.4.0
+    # via requests
 colorlog==6.7.0
     # via nox
 dirty-equals==0.6.0
@@ -41,6 +44,7 @@ httpx==0.25.2
 idna==3.4
     # via anyio
     # via httpx
+    # via requests
 importlib-metadata==7.0.0
 iniconfig==2.0.0
     # via pytest
@@ -56,7 +60,9 @@ nodeenv==1.8.0
     # via pyright
 nox==2023.4.22
 numpy==1.26.4
+    # via openlayer
     # via pandas
+    # via pyarrow
 packaging==23.2
     # via nox
     # via pytest
@@ -66,13 +72,15 @@ platformdirs==3.11.0
     # via virtualenv
 pluggy==1.5.0
     # via pytest
+pyarrow==14.0.1
+    # via openlayer
 pydantic==2.9.2
     # via openlayer
 pydantic-core==2.23.4
     # via pydantic
 pygments==2.18.0
     # via rich
-pyright==1.1.380
+pyright==1.1.389
 pytest==8.3.3
     # via pytest-asyncio
 pytest-asyncio==0.24.0
@@ -82,6 +90,12 @@ python-dateutil==2.8.2
 pytz==2023.3.post1
     # via dirty-equals
     # via pandas
+pyyaml==6.0.2
+    # via openlayer
+requests==2.32.3
+    # via requests-toolbelt
+requests-toolbelt==1.0.0
+    # via openlayer
 respx==0.20.2
 rich==13.7.1
 ruff==0.6.9
@@ -97,14 +111,19 @@ time-machine==2.9.0
 tomli==2.0.2
     # via mypy
     # via pytest
+tqdm==4.67.1
+    # via openlayer
 typing-extensions==4.12.2
     # via anyio
     # via mypy
     # via openlayer
     # via pydantic
     # via pydantic-core
+    # via pyright
 tzdata==2024.1
     # via pandas
+urllib3==2.2.3
+    # via requests
 virtualenv==20.24.5
     # via nox
 zipp==3.17.0
