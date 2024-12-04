@@ -1,5 +1,4 @@
-"""Openlayer lib.
-"""
+"""Openlayer lib."""
 
 __all__ = [
     "trace",
