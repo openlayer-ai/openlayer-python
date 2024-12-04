@@ -105,9 +105,7 @@ class Uploader:
                 fields = presigned_url_response.fields
                 fields["file"] = (object_name, f, "application/x-tar")
                 e = MultipartEncoder(fields=fields)
-                m = MultipartEncoderMonitor(
-                    e, lambda monitor: t.update(min(t.total, monitor.bytes_read) - t.n)
-                )
+                m = MultipartEncoderMonitor(e, lambda monitor: t.update(min(t.total, monitor.bytes_read) - t.n))
                 headers = {"Content-Type": m.content_type}
                 res = requests.post(
                     presigned_url_response.url,
@@ -118,9 +116,7 @@ class Uploader:
                 )
         return res
 
-    def upload_blob_gcs(
-        self, file_path: str, presigned_url_response: PresignedURLCreateResponse
-    ):
+    def upload_blob_gcs(self, file_path: str, presigned_url_response: PresignedURLCreateResponse):
         """Generic method to upload data to Google Cloud Storage and create the
         appropriate resource in the backend.
         """
@@ -141,9 +137,7 @@ class Uploader:
                 )
         return res
 
-    def upload_blob_azure(
-        self, file_path: str, presigned_url_response: PresignedURLCreateResponse
-    ):
+    def upload_blob_azure(self, file_path: str, presigned_url_response: PresignedURLCreateResponse):
         """Generic method to upload data to Azure Blob Storage and create the
         appropriate resource in the backend.
         """
@@ -186,9 +180,7 @@ class Uploader:
             with open(file_path, "rb") as f:
                 fields = {"file": (object_name, f, "application/x-tar")}
                 e = MultipartEncoder(fields=fields)
-                m = MultipartEncoderMonitor(
-                    e, lambda monitor: t.update(min(t.total, monitor.bytes_read) - t.n)
-                )
+                m = MultipartEncoderMonitor(e, lambda monitor: t.update(min(t.total, monitor.bytes_read) - t.n))
                 headers = {"Content-Type": m.content_type}
                 res = requests.post(
                     presigned_url_response.url,
