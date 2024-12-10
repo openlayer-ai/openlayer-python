@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.40 (2024-12-10)
+
+Full Changelog: [v0.2.0-alpha.39...v0.2.0-alpha.40](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.39...v0.2.0-alpha.40)
+
+### Bug Fixes
+
+* **client:** compat with new httpx 0.28.0 release ([#394](https://github.com/openlayer-ai/openlayer-python/issues/394)) ([c05fb39](https://github.com/openlayer-ai/openlayer-python/commit/c05fb39d3ce2f54b01f1f4536f612f73f5511b69))
+
+
+### Chores
+
+* **internal:** codegen related update ([#396](https://github.com/openlayer-ai/openlayer-python/issues/396)) ([6d0d530](https://github.com/openlayer-ai/openlayer-python/commit/6d0d5309210d82076f31df5c13feefaa71ee7e44))
+* **internal:** codegen related update ([#399](https://github.com/openlayer-ai/openlayer-python/issues/399)) ([5927ddc](https://github.com/openlayer-ai/openlayer-python/commit/5927ddc54cfbf56ef5b1c85f23ace9ae4aa54505))
+* **internal:** exclude mypy from running on tests ([#392](https://github.com/openlayer-ai/openlayer-python/issues/392)) ([2ce3de0](https://github.com/openlayer-ai/openlayer-python/commit/2ce3de0cdd36063bffd68ef34cb4062e675c9fe6))
+* make the `Omit` type public ([#398](https://github.com/openlayer-ai/openlayer-python/issues/398)) ([f8aaafa](https://github.com/openlayer-ai/openlayer-python/commit/f8aaafa2ba06516ef986407be382caf8ec141ed8))
+
 ## 0.2.0-alpha.39 (2024-11-26)
 
 Full Changelog: [v0.2.0-alpha.38...v0.2.0-alpha.39](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.38...v0.2.0-alpha.39)
