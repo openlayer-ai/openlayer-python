@@ -42,9 +42,9 @@ pandas==2.2.2
     # via openlayer
 pyarrow==14.0.1
     # via openlayer
-pydantic==2.9.2
+pydantic==2.10.3
     # via openlayer
-pydantic-core==2.23.4
+pydantic-core==2.27.1
     # via pydantic
 python-dateutil==2.9.0.post0
     # via pandas
