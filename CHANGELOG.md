@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.41 (2024-12-13)
+
+Full Changelog: [v0.2.0-alpha.40...v0.2.0-alpha.41](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.40...v0.2.0-alpha.41)
+
+### Chores
+
+* **internal:** add support for TypeAliasType ([#404](https://github.com/openlayer-ai/openlayer-python/issues/404)) ([42da61a](https://github.com/openlayer-ai/openlayer-python/commit/42da61a02c4db5b87b326b1a2b3a1e0df3757d59))
+* **internal:** bump pyright ([#402](https://github.com/openlayer-ai/openlayer-python/issues/402)) ([a2fe31a](https://github.com/openlayer-ai/openlayer-python/commit/a2fe31a2aff4d7cd18014d4f135fa137a8649e00))
+
 ## 0.2.0-alpha.40 (2024-12-10)
 
 Full Changelog: [v0.2.0-alpha.39...v0.2.0-alpha.40](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.39...v0.2.0-alpha.40)
