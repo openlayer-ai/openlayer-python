@@ -8,7 +8,7 @@ from typing_extensions import Self, override
 
 import httpx
 
-from . import _exceptions
+from . import resources, _exceptions
 from ._qs import Querystring
 from ._types import (
     NOT_GIVEN,
@@ -32,16 +32,13 @@ from ._base_client import (
     SyncAPIClient,
     AsyncAPIClient,
 )
-from .resources.commits import commits
-from .resources.storage import storage
-from .resources.projects import projects
-from .resources.inference_pipelines import inference_pipelines
 
 __all__ = [
     "Timeout",
     "Transport",
     "ProxiesTypes",
     "RequestOptions",
+    "resources",
     "Openlayer",
     "AsyncOpenlayer",
     "Client",
@@ -50,10 +47,10 @@ __all__ = [
 
 
 class Openlayer(SyncAPIClient):
-    projects: projects.ProjectsResource
-    commits: commits.CommitsResource
-    inference_pipelines: inference_pipelines.InferencePipelinesResource
-    storage: storage.StorageResource
+    projects: resources.ProjectsResource
+    commits: resources.CommitsResource
+    inference_pipelines: resources.InferencePipelinesResource
+    storage: resources.StorageResource
     with_raw_response: OpenlayerWithRawResponse
     with_streaming_response: OpenlayerWithStreamedResponse
 
@@ -107,10 +104,10 @@ class Openlayer(SyncAPIClient):
             _strict_response_validation=_strict_response_validation,
         )
 
-        self.projects = projects.ProjectsResource(self)
-        self.commits = commits.CommitsResource(self)
-        self.inference_pipelines = inference_pipelines.InferencePipelinesResource(self)
-        self.storage = storage.StorageResource(self)
+        self.projects = resources.ProjectsResource(self)
+        self.commits = resources.CommitsResource(self)
+        self.inference_pipelines = resources.InferencePipelinesResource(self)
+        self.storage = resources.StorageResource(self)
         self.with_raw_response = OpenlayerWithRawResponse(self)
         self.with_streaming_response = OpenlayerWithStreamedResponse(self)
 
@@ -233,10 +230,10 @@ class Openlayer(SyncAPIClient):
 
 
 class AsyncOpenlayer(AsyncAPIClient):
-    projects: projects.AsyncProjectsResource
-    commits: commits.AsyncCommitsResource
-    inference_pipelines: inference_pipelines.AsyncInferencePipelinesResource
-    storage: storage.AsyncStorageResource
+    projects: resources.AsyncProjectsResource
+    commits: resources.AsyncCommitsResource
+    inference_pipelines: resources.AsyncInferencePipelinesResource
+    storage: resources.AsyncStorageResource
     with_raw_response: AsyncOpenlayerWithRawResponse
     with_streaming_response: AsyncOpenlayerWithStreamedResponse
 
@@ -290,10 +287,10 @@ class AsyncOpenlayer(AsyncAPIClient):
             _strict_response_validation=_strict_response_validation,
         )
 
-        self.projects = projects.AsyncProjectsResource(self)
-        self.commits = commits.AsyncCommitsResource(self)
-        self.inference_pipelines = inference_pipelines.AsyncInferencePipelinesResource(self)
-        self.storage = storage.AsyncStorageResource(self)
+        self.projects = resources.AsyncProjectsResource(self)
+        self.commits = resources.AsyncCommitsResource(self)
+        self.inference_pipelines = resources.AsyncInferencePipelinesResource(self)
+        self.storage = resources.AsyncStorageResource(self)
         self.with_raw_response = AsyncOpenlayerWithRawResponse(self)
         self.with_streaming_response = AsyncOpenlayerWithStreamedResponse(self)
 
@@ -417,42 +414,36 @@ class AsyncOpenlayer(AsyncAPIClient):
 
 class OpenlayerWithRawResponse:
     def __init__(self, client: Openlayer) -> None:
-        self.projects = projects.ProjectsResourceWithRawResponse(client.projects)
-        self.commits = commits.CommitsResourceWithRawResponse(client.commits)
-        self.inference_pipelines = inference_pipelines.InferencePipelinesResourceWithRawResponse(
-            client.inference_pipelines
-        )
-        self.storage = storage.StorageResourceWithRawResponse(client.storage)
+        self.projects = resources.ProjectsResourceWithRawResponse(client.projects)
+        self.commits = resources.CommitsResourceWithRawResponse(client.commits)
+        self.inference_pipelines = resources.InferencePipelinesResourceWithRawResponse(client.inference_pipelines)
+        self.storage = resources.StorageResourceWithRawResponse(client.storage)
 
 
 class AsyncOpenlayerWithRawResponse:
     def __init__(self, client: AsyncOpenlayer) -> None:
-        self.projects = projects.AsyncProjectsResourceWithRawResponse(client.projects)
-        self.commits = commits.AsyncCommitsResourceWithRawResponse(client.commits)
-        self.inference_pipelines = inference_pipelines.AsyncInferencePipelinesResourceWithRawResponse(
-            client.inference_pipelines
-        )
-        self.storage = storage.AsyncStorageResourceWithRawResponse(client.storage)
+        self.projects = resources.AsyncProjectsResourceWithRawResponse(client.projects)
+        self.commits = resources.AsyncCommitsResourceWithRawResponse(client.commits)
+        self.inference_pipelines = resources.AsyncInferencePipelinesResourceWithRawResponse(client.inference_pipelines)
+        self.storage = resources.AsyncStorageResourceWithRawResponse(client.storage)
 
 
 class OpenlayerWithStreamedResponse:
     def __init__(self, client: Openlayer) -> None:
-        self.projects = projects.ProjectsResourceWithStreamingResponse(client.projects)
-        self.commits = commits.CommitsResourceWithStreamingResponse(client.commits)
-        self.inference_pipelines = inference_pipelines.InferencePipelinesResourceWithStreamingResponse(
-            client.inference_pipelines
-        )
-        self.storage = storage.StorageResourceWithStreamingResponse(client.storage)
+        self.projects = resources.ProjectsResourceWithStreamingResponse(client.projects)
+        self.commits = resources.CommitsResourceWithStreamingResponse(client.commits)
+        self.inference_pipelines = resources.InferencePipelinesResourceWithStreamingResponse(client.inference_pipelines)
+        self.storage = resources.StorageResourceWithStreamingResponse(client.storage)
 
 
 class AsyncOpenlayerWithStreamedResponse:
     def __init__(self, client: AsyncOpenlayer) -> None:
-        self.projects = projects.AsyncProjectsResourceWithStreamingResponse(client.projects)
-        self.commits = commits.AsyncCommitsResourceWithStreamingResponse(client.commits)
-        self.inference_pipelines = inference_pipelines.AsyncInferencePipelinesResourceWithStreamingResponse(
+        self.projects = resources.AsyncProjectsResourceWithStreamingResponse(client.projects)
+        self.commits = resources.AsyncCommitsResourceWithStreamingResponse(client.commits)
+        self.inference_pipelines = resources.AsyncInferencePipelinesResourceWithStreamingResponse(
             client.inference_pipelines
         )
-        self.storage = storage.AsyncStorageResourceWithStreamingResponse(client.storage)
+        self.storage = resources.AsyncStorageResourceWithStreamingResponse(client.storage)
 
 
 Client = Openlayer
