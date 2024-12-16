@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Optional
-from typing_extensions import Required, TypedDict
+from typing import List, Optional
+from typing_extensions import Literal, Required, Annotated, TypedDict
 
-__all__ = ["InferencePipelineCreateParams"]
+from ..._utils import PropertyInfo
+
+__all__ = ["InferencePipelineCreateParams", "Project", "Workspace"]
 
 
 class InferencePipelineCreateParams(TypedDict, total=False):
@@ -14,3 +16,35 @@ class InferencePipelineCreateParams(TypedDict, total=False):
 
     name: Required[str]
     """The inference pipeline name."""
+
+    project: Optional[Project]
+
+    workspace: Optional[Workspace]
+
+
+class Project(TypedDict, total=False):
+    name: Required[str]
+    """The project name."""
+
+    task_type: Required[
+        Annotated[
+            Literal["llm-base", "tabular-classification", "tabular-regression", "text-classification"],
+            PropertyInfo(alias="taskType"),
+        ]
+    ]
+    """The task type of the project."""
+
+    description: Optional[str]
+    """The project description."""
+
+
+class Workspace(TypedDict, total=False):
+    name: Required[str]
+
+    slug: Required[str]
+
+    invite_code: Annotated[str, PropertyInfo(alias="inviteCode")]
+
+    saml_only_access: Annotated[bool, PropertyInfo(alias="samlOnlyAccess")]
+
+    wildcard_domains: Annotated[List[str], PropertyInfo(alias="wildcardDomains")]
