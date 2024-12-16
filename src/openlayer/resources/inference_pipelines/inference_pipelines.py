@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import List, Optional
+from typing_extensions import Literal
 
 import httpx
 
@@ -22,7 +23,7 @@ from .rows import (
     RowsResourceWithStreamingResponse,
     AsyncRowsResourceWithStreamingResponse,
 )
-from ...types import inference_pipeline_update_params
+from ...types import inference_pipeline_update_params, inference_pipeline_retrieve_params
 from ..._types import NOT_GIVEN, Body, Query, Headers, NoneType, NotGiven
 from ..._utils import (
     maybe_transform,
@@ -87,6 +88,7 @@ class InferencePipelinesResource(SyncAPIResource):
         self,
         inference_pipeline_id: str,
         *,
+        expand: List[Literal["project", "workspace"]] | NotGiven = NOT_GIVEN,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -98,6 +100,8 @@ class InferencePipelinesResource(SyncAPIResource):
         Retrieve inference pipeline.
 
         Args:
+          expand: Expand specific nested objects.
+
           extra_headers: Send extra headers
 
           extra_query: Add additional query parameters to the request
@@ -113,7 +117,13 @@ class InferencePipelinesResource(SyncAPIResource):
         return self._get(
             f"/inference-pipelines/{inference_pipeline_id}",
             options=make_request_options(
-                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+                extra_headers=extra_headers,
+                extra_query=extra_query,
+                extra_body=extra_body,
+                timeout=timeout,
+                query=maybe_transform(
+                    {"expand": expand}, inference_pipeline_retrieve_params.InferencePipelineRetrieveParams
+                ),
             ),
             cast_to=InferencePipelineRetrieveResponse,
         )
@@ -244,6 +254,7 @@ class AsyncInferencePipelinesResource(AsyncAPIResource):
         self,
         inference_pipeline_id: str,
         *,
+        expand: List[Literal["project", "workspace"]] | NotGiven = NOT_GIVEN,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -255,6 +266,8 @@ class AsyncInferencePipelinesResource(AsyncAPIResource):
         Retrieve inference pipeline.
 
         Args:
+          expand: Expand specific nested objects.
+
           extra_headers: Send extra headers
 
           extra_query: Add additional query parameters to the request
@@ -270,7 +283,13 @@ class AsyncInferencePipelinesResource(AsyncAPIResource):
         return await self._get(
             f"/inference-pipelines/{inference_pipeline_id}",
             options=make_request_options(
-                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+                extra_headers=extra_headers,
+                extra_query=extra_query,
+                extra_body=extra_body,
+                timeout=timeout,
+                query=await async_maybe_transform(
+                    {"expand": expand}, inference_pipeline_retrieve_params.InferencePipelineRetrieveParams
+                ),
             ),
             cast_to=InferencePipelineRetrieveResponse,
         )
