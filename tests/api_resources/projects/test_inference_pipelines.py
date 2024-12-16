@@ -30,6 +30,27 @@ class TestInferencePipelines:
         assert_matches_type(InferencePipelineCreateResponse, inference_pipeline, path=["response"])
 
     @parametrize
+    def test_method_create_with_all_params(self, client: Openlayer) -> None:
+        inference_pipeline = client.projects.inference_pipelines.create(
+            project_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            description="This pipeline is used for production.",
+            name="production",
+            project={
+                "name": "My Project",
+                "task_type": "llm-base",
+                "description": "My project description.",
+            },
+            workspace={
+                "name": "Openlayer",
+                "slug": "openlayer",
+                "invite_code": "inviteCode",
+                "saml_only_access": True,
+                "wildcard_domains": ["string"],
+            },
+        )
+        assert_matches_type(InferencePipelineCreateResponse, inference_pipeline, path=["response"])
+
+    @parametrize
     def test_raw_response_create(self, client: Openlayer) -> None:
         response = client.projects.inference_pipelines.with_raw_response.create(
             project_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
@@ -124,6 +145,27 @@ class TestAsyncInferencePipelines:
             project_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
             description="This pipeline is used for production.",
             name="production",
+        )
+        assert_matches_type(InferencePipelineCreateResponse, inference_pipeline, path=["response"])
+
+    @parametrize
+    async def test_method_create_with_all_params(self, async_client: AsyncOpenlayer) -> None:
+        inference_pipeline = await async_client.projects.inference_pipelines.create(
+            project_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            description="This pipeline is used for production.",
+            name="production",
+            project={
+                "name": "My Project",
+                "task_type": "llm-base",
+                "description": "My project description.",
+            },
+            workspace={
+                "name": "Openlayer",
+                "slug": "openlayer",
+                "invite_code": "inviteCode",
+                "saml_only_access": True,
+                "wildcard_domains": ["string"],
+            },
         )
         assert_matches_type(InferencePipelineCreateResponse, inference_pipeline, path=["response"])
 
