@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.42 (2024-12-18)
+
+Full Changelog: [v0.2.0-alpha.41...v0.2.0-alpha.42](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.41...v0.2.0-alpha.42)
+
+### Features
+
+* **api:** api update ([#412](https://github.com/openlayer-ai/openlayer-python/issues/412)) ([f6ca1fc](https://github.com/openlayer-ai/openlayer-python/commit/f6ca1fcbc7ed85d6e3bdc635b8f7a4796c943e2a))
+
+
+### Chores
+
+* **internal:** codegen related update ([#406](https://github.com/openlayer-ai/openlayer-python/issues/406)) ([3360b9e](https://github.com/openlayer-ai/openlayer-python/commit/3360b9e6f6037c7bc9ce877f7ae430ca249e9b95))
+* **internal:** codegen related update ([#408](https://github.com/openlayer-ai/openlayer-python/issues/408)) ([9bab516](https://github.com/openlayer-ai/openlayer-python/commit/9bab5168085e325ac7b8b4f07643f39ef564d78d))
+* **internal:** codegen related update ([#409](https://github.com/openlayer-ai/openlayer-python/issues/409)) ([f59c50e](https://github.com/openlayer-ai/openlayer-python/commit/f59c50ebd7b298536f0a6a92437630551074e172))
+* **internal:** codegen related update ([#410](https://github.com/openlayer-ai/openlayer-python/issues/410)) ([7e4304a](https://github.com/openlayer-ai/openlayer-python/commit/7e4304a87d8330fc15b099a078412f0dbab78842))
+* **internal:** fix some typos ([#414](https://github.com/openlayer-ai/openlayer-python/issues/414)) ([1009b11](https://github.com/openlayer-ai/openlayer-python/commit/1009b11b627a4236137c76543e2a09cc4fc78557))
+* **internal:** updated imports ([#411](https://github.com/openlayer-ai/openlayer-python/issues/411)) ([90c6218](https://github.com/openlayer-ai/openlayer-python/commit/90c6218e0a9929f8672da20f1871f20aab9bb500))
+
+
+### Documentation
+
+* **readme:** example snippet for client context manager ([#413](https://github.com/openlayer-ai/openlayer-python/issues/413)) ([4ef9f75](https://github.com/openlayer-ai/openlayer-python/commit/4ef9f75dfea53f198af9768414b51027ec9bd553))
+
 ## 0.2.0-alpha.41 (2024-12-13)
 
 Full Changelog: [v0.2.0-alpha.40...v0.2.0-alpha.41](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.40...v0.2.0-alpha.41)
