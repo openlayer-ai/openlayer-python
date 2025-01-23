@@ -40,11 +40,15 @@ class Project(TypedDict, total=False):
 
 class Workspace(TypedDict, total=False):
     name: Required[str]
+    """The workspace name."""
 
     slug: Required[str]
+    """The workspace slug."""
 
     invite_code: Annotated[str, PropertyInfo(alias="inviteCode")]
+    """The workspace invite code."""
 
     saml_only_access: Annotated[bool, PropertyInfo(alias="samlOnlyAccess")]
+    """Whether the workspace only allows SAML authentication."""
 
     wildcard_domains: Annotated[List[str], PropertyInfo(alias="wildcardDomains")]
