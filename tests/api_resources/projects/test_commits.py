@@ -21,15 +21,7 @@ class TestCommits:
     def test_method_create(self, client: Openlayer) -> None:
         commit = client.projects.commits.create(
             project_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
-            commit={
-                "author_id": "589ece63-49a2-41b4-98e1-10547761d4b0",
-                "file_size": 1024,
-                "message": "Updated the prompt.",
-                "ml_model_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                "storage_uri": "s3://...",
-                "training_dataset_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                "validation_dataset_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-            },
+            commit={"message": "Updated the prompt."},
             storage_uri="s3://...",
         )
         assert_matches_type(CommitCreateResponse, commit, path=["response"])
@@ -38,19 +30,7 @@ class TestCommits:
     def test_method_create_with_all_params(self, client: Openlayer) -> None:
         commit = client.projects.commits.create(
             project_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
-            commit={
-                "author_id": "589ece63-49a2-41b4-98e1-10547761d4b0",
-                "file_size": 1024,
-                "message": "Updated the prompt.",
-                "ml_model_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                "storage_uri": "s3://...",
-                "training_dataset_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                "validation_dataset_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                "date_created": "2024-03-22T11:31:01.185Z",
-                "git_commit_ref": "main",
-                "git_commit_sha": 0,
-                "git_commit_url": "gitCommitUrl",
-            },
+            commit={"message": "Updated the prompt."},
             storage_uri="s3://...",
             archived=False,
             deployment_status="Deployed",
@@ -61,15 +41,7 @@ class TestCommits:
     def test_raw_response_create(self, client: Openlayer) -> None:
         response = client.projects.commits.with_raw_response.create(
             project_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
-            commit={
-                "author_id": "589ece63-49a2-41b4-98e1-10547761d4b0",
-                "file_size": 1024,
-                "message": "Updated the prompt.",
-                "ml_model_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                "storage_uri": "s3://...",
-                "training_dataset_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                "validation_dataset_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-            },
+            commit={"message": "Updated the prompt."},
             storage_uri="s3://...",
         )
 
@@ -82,15 +54,7 @@ class TestCommits:
     def test_streaming_response_create(self, client: Openlayer) -> None:
         with client.projects.commits.with_streaming_response.create(
             project_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
-            commit={
-                "author_id": "589ece63-49a2-41b4-98e1-10547761d4b0",
-                "file_size": 1024,
-                "message": "Updated the prompt.",
-                "ml_model_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                "storage_uri": "s3://...",
-                "training_dataset_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                "validation_dataset_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-            },
+            commit={"message": "Updated the prompt."},
             storage_uri="s3://...",
         ) as response:
             assert not response.is_closed
@@ -106,15 +70,7 @@ class TestCommits:
         with pytest.raises(ValueError, match=r"Expected a non-empty value for `project_id` but received ''"):
             client.projects.commits.with_raw_response.create(
                 project_id="",
-                commit={
-                    "author_id": "589ece63-49a2-41b4-98e1-10547761d4b0",
-                    "file_size": 1024,
-                    "message": "Updated the prompt.",
-                    "ml_model_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                    "storage_uri": "s3://...",
-                    "training_dataset_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                    "validation_dataset_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                },
+                commit={"message": "Updated the prompt."},
                 storage_uri="s3://...",
             )
 
@@ -173,15 +129,7 @@ class TestAsyncCommits:
     async def test_method_create(self, async_client: AsyncOpenlayer) -> None:
         commit = await async_client.projects.commits.create(
             project_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
-            commit={
-                "author_id": "589ece63-49a2-41b4-98e1-10547761d4b0",
-                "file_size": 1024,
-                "message": "Updated the prompt.",
-                "ml_model_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                "storage_uri": "s3://...",
-                "training_dataset_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                "validation_dataset_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-            },
+            commit={"message": "Updated the prompt."},
             storage_uri="s3://...",
         )
         assert_matches_type(CommitCreateResponse, commit, path=["response"])
@@ -190,19 +138,7 @@ class TestAsyncCommits:
     async def test_method_create_with_all_params(self, async_client: AsyncOpenlayer) -> None:
         commit = await async_client.projects.commits.create(
             project_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
-            commit={
-                "author_id": "589ece63-49a2-41b4-98e1-10547761d4b0",
-                "file_size": 1024,
-                "message": "Updated the prompt.",
-                "ml_model_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                "storage_uri": "s3://...",
-                "training_dataset_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                "validation_dataset_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                "date_created": "2024-03-22T11:31:01.185Z",
-                "git_commit_ref": "main",
-                "git_commit_sha": 0,
-                "git_commit_url": "gitCommitUrl",
-            },
+            commit={"message": "Updated the prompt."},
             storage_uri="s3://...",
             archived=False,
             deployment_status="Deployed",
@@ -213,15 +149,7 @@ class TestAsyncCommits:
     async def test_raw_response_create(self, async_client: AsyncOpenlayer) -> None:
         response = await async_client.projects.commits.with_raw_response.create(
             project_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
-            commit={
-                "author_id": "589ece63-49a2-41b4-98e1-10547761d4b0",
-                "file_size": 1024,
-                "message": "Updated the prompt.",
-                "ml_model_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                "storage_uri": "s3://...",
-                "training_dataset_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                "validation_dataset_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-            },
+            commit={"message": "Updated the prompt."},
             storage_uri="s3://...",
         )
 
@@ -234,15 +162,7 @@ class TestAsyncCommits:
     async def test_streaming_response_create(self, async_client: AsyncOpenlayer) -> None:
         async with async_client.projects.commits.with_streaming_response.create(
             project_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
-            commit={
-                "author_id": "589ece63-49a2-41b4-98e1-10547761d4b0",
-                "file_size": 1024,
-                "message": "Updated the prompt.",
-                "ml_model_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                "storage_uri": "s3://...",
-                "training_dataset_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                "validation_dataset_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-            },
+            commit={"message": "Updated the prompt."},
             storage_uri="s3://...",
         ) as response:
             assert not response.is_closed
@@ -258,15 +178,7 @@ class TestAsyncCommits:
         with pytest.raises(ValueError, match=r"Expected a non-empty value for `project_id` but received ''"):
             await async_client.projects.commits.with_raw_response.create(
                 project_id="",
-                commit={
-                    "author_id": "589ece63-49a2-41b4-98e1-10547761d4b0",
-                    "file_size": 1024,
-                    "message": "Updated the prompt.",
-                    "ml_model_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                    "storage_uri": "s3://...",
-                    "training_dataset_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                    "validation_dataset_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                },
+                commit={"message": "Updated the prompt."},
                 storage_uri="s3://...",
             )
 
