@@ -35,6 +35,7 @@ class TestRows:
             config={
                 "ground_truth_column_name": "ground_truth",
                 "human_feedback_column_name": "human_feedback",
+                "inference_id_column_name": "id",
                 "latency_column_name": "latency",
                 "timestamp_column_name": "timestamp",
             },
@@ -100,6 +101,7 @@ class TestAsyncRows:
             config={
                 "ground_truth_column_name": "ground_truth",
                 "human_feedback_column_name": "human_feedback",
+                "inference_id_column_name": "id",
                 "latency_column_name": "latency",
                 "timestamp_column_name": "timestamp",
             },
