@@ -43,6 +43,7 @@ class TestInferencePipelines:
             workspace={
                 "name": "Openlayer",
                 "slug": "openlayer",
+                "invite_code": "inviteCode",
                 "saml_only_access": True,
                 "wildcard_domains": ["string"],
             },
@@ -161,6 +162,7 @@ class TestAsyncInferencePipelines:
             workspace={
                 "name": "Openlayer",
                 "slug": "openlayer",
+                "invite_code": "inviteCode",
                 "saml_only_access": True,
                 "wildcard_domains": ["string"],
             },
