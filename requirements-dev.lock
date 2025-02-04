@@ -98,7 +98,7 @@ requests-toolbelt==1.0.0
     # via openlayer
 respx==0.22.0
 rich==13.7.1
-ruff==0.6.9
+ruff==0.9.4
 setuptools==68.2.2
     # via nodeenv
 six==1.16.0
