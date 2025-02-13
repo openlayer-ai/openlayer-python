@@ -23,6 +23,7 @@ from pydantic import ValidationError
 
 from openlayer import Openlayer, AsyncOpenlayer, APIResponseValidationError
 from openlayer._types import Omit
+from openlayer._utils import maybe_transform
 from openlayer._models import BaseModel, FinalRequestOptions
 from openlayer._constants import RAW_RESPONSE_HEADER
 from openlayer._exceptions import APIStatusError, APITimeoutError, APIResponseValidationError
@@ -32,6 +33,7 @@ from openlayer._base_client import (
     BaseClient,
     make_request_options,
 )
+from openlayer.types.inference_pipelines.data_stream_params import DataStreamParams
 
 from .utils import update_env
 
@@ -730,23 +732,26 @@ class TestOpenlayer:
                 "/inference-pipelines/182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e/data-stream",
                 body=cast(
                     object,
-                    dict(
-                        config={
-                            "input_variable_names": ["user_query"],
-                            "output_column_name": "output",
-                            "num_of_token_column_name": "tokens",
-                            "cost_column_name": "cost",
-                            "timestamp_column_name": "timestamp",
-                        },
-                        rows=[
-                            {
-                                "user_query": "what is the meaning of life?",
-                                "output": "42",
-                                "tokens": 7,
-                                "cost": 0.02,
-                                "timestamp": 1610000000,
-                            }
-                        ],
+                    maybe_transform(
+                        dict(
+                            config={
+                                "input_variable_names": ["user_query"],
+                                "output_column_name": "output",
+                                "num_of_token_column_name": "tokens",
+                                "cost_column_name": "cost",
+                                "timestamp_column_name": "timestamp",
+                            },
+                            rows=[
+                                {
+                                    "user_query": "what is the meaning of life?",
+                                    "output": "42",
+                                    "tokens": 7,
+                                    "cost": 0.02,
+                                    "timestamp": 1610000000,
+                                }
+                            ],
+                        ),
+                        DataStreamParams,
                     ),
                 ),
                 cast_to=httpx.Response,
@@ -767,23 +772,26 @@ class TestOpenlayer:
                 "/inference-pipelines/182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e/data-stream",
                 body=cast(
                     object,
-                    dict(
-                        config={
-                            "input_variable_names": ["user_query"],
-                            "output_column_name": "output",
-                            "num_of_token_column_name": "tokens",
-                            "cost_column_name": "cost",
-                            "timestamp_column_name": "timestamp",
-                        },
-                        rows=[
-                            {
-                                "user_query": "what is the meaning of life?",
-                                "output": "42",
-                                "tokens": 7,
-                                "cost": 0.02,
-                                "timestamp": 1610000000,
-                            }
-                        ],
+                    maybe_transform(
+                        dict(
+                            config={
+                                "input_variable_names": ["user_query"],
+                                "output_column_name": "output",
+                                "num_of_token_column_name": "tokens",
+                                "cost_column_name": "cost",
+                                "timestamp_column_name": "timestamp",
+                            },
+                            rows=[
+                                {
+                                    "user_query": "what is the meaning of life?",
+                                    "output": "42",
+                                    "tokens": 7,
+                                    "cost": 0.02,
+                                    "timestamp": 1610000000,
+                                }
+                            ],
+                        ),
+                        DataStreamParams,
                     ),
                 ),
                 cast_to=httpx.Response,
@@ -1603,23 +1611,26 @@ class TestAsyncOpenlayer:
                 "/inference-pipelines/182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e/data-stream",
                 body=cast(
                     object,
-                    dict(
-                        config={
-                            "input_variable_names": ["user_query"],
-                            "output_column_name": "output",
-                            "num_of_token_column_name": "tokens",
-                            "cost_column_name": "cost",
-                            "timestamp_column_name": "timestamp",
-                        },
-                        rows=[
-                            {
-                                "user_query": "what is the meaning of life?",
-                                "output": "42",
-                                "tokens": 7,
-                                "cost": 0.02,
-                                "timestamp": 1610000000,
-                            }
-                        ],
+                    maybe_transform(
+                        dict(
+                            config={
+                                "input_variable_names": ["user_query"],
+                                "output_column_name": "output",
+                                "num_of_token_column_name": "tokens",
+                                "cost_column_name": "cost",
+                                "timestamp_column_name": "timestamp",
+                            },
+                            rows=[
+                                {
+                                    "user_query": "what is the meaning of life?",
+                                    "output": "42",
+                                    "tokens": 7,
+                                    "cost": 0.02,
+                                    "timestamp": 1610000000,
+                                }
+                            ],
+                        ),
+                        DataStreamParams,
                     ),
                 ),
                 cast_to=httpx.Response,
@@ -1640,23 +1651,26 @@ class TestAsyncOpenlayer:
                 "/inference-pipelines/182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e/data-stream",
                 body=cast(
                     object,
-                    dict(
-                        config={
-                            "input_variable_names": ["user_query"],
-                            "output_column_name": "output",
-                            "num_of_token_column_name": "tokens",
-                            "cost_column_name": "cost",
-                            "timestamp_column_name": "timestamp",
-                        },
-                        rows=[
-                            {
-                                "user_query": "what is the meaning of life?",
-                                "output": "42",
-                                "tokens": 7,
-                                "cost": 0.02,
-                                "timestamp": 1610000000,
-                            }
-                        ],
+                    maybe_transform(
+                        dict(
+                            config={
+                                "input_variable_names": ["user_query"],
+                                "output_column_name": "output",
+                                "num_of_token_column_name": "tokens",
+                                "cost_column_name": "cost",
+                                "timestamp_column_name": "timestamp",
+                            },
+                            rows=[
+                                {
+                                    "user_query": "what is the meaning of life?",
+                                    "output": "42",
+                                    "tokens": 7,
+                                    "cost": 0.02,
+                                    "timestamp": 1610000000,
+                                }
+                            ],
+                        ),
+                        DataStreamParams,
                     ),
                 ),
                 cast_to=httpx.Response,
