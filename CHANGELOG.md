@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.43 (2025-02-24)
+
+Full Changelog: [v0.2.0-alpha.42...v0.2.0-alpha.43](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.42...v0.2.0-alpha.43)
+
+### Features
+
+* chore: update download URL for context file ([6835d38](https://github.com/openlayer-ai/openlayer-python/commit/6835d389fd250546bfa13bb054843d7d6c769ebd))
+
 ## 0.2.0-alpha.42 (2024-12-18)
 
 Full Changelog: [v0.2.0-alpha.41...v0.2.0-alpha.42](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.41...v0.2.0-alpha.42)
