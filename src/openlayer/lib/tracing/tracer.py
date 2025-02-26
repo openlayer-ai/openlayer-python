@@ -131,7 +131,12 @@ def add_chat_completion_step_to_trace(**kwargs) -> None:
 
 
 # ----------------------------- Tracing decorator ---------------------------- #
-def trace(*step_args, inference_pipeline_id: Optional[str] = None, context_kwarg: Optional[str] = None, **step_kwargs):
+def trace(
+    *step_args,
+    inference_pipeline_id: Optional[str] = None,
+    context_kwarg: Optional[str] = None,
+    **step_kwargs,
+):
     """Decorator to trace a function.
 
     Examples
@@ -175,7 +180,9 @@ def trace(*step_args, inference_pipeline_id: Optional[str] = None, context_kwarg
         def wrapper(*func_args, **func_kwargs):
             if step_kwargs.get("name") is None:
                 step_kwargs["name"] = func.__name__
-            with create_step(*step_args, inference_pipeline_id=inference_pipeline_id, **step_kwargs) as step:
+            with create_step(
+                *step_args, inference_pipeline_id=inference_pipeline_id, **step_kwargs
+            ) as step:
                 output = exception = None
                 try:
                     output = func(*func_args, **func_kwargs)
@@ -196,7 +203,10 @@ def trace(*step_args, inference_pipeline_id: Optional[str] = None, context_kwarg
                     if context_kwarg in inputs:
                         log_context(inputs.get(context_kwarg))
                     else:
-                        logger.warning("Context kwarg `%s` not found in inputs of the current function.", context_kwarg)
+                        logger.warning(
+                            "Context kwarg `%s` not found in inputs of the current function.",
+                            context_kwarg,
+                        )
 
                 step.log(
                     inputs=inputs,
@@ -215,7 +225,10 @@ def trace(*step_args, inference_pipeline_id: Optional[str] = None, context_kwarg
 
 
 def trace_async(
-    *step_args, inference_pipeline_id: Optional[str] = None, context_kwarg: Optional[str] = None, **step_kwargs
+    *step_args,
+    inference_pipeline_id: Optional[str] = None,
+    context_kwarg: Optional[str] = None,
+    **step_kwargs,
 ):
     """Decorator to trace a function.
 
@@ -260,7 +273,9 @@ def trace_async(
         async def wrapper(*func_args, **func_kwargs):
             if step_kwargs.get("name") is None:
                 step_kwargs["name"] = func.__name__
-            with create_step(*step_args, inference_pipeline_id=inference_pipeline_id, **step_kwargs) as step:
+            with create_step(
+                *step_args, inference_pipeline_id=inference_pipeline_id, **step_kwargs
+            ) as step:
                 output = exception = None
                 try:
                     output = await func(*func_args, **func_kwargs)
@@ -281,7 +296,10 @@ def trace_async(
                     if context_kwarg in inputs:
                         log_context(inputs.get(context_kwarg))
                     else:
-                        logger.warning("Context kwarg `%s` not found in inputs of the current function.", context_kwarg)
+                        logger.warning(
+                            "Context kwarg `%s` not found in inputs of the current function.",
+                            context_kwarg,
+                        )
 
                 step.log(
                     inputs=inputs,
@@ -299,7 +317,9 @@ def trace_async(
     return decorator
 
 
-async def _invoke_with_context(coroutine: Awaitable[Any]) -> Tuple[contextvars.Context, Any]:
+async def _invoke_with_context(
+    coroutine: Awaitable[Any],
+) -> Tuple[contextvars.Context, Any]:
     """Runs a coroutine and preserves the context variables set within it."""
     result = await coroutine
     context = contextvars.copy_context()
@@ -356,6 +376,7 @@ def post_process_trace(
         "cost": processed_steps[0].get("cost", 0),
         "tokens": processed_steps[0].get("tokens", 0),
         "steps": processed_steps,
+        **root_step.metadata,
     }
     if input_variables:
         trace_data.update(input_variables)
