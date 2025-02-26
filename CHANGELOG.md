@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.44 (2025-02-26)
+
+Full Changelog: [v0.2.0-alpha.43...v0.2.0-alpha.44](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.43...v0.2.0-alpha.44)
+
+### Features
+
+* feat(tracing): completes OPEN-6538 Surface root step metadata at the request level ([1bcedcf](https://github.com/openlayer-ai/openlayer-python/commit/1bcedcf57d509064f89e2a5fae3fb39f22da5920))
+
 ## 0.2.0-alpha.43 (2025-02-24)
 
 Full Changelog: [v0.2.0-alpha.42...v0.2.0-alpha.43](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.42...v0.2.0-alpha.43)
