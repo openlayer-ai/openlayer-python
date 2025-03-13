@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.45 (2025-03-13)
+
+Full Changelog: [v0.2.0-alpha.44...v0.2.0-alpha.45](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.44...v0.2.0-alpha.45)
+
+### Features
+
+* **api:** add endpoint to retrieve commit by id ([#421](https://github.com/openlayer-ai/openlayer-python/issues/421)) ([d7c8489](https://github.com/openlayer-ai/openlayer-python/commit/d7c84892a258c15b23fac3dedd2c074357595613))
+
 ## 0.2.0-alpha.44 (2025-02-26)
 
 Full Changelog: [v0.2.0-alpha.43...v0.2.0-alpha.44](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.43...v0.2.0-alpha.44)
