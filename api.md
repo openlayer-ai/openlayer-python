@@ -39,6 +39,16 @@ Methods:
 
 # Commits
 
+Types:
+
+```python
+from openlayer.types import CommitRetrieveResponse
+```
+
+Methods:
+
+- <code title="get /versions/{projectVersionId}">client.commits.<a href="./src/openlayer/resources/commits/commits.py">retrieve</a>(project_version_id) -> <a href="./src/openlayer/types/commit_retrieve_response.py">CommitRetrieveResponse</a></code>
+
 ## TestResults
 
 Types:
