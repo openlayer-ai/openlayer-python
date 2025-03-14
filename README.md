@@ -6,7 +6,7 @@ The Openlayer Python library provides convenient access to the Openlayer REST AP
 application. The library includes type definitions for all request params and response fields,
 and offers both synchronous and asynchronous clients powered by [httpx](https://github.com/encode/httpx).
 
-It is generated with [Stainless](https://www.stainlessapi.com/).
+It is generated with [Stainless](https://www.stainless.com/).
 
 ## Documentation
 
@@ -108,6 +108,23 @@ Nested request parameters are [TypedDicts](https://docs.python.org/3/library/typ
 - Converting to a dictionary, `model.to_dict()`
 
 Typed requests and responses provide autocomplete and documentation within your editor. If you would like to see type errors in VS Code to help catch bugs earlier, set `python.analysis.typeCheckingMode` to `basic`.
+
+## Nested params
+
+Nested parameters are dictionaries, typed using `TypedDict`, for example:
+
+```python
+from openlayer import Openlayer
+
+client = Openlayer()
+
+commit = client.projects.commits.create(
+    project_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+    commit={"message": "Updated the prompt."},
+    storage_uri="s3://...",
+)
+print(commit.commit)
+```
 
 ## Handling errors
 
