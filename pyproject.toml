@@ -44,7 +44,6 @@ Homepage = "https://github.com/openlayer-ai/openlayer-python"
 Repository = "https://github.com/openlayer-ai/openlayer-python"
 
 
-
 [tool.rye]
 managed = true
 # version pins are in requirements-dev.lock
@@ -158,7 +157,6 @@ reportImplicitOverride = true
 
 reportImportCycles = false
 reportPrivateUsage = false
-
 
 [tool.ruff]
 line-length = 120
