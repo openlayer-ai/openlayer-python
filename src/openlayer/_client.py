@@ -83,7 +83,7 @@ class Openlayer(SyncAPIClient):
         # part of our public interface in the future.
         _strict_response_validation: bool = False,
     ) -> None:
-        """Construct a new synchronous openlayer client instance.
+        """Construct a new synchronous Openlayer client instance.
 
         This automatically infers the `api_key` argument from the `OPENLAYER_API_KEY` environment variable if it is not provided.
         """
@@ -266,7 +266,7 @@ class AsyncOpenlayer(AsyncAPIClient):
         # part of our public interface in the future.
         _strict_response_validation: bool = False,
     ) -> None:
-        """Construct a new async openlayer client instance.
+        """Construct a new async AsyncOpenlayer client instance.
 
         This automatically infers the `api_key` argument from the `OPENLAYER_API_KEY` environment variable if it is not provided.
         """
