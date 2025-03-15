@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.46 (2025-03-15)
+
+Full Changelog: [v0.2.0-alpha.45...v0.2.0-alpha.46](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.45...v0.2.0-alpha.46)
+
+### Features
+
+* **api:** api update ([10f1de0](https://github.com/openlayer-ai/openlayer-python/commit/10f1de0a71b489ec6e479af5fd8c33bc4f2cc63a))
+* **client:** allow passing `NotGiven` for body ([6a582f7](https://github.com/openlayer-ai/openlayer-python/commit/6a582f73748f4c628cd55dd4781792f8ba82426b))
+* **client:** send `X-Stainless-Read-Timeout` header ([919377e](https://github.com/openlayer-ai/openlayer-python/commit/919377ee8e73ad8ca39d5cead7f85c3e934b7bc1))
+
+
+### Bug Fixes
+
+* asyncify on non-asyncio runtimes ([1aa358a](https://github.com/openlayer-ai/openlayer-python/commit/1aa358aefbee3ddb9c401eb3e6838b063ba26f1e))
+* **client:** mark some request bodies as optional ([6a582f7](https://github.com/openlayer-ai/openlayer-python/commit/6a582f73748f4c628cd55dd4781792f8ba82426b))
+* **tests:** correctly generate examples with writeOnly fields ([aefb7d9](https://github.com/openlayer-ai/openlayer-python/commit/aefb7d93a78f972467a3f70a17c06d9e451817b8))
+* **types:** handle more discriminated union shapes ([#431](https://github.com/openlayer-ai/openlayer-python/issues/431)) ([3a8b9c1](https://github.com/openlayer-ai/openlayer-python/commit/3a8b9c104e28589248d3208f92d8cda3bee1364e))
+
+
+### Chores
+
+* **internal:** bummp ruff dependency ([a85525a](https://github.com/openlayer-ai/openlayer-python/commit/a85525a6cc9e3ac81ba1cd5fb534e120c1580067))
+* **internal:** bump rye to 0.44.0 ([#430](https://github.com/openlayer-ai/openlayer-python/issues/430)) ([9fe86fe](https://github.com/openlayer-ai/openlayer-python/commit/9fe86fef481775181a52d3e4f9249c4405d4bb24))
+* **internal:** change default timeout to an int ([32452f0](https://github.com/openlayer-ai/openlayer-python/commit/32452f0ac8f3a321a81fb7bd340fa6ced4c5c648))
+* **internal:** codegen related update ([dfd7861](https://github.com/openlayer-ai/openlayer-python/commit/dfd7861657bbd5f761649b5f956cb9c85e9bd1e4))
+* **internal:** codegen related update ([c87c92d](https://github.com/openlayer-ai/openlayer-python/commit/c87c92ded5591542b9c939c775fa2d09fb0885c5))
+* **internal:** codegen related update ([#425](https://github.com/openlayer-ai/openlayer-python/issues/425)) ([ec47eb9](https://github.com/openlayer-ai/openlayer-python/commit/ec47eb9f03007a5efa8c194ab98d0aa1377720b9))
+* **internal:** codegen related update ([#429](https://github.com/openlayer-ai/openlayer-python/issues/429)) ([395275b](https://github.com/openlayer-ai/openlayer-python/commit/395275b0f996f2b4eb49857530e72f9fe64b853a))
+* **internal:** fix devcontainers setup ([9bc507d](https://github.com/openlayer-ai/openlayer-python/commit/9bc507d3197627087b7139ee3c2f9e28c4075c95))
+* **internal:** fix type traversing dictionary params ([df06aaa](https://github.com/openlayer-ai/openlayer-python/commit/df06aaa91ee17410b96b28e897c5559f67cbc829))
+* **internal:** fix workflows ([1946b4f](https://github.com/openlayer-ai/openlayer-python/commit/1946b4f202142fe9a58c11d5f74870def6582d9b))
+* **internal:** minor type handling changes ([a920965](https://github.com/openlayer-ai/openlayer-python/commit/a92096519c3a1d2ecaad5595029231faeafb09ed))
+* **internal:** properly set __pydantic_private__ ([0124a23](https://github.com/openlayer-ai/openlayer-python/commit/0124a2338534da8f0d707d9c6d6f5e5576d6999f))
+* **internal:** remove extra empty newlines ([#428](https://github.com/openlayer-ai/openlayer-python/issues/428)) ([7111d6d](https://github.com/openlayer-ai/openlayer-python/commit/7111d6d4a8a8524aadbc402ea4761dba2b377170))
+* **internal:** update client tests ([c7a8995](https://github.com/openlayer-ai/openlayer-python/commit/c7a899524ea9b3ff1218a0e03868a8647ee46a08))
+
 ## 0.2.0-alpha.45 (2025-03-13)
 
 Full Changelog: [v0.2.0-alpha.44...v0.2.0-alpha.45](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.44...v0.2.0-alpha.45)
