@@ -1,6 +1,6 @@
 [project]
 name = "openlayer"
-version = "0.2.0-alpha.45"
+version = "0.2.0-alpha.46"
 description = "The official Python library for the openlayer API"
 dynamic = ["readme"]
 license = "Apache-2.0"
@@ -44,7 +44,6 @@ Homepage = "https://github.com/openlayer-ai/openlayer-python"
 Repository = "https://github.com/openlayer-ai/openlayer-python"
 
 
-
 [tool.rye]
 managed = true
 # version pins are in requirements-dev.lock
@@ -60,7 +59,7 @@ dev-dependencies = [
     "dirty-equals>=0.6.0",
     "importlib-metadata>=6.7.0",
     "rich>=13.7.1",
-    "nest_asyncio==1.6.0"
+    "nest_asyncio==1.6.0",
 ]
 
 [tool.rye.scripts]
@@ -135,6 +134,7 @@ testpaths = ["tests"]
 addopts = "--tb=short"
 xfail_strict = true
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
 filterwarnings = [
   "error"
 ]
@@ -158,7 +158,6 @@ reportImplicitOverride = true
 
 reportImportCycles = false
 reportPrivateUsage = false
-
 
 [tool.ruff]
 line-length = 120
@@ -184,7 +183,7 @@ select = [
   "T201",
   "T203",
   # misuse of typing.TYPE_CHECKING
-  "TCH004",
+  "TC004",
   # import rules
   "TID251",
 ]
