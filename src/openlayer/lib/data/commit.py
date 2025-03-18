@@ -3,11 +3,13 @@
 import os
 import tarfile
 import tempfile
+import time
 from typing import Optional
 
 
 from ... import Openlayer
 from . import StorageType, _upload
+from ...types.commit_retrieve_response import CommitRetrieveResponse
 
 
 def push(
@@ -46,3 +48,30 @@ def push(
         commit={"message": message, "source": "cli"},
         storage_uri=presigned_url_response.storage_uri,
     )
+
+
+def wait_for_commit_completion(
+    client: Openlayer, project_version_id: str, verbose: bool = True
+) -> CommitRetrieveResponse:
+    """Wait for a commit to be processed by the Openlayer platform.
+
+    Waits until the commit status is "completed" or "failed".
+    """
+    while True:
+        commit = client.commits.retrieve(project_version_id=project_version_id)
+        if commit.status == "completed":
+            if verbose:
+                print(f"Commit {project_version_id} completed successfully.")
+            return commit
+        elif commit.status == "failed":
+            raise Exception(
+                f"Commit {project_version_id} failed with status message:"
+                f" {commit.status_message}"
+            )
+        else:
+            if verbose:
+                print(
+                    f"Commit {project_version_id} is still processing (status:"
+                    f" {commit.status})..."
+                )
+            time.sleep(1)
