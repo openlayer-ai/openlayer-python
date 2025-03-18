@@ -18,10 +18,28 @@ def push(
     project_id: str,
     message: str = "New commit",
     storage_type: Optional[StorageType] = None,
-) -> None:
+    wait_for_completion: bool = False,
+    verbose: bool = False,
+) -> Optional[CommitRetrieveResponse]:
     """Push a new commit to the Openlayer platform.
 
-    This is equivalent to running `openlayer push` from the Openlayer CLI."""
+    This is equivalent to running `openlayer push` from the Openlayer CLI.
+
+    If `wait_for_completion` is True, the function will wait for the commit to be
+    completed and return the commit object.
+
+    Args:
+        client: The Openlayer client.
+        directory: The directory to push.
+        project_id: The id of the project to push to.
+        message: The commit message.
+        storage_type: The storage type to use.
+        wait_for_completion: Whether to wait for the commit to be completed.
+        verbose: Whether to print verbose output.
+
+    Returns:
+        The commit object if `wait_for_completion` is True, otherwise None.
+    """
     if not os.path.exists(directory):
         raise ValueError(f"Directory {directory} does not exist.")
 
@@ -43,11 +61,20 @@ def push(
         )
 
     # Create the project version (commit)
-    client.projects.commits.create(
+    commit = client.projects.commits.create(
         project_id=project_id,
         commit={"message": message, "source": "cli"},
         storage_uri=presigned_url_response.storage_uri,
     )
+
+    if wait_for_completion:
+        return wait_for_commit_completion(
+            client=client,
+            project_version_id=commit.id,
+            verbose=verbose,
+        )
+
+    return None
 
 
 def wait_for_commit_completion(
@@ -56,6 +83,14 @@ def wait_for_commit_completion(
     """Wait for a commit to be processed by the Openlayer platform.
 
     Waits until the commit status is "completed" or "failed".
+
+    Args:
+        client: The Openlayer client.
+        project_version_id: The id of the project version (commit) to wait for.
+        verbose: Whether to print verbose output.
+
+    Returns:
+        The commit object.
     """
     while True:
         commit = client.commits.retrieve(project_version_id=project_version_id)
