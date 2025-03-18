@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.48 (2025-03-18)
+
+Full Changelog: [v0.2.0-alpha.47...v0.2.0-alpha.48](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.47...v0.2.0-alpha.48)
+
+### Features
+
+* feat: add option to wait for commit completion to push function ([b3b4afd](https://github.com/openlayer-ai/openlayer-python/commit/b3b4afd998c28df816f4223fc0eebc2ab0882b8b))
+* feat: add wait_for_commit_completion convenience method ([f71e29a](https://github.com/openlayer-ai/openlayer-python/commit/f71e29af2602d5eb08a88de02f834a5f654aeec8))
+
 ## 0.2.0-alpha.47 (2025-03-17)
 
 Full Changelog: [v0.2.0-alpha.46...v0.2.0-alpha.47](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.46...v0.2.0-alpha.47)
