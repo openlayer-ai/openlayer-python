@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.49 (2025-03-21)
+
+Full Changelog: [v0.2.0-alpha.48...v0.2.0-alpha.49](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.48...v0.2.0-alpha.49)
+
+### Features
+
+* chore: add OpenLLMetry tracing example ([ff13020](https://github.com/openlayer-ai/openlayer-python/commit/ff13020ee4c7ea9cadd4cc0af0604debe706b599))
+* chore: add Semantic Kernel tracing example ([98ada7f](https://github.com/openlayer-ai/openlayer-python/commit/98ada7f7993b3163844c80604a81a75f37d30616))
+
 ## 0.2.0-alpha.48 (2025-03-18)
 
 Full Changelog: [v0.2.0-alpha.47...v0.2.0-alpha.48](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.47...v0.2.0-alpha.48)
