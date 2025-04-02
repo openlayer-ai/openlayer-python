@@ -39,6 +39,18 @@ def trace_openai(client):
     return openai_tracer.trace_openai(client)
 
 
+def trace_async_openai(client):
+    """Trace OpenAI chat completions."""
+    # pylint: disable=import-outside-toplevel
+    import openai
+
+    from .integrations import async_openai_tracer
+
+    if not isinstance(client, (openai.AsyncOpenAI, openai.AsyncAzureOpenAI)):
+        raise ValueError("Invalid client. Please provide an OpenAI client.")
+    return async_openai_tracer.trace_async_openai(client)
+
+
 def trace_openai_assistant_thread_run(client, run):
     """Trace OpenAI Assistant thread run."""
     # pylint: disable=import-outside-toplevel
