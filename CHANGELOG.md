@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.50 (2025-04-02)
+
+Full Changelog: [v0.2.0-alpha.49...v0.2.0-alpha.50](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.49...v0.2.0-alpha.50)
+
+### Features
+
+* feat: add async openai tracer ([6d8bc02](https://github.com/openlayer-ai/openlayer-python/commit/6d8bc020c41cdbd43fc47127b0bb34b72e449fd9))
+
+
+### Chores
+
+* fix typos ([#441](https://github.com/openlayer-ai/openlayer-python/issues/441)) ([987d427](https://github.com/openlayer-ai/openlayer-python/commit/987d42797440477a7fe113e9ac5de1ee686e097b))
+
 ## 0.2.0-alpha.49 (2025-03-21)
 
 Full Changelog: [v0.2.0-alpha.48...v0.2.0-alpha.49](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.48...v0.2.0-alpha.49)
