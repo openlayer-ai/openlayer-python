@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.51 (2025-04-04)
+
+Full Changelog: [v0.2.0-alpha.50...v0.2.0-alpha.51](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.50...v0.2.0-alpha.51)
+
+### Chores
+
+* **internal:** remove trailing character ([#445](https://github.com/openlayer-ai/openlayer-python/issues/445)) ([6ccac8e](https://github.com/openlayer-ai/openlayer-python/commit/6ccac8e6d3eee06c4f1241f4dc0a9104a48d1841))
+
 ## 0.2.0-alpha.50 (2025-04-02)
 
 Full Changelog: [v0.2.0-alpha.49...v0.2.0-alpha.50](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.49...v0.2.0-alpha.50)
