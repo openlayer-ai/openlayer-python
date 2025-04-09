@@ -30,7 +30,7 @@ class TestTestResults:
             inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
             page=1,
             per_page=1,
-            status="running",
+            status="passing",
             type="integrity",
         )
         assert_matches_type(TestResultListResponse, test_result, path=["response"])
@@ -83,7 +83,7 @@ class TestAsyncTestResults:
             inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
             page=1,
             per_page=1,
-            status="running",
+            status="passing",
             type="integrity",
         )
         assert_matches_type(TestResultListResponse, test_result, path=["response"])

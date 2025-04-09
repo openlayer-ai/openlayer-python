@@ -31,7 +31,7 @@ class TestTestResults:
             include_archived=True,
             page=1,
             per_page=1,
-            status="running",
+            status="passing",
             type="integrity",
         )
         assert_matches_type(TestResultListResponse, test_result, path=["response"])
@@ -85,7 +85,7 @@ class TestAsyncTestResults:
             include_archived=True,
             page=1,
             per_page=1,
-            status="running",
+            status="passing",
             type="integrity",
         )
         assert_matches_type(TestResultListResponse, test_result, path=["response"])
