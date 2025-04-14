@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.52 (2025-04-14)
+
+Full Changelog: [v0.2.0-alpha.51...v0.2.0-alpha.52](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.51...v0.2.0-alpha.52)
+
+### Features
+
+* feat: allow publish without ssl verification ([24dbdef](https://github.com/openlayer-ai/openlayer-python/commit/24dbdef53ccb988e6cd807094ae2a15a4e40fa7f))
+
+
+### Bug Fixes
+
+* **perf:** optimize some hot paths ([badc2bb](https://github.com/openlayer-ai/openlayer-python/commit/badc2bb1b915c70045a4f9150792746788a61b79))
+* **perf:** skip traversing types for NotGiven values ([afb0108](https://github.com/openlayer-ai/openlayer-python/commit/afb01083b15f4b4f4878176f2d34a74c72ef3c57))
+
+
+### Chores
+
+* **internal:** expand CI branch coverage ([121cc4c](https://github.com/openlayer-ai/openlayer-python/commit/121cc4cf1e7276aba8fde9ca216db17242b641ed))
+* **internal:** reduce CI branch coverage ([05f20c8](https://github.com/openlayer-ai/openlayer-python/commit/05f20c8ff1b471a9a3f3d6f688d0cc7d78cf680b))
+* **internal:** slight transform perf improvement ([#448](https://github.com/openlayer-ai/openlayer-python/issues/448)) ([3c5cd0a](https://github.com/openlayer-ai/openlayer-python/commit/3c5cd0a60b3d33248568075ccb3576536d5cfe7e))
+* **tests:** improve enum examples ([#449](https://github.com/openlayer-ai/openlayer-python/issues/449)) ([3508728](https://github.com/openlayer-ai/openlayer-python/commit/350872865c9f574048c4d6acb112ee72f81e5046))
+
 ## 0.2.0-alpha.51 (2025-04-04)
 
 Full Changelog: [v0.2.0-alpha.50...v0.2.0-alpha.51](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.50...v0.2.0-alpha.51)
