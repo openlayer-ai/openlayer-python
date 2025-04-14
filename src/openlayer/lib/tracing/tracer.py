@@ -1,25 +1,36 @@
 """Module with the logic to create and manage traces and steps."""
 
+import time
 import asyncio
-import contextvars
 import inspect
 import logging
-import time
-from contextlib import contextmanager
+import contextvars
+from typing import Any, Dict, List, Tuple, Optional, Awaitable, Generator
 from functools import wraps
-from typing import Any, Awaitable, Dict, Generator, List, Optional, Tuple
+from contextlib import contextmanager
 
-from ..._client import Openlayer
-from ...types.inference_pipelines.data_stream_params import ConfigLlmData
-from .. import utils
 from . import enums, steps, traces
+from .. import utils
+from ..._client import Openlayer
+from ..._base_client import DefaultHttpxClient
+from ...types.inference_pipelines.data_stream_params import ConfigLlmData
 
 logger = logging.getLogger(__name__)
 
-_publish = utils.get_env_variable("OPENLAYER_DISABLE_PUBLISH") != "true"
+TRUE_LIST = ["true", "on", "1"]
+
+_publish = utils.get_env_variable("OPENLAYER_DISABLE_PUBLISH") not in TRUE_LIST
+_verify_ssl = utils.get_env_variable("OPENLAYER_VERIFY_SSL").lower() in TRUE_LIST
 _client = None
 if _publish:
-    _client = Openlayer()
+    if _verify_ssl:
+        _client = Openlayer()
+    else:
+        _client = Openlayer(
+            http_client=DefaultHttpxClient(
+                verify=False,
+            ),
+        )
 
 _current_step = contextvars.ContextVar("current_step")
 _current_trace = contextvars.ContextVar("current_trace")
@@ -142,8 +153,8 @@ def trace(
     Examples
     --------
 
-    To trace a function, simply decorate it with the ``@trace()`` decorator. By doing so,
-    the functions inputs, outputs, and metadata will be automatically logged to your
+    To trace a function, simply decorate it with the ``@trace()`` decorator. By doing
+    so, the functions inputs, outputs, and metadata will be automatically logged to your
     Openlayer project.
 
     >>> import os
@@ -204,7 +215,8 @@ def trace(
                         log_context(inputs.get(context_kwarg))
                     else:
                         logger.warning(
-                            "Context kwarg `%s` not found in inputs of the current function.",
+                            "Context kwarg `%s` not found in inputs of the "
+                            "current function.",
                             context_kwarg,
                         )
 
@@ -235,8 +247,8 @@ def trace_async(
     Examples
     --------
 
-    To trace a function, simply decorate it with the ``@trace()`` decorator. By doing so,
-    the functions inputs, outputs, and metadata will be automatically logged to your
+    To trace a function, simply decorate it with the ``@trace()`` decorator. By doing
+    so, the functions inputs, outputs, and metadata will be automatically logged to your
     Openlayer project.
 
     >>> import os
@@ -297,7 +309,8 @@ def trace_async(
                         log_context(inputs.get(context_kwarg))
                     else:
                         logger.warning(
-                            "Context kwarg `%s` not found in inputs of the current function.",
+                            "Context kwarg `%s` not found in inputs of the "
+                            "current function.",
                             context_kwarg,
                         )
 
