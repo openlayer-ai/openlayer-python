@@ -155,6 +155,7 @@ exclude = [
 ignore = ["src/openlayer/lib/*", "examples/*"]
 
 reportImplicitOverride = true
+reportOverlappingOverload = false
 
 reportImportCycles = false
 reportPrivateUsage = false
