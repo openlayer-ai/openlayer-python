@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.53 (2025-04-15)
+
+Full Changelog: [v0.2.0-alpha.52...v0.2.0-alpha.53](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.52...v0.2.0-alpha.53)
+
+### Features
+
+* fix: verify SSL by default and disable it via env var ([92f8b70](https://github.com/openlayer-ai/openlayer-python/commit/92f8b7055c4721edc8a6ec1ab9e678ff6bf18e97))
+
+
+### Chores
+
+* **client:** minor internal fixes ([cb7cdf2](https://github.com/openlayer-ai/openlayer-python/commit/cb7cdf29f19b6131dcfb0a47dcbfd20f1b6659b6))
+* **internal:** update pyright settings ([0e70ac7](https://github.com/openlayer-ai/openlayer-python/commit/0e70ac7853b7c2a353da7021e7454096c0ea6524))
+
 ## 0.2.0-alpha.52 (2025-04-14)
 
 Full Changelog: [v0.2.0-alpha.51...v0.2.0-alpha.52](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.51...v0.2.0-alpha.52)
