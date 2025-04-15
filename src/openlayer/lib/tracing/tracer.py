@@ -20,7 +20,9 @@ logger = logging.getLogger(__name__)
 TRUE_LIST = ["true", "on", "1"]
 
 _publish = utils.get_env_variable("OPENLAYER_DISABLE_PUBLISH") not in TRUE_LIST
-_verify_ssl = utils.get_env_variable("OPENLAYER_VERIFY_SSL").lower() in TRUE_LIST
+_verify_ssl = (
+    utils.get_env_variable("OPENLAYER_VERIFY_SSL", "true").lower() in TRUE_LIST
+)
 _client = None
 if _publish:
     if _verify_ssl:
