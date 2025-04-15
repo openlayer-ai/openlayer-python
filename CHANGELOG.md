@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.54 (2025-04-15)
+
+Full Changelog: [v0.2.0-alpha.53...v0.2.0-alpha.54](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.53...v0.2.0-alpha.54)
+
+### Features
+
+* fix: default value for OPENLAYER_VERIFY_SSL env var ([a4557de](https://github.com/openlayer-ai/openlayer-python/commit/a4557dec1751a34b2894c605dfd0a54787157923))
+
 ## 0.2.0-alpha.53 (2025-04-15)
 
 Full Changelog: [v0.2.0-alpha.52...v0.2.0-alpha.53](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.52...v0.2.0-alpha.53)
