@@ -48,7 +48,7 @@ Repository = "https://github.com/openlayer-ai/openlayer-python"
 managed = true
 # version pins are in requirements-dev.lock
 dev-dependencies = [
-    "pyright>=1.1.359",
+    "pyright==1.1.399",
     "mypy",
     "respx",
     "pytest",
