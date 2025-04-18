@@ -8,20 +8,33 @@ from pydantic import Field as FieldInfo
 
 from ..._models import BaseModel
 
-__all__ = ["TestResultListResponse", "Item", "ItemGoal", "ItemGoalThreshold"]
+__all__ = ["TestResultListResponse", "Item", "ItemGoal", "ItemGoalThreshold", "ItemGoalThresholdInsightParameter"]
+
+
+class ItemGoalThresholdInsightParameter(BaseModel):
+    name: str
+    """The name of the insight filter."""
+
+    value: object
 
 
 class ItemGoalThreshold(BaseModel):
     insight_name: Optional[str] = FieldInfo(alias="insightName", default=None)
     """The insight name to be evaluated."""
 
-    insight_parameters: Optional[List[object]] = FieldInfo(alias="insightParameters", default=None)
+    insight_parameters: Optional[List[ItemGoalThresholdInsightParameter]] = FieldInfo(
+        alias="insightParameters", default=None
+    )
+    """The insight parameters. Required only for some test subtypes."""
 
     measurement: Optional[str] = None
     """The measurement to be evaluated."""
 
-    operator: Optional[str] = None
+    operator: Optional[Literal["is", ">", ">=", "<", "<=", "!="]] = None
     """The operator to be used for the evaluation."""
+
+    threshold_mode: Optional[Literal["automatic", "manual"]] = FieldInfo(alias="thresholdMode", default=None)
+    """Whether to use automatic anomaly detection or manual thresholds"""
 
     value: Union[float, bool, str, List[str], None] = None
     """The value to be compared."""
