@@ -1,6 +1,6 @@
 [project]
 name = "openlayer"
-version = "0.2.0-alpha.54"
+version = "0.2.0-alpha.55"
 description = "The official Python library for the openlayer API"
 dynamic = ["readme"]
 license = "Apache-2.0"
@@ -48,7 +48,7 @@ Repository = "https://github.com/openlayer-ai/openlayer-python"
 managed = true
 # version pins are in requirements-dev.lock
 dev-dependencies = [
-    "pyright>=1.1.359",
+    "pyright==1.1.399",
     "mypy",
     "respx",
     "pytest",

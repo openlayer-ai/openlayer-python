@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.55 (2025-04-19)
+
+Full Changelog: [v0.2.0-alpha.54...v0.2.0-alpha.55](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.54...v0.2.0-alpha.55)
+
+### Features
+
+* **api:** api update ([b40ca02](https://github.com/openlayer-ai/openlayer-python/commit/b40ca0253f502e9d249c901e7f878b7f9461a0c1))
+
+
+### Chores
+
+* **internal:** base client updates ([9afcd88](https://github.com/openlayer-ai/openlayer-python/commit/9afcd88c21786e5903f04227e314164699aeddea))
+* **internal:** bump pyright version ([0301486](https://github.com/openlayer-ai/openlayer-python/commit/03014864bcb6e69d5040435521cfdc76f3189641))
+* **internal:** update models test ([97be493](https://github.com/openlayer-ai/openlayer-python/commit/97be4939dc8a3d16f3316cc513a5cad8d2311d41))
+
 ## 0.2.0-alpha.54 (2025-04-15)
 
 Full Changelog: [v0.2.0-alpha.53...v0.2.0-alpha.54](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.53...v0.2.0-alpha.54)
