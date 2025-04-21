@@ -1,5 +1,13 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
+from .tests import (
+    TestsResource,
+    AsyncTestsResource,
+    TestsResourceWithRawResponse,
+    AsyncTestsResourceWithRawResponse,
+    TestsResourceWithStreamingResponse,
+    AsyncTestsResourceWithStreamingResponse,
+)
 from .commits import (
     CommitsResource,
     AsyncCommitsResource,
@@ -38,6 +46,12 @@ __all__ = [
     "AsyncInferencePipelinesResourceWithRawResponse",
     "InferencePipelinesResourceWithStreamingResponse",
     "AsyncInferencePipelinesResourceWithStreamingResponse",
+    "TestsResource",
+    "AsyncTestsResource",
+    "TestsResourceWithRawResponse",
+    "AsyncTestsResourceWithRawResponse",
+    "TestsResourceWithStreamingResponse",
+    "AsyncTestsResourceWithStreamingResponse",
     "ProjectsResource",
     "AsyncProjectsResource",
     "ProjectsResourceWithRawResponse",
