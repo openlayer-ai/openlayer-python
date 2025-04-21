@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.56 (2025-04-21)
+
+Full Changelog: [v0.2.0-alpha.55...v0.2.0-alpha.56](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.55...v0.2.0-alpha.56)
+
+### Features
+
+* **api:** add test creation endpoint ([f9c02bf](https://github.com/openlayer-ai/openlayer-python/commit/f9c02bfd25604f82b0663acdd9ef3a7a57270c59))
+
 ## 0.2.0-alpha.55 (2025-04-19)
 
 Full Changelog: [v0.2.0-alpha.54...v0.2.0-alpha.55](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.54...v0.2.0-alpha.55)
