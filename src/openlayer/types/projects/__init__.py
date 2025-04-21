@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from .commit_list_params import CommitListParams as CommitListParams
+from .test_create_params import TestCreateParams as TestCreateParams
 from .commit_create_params import CommitCreateParams as CommitCreateParams
 from .commit_list_response import CommitListResponse as CommitListResponse
+from .test_create_response import TestCreateResponse as TestCreateResponse
 from .commit_create_response import CommitCreateResponse as CommitCreateResponse
 from .inference_pipeline_list_params import InferencePipelineListParams as InferencePipelineListParams
 from .inference_pipeline_create_params import InferencePipelineCreateParams as InferencePipelineCreateParams

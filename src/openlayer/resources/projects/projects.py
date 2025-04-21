@@ -7,6 +7,14 @@ from typing_extensions import Literal
 
 import httpx
 
+from .tests import (
+    TestsResource,
+    AsyncTestsResource,
+    TestsResourceWithRawResponse,
+    AsyncTestsResourceWithRawResponse,
+    TestsResourceWithStreamingResponse,
+    AsyncTestsResourceWithStreamingResponse,
+)
 from ...types import project_list_params, project_create_params
 from .commits import (
     CommitsResource,
@@ -52,6 +60,10 @@ class ProjectsResource(SyncAPIResource):
     @cached_property
     def inference_pipelines(self) -> InferencePipelinesResource:
         return InferencePipelinesResource(self._client)
+
+    @cached_property
+    def tests(self) -> TestsResource:
+        return TestsResource(self._client)
 
     @cached_property
     def with_raw_response(self) -> ProjectsResourceWithRawResponse:
@@ -183,6 +195,10 @@ class AsyncProjectsResource(AsyncAPIResource):
     @cached_property
     def inference_pipelines(self) -> AsyncInferencePipelinesResource:
         return AsyncInferencePipelinesResource(self._client)
+
+    @cached_property
+    def tests(self) -> AsyncTestsResource:
+        return AsyncTestsResource(self._client)
 
     @cached_property
     def with_raw_response(self) -> AsyncProjectsResourceWithRawResponse:
@@ -325,6 +341,10 @@ class ProjectsResourceWithRawResponse:
     def inference_pipelines(self) -> InferencePipelinesResourceWithRawResponse:
         return InferencePipelinesResourceWithRawResponse(self._projects.inference_pipelines)
 
+    @cached_property
+    def tests(self) -> TestsResourceWithRawResponse:
+        return TestsResourceWithRawResponse(self._projects.tests)
+
 
 class AsyncProjectsResourceWithRawResponse:
     def __init__(self, projects: AsyncProjectsResource) -> None:
@@ -344,6 +364,10 @@ class AsyncProjectsResourceWithRawResponse:
     @cached_property
     def inference_pipelines(self) -> AsyncInferencePipelinesResourceWithRawResponse:
         return AsyncInferencePipelinesResourceWithRawResponse(self._projects.inference_pipelines)
+
+    @cached_property
+    def tests(self) -> AsyncTestsResourceWithRawResponse:
+        return AsyncTestsResourceWithRawResponse(self._projects.tests)
 
 
 class ProjectsResourceWithStreamingResponse:
@@ -365,6 +389,10 @@ class ProjectsResourceWithStreamingResponse:
     def inference_pipelines(self) -> InferencePipelinesResourceWithStreamingResponse:
         return InferencePipelinesResourceWithStreamingResponse(self._projects.inference_pipelines)
 
+    @cached_property
+    def tests(self) -> TestsResourceWithStreamingResponse:
+        return TestsResourceWithStreamingResponse(self._projects.tests)
+
 
 class AsyncProjectsResourceWithStreamingResponse:
     def __init__(self, projects: AsyncProjectsResource) -> None:
@@ -384,3 +412,7 @@ class AsyncProjectsResourceWithStreamingResponse:
     @cached_property
     def inference_pipelines(self) -> AsyncInferencePipelinesResourceWithStreamingResponse:
         return AsyncInferencePipelinesResourceWithStreamingResponse(self._projects.inference_pipelines)
+
+    @cached_property
+    def tests(self) -> AsyncTestsResourceWithStreamingResponse:
+        return AsyncTestsResourceWithStreamingResponse(self._projects.tests)
