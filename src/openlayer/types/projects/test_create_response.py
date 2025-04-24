@@ -70,7 +70,49 @@ class TestCreateResponse(BaseModel):
     origin_project_version_id: Optional[str] = FieldInfo(alias="originProjectVersionId", default=None)
     """The project version (commit) id where the test was created."""
 
-    subtype: str
+    subtype: Literal[
+        "anomalousColumnCount",
+        "characterLength",
+        "classImbalanceRatio",
+        "expectColumnAToBeInColumnB",
+        "columnAverage",
+        "columnDrift",
+        "columnStatistic",
+        "columnValuesMatch",
+        "conflictingLabelRowCount",
+        "containsPii",
+        "containsValidUrl",
+        "correlatedFeatureCount",
+        "customMetricThreshold",
+        "duplicateRowCount",
+        "emptyFeature",
+        "emptyFeatureCount",
+        "driftedFeatureCount",
+        "featureMissingValues",
+        "featureValueValidation",
+        "greatExpectations",
+        "groupByColumnStatsCheck",
+        "illFormedRowCount",
+        "isCode",
+        "isJson",
+        "llmRubricThresholdV2",
+        "labelDrift",
+        "metricThreshold",
+        "newCategoryCount",
+        "newLabelCount",
+        "nullRowCount",
+        "rowCount",
+        "ppScoreValueValidation",
+        "quasiConstantFeature",
+        "quasiConstantFeatureCount",
+        "sqlQuery",
+        "dtypeValidation",
+        "sentenceLength",
+        "sizeRatio",
+        "specialCharactersRatio",
+        "stringValidation",
+        "trainValLeakageRowCount",
+    ]
     """The test subtype."""
 
     suggested: bool
@@ -78,7 +120,7 @@ class TestCreateResponse(BaseModel):
 
     thresholds: List[Threshold]
 
-    type: str
+    type: Literal["integrity", "consistency", "performance"]
     """The test type."""
 
     archived: Optional[bool] = None

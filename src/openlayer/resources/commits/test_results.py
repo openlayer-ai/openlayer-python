@@ -65,7 +65,7 @@ class TestResultsResource(SyncAPIResource):
         List the test results for a project commit (project version).
 
         Args:
-          include_archived: Include archived goals.
+          include_archived: Filter for archived tests.
 
           page: The page to return in a paginated query.
 
@@ -149,7 +149,7 @@ class AsyncTestResultsResource(AsyncAPIResource):
         List the test results for a project commit (project version).
 
         Args:
-          include_archived: Include archived goals.
+          include_archived: Filter for archived tests.
 
           page: The page to return in a paginated query.
 
