@@ -12,7 +12,7 @@ jobs:
   lint:
     timeout-minutes: 10
     name: lint
-    runs-on: depot-ubuntu-24.04
+    runs-on: ${{ github.repository == 'stainless-sdks/openlayer-python' && 'depot-ubuntu-24.04' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
 
