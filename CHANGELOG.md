@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.57 (2025-04-24)
+
+Full Changelog: [v0.2.0-alpha.56...v0.2.0-alpha.57](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.56...v0.2.0-alpha.57)
+
+### Features
+
+* **api:** api update ([660a2ce](https://github.com/openlayer-ai/openlayer-python/commit/660a2ce213ba8aefb4fb4f02f74532fa0baba346))
+* **api:** expose test retrieval endpoint ([9762024](https://github.com/openlayer-ai/openlayer-python/commit/9762024ea999dd0fdb7d3c05636422125b1860d7))
+
+
+### Bug Fixes
+
+* **pydantic v1:** more robust ModelField.annotation check ([1624ca6](https://github.com/openlayer-ai/openlayer-python/commit/1624ca6da5760b8c849749be1fb150071b14e9ae))
+
+
+### Chores
+
+* broadly detect json family of content-type headers ([39d78ac](https://github.com/openlayer-ai/openlayer-python/commit/39d78ac984c9f8c726fa8e7c8debec418476cebc))
+* **ci:** add timeout thresholds for CI jobs ([1093391](https://github.com/openlayer-ai/openlayer-python/commit/10933919d99b4e4045ce37e95ffe01eae17ea5c7))
+* **ci:** only use depot for staging repos ([bafdcd8](https://github.com/openlayer-ai/openlayer-python/commit/bafdcd8cd926966f0347f0d8ad6283897f21dac3))
+* **internal:** codegen related update ([8c10e35](https://github.com/openlayer-ai/openlayer-python/commit/8c10e3532cc04d0dff74e7047a580acc3544c0ac))
+* **internal:** fix list file params ([312f532](https://github.com/openlayer-ai/openlayer-python/commit/312f5325acca7f11912abfd514e4d5ada640452c))
+* **internal:** import reformatting ([4f944c7](https://github.com/openlayer-ai/openlayer-python/commit/4f944c71bba568da8c25468cc3f729669e5562f9))
+* **internal:** refactor retries to not use recursion ([5a2c154](https://github.com/openlayer-ai/openlayer-python/commit/5a2c1542c0b2ca22eaa6a4c843de04234f677965))
+
 ## 0.2.0-alpha.56 (2025-04-21)
 
 Full Changelog: [v0.2.0-alpha.55...v0.2.0-alpha.56](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.55...v0.2.0-alpha.56)
