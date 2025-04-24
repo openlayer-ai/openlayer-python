@@ -11,7 +11,7 @@ __all__ = ["TestResultListParams"]
 
 class TestResultListParams(TypedDict, total=False):
     include_archived: Annotated[bool, PropertyInfo(alias="includeArchived")]
-    """Include archived goals."""
+    """Filter for archived tests."""
 
     page: int
     """The page to return in a paginated query."""
