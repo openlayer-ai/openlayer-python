@@ -17,12 +17,56 @@ class TestCreateParams(TypedDict, total=False):
     name: Required[str]
     """The test name."""
 
-    subtype: Required[str]
+    subtype: Required[
+        Literal[
+            "anomalousColumnCount",
+            "characterLength",
+            "classImbalanceRatio",
+            "expectColumnAToBeInColumnB",
+            "columnAverage",
+            "columnDrift",
+            "columnStatistic",
+            "columnValuesMatch",
+            "conflictingLabelRowCount",
+            "containsPii",
+            "containsValidUrl",
+            "correlatedFeatureCount",
+            "customMetricThreshold",
+            "duplicateRowCount",
+            "emptyFeature",
+            "emptyFeatureCount",
+            "driftedFeatureCount",
+            "featureMissingValues",
+            "featureValueValidation",
+            "greatExpectations",
+            "groupByColumnStatsCheck",
+            "illFormedRowCount",
+            "isCode",
+            "isJson",
+            "llmRubricThresholdV2",
+            "labelDrift",
+            "metricThreshold",
+            "newCategoryCount",
+            "newLabelCount",
+            "nullRowCount",
+            "rowCount",
+            "ppScoreValueValidation",
+            "quasiConstantFeature",
+            "quasiConstantFeatureCount",
+            "sqlQuery",
+            "dtypeValidation",
+            "sentenceLength",
+            "sizeRatio",
+            "specialCharactersRatio",
+            "stringValidation",
+            "trainValLeakageRowCount",
+        ]
+    ]
     """The test subtype."""
 
     thresholds: Required[Iterable[Threshold]]
 
-    type: Required[str]
+    type: Required[Literal["integrity", "consistency", "performance"]]
     """The test type."""
 
     archived: bool
