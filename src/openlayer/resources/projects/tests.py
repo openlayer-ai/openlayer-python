@@ -18,7 +18,8 @@ from ..._response import (
     async_to_streamed_response_wrapper,
 )
 from ..._base_client import make_request_options
-from ...types.projects import test_create_params
+from ...types.projects import test_list_params, test_create_params
+from ...types.projects.test_list_response import TestListResponse
 from ...types.projects.test_create_response import TestCreateResponse
 
 __all__ = ["TestsResource", "AsyncTestsResource"]
@@ -177,6 +178,76 @@ class TestsResource(SyncAPIResource):
             cast_to=TestCreateResponse,
         )
 
+    def list(
+        self,
+        project_id: str,
+        *,
+        include_archived: bool | NotGiven = NOT_GIVEN,
+        origin_version_id: Optional[str] | NotGiven = NOT_GIVEN,
+        page: int | NotGiven = NOT_GIVEN,
+        per_page: int | NotGiven = NOT_GIVEN,
+        suggested: bool | NotGiven = NOT_GIVEN,
+        type: Literal["integrity", "consistency", "performance", "fairness", "robustness"] | NotGiven = NOT_GIVEN,
+        uses_production_data: Optional[bool] | NotGiven = NOT_GIVEN,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+    ) -> TestListResponse:
+        """
+        List tests under a project.
+
+        Args:
+          include_archived: Filter for archived tests.
+
+          origin_version_id: Retrive tests created by a specific project version.
+
+          page: The page to return in a paginated query.
+
+          per_page: Maximum number of items to return per page.
+
+          suggested: Filter for suggested tests.
+
+          type: Filter objects by test type. Available types are `integrity`, `consistency`,
+              `performance`, `fairness`, and `robustness`.
+
+          uses_production_data: Retrive tests with usesProductionData (monitoring).
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        if not project_id:
+            raise ValueError(f"Expected a non-empty value for `project_id` but received {project_id!r}")
+        return self._get(
+            f"/projects/{project_id}/tests",
+            options=make_request_options(
+                extra_headers=extra_headers,
+                extra_query=extra_query,
+                extra_body=extra_body,
+                timeout=timeout,
+                query=maybe_transform(
+                    {
+                        "include_archived": include_archived,
+                        "origin_version_id": origin_version_id,
+                        "page": page,
+                        "per_page": per_page,
+                        "suggested": suggested,
+                        "type": type,
+                        "uses_production_data": uses_production_data,
+                    },
+                    test_list_params.TestListParams,
+                ),
+            ),
+            cast_to=TestListResponse,
+        )
+
 
 class AsyncTestsResource(AsyncAPIResource):
     @cached_property
@@ -329,6 +400,76 @@ class AsyncTestsResource(AsyncAPIResource):
             cast_to=TestCreateResponse,
         )
 
+    async def list(
+        self,
+        project_id: str,
+        *,
+        include_archived: bool | NotGiven = NOT_GIVEN,
+        origin_version_id: Optional[str] | NotGiven = NOT_GIVEN,
+        page: int | NotGiven = NOT_GIVEN,
+        per_page: int | NotGiven = NOT_GIVEN,
+        suggested: bool | NotGiven = NOT_GIVEN,
+        type: Literal["integrity", "consistency", "performance", "fairness", "robustness"] | NotGiven = NOT_GIVEN,
+        uses_production_data: Optional[bool] | NotGiven = NOT_GIVEN,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+    ) -> TestListResponse:
+        """
+        List tests under a project.
+
+        Args:
+          include_archived: Filter for archived tests.
+
+          origin_version_id: Retrive tests created by a specific project version.
+
+          page: The page to return in a paginated query.
+
+          per_page: Maximum number of items to return per page.
+
+          suggested: Filter for suggested tests.
+
+          type: Filter objects by test type. Available types are `integrity`, `consistency`,
+              `performance`, `fairness`, and `robustness`.
+
+          uses_production_data: Retrive tests with usesProductionData (monitoring).
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        if not project_id:
+            raise ValueError(f"Expected a non-empty value for `project_id` but received {project_id!r}")
+        return await self._get(
+            f"/projects/{project_id}/tests",
+            options=make_request_options(
+                extra_headers=extra_headers,
+                extra_query=extra_query,
+                extra_body=extra_body,
+                timeout=timeout,
+                query=await async_maybe_transform(
+                    {
+                        "include_archived": include_archived,
+                        "origin_version_id": origin_version_id,
+                        "page": page,
+                        "per_page": per_page,
+                        "suggested": suggested,
+                        "type": type,
+                        "uses_production_data": uses_production_data,
+                    },
+                    test_list_params.TestListParams,
+                ),
+            ),
+            cast_to=TestListResponse,
+        )
+
 
 class TestsResourceWithRawResponse:
     __test__ = False
@@ -339,6 +480,9 @@ class TestsResourceWithRawResponse:
         self.create = to_raw_response_wrapper(
             tests.create,
         )
+        self.list = to_raw_response_wrapper(
+            tests.list,
+        )
 
 
 class AsyncTestsResourceWithRawResponse:
@@ -347,6 +491,9 @@ class AsyncTestsResourceWithRawResponse:
 
         self.create = async_to_raw_response_wrapper(
             tests.create,
+        )
+        self.list = async_to_raw_response_wrapper(
+            tests.list,
         )
 
 
@@ -359,6 +506,9 @@ class TestsResourceWithStreamingResponse:
         self.create = to_streamed_response_wrapper(
             tests.create,
         )
+        self.list = to_streamed_response_wrapper(
+            tests.list,
+        )
 
 
 class AsyncTestsResourceWithStreamingResponse:
@@ -367,4 +517,7 @@ class AsyncTestsResourceWithStreamingResponse:
 
         self.create = async_to_streamed_response_wrapper(
             tests.create,
+        )
+        self.list = async_to_streamed_response_wrapper(
+            tests.list,
         )
