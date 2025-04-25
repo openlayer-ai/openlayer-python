@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.61 (2025-04-25)
+
+Full Changelog: [v0.2.0-alpha.60...v0.2.0-alpha.61](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.60...v0.2.0-alpha.61)
+
+### Features
+
+* feat: add convenience function that copies tests from one project to another ([d59dfe0](https://github.com/openlayer-ai/openlayer-python/commit/d59dfe023b6d6e164c6e272cc410dc6b5f4bcec8))
+
 ## 0.2.0-alpha.60 (2025-04-25)
 
 Full Changelog: [v0.2.0-alpha.59...v0.2.0-alpha.60](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.59...v0.2.0-alpha.60)
