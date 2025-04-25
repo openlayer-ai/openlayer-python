@@ -42,12 +42,13 @@ Methods:
 Types:
 
 ```python
-from openlayer.types.projects import TestCreateResponse, TestListResponse
+from openlayer.types.projects import TestCreateResponse, TestUpdateResponse, TestListResponse
 ```
 
 Methods:
 
 - <code title="post /projects/{projectId}/tests">client.projects.tests.<a href="./src/openlayer/resources/projects/tests.py">create</a>(project_id, \*\*<a href="src/openlayer/types/projects/test_create_params.py">params</a>) -> <a href="./src/openlayer/types/projects/test_create_response.py">TestCreateResponse</a></code>
+- <code title="put /projects/{projectId}/tests">client.projects.tests.<a href="./src/openlayer/resources/projects/tests.py">update</a>(project_id, \*\*<a href="src/openlayer/types/projects/test_update_params.py">params</a>) -> <a href="./src/openlayer/types/projects/test_update_response.py">TestUpdateResponse</a></code>
 - <code title="get /projects/{projectId}/tests">client.projects.tests.<a href="./src/openlayer/resources/projects/tests.py">list</a>(project_id, \*\*<a href="src/openlayer/types/projects/test_list_params.py">params</a>) -> <a href="./src/openlayer/types/projects/test_list_response.py">TestListResponse</a></code>
 
 # Commits
