@@ -18,9 +18,10 @@ from ..._response import (
     async_to_streamed_response_wrapper,
 )
 from ..._base_client import make_request_options
-from ...types.projects import test_list_params, test_create_params
+from ...types.projects import test_list_params, test_create_params, test_update_params
 from ...types.projects.test_list_response import TestListResponse
 from ...types.projects.test_create_response import TestCreateResponse
+from ...types.projects.test_update_response import TestUpdateResponse
 
 __all__ = ["TestsResource", "AsyncTestsResource"]
 
@@ -176,6 +177,41 @@ class TestsResource(SyncAPIResource):
                 extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
             ),
             cast_to=TestCreateResponse,
+        )
+
+    def update(
+        self,
+        project_id: str,
+        *,
+        payloads: Iterable[test_update_params.Payload],
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+    ) -> TestUpdateResponse:
+        """
+        Update tests.
+
+        Args:
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        if not project_id:
+            raise ValueError(f"Expected a non-empty value for `project_id` but received {project_id!r}")
+        return self._put(
+            f"/projects/{project_id}/tests",
+            body=maybe_transform({"payloads": payloads}, test_update_params.TestUpdateParams),
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=TestUpdateResponse,
         )
 
     def list(
@@ -400,6 +436,41 @@ class AsyncTestsResource(AsyncAPIResource):
             cast_to=TestCreateResponse,
         )
 
+    async def update(
+        self,
+        project_id: str,
+        *,
+        payloads: Iterable[test_update_params.Payload],
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+    ) -> TestUpdateResponse:
+        """
+        Update tests.
+
+        Args:
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        if not project_id:
+            raise ValueError(f"Expected a non-empty value for `project_id` but received {project_id!r}")
+        return await self._put(
+            f"/projects/{project_id}/tests",
+            body=await async_maybe_transform({"payloads": payloads}, test_update_params.TestUpdateParams),
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=TestUpdateResponse,
+        )
+
     async def list(
         self,
         project_id: str,
@@ -480,6 +551,9 @@ class TestsResourceWithRawResponse:
         self.create = to_raw_response_wrapper(
             tests.create,
         )
+        self.update = to_raw_response_wrapper(
+            tests.update,
+        )
         self.list = to_raw_response_wrapper(
             tests.list,
         )
@@ -491,6 +565,9 @@ class AsyncTestsResourceWithRawResponse:
 
         self.create = async_to_raw_response_wrapper(
             tests.create,
+        )
+        self.update = async_to_raw_response_wrapper(
+            tests.update,
         )
         self.list = async_to_raw_response_wrapper(
             tests.list,
@@ -506,6 +583,9 @@ class TestsResourceWithStreamingResponse:
         self.create = to_streamed_response_wrapper(
             tests.create,
         )
+        self.update = to_streamed_response_wrapper(
+            tests.update,
+        )
         self.list = to_streamed_response_wrapper(
             tests.list,
         )
@@ -517,6 +597,9 @@ class AsyncTestsResourceWithStreamingResponse:
 
         self.create = async_to_streamed_response_wrapper(
             tests.create,
+        )
+        self.update = async_to_streamed_response_wrapper(
+            tests.update,
         )
         self.list = async_to_streamed_response_wrapper(
             tests.list,

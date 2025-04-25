@@ -9,7 +9,11 @@ import pytest
 
 from openlayer import Openlayer, AsyncOpenlayer
 from tests.utils import assert_matches_type
-from openlayer.types.projects import TestListResponse, TestCreateResponse
+from openlayer.types.projects import (
+    TestListResponse,
+    TestCreateResponse,
+    TestUpdateResponse,
+)
 
 base_url = os.environ.get("TEST_API_BASE_URL", "http://127.0.0.1:4010")
 
@@ -107,6 +111,48 @@ class TestTests:
                 subtype="duplicateRowCount",
                 thresholds=[{}],
                 type="integrity",
+            )
+
+    @parametrize
+    def test_method_update(self, client: Openlayer) -> None:
+        test = client.projects.tests.update(
+            project_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            payloads=[{"id": "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e"}],
+        )
+        assert_matches_type(TestUpdateResponse, test, path=["response"])
+
+    @parametrize
+    def test_raw_response_update(self, client: Openlayer) -> None:
+        response = client.projects.tests.with_raw_response.update(
+            project_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            payloads=[{"id": "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e"}],
+        )
+
+        assert response.is_closed is True
+        assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+        test = response.parse()
+        assert_matches_type(TestUpdateResponse, test, path=["response"])
+
+    @parametrize
+    def test_streaming_response_update(self, client: Openlayer) -> None:
+        with client.projects.tests.with_streaming_response.update(
+            project_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            payloads=[{"id": "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e"}],
+        ) as response:
+            assert not response.is_closed
+            assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+
+            test = response.parse()
+            assert_matches_type(TestUpdateResponse, test, path=["response"])
+
+        assert cast(Any, response.is_closed) is True
+
+    @parametrize
+    def test_path_params_update(self, client: Openlayer) -> None:
+        with pytest.raises(ValueError, match=r"Expected a non-empty value for `project_id` but received ''"):
+            client.projects.tests.with_raw_response.update(
+                project_id="",
+                payloads=[{"id": "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e"}],
             )
 
     @parametrize
@@ -255,6 +301,48 @@ class TestAsyncTests:
                 subtype="duplicateRowCount",
                 thresholds=[{}],
                 type="integrity",
+            )
+
+    @parametrize
+    async def test_method_update(self, async_client: AsyncOpenlayer) -> None:
+        test = await async_client.projects.tests.update(
+            project_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            payloads=[{"id": "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e"}],
+        )
+        assert_matches_type(TestUpdateResponse, test, path=["response"])
+
+    @parametrize
+    async def test_raw_response_update(self, async_client: AsyncOpenlayer) -> None:
+        response = await async_client.projects.tests.with_raw_response.update(
+            project_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            payloads=[{"id": "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e"}],
+        )
+
+        assert response.is_closed is True
+        assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+        test = await response.parse()
+        assert_matches_type(TestUpdateResponse, test, path=["response"])
+
+    @parametrize
+    async def test_streaming_response_update(self, async_client: AsyncOpenlayer) -> None:
+        async with async_client.projects.tests.with_streaming_response.update(
+            project_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            payloads=[{"id": "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e"}],
+        ) as response:
+            assert not response.is_closed
+            assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+
+            test = await response.parse()
+            assert_matches_type(TestUpdateResponse, test, path=["response"])
+
+        assert cast(Any, response.is_closed) is True
+
+    @parametrize
+    async def test_path_params_update(self, async_client: AsyncOpenlayer) -> None:
+        with pytest.raises(ValueError, match=r"Expected a non-empty value for `project_id` but received ''"):
+            await async_client.projects.tests.with_raw_response.update(
+                project_id="",
+                payloads=[{"id": "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e"}],
             )
 
     @parametrize

@@ -6,9 +6,11 @@ from .test_list_params import TestListParams as TestListParams
 from .commit_list_params import CommitListParams as CommitListParams
 from .test_create_params import TestCreateParams as TestCreateParams
 from .test_list_response import TestListResponse as TestListResponse
+from .test_update_params import TestUpdateParams as TestUpdateParams
 from .commit_create_params import CommitCreateParams as CommitCreateParams
 from .commit_list_response import CommitListResponse as CommitListResponse
 from .test_create_response import TestCreateResponse as TestCreateResponse
+from .test_update_response import TestUpdateResponse as TestUpdateResponse
 from .commit_create_response import CommitCreateResponse as CommitCreateResponse
 from .inference_pipeline_list_params import InferencePipelineListParams as InferencePipelineListParams
 from .inference_pipeline_create_params import InferencePipelineCreateParams as InferencePipelineCreateParams
