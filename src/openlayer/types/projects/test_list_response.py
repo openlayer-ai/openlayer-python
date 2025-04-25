@@ -8,21 +8,7 @@ from pydantic import Field as FieldInfo
 
 from ..._models import BaseModel
 
-__all__ = ["TestListResponse", "_Meta", "Item", "ItemThreshold", "ItemThresholdInsightParameter"]
-
-
-class _Meta(BaseModel):
-    page: int
-    """The current page."""
-
-    per_page: int = FieldInfo(alias="perPage")
-    """The number of items per page."""
-
-    total_items: int = FieldInfo(alias="totalItems")
-    """The total number of items."""
-
-    total_pages: int = FieldInfo(alias="totalPages")
-    """The total number of pages."""
+__all__ = ["TestListResponse", "Item", "ItemThreshold", "ItemThresholdInsightParameter"]
 
 
 class ItemThresholdInsightParameter(BaseModel):
@@ -33,13 +19,55 @@ class ItemThresholdInsightParameter(BaseModel):
 
 
 class ItemThreshold(BaseModel):
-    insight_name: Optional[str] = FieldInfo(alias="insightName", default=None)
+    insight_name: Optional[
+        Literal[
+            "characterLength",
+            "classImbalance",
+            "expectColumnAToBeInColumnB",
+            "columnAverage",
+            "columnDrift",
+            "columnValuesMatch",
+            "confidenceDistribution",
+            "conflictingLabelRowCount",
+            "containsPii",
+            "containsValidUrl",
+            "correlatedFeatures",
+            "customMetric",
+            "duplicateRowCount",
+            "emptyFeatures",
+            "featureDrift",
+            "featureProfile",
+            "greatExpectations",
+            "groupByColumnStatsCheck",
+            "illFormedRowCount",
+            "isCode",
+            "isJson",
+            "llmRubricV2",
+            "labelDrift",
+            "metrics",
+            "newCategories",
+            "newLabels",
+            "nullRowCount",
+            "ppScore",
+            "quasiConstantFeatures",
+            "sentenceLength",
+            "sizeRatio",
+            "specialCharacters",
+            "stringValidation",
+            "trainValLeakageRowCount",
+        ]
+    ] = FieldInfo(alias="insightName", default=None)
     """The insight name to be evaluated."""
 
     insight_parameters: Optional[List[ItemThresholdInsightParameter]] = FieldInfo(
         alias="insightParameters", default=None
     )
-    """The insight parameters. Required only for some test subtypes."""
+    """The insight parameters.
+
+    Required only for some test subtypes. For example, for tests that require a
+    column name, the insight parameters will be [{'name': 'column_name', 'value':
+    'Age'}]
+    """
 
     measurement: Optional[str] = None
     """The measurement to be evaluated."""
@@ -168,6 +196,4 @@ class Item(BaseModel):
 
 class TestListResponse(BaseModel):
     __test__ = False
-    api_meta: _Meta = FieldInfo(alias="_meta")
-
     items: List[Item]
