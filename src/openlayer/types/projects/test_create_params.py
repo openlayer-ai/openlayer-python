@@ -105,56 +105,13 @@ class ThresholdInsightParameter(TypedDict, total=False):
 
 
 class Threshold(TypedDict, total=False):
-    insight_name: Annotated[
-        Literal[
-            "characterLength",
-            "classImbalance",
-            "expectColumnAToBeInColumnB",
-            "columnAverage",
-            "columnDrift",
-            "columnValuesMatch",
-            "confidenceDistribution",
-            "conflictingLabelRowCount",
-            "containsPii",
-            "containsValidUrl",
-            "correlatedFeatures",
-            "customMetric",
-            "duplicateRowCount",
-            "emptyFeatures",
-            "featureDrift",
-            "featureProfile",
-            "greatExpectations",
-            "groupByColumnStatsCheck",
-            "illFormedRowCount",
-            "isCode",
-            "isJson",
-            "llmRubricV2",
-            "labelDrift",
-            "metrics",
-            "newCategories",
-            "newLabels",
-            "nullRowCount",
-            "ppScore",
-            "quasiConstantFeatures",
-            "sentenceLength",
-            "sizeRatio",
-            "specialCharacters",
-            "stringValidation",
-            "trainValLeakageRowCount",
-        ],
-        PropertyInfo(alias="insightName"),
-    ]
+    insight_name: Annotated[str, PropertyInfo(alias="insightName")]
     """The insight name to be evaluated."""
 
     insight_parameters: Annotated[
         Optional[Iterable[ThresholdInsightParameter]], PropertyInfo(alias="insightParameters")
     ]
-    """The insight parameters.
-
-    Required only for some test subtypes. For example, for tests that require a
-    column name, the insight parameters will be [{'name': 'column_name', 'value':
-    'Age'}]
-    """
+    """The insight parameters. Required only for some test subtypes."""
 
     measurement: str
     """The measurement to be evaluated."""
