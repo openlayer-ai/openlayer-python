@@ -19,13 +19,55 @@ class ItemGoalThresholdInsightParameter(BaseModel):
 
 
 class ItemGoalThreshold(BaseModel):
-    insight_name: Optional[str] = FieldInfo(alias="insightName", default=None)
+    insight_name: Optional[
+        Literal[
+            "characterLength",
+            "classImbalance",
+            "expectColumnAToBeInColumnB",
+            "columnAverage",
+            "columnDrift",
+            "columnValuesMatch",
+            "confidenceDistribution",
+            "conflictingLabelRowCount",
+            "containsPii",
+            "containsValidUrl",
+            "correlatedFeatures",
+            "customMetric",
+            "duplicateRowCount",
+            "emptyFeatures",
+            "featureDrift",
+            "featureProfile",
+            "greatExpectations",
+            "groupByColumnStatsCheck",
+            "illFormedRowCount",
+            "isCode",
+            "isJson",
+            "llmRubricV2",
+            "labelDrift",
+            "metrics",
+            "newCategories",
+            "newLabels",
+            "nullRowCount",
+            "ppScore",
+            "quasiConstantFeatures",
+            "sentenceLength",
+            "sizeRatio",
+            "specialCharacters",
+            "stringValidation",
+            "trainValLeakageRowCount",
+        ]
+    ] = FieldInfo(alias="insightName", default=None)
     """The insight name to be evaluated."""
 
     insight_parameters: Optional[List[ItemGoalThresholdInsightParameter]] = FieldInfo(
         alias="insightParameters", default=None
     )
-    """The insight parameters. Required only for some test subtypes."""
+    """The insight parameters.
+
+    Required only for some test subtypes. For example, for tests that require a
+    column name, the insight parameters will be [{'name': 'column_name', 'value':
+    'Age'}]
+    """
 
     measurement: Optional[str] = None
     """The measurement to be evaluated."""
