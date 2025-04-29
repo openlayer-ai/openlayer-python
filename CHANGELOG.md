@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.62 (2025-04-29)
+
+Full Changelog: [v0.2.0-alpha.61...v0.2.0-alpha.62](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.61...v0.2.0-alpha.62)
+
+### Bug Fixes
+
+* **openai tracer:** Azure OpenAI chat completion step duplicated ([23ee128](https://github.com/openlayer-ai/openlayer-python/commit/23ee1280f621f695aa1606b1a729e94c3dbaa783))
+* **openai tracer:** object async_generator can't be used in 'await' expression ([ce13918](https://github.com/openlayer-ai/openlayer-python/commit/ce13918f523355b957f9d0f7a0371bb11367a7c6))
+
+
+### Chores
+
+* **lib:** expose async tracing methods ([af49b20](https://github.com/openlayer-ai/openlayer-python/commit/af49b2007bb80718ed0cd72ae13c56f532058f0e))
+
+
+### Documentation
+
+* update docstring ([b248a52](https://github.com/openlayer-ai/openlayer-python/commit/b248a52b842a558e2717d922fb84b351c47f6320))
+
 ## 0.2.0-alpha.61 (2025-04-25)
 
 Full Changelog: [v0.2.0-alpha.60...v0.2.0-alpha.61](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.60...v0.2.0-alpha.61)
