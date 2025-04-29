@@ -137,9 +137,9 @@ def stream_chunks(
                 if delta.function_call.name:
                     collected_function_call["name"] += delta.function_call.name
                 if delta.function_call.arguments:
-                    collected_function_call["arguments"] += (
-                        delta.function_call.arguments
-                    )
+                    collected_function_call[
+                        "arguments"
+                    ] += delta.function_call.arguments
             elif delta.tool_calls:
                 if delta.tool_calls[0].function.name:
                     collected_function_call["name"] += delta.tool_calls[0].function.name
@@ -257,9 +257,10 @@ def add_to_trace(is_azure_openai: bool = False, **kwargs) -> None:
         tracer.add_chat_completion_step_to_trace(
             **kwargs, name="Azure OpenAI Chat Completion", provider="Azure"
         )
-    tracer.add_chat_completion_step_to_trace(
-        **kwargs, name="OpenAI Chat Completion", provider="OpenAI"
-    )
+    else:
+        tracer.add_chat_completion_step_to_trace(
+            **kwargs, name="OpenAI Chat Completion", provider="OpenAI"
+        )
 
 
 def handle_non_streaming_create(
