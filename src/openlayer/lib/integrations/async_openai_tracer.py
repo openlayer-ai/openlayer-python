@@ -1,4 +1,4 @@
-"""Module with methods used to trace async OpenAI / Azure OpenAI LLMs."""
+"""Module with methods used to trace async OpenAI/Azure OpenAI LLMs."""
 
 import json
 import logging
