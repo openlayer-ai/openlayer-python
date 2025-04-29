@@ -7,12 +7,15 @@ __all__ = [
     "trace_openai_assistant_thread_run",
     "trace_mistral",
     "trace_groq",
+    "trace_async_openai",
+    "trace_async",
 ]
 
 # ---------------------------------- Tracing --------------------------------- #
 from .tracing import tracer
 
 trace = tracer.trace
+trace_async = tracer.trace_async
 
 
 def trace_anthropic(client):
