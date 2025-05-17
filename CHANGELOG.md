@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.63 (2025-05-17)
+
+Full Changelog: [v0.2.0-alpha.62...v0.2.0-alpha.63](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.62...v0.2.0-alpha.63)
+
+### Features
+
+* add MLflow notebook example ([149e85f](https://github.com/openlayer-ai/openlayer-python/commit/149e85f075db80c9800fd8dff58b277341a3384c))
+* add OpenLIT notebook example ([f71c668](https://github.com/openlayer-ai/openlayer-python/commit/f71c66895d38b0245f8a5da4c000e6bf747ef4c8))
+
+
+### Bug Fixes
+
+* **package:** support direct resource imports ([8407753](https://github.com/openlayer-ai/openlayer-python/commit/84077531a8491bc48c8fe5d67a9076a27ba21fce))
+
+
+### Chores
+
+* **ci:** fix installation instructions ([d7d4fd2](https://github.com/openlayer-ai/openlayer-python/commit/d7d4fd2e5464f87660a30edd1067aef930b2249a))
+* **ci:** upload sdks to package manager ([0aadb0a](https://github.com/openlayer-ai/openlayer-python/commit/0aadb0a4deed48d46981fd44b308fba5bbc5a3c1))
+* **internal:** avoid errors for isinstance checks on proxies ([3de384b](https://github.com/openlayer-ai/openlayer-python/commit/3de384be80ba27ba97a6079a78b75cdeadf55e5f))
+* **internal:** codegen related update ([120114a](https://github.com/openlayer-ai/openlayer-python/commit/120114ad9d40ce7c41112522f2951dd92be61eaf))
+* **internal:** codegen related update ([f990977](https://github.com/openlayer-ai/openlayer-python/commit/f990977209f13f02b1b87ab98bef5eef50414ea9))
+* link to OpenLLMetry integration guide ([ffcd085](https://github.com/openlayer-ai/openlayer-python/commit/ffcd085e1ad58e2b88fac6f739b6a9a12ba05844))
+* remove MLflow example ([17256c9](https://github.com/openlayer-ai/openlayer-python/commit/17256c96873cef5b085400ad64af860c35de4cf4))
+* sync repo ([caa47dc](https://github.com/openlayer-ai/openlayer-python/commit/caa47dc5b9d671046dca4dd5378a72018ed5d334))
+
 ## 0.2.0-alpha.62 (2025-04-29)
 
 Full Changelog: [v0.2.0-alpha.61...v0.2.0-alpha.62](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.61...v0.2.0-alpha.62)
