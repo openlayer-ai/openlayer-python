@@ -1,6 +1,6 @@
 [project]
 name = "openlayer"
-version = "0.2.0-alpha.63"
+version = "0.2.0-alpha.64"
 description = "The official Python library for the openlayer API"
 dynamic = ["readme"]
 license = "Apache-2.0"
@@ -60,6 +60,7 @@ dev-dependencies = [
     "importlib-metadata>=6.7.0",
     "rich>=13.7.1",
     "nest_asyncio==1.6.0",
+    "pytest-xdist>=3.6.1",
 ]
 
 [tool.rye.scripts]
@@ -131,7 +132,7 @@ replacement = '[\1](https://github.com/openlayer-ai/openlayer-python/tree/main/\
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--tb=short"
+addopts = "--tb=short -n auto"
 xfail_strict = true
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"

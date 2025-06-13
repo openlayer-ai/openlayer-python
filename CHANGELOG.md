@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.64 (2025-06-13)
+
+Full Changelog: [v0.2.0-alpha.63...v0.2.0-alpha.64](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.63...v0.2.0-alpha.64)
+
+### Bug Fixes
+
+* **client:** correctly parse binary response | stream ([698f29f](https://github.com/openlayer-ai/openlayer-python/commit/698f29f07c95c7bc121b01cd89500699d6f163e0))
+
+
+### Chores
+
+* **tests:** run tests in parallel ([74b43e2](https://github.com/openlayer-ai/openlayer-python/commit/74b43e268a5f7c96bb1139e0e9d5f555cc5f4b13))
+
 ## 0.2.0-alpha.63 (2025-06-03)
 
 Full Changelog: [v0.2.0-alpha.62...v0.2.0-alpha.63](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.62...v0.2.0-alpha.63)
