@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.64 (2025-06-16)
+
+Full Changelog: [v0.2.0-alpha.63...v0.2.0-alpha.64](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.63...v0.2.0-alpha.64)
+
+### Bug Fixes
+
+* **client:** correctly parse binary response | stream ([8fe8ec0](https://github.com/openlayer-ai/openlayer-python/commit/8fe8ec0159021248987a6557c9a75f9a49a02512))
+* **tracer:** pull ground truth from root step only when it is defined ([29b5f56](https://github.com/openlayer-ai/openlayer-python/commit/29b5f5672d4e2180cc5f5ae140af395b7ad1f847))
+
+
+### Chores
+
+* **tests:** run tests in parallel ([140bf6e](https://github.com/openlayer-ai/openlayer-python/commit/140bf6e8e6ee523dc7ee64d99e0b4433607d00e9))
+
+
+### Documentation
+
+* add Pydantic AI notebook example ([65f9b15](https://github.com/openlayer-ai/openlayer-python/commit/65f9b1540fa4225e01dd9e5ade3e995b00b5618f))
+
 ## 0.2.0-alpha.63 (2025-06-03)
 
 Full Changelog: [v0.2.0-alpha.62...v0.2.0-alpha.63](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.62...v0.2.0-alpha.63)
