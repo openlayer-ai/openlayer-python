@@ -102,7 +102,6 @@ def create_step(
                 ConfigLlmData(
                     output_column_name="output",
                     input_variable_names=input_variable_names,
-                    ground_truth_column_name="groundTruth",
                     latency_column_name="latency",
                     cost_column_name="cost",
                     timestamp_column_name="inferenceTimestamp",
@@ -110,7 +109,8 @@ def create_step(
                     num_of_token_column_name="tokens",
                 )
             )
-
+            if "groundTruth" in trace_data:
+                config.update({"ground_truth_column_name": "groundTruth"})
             if "context" in trace_data:
                 config.update({"context_column_name": "context"})
 
@@ -386,13 +386,14 @@ def post_process_trace(
         "inferenceTimestamp": root_step.start_time,
         "inferenceId": str(root_step.id),
         "output": root_step.output,
-        "groundTruth": root_step.ground_truth,
         "latency": root_step.latency,
         "cost": processed_steps[0].get("cost", 0),
         "tokens": processed_steps[0].get("tokens", 0),
         "steps": processed_steps,
         **root_step.metadata,
     }
+    if root_step.ground_truth:
+        trace_data["groundTruth"] = root_step.ground_truth
     if input_variables:
         trace_data.update(input_variables)
 
