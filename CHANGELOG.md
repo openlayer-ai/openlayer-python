@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.65 (2025-06-19)
+
+Full Changelog: [v0.2.0-alpha.64...v0.2.0-alpha.65](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.64...v0.2.0-alpha.65)
+
+### Bug Fixes
+
+* **tests:** fix: tests which call HTTP endpoints directly with the example parameters ([ab7ef6b](https://github.com/openlayer-ai/openlayer-python/commit/ab7ef6b12437afc6bc07b1839cdd5fb70d4c3628))
+
+
+### Chores
+
+* **ci:** enable for pull requests ([07c86b5](https://github.com/openlayer-ai/openlayer-python/commit/07c86b5080d0c910e373b6f50b966ea56794e734))
+* **internal:** update conftest.py ([af83c82](https://github.com/openlayer-ai/openlayer-python/commit/af83c828c31f99537e8b57074a325d0ec8dec13e))
+* **readme:** update badges ([2c30786](https://github.com/openlayer-ai/openlayer-python/commit/2c30786b6870f003f4c6c2a9f68136eff15d2ebf))
+* **tests:** add tests for httpx client instantiation & proxies ([55a2e38](https://github.com/openlayer-ai/openlayer-python/commit/55a2e38b32dd755ac27b36c7b1ebffe0ef41d3f2))
+
+
+### Documentation
+
+* **client:** fix httpx.Timeout documentation reference ([ad5d7c0](https://github.com/openlayer-ai/openlayer-python/commit/ad5d7c000f6ffb885d176192a98a740ff1251bd4))
+
 ## 0.2.0-alpha.64 (2025-06-16)
 
 Full Changelog: [v0.2.0-alpha.63...v0.2.0-alpha.64](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.63...v0.2.0-alpha.64)
