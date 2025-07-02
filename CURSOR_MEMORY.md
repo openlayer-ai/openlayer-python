@@ -5,23 +5,38 @@
 ### Duplicate Trace Issue with Async Streaming
 
 **Problem**: When using both `@trace()` decorator and `trace_async_openai()` together, duplicate traces are generated:
-1. One trace from `@trace()` decorator showing async_generator as output (incomplete)
-2. Another trace from `trace_async_openai()` showing only the OpenAI response (missing function context)
+1. One trace from `@trace()` decorator with function input parameters
+2. Another trace from `trace_async_openai()` with the OpenAI chat completion request
+3. **CRITICAL**: This breaks tests because tests are executed over both separate requests instead of one unified trace
 
 **Root Cause**: 
 - The `@trace()` and `trace_async()` decorators don't handle async generators properly
 - They capture the generator object itself as output, not the streamed content
 - `trace_async_openai()` creates separate traces for OpenAI calls
-- This creates conflicting/duplicate trace data
+- This creates conflicting/duplicate trace data that confuses test execution
+- Tests expect single request but get two separate ones to validate
 
 **Key Files**:
 - `src/openlayer/lib/tracing/tracer.py` - Contains trace() and trace_async() decorators
 - `src/openlayer/lib/integrations/async_openai_tracer.py` - Contains trace_async_openai()
 
 **Solution Strategy**:
-1. Either use ONLY `@trace_async()` decorator OR ONLY `trace_async_openai()`, not both
-2. Modify decorators to properly handle async generators by consuming them
-3. Create a specialized decorator for async streaming functions
+1. **RECOMMENDED**: Remove all decorators and use ONLY `trace_async_openai()` for async streaming
+2. Alternative: Use ONLY `@trace_async()` decorator (but lose OpenAI-specific metrics)
+3. **NEVER**: Mix decorators with client tracing - this always causes duplicates
+
+**Confirmed Working Solution**:
+```python
+class say_hi:
+    def __init__(self):
+        self.openai_client = trace_async_openai(AsyncOpenAI())
+    
+    # ❌ Remove @trace() decorator
+    async def hi(self, cur_str: str):
+        # trace_async_openai handles all tracing automatically
+        response = await self.openai_client.chat.completions.create(...)
+        # ... rest of streaming logic
+```
 
 ## Project Structure Insights
 
