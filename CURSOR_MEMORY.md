@@ -10,9 +10,12 @@
 3. **CRITICAL**: This breaks tests because tests are executed over both separate requests instead of one unified trace
 
 **Root Cause**: 
-- The `@trace()` and `trace_async()` decorators don't handle async generators properly
-- They capture the generator object itself as output, not the streamed content
-- `trace_async_openai()` creates separate traces for OpenAI calls
+- **CRITICAL**: `@trace_async()` is fundamentally broken for async generators
+  - Cannot `await` an async generator function (returns generator object, not values)
+  - Logs the generator object as output instead of actual streamed content
+  - Records timing before generator is consumed (incorrect latency)
+  - Never captures the actual yielded values
+- `trace_async_openai()` creates separate traces for OpenAI calls  
 - This creates conflicting/duplicate trace data that confuses test execution
 - Tests expect single request but get two separate ones to validate
 
