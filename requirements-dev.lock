@@ -4,10 +4,8 @@
 # last locked with the following flags:
 #   pre: false
 #   features: []
-#   all-features: true
+#   all-features: false
 #   with-sources: false
-#   generate-hashes: false
-#   universal: false
 
 -e file:.
 annotated-types==0.6.0
@@ -75,7 +73,7 @@ platformdirs==3.11.0
     # via virtualenv
 pluggy==1.5.0
     # via pytest
-pyarrow==14.0.1
+pyarrow==15.0.2
     # via openlayer
 pydantic==2.10.3
     # via openlayer

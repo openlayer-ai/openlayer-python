@@ -4,10 +4,8 @@
 # last locked with the following flags:
 #   pre: false
 #   features: []
-#   all-features: true
+#   all-features: false
 #   with-sources: false
-#   generate-hashes: false
-#   universal: false
 
 -e file:.
 annotated-types==0.6.0
@@ -41,7 +39,7 @@ numpy==1.26.4
     # via pyarrow
 pandas==2.2.2
     # via openlayer
-pyarrow==14.0.1
+pyarrow==15.0.2
     # via openlayer
 pydantic==2.10.3
     # via openlayer
