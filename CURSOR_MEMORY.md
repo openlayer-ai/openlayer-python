@@ -2,6 +2,20 @@
 
 ## Key Lessons Learned
 
+### 🚨 CRITICAL SDK BUG: trace_async Doesn't Support Async Generators
+
+**STATUS**: This is a fundamental bug in the Openlayer SDK that needs immediate fixing. Users should NOT have to modify their code.
+
+**The Bug**: `trace_async` decorator cannot handle async generator functions (functions that use `yield`). It tries to `await` an async generator function, which returns the generator object instead of the yielded values.
+
+**Impact**: 
+- Logs `<async_generator object>` instead of actual content
+- Wrong timing measurements  
+- Breaks user expectations for streaming functions
+- Forces unnecessary code modifications
+
+**Required Fix**: Use `inspect.isasyncgenfunction()` to detect async generators and handle them by consuming the generator while yielding values to maintain streaming behavior.
+
 ### Duplicate Trace Issue with Async Streaming
 
 **Problem**: When using both `@trace()` decorator and `trace_async_openai()` together, duplicate traces are generated:
