@@ -2,19 +2,17 @@
 
 ## Key Lessons Learned
 
-### 🚨 CRITICAL SDK BUG: trace_async Doesn't Support Async Generators
+### ✅ FIXED: trace_async Now Supports Async Generators
 
-**STATUS**: This is a fundamental bug in the Openlayer SDK that needs immediate fixing. Users should NOT have to modify their code.
+**STATUS**: **FIXED** - Applied proper async generator support to the SDK.
 
-**The Bug**: `trace_async` decorator cannot handle async generator functions (functions that use `yield`). It tries to `await` an async generator function, which returns the generator object instead of the yielded values.
+**What Was Fixed**: 
+- Added `inspect.isasyncgenfunction()` detection in `trace_async` decorator
+- Properly handles async generators by consuming them while maintaining streaming behavior  
+- Collects complete output and logs it after streaming finishes
+- Measures timing correctly for the full streaming duration
 
-**Impact**: 
-- Logs `<async_generator object>` instead of actual content
-- Wrong timing measurements  
-- Breaks user expectations for streaming functions
-- Forces unnecessary code modifications
-
-**Required Fix**: Use `inspect.isasyncgenfunction()` to detect async generators and handle them by consuming the generator while yielding values to maintain streaming behavior.
+**Result**: Users can now use `@trace_async()` on async generator functions without any code modifications. The decorator automatically detects async generators and handles them appropriately while preserving streaming behavior.
 
 ### Duplicate Trace Issue with Async Streaming
 

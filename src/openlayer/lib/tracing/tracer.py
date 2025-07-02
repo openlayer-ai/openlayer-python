@@ -5,7 +5,7 @@ import asyncio
 import inspect
 import logging
 import contextvars
-from typing import Any, Dict, List, Tuple, Optional, Awaitable, Generator
+from typing import Any, Dict, List, Tuple, Optional, Awaitable, Generator, AsyncIterator
 from functools import wraps
 from contextlib import contextmanager
 
@@ -287,6 +287,15 @@ def trace_async(
         async def wrapper(*func_args, **func_kwargs):
             if step_kwargs.get("name") is None:
                 step_kwargs["name"] = func.__name__
+            
+            # Check if function is an async generator
+            if inspect.isasyncgenfunction(func):
+                return handle_async_generator(
+                    func, func_args, func_kwargs, step_args, step_kwargs, 
+                    inference_pipeline_id, context_kwarg, func_signature
+                )
+            
+            # Handle regular async functions
             with create_step(
                 *step_args, inference_pipeline_id=inference_pipeline_id, **step_kwargs
             ) as step:
@@ -326,6 +335,69 @@ def trace_async(
                 if exception is not None:
                     raise exception
             return output
+
+        async def handle_async_generator(
+            func, func_args, func_kwargs, step_args, step_kwargs, 
+            inference_pipeline_id, context_kwarg, func_signature
+        ) -> AsyncIterator[Any]:
+            """Handle async generator functions properly."""
+            with create_step(
+                *step_args, inference_pipeline_id=inference_pipeline_id, **step_kwargs
+            ) as step:
+                collected_output = []
+                exception = None
+                
+                # Prepare inputs
+                bound = func_signature.bind(*func_args, **func_kwargs)
+                bound.apply_defaults()
+                inputs = dict(bound.arguments)
+                inputs.pop("self", None)
+                inputs.pop("cls", None)
+
+                if context_kwarg:
+                    if context_kwarg in inputs:
+                        log_context(inputs.get(context_kwarg))
+                    else:
+                        logger.warning(
+                            "Context kwarg `%s` not found in inputs of the "
+                            "current function.",
+                            context_kwarg,
+                        )
+                
+                try:
+                    # Get the async generator
+                    async_gen = func(*func_args, **func_kwargs)
+                    
+                    # Consume and collect all values while yielding them
+                    async for value in async_gen:
+                        collected_output.append(value)
+                        yield value  # Maintain streaming behavior
+                        
+                except Exception as exc:
+                    step.log(metadata={"Exceptions": str(exc)})
+                    exception = exc
+                    raise
+                finally:
+                    # Log complete output after streaming finishes
+                    end_time = time.time()
+                    latency = (end_time - step.start_time) * 1000  # in ms
+                    
+                    # Convert collected output to string representation
+                    if collected_output:
+                        # Handle different types of output
+                        if all(isinstance(item, str) for item in collected_output):
+                            complete_output = "".join(collected_output)
+                        else:
+                            complete_output = "".join(str(item) for item in collected_output)
+                    else:
+                        complete_output = ""
+                    
+                    step.log(
+                        inputs=inputs,
+                        output=complete_output,  # Actual content, not generator object
+                        end_time=end_time,
+                        latency=latency,  # Correct timing for full streaming
+                    )
 
         return wrapper
 
