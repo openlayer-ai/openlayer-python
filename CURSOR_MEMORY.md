@@ -28,7 +28,9 @@
 2. Alternative: Use ONLY `@trace_async()` decorator (but lose OpenAI-specific metrics)
 3. **NEVER**: Mix decorators with client tracing - this always causes duplicates
 
-**Confirmed Working Solution**:
+**Confirmed Working Solutions**:
+
+**Option 1 - No Function Tracing** (simplest):
 ```python
 class say_hi:
     def __init__(self):
@@ -39,6 +41,21 @@ class say_hi:
         # trace_async_openai handles all tracing automatically
         response = await self.openai_client.chat.completions.create(...)
         # ... rest of streaming logic
+```
+
+**Option 2 - With Function Tracing** (recommended):
+```python
+class say_hi:
+    def __init__(self):
+        self.openai_client = trace_async_openai(AsyncOpenAI())
+    
+    @trace_async()  # ✅ Works when function returns string
+    async def hi(self, cur_str: str) -> str:  # Return complete response
+        response = await self.openai_client.chat.completions.create(...)
+        complete_answer = ""
+        async for chunk in response:
+            complete_answer += chunk.choices[0].delta.content or ""
+        return complete_answer  # ✅ Return instead of yield
 ```
 
 ## Project Structure Insights
