@@ -15,7 +15,7 @@ dependencies = [
     "distro>=1.7.0, <2",
     "sniffio",
     "pandas; python_version >= '3.7'",
-    "pyarrow==14.0.1",
+    "pyarrow==15.0.2",
     "pyyaml>=6.0",
     "requests_toolbelt>=1.0.0",
     "tqdm",
