@@ -143,7 +143,141 @@ def add_chat_completion_step_to_trace(**kwargs) -> None:
         step.log(**kwargs)
 
 
+# ----------------------------- Helper functions for tracing ---------------------------- #
+
+def _extract_function_inputs(
+    func_signature: inspect.Signature, 
+    func_args: tuple, 
+    func_kwargs: dict,
+    context_kwarg: Optional[str] = None
+) -> dict:
+    """Extract and clean function inputs for logging."""
+    bound = func_signature.bind(*func_args, **func_kwargs)
+    bound.apply_defaults()
+    inputs = dict(bound.arguments)
+    inputs.pop("self", None)
+    inputs.pop("cls", None)
+    
+    # Handle context kwarg if specified
+    if context_kwarg:
+        if context_kwarg in inputs:
+            log_context(inputs.get(context_kwarg))
+        else:
+            logger.warning(
+                "Context kwarg `%s` not found in inputs of the current function.",
+                context_kwarg,
+            )
+    
+    return inputs
+
+def _finalize_step_logging(
+    step: steps.Step,
+    inputs: dict,
+    output: Any,
+    start_time: float,
+    exception: Optional[Exception] = None
+) -> None:
+    """Finalize step timing and logging."""
+    if step.end_time is None:
+        step.end_time = time.time()
+    if step.latency is None:
+        step.latency = (step.end_time - start_time) * 1000  # in ms
+    
+    step.log(
+        inputs=inputs,
+        output=output,
+        end_time=step.end_time,
+        latency=step.latency,
+    )
+
+def _handle_trace_completion(
+    is_root_step: bool,
+    step_name: str,
+    inference_pipeline_id: Optional[str] = None
+) -> None:
+    """Handle trace completion and data streaming."""
+    if is_root_step:
+        logger.debug("Ending the trace...")
+        current_trace = get_current_trace()
+        trace_data, input_variable_names = post_process_trace(current_trace)
+
+        config = dict(
+            ConfigLlmData(
+                output_column_name="output",
+                input_variable_names=input_variable_names,
+                latency_column_name="latency",
+                cost_column_name="cost",
+                timestamp_column_name="inferenceTimestamp",
+                inference_id_column_name="inferenceId",
+                num_of_token_column_name="tokens",
+            )
+        )
+        if "groundTruth" in trace_data:
+            config.update({"ground_truth_column_name": "groundTruth"})
+        if "context" in trace_data:
+            config.update({"context_column_name": "context"})
+
+        if isinstance(get_current_step(), steps.ChatCompletionStep):
+            config.update(
+                {
+                    "prompt": get_current_step().inputs.get("prompt"),
+                }
+            )
+        if _publish:
+            try:
+                _client.inference_pipelines.data.stream(
+                    inference_pipeline_id=inference_pipeline_id
+                    or utils.get_env_variable("OPENLAYER_INFERENCE_PIPELINE_ID"),
+                    rows=[trace_data],
+                    config=config,
+                )
+            except Exception as err:  # pylint: disable=broad-except
+                logger.error("Could not stream data to Openlayer %s", err)
+    else:
+        logger.debug("Ending step %s", step_name)
+
+@contextmanager
+def _create_step_for_async_generator(
+    step_name: str,
+    step_args: tuple,
+    inference_pipeline_id: Optional[str] = None,
+    **step_kwargs
+) -> Generator[Tuple[steps.Step, bool, Any], None, None]:
+    """Create and manage step for async generators without interfering with yields."""
+    # Create step manually
+    new_step = steps.step_factory(
+        step_type=enums.StepType.USER_CALL, 
+        name=step_name,
+        inputs=None, 
+        output=None, 
+        metadata=None
+    )
+    new_step.start_time = time.time()
+
+    parent_step = get_current_step()
+    is_root_step = parent_step is None
+
+    if parent_step is None:
+        logger.debug("Starting a new trace...")
+        current_trace = traces.Trace()
+        _current_trace.set(current_trace)
+        _rag_context.set(None)
+        current_trace.add_step(new_step)
+    else:
+        logger.debug("Adding step %s to parent step %s", step_name, parent_step.name)
+        current_trace = get_current_trace()
+        parent_step.add_nested_step(new_step)
+
+    token = _current_step.set(new_step)
+    
+    try:
+        yield new_step, is_root_step, token
+    finally:
+        _current_step.reset(token)
+        _handle_trace_completion(is_root_step, step_name, inference_pipeline_id)
+
 # ----------------------------- Tracing decorator ---------------------------- #
+
 def trace(
     *step_args,
     inference_pipeline_id: Optional[str] = None,
@@ -193,135 +327,23 @@ def trace(
         def wrapper(*func_args, **func_kwargs):
             if step_kwargs.get("name") is None:
                 step_kwargs["name"] = func.__name__
+                
             with create_step(
                 *step_args, inference_pipeline_id=inference_pipeline_id, **step_kwargs
             ) as step:
                 output = exception = None
                 try:
                     output = func(*func_args, **func_kwargs)
-                # pylint: disable=broad-except
                 except Exception as exc:
                     step.log(metadata={"Exceptions": str(exc)})
                     exception = exc
-                end_time = time.time()
-                latency = (end_time - step.start_time) * 1000  # in ms
-
-                bound = func_signature.bind(*func_args, **func_kwargs)
-                bound.apply_defaults()
-                inputs = dict(bound.arguments)
-                inputs.pop("self", None)
-                inputs.pop("cls", None)
-
-                if context_kwarg:
-                    if context_kwarg in inputs:
-                        log_context(inputs.get(context_kwarg))
-                    else:
-                        logger.warning(
-                            "Context kwarg `%s` not found in inputs of the "
-                            "current function.",
-                            context_kwarg,
-                        )
-
-                step.log(
-                    inputs=inputs,
-                    output=output,
-                    end_time=end_time,
-                    latency=latency,
+                
+                # Extract inputs and finalize logging using optimized helper
+                inputs = _extract_function_inputs(
+                    func_signature, func_args, func_kwargs, context_kwarg
                 )
-
-                if exception is not None:
-                    raise exception
-            return output
-
-        return wrapper
-
-    return decorator
-
-
-def trace_async(
-    *step_args,
-    inference_pipeline_id: Optional[str] = None,
-    context_kwarg: Optional[str] = None,
-    **step_kwargs,
-):
-    """Decorator to trace a function.
-
-    Examples
-    --------
-
-    To trace a function, simply decorate it with the ``@trace()`` decorator. By doing
-    so, the functions inputs, outputs, and metadata will be automatically logged to your
-    Openlayer project.
-
-    >>> import os
-    >>> from openlayer.tracing import tracer
-    >>>
-    >>> # Set the environment variables
-    >>> os.environ["OPENLAYER_API_KEY"] = "YOUR_OPENLAYER_API_KEY_HERE"
-    >>> os.environ["OPENLAYER_PROJECT_NAME"] = "YOUR_OPENLAYER_PROJECT_NAME_HERE"
-    >>>
-    >>> # Decorate all the functions you want to trace
-    >>> @tracer.trace_async()
-    >>> async def main(user_query: str) -> str:
-    >>>     context = retrieve_context(user_query)
-    >>>     answer = generate_answer(user_query, context)
-    >>>     return answer
-    >>>
-    >>> @tracer.trace_async()
-    >>> def retrieve_context(user_query: str) -> str:
-    >>>     return "Some context"
-    >>>
-    >>> @tracer.trace_async()
-    >>> def generate_answer(user_query: str, context: str) -> str:
-    >>>     return "Some answer"
-    >>>
-    >>> # Every time the main function is called, the data is automatically
-    >>> # streamed to your Openlayer project. E.g.:
-    >>> tracer.run_async_func(main("What is the meaning of life?"))
-    """
-
-    def decorator(func):
-        func_signature = inspect.signature(func)
-
-        @wraps(func)
-        async def wrapper(*func_args, **func_kwargs):
-            if step_kwargs.get("name") is None:
-                step_kwargs["name"] = func.__name__
-            with create_step(
-                *step_args, inference_pipeline_id=inference_pipeline_id, **step_kwargs
-            ) as step:
-                output = exception = None
-                try:
-                    output = await func(*func_args, **func_kwargs)
-                # pylint: disable=broad-except
-                except Exception as exc:
-                    step.log(metadata={"Exceptions": str(exc)})
-                    exception = exc
-                end_time = time.time()
-                latency = (end_time - step.start_time) * 1000  # in ms
-
-                bound = func_signature.bind(*func_args, **func_kwargs)
-                bound.apply_defaults()
-                inputs = dict(bound.arguments)
-                inputs.pop("self", None)
-                inputs.pop("cls", None)
-
-                if context_kwarg:
-                    if context_kwarg in inputs:
-                        log_context(inputs.get(context_kwarg))
-                    else:
-                        logger.warning(
-                            "Context kwarg `%s` not found in inputs of the "
-                            "current function.",
-                            context_kwarg,
-                        )
-
-                step.log(
-                    inputs=inputs,
-                    output=output,
-                    end_time=end_time,
-                    latency=latency,
-                )
+                
+                _finalize_step_logging(step, inputs, output, step.start_time, exception)
 
                 if exception is not None:
                     raise exception
@@ -402,3 +424,133 @@ def post_process_trace(
         trace_data["context"] = context
 
     return trace_data, input_variable_names
+
+
+def trace_async(
+    *step_args,
+    inference_pipeline_id: Optional[str] = None,
+    context_kwarg: Optional[str] = None,
+    **step_kwargs,
+):
+    """Decorator to trace async functions and async generators.
+
+    This decorator automatically detects whether the function is a regular async function
+    or an async generator and handles both cases appropriately.
+
+    Examples
+    --------
+
+    To trace a regular async function:
+
+    >>> @tracer.trace_async()
+    >>> async def main(user_query: str) -> str:
+    >>>     context = retrieve_context(user_query)
+    >>>     answer = generate_answer(user_query, context)
+    >>>     return answer
+
+    To trace an async generator function:
+
+    >>> @tracer.trace_async()
+    >>> async def stream_response(query: str):
+    >>>     async for chunk in openai_client.chat.completions.create(...):
+    >>>         yield chunk.choices[0].delta.content
+    """
+
+    def decorator(func):
+        func_signature = inspect.signature(func)
+        
+        if step_kwargs.get("name") is None:
+            step_kwargs["name"] = func.__name__
+        step_name = step_kwargs["name"]
+
+        if asyncio.iscoroutinefunction(func):
+            # Check if it's specifically an async generator function
+            if inspect.isasyncgenfunction(func):
+                # Create a specific async generator wrapper WITHOUT context manager
+                @wraps(func)
+                async def async_generator_wrapper(*func_args, **func_kwargs):
+                    with _create_step_for_async_generator(
+                        step_name, step_args, inference_pipeline_id, **step_kwargs
+                    ) as (step, is_root_step, token):
+                        output_chunks = []
+                        exception = None
+                        
+                        try:
+                            # Execute the async generator function
+                            async_gen = func(*func_args, **func_kwargs)
+                            
+                            # Yield each chunk and collect for logging
+                            async for chunk in async_gen:
+                                output_chunks.append(chunk)
+                                yield chunk  # This makes our wrapper an async generator
+                                
+                        except Exception as exc:
+                            step.log(metadata={"Exceptions": str(exc)})
+                            exception = exc
+                            raise
+                        finally:
+                            # Extract inputs and finalize logging
+                            inputs = _extract_function_inputs(
+                                func_signature, func_args, func_kwargs, context_kwarg
+                            )
+                            
+                            # Combine chunks for output
+                            output = "".join(str(chunk) for chunk in output_chunks if chunk is not None)
+                            
+                            _finalize_step_logging(step, inputs, output, step.start_time, exception)
+                
+                return async_generator_wrapper
+            else:
+                # Create wrapper for regular async functions
+                @wraps(func)
+                async def async_function_wrapper(*func_args, **func_kwargs):
+                    with create_step(
+                        *step_args, inference_pipeline_id=inference_pipeline_id, **step_kwargs
+                    ) as step:
+                        output = exception = None
+                        
+                        try:
+                            output = await func(*func_args, **func_kwargs)
+                        except Exception as exc:
+                            step.log(metadata={"Exceptions": str(exc)})
+                            exception = exc
+                            raise
+                        
+                        # Extract inputs and finalize logging
+                        inputs = _extract_function_inputs(
+                            func_signature, func_args, func_kwargs, context_kwarg
+                        )
+                        
+                        _finalize_step_logging(step, inputs, output, step.start_time, exception)
+                        
+                        return output
+                
+                return async_function_wrapper
+        else:
+            # For sync functions, use the existing logic with optimizations
+            @wraps(func)
+            def sync_wrapper(*func_args, **func_kwargs):
+                with create_step(
+                    *step_args, inference_pipeline_id=inference_pipeline_id, **step_kwargs
+                ) as step:
+                    output = exception = None
+                    try:
+                        output = func(*func_args, **func_kwargs)
+                    except Exception as exc:
+                        step.log(metadata={"Exceptions": str(exc)})
+                        exception = exc
+                    
+                    # Extract inputs and finalize logging
+                    inputs = _extract_function_inputs(
+                        func_signature, func_args, func_kwargs, context_kwarg
+                    )
+                    
+                    _finalize_step_logging(step, inputs, output, step.start_time, exception)
+
+                    if exception is not None:
+                        raise exception
+                return output
+
+            return sync_wrapper
+
+    return decorator
