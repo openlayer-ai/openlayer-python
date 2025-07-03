@@ -24,15 +24,24 @@ _verify_ssl = (
     utils.get_env_variable("OPENLAYER_VERIFY_SSL") or "true"
 ).lower() in TRUE_LIST
 _client = None
-if _publish:
-    if _verify_ssl:
-        _client = Openlayer()
-    else:
-        _client = Openlayer(
-            http_client=DefaultHttpxClient(
-                verify=False,
-            ),
-        )
+
+def _get_client() -> Optional[Openlayer]:
+    """Get or create the Openlayer client with lazy initialization."""
+    global _client
+    if not _publish:
+        return None
+    
+    if _client is None:
+        # Lazy initialization - create client when first needed
+        if _verify_ssl:
+            _client = Openlayer()
+        else:
+            _client = Openlayer(
+                http_client=DefaultHttpxClient(
+                    verify=False,
+                ),
+            )
+    return _client
 
 _current_step = contextvars.ContextVar("current_step")
 _current_trace = contextvars.ContextVar("current_trace")
@@ -122,12 +131,14 @@ def create_step(
                 )
             if _publish:
                 try:
-                    _client.inference_pipelines.data.stream(
-                        inference_pipeline_id=inference_pipeline_id
-                        or utils.get_env_variable("OPENLAYER_INFERENCE_PIPELINE_ID"),
-                        rows=[trace_data],
-                        config=config,
-                    )
+                    client = _get_client()
+                    if client:
+                        client.inference_pipelines.data.stream(
+                            inference_pipeline_id=inference_pipeline_id
+                            or utils.get_env_variable("OPENLAYER_INFERENCE_PIPELINE_ID"),
+                            rows=[trace_data],
+                            config=config,
+                        )
                 except Exception as err:  # pylint: disable=broad-except
                     logger.error("Could not stream data to Openlayer %s", err)
         else:
@@ -225,12 +236,14 @@ def _handle_trace_completion(
             )
         if _publish:
             try:
-                _client.inference_pipelines.data.stream(
-                    inference_pipeline_id=inference_pipeline_id
-                    or utils.get_env_variable("OPENLAYER_INFERENCE_PIPELINE_ID"),
-                    rows=[trace_data],
-                    config=config,
-                )
+                client = _get_client()
+                if client:
+                    client.inference_pipelines.data.stream(
+                        inference_pipeline_id=inference_pipeline_id
+                        or utils.get_env_variable("OPENLAYER_INFERENCE_PIPELINE_ID"),
+                        rows=[trace_data],
+                        config=config,
+                    )
             except Exception as err:  # pylint: disable=broad-except
                 logger.error("Could not stream data to Openlayer %s", err)
     else:
