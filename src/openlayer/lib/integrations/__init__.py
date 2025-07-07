@@ -1,5 +1,6 @@
-"""Openlayer integrations with various AI/ML frameworks."""
+"""Integrations for Openlayer."""
 
+# Core integrations that are always available
 __all__ = []
 
 # Optional imports - only import if dependencies are available
@@ -10,7 +11,7 @@ except ImportError:
     pass
 
 try:
-    from .openai_agents import OpenAIAgentsTracingProcessor, FileSpanExporter
-    __all__.extend(["OpenAIAgentsTracingProcessor", "FileSpanExporter"])
+    from .openai_agents import OpenlayerTracerProcessor
+    __all__.extend(["OpenlayerTracerProcessor"])
 except ImportError:
     pass
