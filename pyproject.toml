@@ -1,6 +1,6 @@
 [project]
 name = "openlayer"
-version = "0.2.0-alpha.64"
+version = "0.2.0-alpha.65"
 description = "The official Python library for the openlayer API"
 dynamic = ["readme"]
 license = "Apache-2.0"
@@ -30,6 +30,7 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Operating System :: OS Independent",
   "Operating System :: POSIX",
   "Operating System :: MacOS",
@@ -43,6 +44,8 @@ classifiers = [
 Homepage = "https://github.com/openlayer-ai/openlayer-python"
 Repository = "https://github.com/openlayer-ai/openlayer-python"
 
+[project.optional-dependencies]
+aiohttp = ["aiohttp", "httpx_aiohttp>=0.1.6"]
 
 [tool.rye]
 managed = true
