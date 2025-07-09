@@ -163,13 +163,15 @@ class OpenlayerHandler(BaseCallbackHandler):
 
         if tracer._publish:
             try:
-                tracer._client.inference_pipelines.data.stream(
-                    inference_pipeline_id=utils.get_env_variable(
-                        "OPENLAYER_INFERENCE_PIPELINE_ID"
-                    ),
-                    rows=[trace_data],
-                    config=config,
-                )
+                client = tracer._get_client()
+                if client:
+                    client.inference_pipelines.data.stream(
+                        inference_pipeline_id=utils.get_env_variable(
+                            "OPENLAYER_INFERENCE_PIPELINE_ID"
+                        ),
+                        rows=[trace_data],
+                        config=config,
+                    )
             except Exception as err:  # pylint: disable=broad-except
                 tracer.logger.error("Could not stream data to Openlayer %s", err)
 
