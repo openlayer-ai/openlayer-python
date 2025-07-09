@@ -251,12 +251,12 @@ def trace_async(
                             # Initialize tracing on first iteration only
                             if not self._trace_initialized:
                                 self._original_gen = func(*func_args, **func_kwargs)
-                                self._step, self._is_root_step, self._token = (
-                                    _create_step_for_async_generator(
-                                        step_name=step_name,
-                                        inference_pipeline_id=inference_pipeline_id,
-                                        **step_kwargs,
-                                    )
+                                self._step, self._is_root_step, self._token = _create_and_initialize_step(
+                                    step_name=step_name,
+                                    step_type=enums.StepType.USER_CALL,
+                                    inputs=None,
+                                    output=None,
+                                    metadata=None,
                                 )
                                 self._inputs = _extract_function_inputs(
                                     func_signature=func_signature,
@@ -556,18 +556,6 @@ def _finalize_step_logging(
 
 # ----------------------------- Async generator specific functions ----------------------------- #
 
-
-def _create_step_for_async_generator(
-    step_name: str, inference_pipeline_id: Optional[str] = None, **step_kwargs
-) -> Tuple[steps.Step, bool, Any]:
-    """Create and initialize step for async generators - no context manager."""
-    return _create_and_initialize_step(
-        step_name=step_name,
-        step_type=enums.StepType.USER_CALL,
-        inputs=None,
-        output=None,
-        metadata=None,
-    )
 
 
 def _finalize_async_generator_step(
