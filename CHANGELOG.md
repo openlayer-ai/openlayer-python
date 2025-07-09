@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.66 (2025-07-09)
+
+Full Changelog: [v0.2.0-alpha.65...v0.2.0-alpha.66](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.65...v0.2.0-alpha.66)
+
+### Features
+
+* **tracer:** enhance tracing functionality with helper methods for input extraction and logging finalization ([c2908d0](https://github.com/openlayer-ai/openlayer-python/commit/c2908d0f5516a21b8c25a830b7cd98a4df797ac6))
+* **tracer:** implement lazy initialization for Openlayer client ([2daf847](https://github.com/openlayer-ai/openlayer-python/commit/2daf847518779c070e0cb9b82ff6a8267dd6b965))
+* **tracer:** refactor step creation and logging for improved clarity and maintainability ([243a7f9](https://github.com/openlayer-ai/openlayer-python/commit/243a7f9011f66a38af8bc60fbe8687395a73c222))
+
+
+### Bug Fixes
+
+* update client retrieval for LangChain callback handler ([7fb7cbe](https://github.com/openlayer-ai/openlayer-python/commit/7fb7cbed5c7781bf1266655e0dbc0caff5b80c00))
+
+
+### Chores
+
+* format file ([16429ac](https://github.com/openlayer-ai/openlayer-python/commit/16429ac260e1c458af12ed7c5508d9af9e4722bb))
+
+
+### Documentation
+
+* add LangGraph notebook example ([cb8838c](https://github.com/openlayer-ai/openlayer-python/commit/cb8838c0d0f6bd983e295eaf990eb35ecf9a48e7))
+
+
+### Refactors
+
+* **tracer:** simplify async step creation by consolidating functions ([d61888c](https://github.com/openlayer-ai/openlayer-python/commit/d61888c4e23b8b592022e0ee766bab87d79d7e13))
+* **tracer:** streamline code formatting and improve readability ([bada5eb](https://github.com/openlayer-ai/openlayer-python/commit/bada5eb23c1979b0ba76f0e1c4ff3f991d54cb40))
+
 ## 0.2.0-alpha.65 (2025-07-09)
 
 Full Changelog: [v0.2.0-alpha.64...v0.2.0-alpha.65](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.64...v0.2.0-alpha.65)
