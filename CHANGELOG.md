@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.65 (2025-07-09)
+
+Full Changelog: [v0.2.0-alpha.64...v0.2.0-alpha.65](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.64...v0.2.0-alpha.65)
+
+### Features
+
+* adds openai agents sdk trace processor ([da53c53](https://github.com/openlayer-ai/openlayer-python/commit/da53c534e3e9969fa4b2bb7e1ba571caa80a78aa))
+* **client:** add support for aiohttp ([977528d](https://github.com/openlayer-ai/openlayer-python/commit/977528d63ccc1d9c9ad534c2c84f490dcfd8fa2c))
+* **examples:** add OpenAI Agents tracing notebook for multi-agent conversation monitoring ([dbeb9f4](https://github.com/openlayer-ai/openlayer-python/commit/dbeb9f4f8f267b02434bae4a6ab56f9f8d2843af))
+* implement remaining methods for LangChain callback handler ([cd6d303](https://github.com/openlayer-ai/openlayer-python/commit/cd6d30373859a432d91d36fcd56294906e9b52aa))
+* **openai-agents:** enhance OpenAI Agents tracing with structured span data extraction ([46d0852](https://github.com/openlayer-ai/openlayer-python/commit/46d08528ba036ace5fdf45a35f813c2494e1ae1f))
+
+
+### Bug Fixes
+
+* **ci:** correct conditional ([f616411](https://github.com/openlayer-ai/openlayer-python/commit/f6164110ff27782f0df72c486d2c45c66f3a6cb5))
+* **ci:** release-doctor — report correct token name ([e42727c](https://github.com/openlayer-ai/openlayer-python/commit/e42727caf8c7ac350874d9195487da19df7f0081))
+* context list handling ([#474](https://github.com/openlayer-ai/openlayer-python/issues/474)) ([1ef1a1e](https://github.com/openlayer-ai/openlayer-python/commit/1ef1a1e917675646ec62275101d19e595ba6c2cf))
+* **tests:** fix: tests which call HTTP endpoints directly with the example parameters ([ab7ef6b](https://github.com/openlayer-ai/openlayer-python/commit/ab7ef6b12437afc6bc07b1839cdd5fb70d4c3628))
+* update pyarrow version ([f4feadf](https://github.com/openlayer-ai/openlayer-python/commit/f4feadfa95a07a71d79b6184795e79c44644947b))
+
+
+### Chores
+
+* **ci:** change upload type ([49cdc9c](https://github.com/openlayer-ai/openlayer-python/commit/49cdc9c1c246051fcd78722eab8896fc3398a555))
+* **ci:** enable for pull requests ([07c86b5](https://github.com/openlayer-ai/openlayer-python/commit/07c86b5080d0c910e373b6f50b966ea56794e734))
+* **ci:** only run for pushes and fork pull requests ([fbf9c05](https://github.com/openlayer-ai/openlayer-python/commit/fbf9c05081172a447968c7c4ed011a364239ac7a))
+* **internal:** bump pinned h11 dep ([ddef8c8](https://github.com/openlayer-ai/openlayer-python/commit/ddef8c848fd1abb9a884b6fa0a42b5e9f2be0412))
+* **internal:** codegen related update ([f514ca3](https://github.com/openlayer-ai/openlayer-python/commit/f514ca32ebd1068d9b91b85d1788de560da14a08))
+* **internal:** update conftest.py ([af83c82](https://github.com/openlayer-ai/openlayer-python/commit/af83c828c31f99537e8b57074a325d0ec8dec13e))
+* **package:** mark python 3.13 as supported ([e663ce9](https://github.com/openlayer-ai/openlayer-python/commit/e663ce9a6b27739878efac099e0c253cc616190c))
+* **readme:** update badges ([2c30786](https://github.com/openlayer-ai/openlayer-python/commit/2c30786b6870f003f4c6c2a9f68136eff15d2ebf))
+* refactor LangChain callback handler ([858285d](https://github.com/openlayer-ai/openlayer-python/commit/858285dc4387088001a50ebde6c1cf34ffb5374c))
+* remove unused imports, break long lines, and formatting cleanup ([753c317](https://github.com/openlayer-ai/openlayer-python/commit/753c31705958f2c16ed27092e33f97aa87854230))
+* **tests:** add tests for httpx client instantiation & proxies ([55a2e38](https://github.com/openlayer-ai/openlayer-python/commit/55a2e38b32dd755ac27b36c7b1ebffe0ef41d3f2))
+* **tests:** skip some failing tests on the latest python versions ([ef12a3a](https://github.com/openlayer-ai/openlayer-python/commit/ef12a3a6487d67e0add70f168a5954fb49c0f47b))
+
+
+### Documentation
+
+* **client:** fix httpx.Timeout documentation reference ([ad5d7c0](https://github.com/openlayer-ai/openlayer-python/commit/ad5d7c000f6ffb885d176192a98a740ff1251bd4))
+
+
+### Refactors
+
+* **integrations:** update Openlayer integration imports ([ac78c1c](https://github.com/openlayer-ai/openlayer-python/commit/ac78c1c6c4dce5c6f822263ad9b168cd2d414c13))
+
 ## 0.2.0-alpha.64 (2025-06-16)
 
 Full Changelog: [v0.2.0-alpha.63...v0.2.0-alpha.64](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.63...v0.2.0-alpha.64)
