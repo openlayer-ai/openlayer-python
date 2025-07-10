@@ -4,9 +4,16 @@ import json
 import logging
 import time
 from functools import wraps
-from typing import Any, Dict, Iterator, Optional, Union
+from typing import Any, Dict, Iterator, Optional, Union, TYPE_CHECKING
 
-import anthropic
+try:
+    import anthropic
+    HAVE_ANTHROPIC = True
+except ImportError:
+    HAVE_ANTHROPIC = False
+
+if TYPE_CHECKING:
+    import anthropic
 
 from ..tracing import tracer
 
@@ -14,8 +21,8 @@ logger = logging.getLogger(__name__)
 
 
 def trace_anthropic(
-    client: anthropic.Anthropic,
-) -> anthropic.Anthropic:
+    client: "anthropic.Anthropic",
+) -> "anthropic.Anthropic":
     """Patch the Anthropic client to trace chat completions.
 
     The following information is collected for each chat completion:
@@ -42,6 +49,11 @@ def trace_anthropic(
     anthropic.Anthropic
         The patched Anthropic client.
     """
+    if not HAVE_ANTHROPIC:
+        raise ImportError(
+            "Anthropic library is not installed. Please install it with: pip install anthropic"
+        )
+    
     create_func = client.messages.create
 
     @wraps(create_func)
@@ -180,7 +192,7 @@ def handle_non_streaming_create(
     *args,
     inference_id: Optional[str] = None,
     **kwargs,
-) -> anthropic.types.Message:
+) -> "anthropic.types.Message":
     """Handles the create method when streaming is disabled.
 
     Parameters
@@ -227,7 +239,7 @@ def handle_non_streaming_create(
 
 
 def parse_non_streaming_output_data(
-    response: anthropic.types.Message,
+    response: "anthropic.types.Message",
 ) -> Union[str, Dict[str, Any], None]:
     """Parses the output data from a non-streaming completion.
 
