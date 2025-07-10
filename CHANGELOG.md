@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.67 (2025-07-10)
+
+Full Changelog: [v0.2.0-alpha.66...v0.2.0-alpha.67](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.66...v0.2.0-alpha.67)
+
+### Features
+
+* **tracer:** enhance OpenlayerTracerProcessor with dynamic base class and type hinting ([1ea28d7](https://github.com/openlayer-ai/openlayer-python/commit/1ea28d7b3d55ed44625e633f1a9f088c94bfd069))
+
+
+### Bug Fixes
+
+* **parsing:** correctly handle nested discriminated unions ([a0cc200](https://github.com/openlayer-ai/openlayer-python/commit/a0cc2009bb376e85fd655468922c69f1288598ba))
+* **tracer:** update dictionary type annotation in OpenlayerTracerProcessor ([376ab2d](https://github.com/openlayer-ai/openlayer-python/commit/376ab2d1e8d4d96e8d7c1974056921a3f38ff685))
+
 ## 0.2.0-alpha.66 (2025-07-09)
 
 Full Changelog: [v0.2.0-alpha.65...v0.2.0-alpha.66](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.65...v0.2.0-alpha.66)
