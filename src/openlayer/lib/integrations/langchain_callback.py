@@ -2,11 +2,19 @@
 
 # pylint: disable=unused-argument
 import time
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
 from uuid import UUID
 
-from langchain import schema as langchain_schema
-from langchain.callbacks.base import BaseCallbackHandler
+try:
+    from langchain import schema as langchain_schema
+    from langchain.callbacks.base import BaseCallbackHandler
+    HAVE_LANGCHAIN = True
+except ImportError:
+    HAVE_LANGCHAIN = False
+
+if TYPE_CHECKING:
+    from langchain import schema as langchain_schema
+    from langchain.callbacks.base import BaseCallbackHandler
 
 from ..tracing import tracer, steps, traces, enums
 from .. import utils
@@ -18,10 +26,20 @@ LANGCHAIN_TO_OPENLAYER_PROVIDER_MAP = {
 }
 
 
-class OpenlayerHandler(BaseCallbackHandler):
+if HAVE_LANGCHAIN:
+    BaseCallbackHandlerClass = BaseCallbackHandler
+else:
+    BaseCallbackHandlerClass = object
+
+
+class OpenlayerHandler(BaseCallbackHandlerClass):  # type: ignore[misc]
     """LangChain callback handler that logs to Openlayer."""
 
     def __init__(self, **kwargs: Any) -> None:
+        if not HAVE_LANGCHAIN:
+            raise ImportError(
+                "LangChain library is not installed. Please install it with: pip install langchain"
+            )
         super().__init__()
         self.metadata: Dict[str, Any] = kwargs or {}
         self.steps: Dict[UUID, steps.Step] = {}
@@ -197,7 +215,7 @@ class OpenlayerHandler(BaseCallbackHandler):
     def _convert_langchain_objects(self, obj: Any) -> Any:
         """Recursively convert LangChain objects to JSON-serializable format."""
         # Explicit check for LangChain BaseMessage and its subclasses
-        if isinstance(obj, langchain_schema.BaseMessage):
+        if HAVE_LANGCHAIN and isinstance(obj, langchain_schema.BaseMessage):
             return self._message_to_dict(obj)
 
         # Handle ChatPromptValue objects which contain messages
@@ -249,7 +267,7 @@ class OpenlayerHandler(BaseCallbackHandler):
         # For everything else, convert to string
         return str(obj)
 
-    def _message_to_dict(self, message: langchain_schema.BaseMessage) -> Dict[str, str]:
+    def _message_to_dict(self, message: "langchain_schema.BaseMessage") -> Dict[str, str]:
         """Convert a LangChain message to a JSON-serializable dictionary."""
         message_type = getattr(message, "type", "user")
 
@@ -262,7 +280,7 @@ class OpenlayerHandler(BaseCallbackHandler):
         return {"role": role, "content": str(message.content)}
 
     def _messages_to_prompt_format(
-        self, messages: List[List[langchain_schema.BaseMessage]]
+        self, messages: List[List["langchain_schema.BaseMessage"]]
     ) -> List[Dict[str, str]]:
         """Convert LangChain messages to Openlayer prompt format using
         unified conversion."""
@@ -302,7 +320,7 @@ class OpenlayerHandler(BaseCallbackHandler):
         }
 
     def _extract_token_info(
-        self, response: langchain_schema.LLMResult
+        self, response: "langchain_schema.LLMResult"
     ) -> Dict[str, Any]:
         """Extract token information generically from LLM response."""
         llm_output = response.llm_output or {}
@@ -340,7 +358,7 @@ class OpenlayerHandler(BaseCallbackHandler):
             "tokens": token_usage.get("total_tokens", 0),
         }
 
-    def _extract_output(self, response: langchain_schema.LLMResult) -> str:
+    def _extract_output(self, response: "langchain_schema.LLMResult") -> str:
         """Extract output text from LLM response."""
         output = ""
         for generations in response.generations:
@@ -384,7 +402,7 @@ class OpenlayerHandler(BaseCallbackHandler):
     def on_chat_model_start(
         self,
         serialized: Dict[str, Any],
-        messages: List[List[langchain_schema.BaseMessage]],
+        messages: List[List["langchain_schema.BaseMessage"]],
         *,
         run_id: UUID,
         parent_run_id: Optional[UUID] = None,
@@ -414,7 +432,7 @@ class OpenlayerHandler(BaseCallbackHandler):
 
     def on_llm_end(
         self,
-        response: langchain_schema.LLMResult,
+        response: "langchain_schema.LLMResult",
         *,
         run_id: UUID,
         parent_run_id: Optional[UUID] = None,
@@ -590,7 +608,7 @@ class OpenlayerHandler(BaseCallbackHandler):
 
     def on_agent_action(
         self,
-        action: langchain_schema.AgentAction,
+        action: "langchain_schema.AgentAction",
         *,
         run_id: UUID,
         parent_run_id: Optional[UUID] = None,
@@ -612,7 +630,7 @@ class OpenlayerHandler(BaseCallbackHandler):
 
     def on_agent_finish(
         self,
-        finish: langchain_schema.AgentFinish,
+        finish: "langchain_schema.AgentFinish",
         *,
         run_id: UUID,
         parent_run_id: Optional[UUID] = None,
