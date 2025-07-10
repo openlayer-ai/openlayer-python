@@ -4,16 +4,24 @@ import json
 import logging
 from pathlib import Path
 import time
-from typing import Any, Dict, Optional, Union, List
+from datetime import datetime
+from typing import Any, Dict, Optional, Union, List, TYPE_CHECKING
 
 from ..tracing import tracer, steps, enums
 
+if TYPE_CHECKING:
+    try:
+        from agents import tracing  # type: ignore[import]
+    except ImportError:
+        # When agents isn't available, we'll use string literals for type annotations
+        pass
+
 try:
     from agents import tracing  # type: ignore[import]
-
     HAVE_AGENTS = True
 except ImportError:
     HAVE_AGENTS = False
+    tracing = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -582,7 +590,14 @@ def _configure_chat_completion_step(
     step.model_parameters = model_parameters or {}
 
 
-class OpenlayerTracerProcessor(tracing.TracingProcessor):  # type: ignore[no-redef]
+# Dynamic base class to handle inheritance when agents is available
+if HAVE_AGENTS:
+    _BaseProcessor = tracing.TracingProcessor  # type: ignore[misc]
+else:
+    _BaseProcessor = object  # type: ignore[assignment,misc]
+
+
+class OpenlayerTracerProcessor(_BaseProcessor):  # type: ignore[misc]
     """Tracing processor for the `OpenAI Agents SDK
     <https://openai.github.io/openai-agents-python/>`_.
 
@@ -649,6 +664,12 @@ class OpenlayerTracerProcessor(tracing.TracingProcessor):  # type: ignore[no-red
         Args:
             **kwargs: Additional metadata to associate with all traces.
         """
+        if not HAVE_AGENTS:
+            raise ImportError(
+                "The 'agents' library is required to use OpenlayerTracerProcessor. "
+                "Please install it with: pip install openai-agents"
+            )
+        
         self.metadata: Dict[str, Any] = kwargs or {}
         self._active_traces: Dict[str, Dict[str, Any]] = {}
         self._active_steps: Dict[str, steps.Step] = {}
@@ -676,7 +697,7 @@ class OpenlayerTracerProcessor(tracing.TracingProcessor):  # type: ignore[no-red
         global _active_openlayer_processor
         _active_openlayer_processor = self
 
-    def on_trace_start(self, trace: tracing.Trace) -> None:
+    def on_trace_start(self, trace: "tracing.Trace") -> None:
         """Handle the start of a trace (root agent workflow)."""
         try:
             # Get trace information
@@ -693,7 +714,7 @@ class OpenlayerTracerProcessor(tracing.TracingProcessor):  # type: ignore[no-red
         except Exception as e:
             logger.error(f"Failed to handle trace start: {e}")
 
-    def on_trace_end(self, trace: tracing.Trace) -> None:
+    def on_trace_end(self, trace: "tracing.Trace") -> None:
         """Handle the end of a trace (root agent workflow)."""
         try:
             trace_data = self._active_traces.pop(trace.trace_id, None)
@@ -786,7 +807,7 @@ class OpenlayerTracerProcessor(tracing.TracingProcessor):  # type: ignore[no-red
         except Exception as e:
             logger.error(f"Failed to handle trace end: {e}")
 
-    def on_span_start(self, span: tracing.Span) -> None:
+    def on_span_start(self, span: "tracing.Span") -> None:
         """Handle the start of a span (individual agent step)."""
         try:
             # Extract span attributes using helper function
@@ -840,7 +861,7 @@ class OpenlayerTracerProcessor(tracing.TracingProcessor):  # type: ignore[no-red
         except Exception as e:
             logger.error(f"Failed to handle span start: {e}")
 
-    def on_span_end(self, span: tracing.Span) -> None:
+    def on_span_end(self, span: "tracing.Span") -> None:
         """Handle the end of a span (individual agent step)."""
         try:
             # Extract span attributes using helper function
@@ -912,7 +933,7 @@ class OpenlayerTracerProcessor(tracing.TracingProcessor):  # type: ignore[no-red
             logger.error(f"Failed to handle span end: {e}")
 
     def _create_step_for_span(
-        self, span: tracing.Span, span_data: Any
+        self, span: "tracing.Span", span_data: Any
     ) -> Optional[steps.Step]:
         """Create the appropriate Openlayer step for a span."""
         try:
@@ -1315,7 +1336,7 @@ class OpenlayerTracerProcessor(tracing.TracingProcessor):  # type: ignore[no-red
         step.start_time = start_time
         return step
 
-    def _extract_usage_from_response(self, response: Any, field: str = None) -> int:
+    def _extract_usage_from_response(self, response: Any, field: Optional[str] = None) -> Union[int, Dict[str, int]]:
         """Extract usage information from response object."""
         if not response:
             return 0
@@ -1339,7 +1360,7 @@ class OpenlayerTracerProcessor(tracing.TracingProcessor):  # type: ignore[no-red
             }
 
     def _update_step_with_span_data(
-        self, step: steps.Step, span: tracing.Span, span_data: Any
+        self, step: steps.Step, span: "tracing.Span", span_data: Any
     ) -> None:
         """Update step with final span data."""
         try:
@@ -1650,7 +1671,7 @@ class OpenlayerTracerProcessor(tracing.TracingProcessor):  # type: ignore[no-red
         except Exception:
             return None
 
-    def _cleanup_dict_with_warning(self, dict_obj: Dict, name: str) -> None:
+    def _cleanup_dict_with_warning(self, dict_obj: Dict[str, Any], name: str) -> None:
         """Helper to clean up dictionaries with warning logging."""
         if dict_obj:
             dict_obj.clear()
