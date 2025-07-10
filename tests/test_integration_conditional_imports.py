@@ -13,11 +13,11 @@ This prevents regressions in conditional import handling across all integrations
 """
 
 import sys
-import subprocess
 import tempfile
 import textwrap
-from pathlib import Path
+import subprocess
 from typing import List, Tuple
+from pathlib import Path
 
 # Note: pytest is imported automatically when running via pytest
 # This file can also be run standalone for manual testing
@@ -205,7 +205,7 @@ def run_integration_test(module_name: str, dependencies: List[str]) -> Tuple[boo
         try:
             Path(blocker_script).unlink()
             Path(test_script).unlink()
-        except:
+        except (FileNotFoundError, OSError):
             pass
 
 
