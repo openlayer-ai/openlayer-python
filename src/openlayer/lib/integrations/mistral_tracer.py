@@ -4,9 +4,16 @@ import json
 import logging
 import time
 from functools import wraps
-from typing import Any, Dict, Iterator, Optional, Union
+from typing import Any, Dict, Iterator, Optional, Union, TYPE_CHECKING
 
-import mistralai
+try:
+    import mistralai
+    HAVE_MISTRAL = True
+except ImportError:
+    HAVE_MISTRAL = False
+
+if TYPE_CHECKING:
+    import mistralai
 
 from ..tracing import tracer
 
@@ -14,8 +21,8 @@ logger = logging.getLogger(__name__)
 
 
 def trace_mistral(
-    client: mistralai.Mistral,
-) -> mistralai.Mistral:
+    client: "mistralai.Mistral",
+) -> "mistralai.Mistral":
     """Patch the Mistral client to trace chat completions.
 
     The following information is collected for each chat completion:
@@ -42,6 +49,11 @@ def trace_mistral(
     mistralai.Mistral
         The patched Mistral client.
     """
+    if not HAVE_MISTRAL:
+        raise ImportError(
+            "Mistral library is not installed. Please install it with: pip install mistralai"
+        )
+    
     stream_func = client.chat.stream
     create_func = client.chat.complete
 
@@ -184,7 +196,7 @@ def handle_non_streaming_create(
     *args,
     inference_id: Optional[str] = None,
     **kwargs,
-) -> mistralai.models.ChatCompletionResponse:
+) -> "mistralai.models.ChatCompletionResponse":
     """Handles the create method when streaming is disabled.
 
     Parameters
@@ -231,7 +243,7 @@ def handle_non_streaming_create(
 
 
 def parse_non_streaming_output_data(
-    response: mistralai.models.ChatCompletionResponse,
+    response: "mistralai.models.ChatCompletionResponse",
 ) -> Union[str, Dict[str, Any], None]:
     """Parses the output data from a non-streaming completion.
 

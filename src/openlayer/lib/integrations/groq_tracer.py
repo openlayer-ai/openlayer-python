@@ -4,9 +4,16 @@ import json
 import logging
 import time
 from functools import wraps
-from typing import Any, Dict, Iterator, Optional, Union
+from typing import Any, Dict, Iterator, Optional, Union, TYPE_CHECKING
 
-import groq
+try:
+    import groq
+    HAVE_GROQ = True
+except ImportError:
+    HAVE_GROQ = False
+
+if TYPE_CHECKING:
+    import groq
 
 from ..tracing import tracer
 
@@ -14,8 +21,8 @@ logger = logging.getLogger(__name__)
 
 
 def trace_groq(
-    client: groq.Groq,
-) -> groq.Groq:
+    client: "groq.Groq",
+) -> "groq.Groq":
     """Patch the Groq client to trace chat completions.
 
     The following information is collected for each chat completion:
@@ -42,6 +49,11 @@ def trace_groq(
     groq.Groq
         The patched Groq client.
     """
+    if not HAVE_GROQ:
+        raise ImportError(
+            "Groq library is not installed. Please install it with: pip install groq"
+        )
+    
     create_func = client.chat.completions.create
 
     @wraps(create_func)
