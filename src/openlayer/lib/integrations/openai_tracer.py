@@ -4,9 +4,16 @@ import json
 import logging
 import time
 from functools import wraps
-from typing import Any, Dict, Iterator, List, Optional, Union
+from typing import Any, Dict, Iterator, List, Optional, Union, TYPE_CHECKING
 
-import openai
+try:
+    import openai
+    HAVE_OPENAI = True
+except ImportError:
+    HAVE_OPENAI = False
+
+if TYPE_CHECKING:
+    import openai
 
 from ..tracing import tracer
 
@@ -14,8 +21,8 @@ logger = logging.getLogger(__name__)
 
 
 def trace_openai(
-    client: Union[openai.OpenAI, openai.AzureOpenAI],
-) -> Union[openai.OpenAI, openai.AzureOpenAI]:
+    client: Union["openai.OpenAI", "openai.AzureOpenAI"],
+) -> Union["openai.OpenAI", "openai.AzureOpenAI"]:
     """Patch the OpenAI or AzureOpenAI client to trace chat completions.
 
     The following information is collected for each chat completion:
@@ -42,6 +49,11 @@ def trace_openai(
     Union[openai.OpenAI, openai.AzureOpenAI]
         The patched OpenAI client.
     """
+    if not HAVE_OPENAI:
+        raise ImportError(
+            "OpenAI library is not installed. Please install it with: pip install openai"
+        )
+    
     is_azure_openai = isinstance(client, openai.AzureOpenAI)
     create_func = client.chat.completions.create
 
@@ -358,12 +370,17 @@ def parse_non_streaming_output_data(
 
 # --------------------------- OpenAI Assistants API -------------------------- #
 def trace_openai_assistant_thread_run(
-    client: openai.OpenAI, run: "openai.types.beta.threads.run.Run"
+    client: "openai.OpenAI", run: "openai.types.beta.threads.run.Run"
 ) -> None:
     """Trace a run from an OpenAI assistant.
 
     Once the run is completed, the thread data is published to Openlayer,
     along with the latency, and number of tokens used."""
+    if not HAVE_OPENAI:
+        raise ImportError(
+            "OpenAI library is not installed. Please install it with: pip install openai"
+        )
+    
     _type_check_run(run)
 
     # Do nothing if the run is not completed
@@ -398,7 +415,7 @@ def trace_openai_assistant_thread_run(
 
 def _type_check_run(run: "openai.types.beta.threads.run.Run") -> None:
     """Validate the run object."""
-    if not isinstance(run, openai.types.beta.threads.run.Run):
+    if HAVE_OPENAI and not isinstance(run, openai.types.beta.threads.run.Run):
         raise ValueError(f"Expected a Run object, but got {type(run)}.")
 
 

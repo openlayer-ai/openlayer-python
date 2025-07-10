@@ -4,9 +4,16 @@ import json
 import logging
 import time
 from functools import wraps
-from typing import Any, AsyncIterator, Optional, Union
+from typing import Any, AsyncIterator, Optional, Union, TYPE_CHECKING
 
-import openai
+try:
+    import openai
+    HAVE_OPENAI = True
+except ImportError:
+    HAVE_OPENAI = False
+
+if TYPE_CHECKING:
+    import openai
 
 from .openai_tracer import (
     get_model_parameters,
@@ -19,8 +26,8 @@ logger = logging.getLogger(__name__)
 
 
 def trace_async_openai(
-    client: Union[openai.AsyncOpenAI, openai.AsyncAzureOpenAI],
-) -> Union[openai.AsyncOpenAI, openai.AsyncAzureOpenAI]:
+    client: Union["openai.AsyncOpenAI", "openai.AsyncAzureOpenAI"],
+) -> Union["openai.AsyncOpenAI", "openai.AsyncAzureOpenAI"]:
     """Patch the AsyncOpenAI or AsyncAzureOpenAI client to trace chat completions.
 
     The following information is collected for each chat completion:
@@ -47,6 +54,11 @@ def trace_async_openai(
     Union[openai.AsyncOpenAI, openai.AsyncAzureOpenAI]
         The patched AsyncOpenAI client.
     """
+    if not HAVE_OPENAI:
+        raise ImportError(
+            "OpenAI library is not installed. Please install it with: pip install openai"
+        )
+    
     is_azure_openai = isinstance(client, openai.AsyncAzureOpenAI)
     create_func = client.chat.completions.create
 
