@@ -1671,7 +1671,7 @@ class OpenlayerTracerProcessor(_BaseProcessor):  # type: ignore[misc]
         except Exception:
             return None
 
-    def _cleanup_dict_with_warning(self, dict_obj: Dict[str, Any], name: str) -> None:
+    def _cleanup_dict_with_warning(self, dict_obj: Dict, name: str) -> None:
         """Helper to clean up dictionaries with warning logging."""
         if dict_obj:
             dict_obj.clear()
