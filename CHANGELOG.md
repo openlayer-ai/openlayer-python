@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.68 (2025-07-11)
+
+Full Changelog: [v0.2.0-alpha.67...v0.2.0-alpha.68](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.67...v0.2.0-alpha.68)
+
+### Chores
+
+* **readme:** fix version rendering on pypi ([4a1c3f3](https://github.com/openlayer-ai/openlayer-python/commit/4a1c3f3214500c461a1df35b3e33228af7a3c15e))
+
+
+### Refactors
+
+* Implement conditional imports for all integration modules ([#480](https://github.com/openlayer-ai/openlayer-python/issues/480)) ([bf99015](https://github.com/openlayer-ai/openlayer-python/commit/bf99015e798b18a5c8fb1da9c20321b239bad077))
+
 ## 0.2.0-alpha.67 (2025-07-10)
 
 Full Changelog: [v0.2.0-alpha.66...v0.2.0-alpha.67](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.66...v0.2.0-alpha.67)
