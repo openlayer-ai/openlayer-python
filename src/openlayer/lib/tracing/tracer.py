@@ -1,19 +1,20 @@
 """Module with the logic to create and manage traces and steps."""
 
-import time
 import asyncio
+import contextvars
 import inspect
 import logging
-import contextvars
-from typing import Any, Dict, List, Tuple, Optional, Awaitable, Generator
-from functools import wraps
+import time
+import traceback
 from contextlib import contextmanager
+from functools import wraps
+from typing import Any, Awaitable, Dict, Generator, List, Optional, Tuple
 
-from . import enums, steps, traces
-from .. import utils
-from ..._client import Openlayer
 from ..._base_client import DefaultHttpxClient
+from ..._client import Openlayer
 from ...types.inference_pipelines.data_stream_params import ConfigLlmData
+from .. import utils
+from . import enums, steps, traces
 
 logger = logging.getLogger(__name__)
 
@@ -251,12 +252,14 @@ def trace_async(
                             # Initialize tracing on first iteration only
                             if not self._trace_initialized:
                                 self._original_gen = func(*func_args, **func_kwargs)
-                                self._step, self._is_root_step, self._token = _create_and_initialize_step(
-                                    step_name=step_name,
-                                    step_type=enums.StepType.USER_CALL,
-                                    inputs=None,
-                                    output=None,
-                                    metadata=None,
+                                self._step, self._is_root_step, self._token = (
+                                    _create_and_initialize_step(
+                                        step_name=step_name,
+                                        step_type=enums.StepType.USER_CALL,
+                                        inputs=None,
+                                        output=None,
+                                        metadata=None,
+                                    )
                                 )
                                 self._inputs = _extract_function_inputs(
                                     func_signature=func_signature,
@@ -466,16 +469,25 @@ def _handle_trace_completion(
             )
         if _publish:
             try:
+                inference_pipeline_id = inference_pipeline_id or utils.get_env_variable(
+                    "OPENLAYER_INFERENCE_PIPELINE_ID"
+                )
                 client = _get_client()
                 if client:
                     client.inference_pipelines.data.stream(
-                        inference_pipeline_id=inference_pipeline_id
-                        or utils.get_env_variable("OPENLAYER_INFERENCE_PIPELINE_ID"),
+                        inference_pipeline_id=inference_pipeline_id,
                         rows=[trace_data],
                         config=config,
                     )
             except Exception as err:  # pylint: disable=broad-except
-                logger.error("Could not stream data to Openlayer %s", err)
+                logger.error(traceback.format_exc())
+                logger.error(
+                    "Could not stream data to Openlayer (pipeline_id: %s, base_url: %s)"
+                    " Error: %s",
+                    inference_pipeline_id,
+                    client.base_url,
+                    err,
+                )
     else:
         logger.debug("Ending step %s", step_name)
 
@@ -555,7 +567,6 @@ def _finalize_step_logging(
 
 
 # ----------------------------- Async generator specific functions ----------------------------- #
-
 
 
 def _finalize_async_generator_step(
