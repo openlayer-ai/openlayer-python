@@ -1,6 +1,7 @@
 # Openlayer Python API library
 
-[![PyPI version](<https://img.shields.io/pypi/v/openlayer.svg?label=pypi%20(stable)>)](https://pypi.org/project/openlayer/)
+<!-- prettier-ignore -->
+[![PyPI version](https://img.shields.io/pypi/v/openlayer.svg?label=pypi%20(stable))](https://pypi.org/project/openlayer/)
 
 The Openlayer Python library provides convenient access to the Openlayer REST API from any Python 3.8+
 application. The library includes type definitions for all request params and response fields,
