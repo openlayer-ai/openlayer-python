@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.70 (2025-07-12)
+
+Full Changelog: [v0.2.0-alpha.69...v0.2.0-alpha.70](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.69...v0.2.0-alpha.70)
+
+### Bug Fixes
+
+* **client:** don't send Content-Type header on GET requests ([f8aaafa](https://github.com/openlayer-ai/openlayer-python/commit/f8aaafab8099d2142c6a3a599fc2d09202b56ef7))
+
 ## 0.2.0-alpha.69 (2025-07-11)
 
 Full Changelog: [v0.2.0-alpha.68...v0.2.0-alpha.69](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.68...v0.2.0-alpha.69)
