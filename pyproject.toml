@@ -45,7 +45,7 @@ Homepage = "https://github.com/openlayer-ai/openlayer-python"
 Repository = "https://github.com/openlayer-ai/openlayer-python"
 
 [project.optional-dependencies]
-aiohttp = ["aiohttp", "httpx_aiohttp>=0.1.6"]
+aiohttp = ["aiohttp", "httpx_aiohttp>=0.1.8"]
 
 [tool.rye]
 managed = true
