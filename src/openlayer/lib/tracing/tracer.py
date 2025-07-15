@@ -474,10 +474,14 @@ def _handle_trace_completion(
                 )
                 client = _get_client()
                 if client:
-                    client.inference_pipelines.data.stream(
+                    response = client.inference_pipelines.data.stream(
                         inference_pipeline_id=inference_pipeline_id,
                         rows=[trace_data],
                         config=config,
+                    )
+                    print(
+                        "Successfully streamed data to Openlayer. Response:",
+                        response.to_json(),
                     )
             except Exception as err:  # pylint: disable=broad-except
                 logger.error(traceback.format_exc())
