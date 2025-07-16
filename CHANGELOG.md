@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.71 (2025-07-16)
+
+Full Changelog: [v0.2.0-alpha.70...v0.2.0-alpha.71](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.70...v0.2.0-alpha.71)
+
+### Features
+
+* **integrations:** add AWS Bedrock tracer ([b8f5926](https://github.com/openlayer-ai/openlayer-python/commit/b8f5926c156dc57687234d640083173c32bcae26))
+
+
+### Documentation
+
+* add AWS Bedrock notebook example ([5d560b4](https://github.com/openlayer-ai/openlayer-python/commit/5d560b41dcad5d5f5e99a7bf3475dd00a6526166))
+
 ## 0.2.0-alpha.70 (2025-07-15)
 
 Full Changelog: [v0.2.0-alpha.69...v0.2.0-alpha.70](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.69...v0.2.0-alpha.70)
