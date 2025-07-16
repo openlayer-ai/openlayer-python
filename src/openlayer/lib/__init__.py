@@ -9,6 +9,7 @@ __all__ = [
     "trace_groq",
     "trace_async_openai",
     "trace_async",
+    "trace_bedrock",
 ]
 
 # ---------------------------------- Tracing --------------------------------- #
@@ -84,3 +85,26 @@ def trace_groq(client):
     if not isinstance(client, groq.Groq):
         raise ValueError("Invalid client. Please provide a Groq client.")
     return groq_tracer.trace_groq(client)
+
+
+def trace_bedrock(client):
+    """Trace AWS Bedrock model invocations."""
+    # pylint: disable=import-outside-toplevel
+    try:
+        import boto3
+    except ImportError:
+        raise ImportError(
+            "boto3 is required for Bedrock tracing. Install with: pip install boto3"
+        )
+
+    from .integrations import bedrock_tracer
+
+    # Check if it's a boto3 client for bedrock-runtime service
+    if (
+        not hasattr(client, "_service_model")
+        or client._service_model.service_name != "bedrock-runtime"
+    ):
+        raise ValueError(
+            "Invalid client. Please provide a boto3 bedrock-runtime client."
+        )
+    return bedrock_tracer.trace_bedrock(client)
