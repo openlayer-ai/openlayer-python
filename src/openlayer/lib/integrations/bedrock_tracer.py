@@ -156,8 +156,11 @@ def handle_non_streaming_invoke(
         )
 
     # Reset response body for return (since we read it)
+    response_bytes = json.dumps(response_data).encode("utf-8")
     response["body"] = type(
-        "MockBody", (), {"read": lambda: json.dumps(response_data).encode("utf-8")}
+        "MockBody",
+        (),
+        {"read": lambda size=-1: response_bytes[:size] if size > 0 else response_bytes},
     )()
     return response
 
