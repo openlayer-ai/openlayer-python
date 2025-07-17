@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.72 (2025-07-17)
+
+Full Changelog: [v0.2.0-alpha.71...v0.2.0-alpha.72](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.71...v0.2.0-alpha.72)
+
+### Bug Fixes
+
+* **bedrock:** accept size positional argument ([94366df](https://github.com/openlayer-ai/openlayer-python/commit/94366df52be8a7f754ccf9cd01266634b29ae6a6))
+
 ## 0.2.0-alpha.71 (2025-07-16)
 
 Full Changelog: [v0.2.0-alpha.70...v0.2.0-alpha.71](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.70...v0.2.0-alpha.71)
