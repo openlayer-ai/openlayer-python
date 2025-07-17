@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.73 (2025-07-17)
+
+Full Changelog: [v0.2.0-alpha.72...v0.2.0-alpha.73](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.72...v0.2.0-alpha.73)
+
+### Bug Fixes
+
+* **bedrock:** return identical Bedrock object ([0f5f694](https://github.com/openlayer-ai/openlayer-python/commit/0f5f69437d353bd9f347bb8d3b321237e6aabc9a))
+
 ## 0.2.0-alpha.72 (2025-07-17)
 
 Full Changelog: [v0.2.0-alpha.71...v0.2.0-alpha.72](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.71...v0.2.0-alpha.72)
