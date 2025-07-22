@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.74 (2025-07-22)
+
+Full Changelog: [v0.2.0-alpha.73...v0.2.0-alpha.74](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.73...v0.2.0-alpha.74)
+
+### Features
+
+* allow output overwrite ([a1ccbc3](https://github.com/openlayer-ai/openlayer-python/commit/a1ccbc307a87130481389935e8fd5348181d5650))
+
+
+### Bug Fixes
+
+* **parsing:** ignore empty metadata ([6da7f35](https://github.com/openlayer-ai/openlayer-python/commit/6da7f35b2b0cfa72c2380c6dcff998a0b823f71b))
+
 ## 0.2.0-alpha.73 (2025-07-17)
 
 Full Changelog: [v0.2.0-alpha.72...v0.2.0-alpha.73](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.72...v0.2.0-alpha.73)
