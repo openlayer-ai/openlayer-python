@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.75 (2025-07-25)
+
+Full Changelog: [v0.2.0-alpha.74...v0.2.0-alpha.75](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.74...v0.2.0-alpha.75)
+
+### Bug Fixes
+
+* **parsing:** parse extra field types ([42ea3a8](https://github.com/openlayer-ai/openlayer-python/commit/42ea3a8122ffd98b6bb8e7a8dffa3d180f10192f))
+
+
+### Chores
+
+* **project:** add settings file for vscode ([4e094ab](https://github.com/openlayer-ai/openlayer-python/commit/4e094ab6b80dbc42be62e72d670b6c5957616573))
+
 ## 0.2.0-alpha.74 (2025-07-22)
 
 Full Changelog: [v0.2.0-alpha.73...v0.2.0-alpha.74](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.73...v0.2.0-alpha.74)
