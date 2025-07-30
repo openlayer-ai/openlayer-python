@@ -23,9 +23,7 @@ logger = logging.getLogger(__name__)
 TRUE_LIST = ["true", "on", "1"]
 
 _publish = utils.get_env_variable("OPENLAYER_DISABLE_PUBLISH") not in TRUE_LIST
-_verify_ssl = (
-    utils.get_env_variable("OPENLAYER_VERIFY_SSL") or "true"
-).lower() in TRUE_LIST
+_verify_ssl = (utils.get_env_variable("OPENLAYER_VERIFY_SSL") or "true").lower() in TRUE_LIST
 _client = None
 
 # Configuration variables for programmatic setup
@@ -40,37 +38,32 @@ def configure(
     base_url: Optional[str] = None,
 ) -> None:
     """Configure the Openlayer tracer with custom settings.
-    
+
     This function allows you to programmatically set the API key, inference pipeline ID,
     and base URL for the Openlayer client, instead of relying on environment variables.
-    
+
     Args:
         api_key: The Openlayer API key. If not provided, falls back to OPENLAYER_API_KEY environment variable.
-        inference_pipeline_id: The default inference pipeline ID to use for tracing. 
+        inference_pipeline_id: The default inference pipeline ID to use for tracing.
             If not provided, falls back to OPENLAYER_INFERENCE_PIPELINE_ID environment variable.
-        base_url: The base URL for the Openlayer API. If not provided, falls back to 
+        base_url: The base URL for the Openlayer API. If not provided, falls back to
             OPENLAYER_BASE_URL environment variable or the default.
-    
+
     Examples:
         >>> import openlayer.lib.tracing.tracer as tracer
-        >>> 
         >>> # Configure with API key and pipeline ID
-        >>> tracer.configure(
-        ...     api_key="your_api_key_here",
-        ...     inference_pipeline_id="your_pipeline_id_here"
-        ... )
-        >>> 
+        >>> tracer.configure(api_key="your_api_key_here", inference_pipeline_id="your_pipeline_id_here")
         >>> # Now use the decorators normally
         >>> @tracer.trace()
         >>> def my_function():
         ...     return "result"
     """
     global _configured_api_key, _configured_pipeline_id, _configured_base_url, _client
-    
+
     _configured_api_key = api_key
     _configured_pipeline_id = inference_pipeline_id
     _configured_base_url = base_url
-    
+
     # Reset the client so it gets recreated with new configuration
     _client = None
 
@@ -84,15 +77,15 @@ def _get_client() -> Optional[Openlayer]:
     if _client is None:
         # Lazy initialization - create client when first needed
         client_kwargs = {}
-        
+
         # Use configured API key if available, otherwise fall back to environment variable
         if _configured_api_key is not None:
             client_kwargs["api_key"] = _configured_api_key
-            
+
         # Use configured base URL if available, otherwise fall back to environment variable
         if _configured_base_url is not None:
             client_kwargs["base_url"] = _configured_base_url
-            
+
         if _verify_ssl:
             _client = Openlayer(**client_kwargs)
         else:
@@ -220,9 +213,7 @@ def trace(
             if step_kwargs.get("name") is None:
                 step_kwargs["name"] = func.__name__
 
-            with create_step(
-                *step_args, inference_pipeline_id=inference_pipeline_id, **step_kwargs
-            ) as step:
+            with create_step(*step_args, inference_pipeline_id=inference_pipeline_id, **step_kwargs) as step:
                 output = exception = None
                 try:
                     output = func(*func_args, **func_kwargs)
@@ -309,14 +300,12 @@ def trace_async(
                             # Initialize tracing on first iteration only
                             if not self._trace_initialized:
                                 self._original_gen = func(*func_args, **func_kwargs)
-                                self._step, self._is_root_step, self._token = (
-                                    _create_and_initialize_step(
-                                        step_name=step_name,
-                                        step_type=enums.StepType.USER_CALL,
-                                        inputs=None,
-                                        output=None,
-                                        metadata=None,
-                                    )
+                                self._step, self._is_root_step, self._token = _create_and_initialize_step(
+                                    step_name=step_name,
+                                    step_type=enums.StepType.USER_CALL,
+                                    inputs=None,
+                                    output=None,
+                                    metadata=None,
                                 )
                                 self._inputs = _extract_function_inputs(
                                     func_signature=func_signature,
@@ -510,9 +499,7 @@ def _create_and_initialize_step(
     return new_step, is_root_step, token
 
 
-def _handle_trace_completion(
-    is_root_step: bool, step_name: str, inference_pipeline_id: Optional[str] = None
-) -> None:
+def _handle_trace_completion(is_root_step: bool, step_name: str, inference_pipeline_id: Optional[str] = None) -> None:
     """Handle trace completion and data streaming."""
     if is_root_step:
         logger.debug("Ending the trace...")
@@ -543,11 +530,11 @@ def _handle_trace_completion(
             )
         if _publish:
             try:
-                # Use provided pipeline_id, or fall back to configured default, 
+                # Use provided pipeline_id, or fall back to configured default,
                 # or finally to environment variable
                 inference_pipeline_id = (
-                    inference_pipeline_id 
-                    or _configured_pipeline_id 
+                    inference_pipeline_id
+                    or _configured_pipeline_id
                     or utils.get_env_variable("OPENLAYER_INFERENCE_PIPELINE_ID")
                 )
                 client = _get_client()
@@ -564,8 +551,7 @@ def _handle_trace_completion(
             except Exception as err:  # pylint: disable=broad-except
                 logger.error(traceback.format_exc())
                 logger.error(
-                    "Could not stream data to Openlayer (pipeline_id: %s, base_url: %s)"
-                    " Error: %s",
+                    "Could not stream data to Openlayer (pipeline_id: %s, base_url: %s) Error: %s",
                     inference_pipeline_id,
                     client.base_url,
                     err,
@@ -597,9 +583,7 @@ def _process_wrapper_inputs_and_outputs(
         func_kwargs=func_kwargs,
         context_kwarg=context_kwarg,
     )
-    _finalize_step_logging(
-        step=step, inputs=inputs, output=output, start_time=step.start_time
-    )
+    _finalize_step_logging(step=step, inputs=inputs, output=output, start_time=step.start_time)
 
 
 def _extract_function_inputs(
@@ -667,9 +651,7 @@ def _finalize_async_generator_step(
 ) -> None:
     """Finalize async generator step - called when generator is consumed."""
     _current_step.reset(token)
-    _finalize_step_logging(
-        step=step, inputs=inputs, output=output, start_time=step.start_time
-    )
+    _finalize_step_logging(step=step, inputs=inputs, output=output, start_time=step.start_time)
     _handle_trace_completion(
         is_root_step=is_root_step,
         step_name=step_name,
