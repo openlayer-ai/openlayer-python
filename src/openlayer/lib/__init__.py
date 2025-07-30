@@ -1,6 +1,7 @@
 """Openlayer lib."""
 
 __all__ = [
+    "configure",
     "trace",
     "trace_anthropic",
     "trace_openai",
@@ -15,6 +16,7 @@ __all__ = [
 # ---------------------------------- Tracing --------------------------------- #
 from .tracing import tracer
 
+configure = tracer.configure
 trace = tracer.trace
 trace_async = tracer.trace_async
 

@@ -28,6 +28,52 @@ _verify_ssl = (
 ).lower() in TRUE_LIST
 _client = None
 
+# Configuration variables for programmatic setup
+_configured_api_key: Optional[str] = None
+_configured_pipeline_id: Optional[str] = None
+_configured_base_url: Optional[str] = None
+
+
+def configure(
+    api_key: Optional[str] = None,
+    inference_pipeline_id: Optional[str] = None,
+    base_url: Optional[str] = None,
+) -> None:
+    """Configure the Openlayer tracer with custom settings.
+    
+    This function allows you to programmatically set the API key, inference pipeline ID,
+    and base URL for the Openlayer client, instead of relying on environment variables.
+    
+    Args:
+        api_key: The Openlayer API key. If not provided, falls back to OPENLAYER_API_KEY environment variable.
+        inference_pipeline_id: The default inference pipeline ID to use for tracing. 
+            If not provided, falls back to OPENLAYER_INFERENCE_PIPELINE_ID environment variable.
+        base_url: The base URL for the Openlayer API. If not provided, falls back to 
+            OPENLAYER_BASE_URL environment variable or the default.
+    
+    Examples:
+        >>> import openlayer.lib.tracing.tracer as tracer
+        >>> 
+        >>> # Configure with API key and pipeline ID
+        >>> tracer.configure(
+        ...     api_key="your_api_key_here",
+        ...     inference_pipeline_id="your_pipeline_id_here"
+        ... )
+        >>> 
+        >>> # Now use the decorators normally
+        >>> @tracer.trace()
+        >>> def my_function():
+        ...     return "result"
+    """
+    global _configured_api_key, _configured_pipeline_id, _configured_base_url, _client
+    
+    _configured_api_key = api_key
+    _configured_pipeline_id = inference_pipeline_id
+    _configured_base_url = base_url
+    
+    # Reset the client so it gets recreated with new configuration
+    _client = None
+
 
 def _get_client() -> Optional[Openlayer]:
     """Get or create the Openlayer client with lazy initialization."""
@@ -37,13 +83,24 @@ def _get_client() -> Optional[Openlayer]:
 
     if _client is None:
         # Lazy initialization - create client when first needed
+        client_kwargs = {}
+        
+        # Use configured API key if available, otherwise fall back to environment variable
+        if _configured_api_key is not None:
+            client_kwargs["api_key"] = _configured_api_key
+            
+        # Use configured base URL if available, otherwise fall back to environment variable
+        if _configured_base_url is not None:
+            client_kwargs["base_url"] = _configured_base_url
+            
         if _verify_ssl:
-            _client = Openlayer()
+            _client = Openlayer(**client_kwargs)
         else:
             _client = Openlayer(
                 http_client=DefaultHttpxClient(
                     verify=False,
                 ),
+                **client_kwargs,
             )
     return _client
 
@@ -469,8 +526,12 @@ def _handle_trace_completion(
             )
         if _publish:
             try:
-                inference_pipeline_id = inference_pipeline_id or utils.get_env_variable(
-                    "OPENLAYER_INFERENCE_PIPELINE_ID"
+                # Use provided pipeline_id, or fall back to configured default, 
+                # or finally to environment variable
+                inference_pipeline_id = (
+                    inference_pipeline_id 
+                    or _configured_pipeline_id 
+                    or utils.get_env_variable("OPENLAYER_INFERENCE_PIPELINE_ID")
                 )
                 client = _get_client()
                 if client:
