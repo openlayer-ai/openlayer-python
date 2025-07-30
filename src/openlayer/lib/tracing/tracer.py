@@ -428,6 +428,23 @@ def trace_async(
     return decorator
 
 
+def log_output(output: Any) -> None:
+    """Logs output information to the current step of the trace.
+
+    This will overwrite the output of the currently active step instead of
+    relying on the returned object from the traced function.
+
+    Args:
+        output: The output value to log to the current step.
+    """
+    current_step = get_current_step()
+    if current_step:
+        logger.debug("Logging output to current step: %s", output)
+        current_step.log(output=output, metadata={"manual_output_logged": True})
+    else:
+        logger.warning("No current step found to log output.")
+
+
 def log_context(context: List[str]) -> None:
     """Logs context information to the current step of the trace.
 
@@ -623,9 +640,14 @@ def _finalize_step_logging(
     if step.latency is None:
         step.latency = (step.end_time - start_time) * 1000  # in ms
 
+    # Check if manual output was logged
+    if step.metadata.get("manual_output_logged"):
+        logger.debug("Using manually logged output for step: %s", step.name)
+    else:
+        step.log(output=output)
+
     step.log(
         inputs=inputs,
-        output=output,
         end_time=step.end_time,
         latency=step.latency,
     )
