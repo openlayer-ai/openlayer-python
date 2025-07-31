@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.76 (2025-07-31)
+
+Full Changelog: [v0.2.0-alpha.75...v0.2.0-alpha.76](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.75...v0.2.0-alpha.76)
+
+### Features
+
+* **client:** support file upload requests ([73d4c20](https://github.com/openlayer-ai/openlayer-python/commit/73d4c203564ee43ed1a760b57b7eaa2347399438))
+
 ## 0.2.0-alpha.75 (2025-07-31)
 
 Full Changelog: [v0.2.0-alpha.74...v0.2.0-alpha.75](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.74...v0.2.0-alpha.75)
