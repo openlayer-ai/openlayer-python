@@ -1,6 +1,7 @@
 """Openlayer lib."""
 
 __all__ = [
+    "configure",
     "trace",
     "trace_anthropic",
     "trace_openai",
@@ -15,6 +16,7 @@ __all__ = [
 # ---------------------------------- Tracing --------------------------------- #
 from .tracing import tracer
 
+configure = tracer.configure
 trace = tracer.trace
 trace_async = tracer.trace_async
 
@@ -93,18 +95,11 @@ def trace_bedrock(client):
     try:
         import boto3
     except ImportError:
-        raise ImportError(
-            "boto3 is required for Bedrock tracing. Install with: pip install boto3"
-        )
+        raise ImportError("boto3 is required for Bedrock tracing. Install with: pip install boto3")
 
     from .integrations import bedrock_tracer
 
     # Check if it's a boto3 client for bedrock-runtime service
-    if (
-        not hasattr(client, "_service_model")
-        or client._service_model.service_name != "bedrock-runtime"
-    ):
-        raise ValueError(
-            "Invalid client. Please provide a boto3 bedrock-runtime client."
-        )
+    if not hasattr(client, "_service_model") or client._service_model.service_name != "bedrock-runtime":
+        raise ValueError("Invalid client. Please provide a boto3 bedrock-runtime client.")
     return bedrock_tracer.trace_bedrock(client)
