@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.75 (2025-07-31)
+
+Full Changelog: [v0.2.0-alpha.74...v0.2.0-alpha.75](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.74...v0.2.0-alpha.75)
+
+### Features
+
+* Add Programmatic Configuration Support for Tracing Decorators  ([#495](https://github.com/openlayer-ai/openlayer-python/issues/495)) ([12b0f28](https://github.com/openlayer-ai/openlayer-python/commit/12b0f28ce2c361bd766b3be44f0c835d71a77bde))
+
+
+### Bug Fixes
+
+* **parsing:** parse extra field types ([674a00b](https://github.com/openlayer-ai/openlayer-python/commit/674a00b600ebfda1929863b7af38d26bb73a25a8))
+
+
+### Chores
+
+* **project:** add settings file for vscode ([499890c](https://github.com/openlayer-ai/openlayer-python/commit/499890c3272a663a1768ef664563a366fed0cf40))
+
 ## 0.2.0-alpha.74 (2025-07-22)
 
 Full Changelog: [v0.2.0-alpha.73...v0.2.0-alpha.74](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.73...v0.2.0-alpha.74)
