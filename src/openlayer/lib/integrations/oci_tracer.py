@@ -140,57 +140,25 @@ def stream_chunks(
     """Streams the chunks of the completion and traces the completion."""
     collected_output_data = []
     collected_function_calls = []
-    raw_outputs = []
-    # Use the timing from the actual OCI call (passed as parameter)
-    # start_time is already provided
-
-    # For grouping raw outputs into a more organized structure
-    streaming_stats = {
-        "total_chunks": 0,
-        "first_chunk_time": None,
-        "last_chunk_time": None,
-        "chunk_sample": [],  # Keep first few and last few chunks
-        "content_progression": [],  # Track content building up
-    }
+    # Simplified streaming stats - only track essential metrics
+    total_chunks = 0
+    first_chunk_time = None
+    last_chunk_time = None
+    chunk_samples = []  # Simplified sampling
+    
     end_time = None
     first_token_time = None
     num_of_completion_tokens = num_of_prompt_tokens = None
     latency = None
 
     try:
-        i = 0
         for i, chunk in enumerate(chunks):
-            streaming_stats["total_chunks"] = i + 1
-            current_time = time.time()
-
-            if streaming_stats["first_chunk_time"] is None:
-                streaming_stats["first_chunk_time"] = current_time
-            streaming_stats["last_chunk_time"] = current_time
-
-            # Store raw output in a more organized way
-            chunk_data = None
-            if hasattr(chunk, "data"):
-                if hasattr(chunk.data, "__dict__"):
-                    chunk_data = chunk.data.__dict__
-                else:
-                    chunk_data = str(chunk.data)
-            else:
-                chunk_data = str(chunk)
-
-            # Keep sample chunks (first 3 and last 3) instead of all chunks
-            if i < 3:  # First 3 chunks
-                streaming_stats["chunk_sample"].append(
-                    {"index": i, "type": "first", "data": chunk_data, "timestamp": current_time}
-                )
-            elif i < 100:  # Don't store every chunk for very long streams
-                # Store every 10th chunk for middle chunks
-                if i % 10 == 0:
-                    streaming_stats["chunk_sample"].append(
-                        {"index": i, "type": "middle", "data": chunk_data, "timestamp": current_time}
-                    )
-
+            total_chunks = i + 1
+            
+            # Only track timing for first and last chunks to minimize overhead
             if i == 0:
                 first_token_time = time.time()
+                first_chunk_time = first_token_time
                 # Extract prompt tokens from first chunk if available
                 if hasattr(chunk, "data") and hasattr(chunk.data, "usage"):
                     usage = chunk.data.usage
@@ -198,94 +166,28 @@ def stream_chunks(
                 else:
                     # OCI doesn't provide usage info, estimate from chat_details
                     num_of_prompt_tokens = estimate_prompt_tokens_from_chat_details(chat_details)
-
+                    
+                # Store first chunk sample (only for debugging)
+                if hasattr(chunk, "data"):
+                    chunk_samples.append({"index": 0, "type": "first"})
+            
+            # Update completion tokens count
             if i > 0:
                 num_of_completion_tokens = i + 1
 
-            # Extract content from chunk based on OCI response structure
-            try:
-                if hasattr(chunk, "data"):
-                    # Handle OCI SSE Event chunks where data is a JSON string
-                    if isinstance(chunk.data, str):
-                        try:
-                            import json
-
-                            parsed_data = json.loads(chunk.data)
-
-                            # Handle OCI streaming structure: message.content[0].text
-                            if "message" in parsed_data and "content" in parsed_data["message"]:
-                                content = parsed_data["message"]["content"]
-                                if isinstance(content, list) and content:
-                                    for content_item in content:
-                                        if isinstance(content_item, dict) and content_item.get("type") == "TEXT":
-                                            text = content_item.get("text", "")
-                                            if text:  # Only append non-empty text
-                                                collected_output_data.append(text)
-                                elif content:  # Handle as string
-                                    collected_output_data.append(str(content))
-
-                            # Handle function calls if present
-                            elif "function_call" in parsed_data:
-                                collected_function_calls.append(
-                                    {
-                                        "name": parsed_data["function_call"].get("name", ""),
-                                        "arguments": parsed_data["function_call"].get("arguments", ""),
-                                    }
-                                )
-
-                            # Handle direct text field
-                            elif "text" in parsed_data:
-                                text = parsed_data["text"]
-                                if text:
-                                    collected_output_data.append(text)
-
-                        except json.JSONDecodeError as e:
-                            logger.debug("Error parsing chunk JSON: %s", e)
-
-                    # Handle object-based chunks (fallback for other structures)
-                    else:
-                        data = chunk.data
-
-                        # Handle different response structures
-                        if hasattr(data, "choices") and data.choices:
-                            choice = data.choices[0]
-
-                            # Handle delta content
-                            if hasattr(choice, "delta"):
-                                delta = choice.delta
-                                if hasattr(delta, "content") and delta.content:
-                                    collected_output_data.append(delta.content)
-                                elif hasattr(delta, "function_call") and delta.function_call:
-                                    collected_function_calls.append(
-                                        {
-                                            "name": getattr(delta.function_call, "name", ""),
-                                            "arguments": getattr(delta.function_call, "arguments", ""),
-                                        }
-                                    )
-
-                            # Handle message content
-                            elif hasattr(choice, "message"):
-                                message = choice.message
-                                if hasattr(message, "content") and message.content:
-                                    collected_output_data.append(message.content)
-                                elif hasattr(message, "function_call") and message.function_call:
-                                    collected_function_calls.append(
-                                        {
-                                            "name": getattr(message.function_call, "name", ""),
-                                            "arguments": getattr(message.function_call, "arguments", ""),
-                                        }
-                                    )
-
-                        # Handle text-only responses
-                        elif hasattr(data, "text") and data.text:
-                            collected_output_data.append(data.text)
-
-            except Exception as chunk_error:
-                logger.debug("Error processing chunk: %s", chunk_error)
+            # Fast content extraction - optimized for performance
+            content = _extract_chunk_content(chunk)
+            if content:
+                if isinstance(content, dict) and "function_call" in content:
+                    collected_function_calls.append(content["function_call"])
+                elif content:  # Text content
+                    collected_output_data.append(str(content))
 
             yield chunk
 
-        end_time = time.time()
+        # Update final timing
+        last_chunk_time = time.time()
+        end_time = last_chunk_time
         latency = (end_time - start_time) * 1000
 
     except Exception as e:
@@ -309,24 +211,10 @@ def stream_chunks(
             # Calculate total tokens
             total_tokens = (num_of_prompt_tokens or 0) + (num_of_completion_tokens or 0)
 
-            # Add streaming metadata
-            streaming_metadata = {
+            # Simplified metadata - only essential timing info
+            metadata = {
                 "timeToFirstToken": ((first_token_time - start_time) * 1000 if first_token_time else None),
             }
-
-            # Extract additional metadata from the first chunk if available
-            additional_metadata = {}
-            if raw_outputs:
-                # Try to extract metadata from the first chunk or response structure
-                first_chunk = raw_outputs[0]
-                if isinstance(first_chunk, dict):
-                    # Look for common OCI response metadata fields
-                    for key in ["model_id", "model_version", "time_created", "finish_reason", "api_format"]:
-                        if key in first_chunk:
-                            additional_metadata[key] = first_chunk[key]
-
-            # Combine streaming and additional metadata
-            metadata = {**streaming_metadata, **additional_metadata}
 
             trace_args = create_trace_args(
                 end_time=end_time,
@@ -340,16 +228,9 @@ def stream_chunks(
                 model_parameters=get_model_parameters(chat_details),
                 raw_output={
                     "streaming_summary": {
-                        "total_chunks": streaming_stats["total_chunks"],
-                        "duration_seconds": (streaming_stats["last_chunk_time"] - streaming_stats["first_chunk_time"])
-                        if streaming_stats["last_chunk_time"] and streaming_stats["first_chunk_time"]
-                        else 0,
-                        "chunks_per_second": streaming_stats["total_chunks"]
-                        / max(0.001, (streaming_stats["last_chunk_time"] - streaming_stats["first_chunk_time"]))
-                        if streaming_stats["last_chunk_time"] and streaming_stats["first_chunk_time"]
-                        else 0,
+                        "total_chunks": total_chunks,
+                        "duration_seconds": (last_chunk_time - first_chunk_time) if last_chunk_time and first_chunk_time else 0,
                     },
-                    "sample_chunks": streaming_stats["chunk_sample"],
                     "complete_response": "".join(collected_output_data) if collected_output_data else None,
                 },
                 id=None,
@@ -764,6 +645,92 @@ def create_trace_args(
     if id:
         trace_args["id"] = id
     return trace_args
+
+
+def _extract_chunk_content(chunk) -> Optional[Union[str, Dict[str, Any]]]:
+    """Fast content extraction from OCI chunk - optimized for performance."""
+    try:
+        if not hasattr(chunk, "data"):
+            return None
+            
+        data = chunk.data
+        
+        # Fast path: Handle JSON string chunks
+        if isinstance(data, str):
+            try:
+                parsed_data = json.loads(data)
+                
+                # Handle OCI streaming structure: message.content[0].text
+                if "message" in parsed_data and "content" in parsed_data["message"]:
+                    content = parsed_data["message"]["content"]
+                    if isinstance(content, list) and content:
+                        for content_item in content:
+                            if isinstance(content_item, dict) and content_item.get("type") == "TEXT":
+                                text = content_item.get("text")
+                                if text:
+                                    return text
+                    elif content:
+                        return str(content)
+                
+                # Handle function calls
+                elif "function_call" in parsed_data:
+                    return {
+                        "function_call": {
+                            "name": parsed_data["function_call"].get("name", ""),
+                            "arguments": parsed_data["function_call"].get("arguments", ""),
+                        }
+                    }
+                
+                # Handle direct text field
+                elif "text" in parsed_data:
+                    text = parsed_data["text"]
+                    if text:
+                        return text
+                        
+            except json.JSONDecodeError:
+                return None
+        
+        # Fast path: Handle object-based chunks
+        else:
+            # Handle choices-based structure
+            if hasattr(data, "choices") and data.choices:
+                choice = data.choices[0]
+                
+                # Handle delta content
+                if hasattr(choice, "delta"):
+                    delta = choice.delta
+                    if hasattr(delta, "content") and delta.content:
+                        return delta.content
+                    elif hasattr(delta, "function_call") and delta.function_call:
+                        return {
+                            "function_call": {
+                                "name": getattr(delta.function_call, "name", ""),
+                                "arguments": getattr(delta.function_call, "arguments", ""),
+                            }
+                        }
+                
+                # Handle message content
+                elif hasattr(choice, "message"):
+                    message = choice.message
+                    if hasattr(message, "content") and message.content:
+                        return message.content
+                    elif hasattr(message, "function_call") and message.function_call:
+                        return {
+                            "function_call": {
+                                "name": getattr(message.function_call, "name", ""),
+                                "arguments": getattr(message.function_call, "arguments", ""),
+                            }
+                        }
+            
+            # Handle direct text responses
+            elif hasattr(data, "text") and data.text:
+                return data.text
+                
+    except Exception:
+        # Silent failure for performance - don't log per chunk
+        pass
+        
+    return None
 
 
 def add_to_trace(**kwargs) -> None:
