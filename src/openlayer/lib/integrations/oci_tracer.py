@@ -71,20 +71,26 @@ def trace_oci_genai(
             chat_request = chat_details.chat_request
             stream = getattr(chat_request, 'is_stream', False)
 
-        # Call the original OCI client chat method
+        # Measure timing around the actual OCI call
+        start_time = time.time()
         response = chat_func(*args, **kwargs)
+        end_time = time.time()
 
         if stream:
             return handle_streaming_chat(
                 response=response,
                 chat_details=chat_details,
                 kwargs=kwargs,
+                start_time=start_time,
+                end_time=end_time,
             )
         else:
             return handle_non_streaming_chat(
                 response=response,
                 chat_details=chat_details,
                 kwargs=kwargs,
+                start_time=start_time,
+                end_time=end_time,
             )
 
     client.chat = traced_chat_func
@@ -95,6 +101,8 @@ def handle_streaming_chat(
     response: Iterator[Any],
     chat_details: Any,
     kwargs: Dict[str, Any],
+    start_time: float,
+    end_time: float,
 ) -> Iterator[Any]:
     """Handles the chat method when streaming is enabled.
 
@@ -116,6 +124,8 @@ def handle_streaming_chat(
         chunks=response.data.events(),
         chat_details=chat_details,
         kwargs=kwargs,
+        start_time=start_time,
+        end_time=end_time,
     )
 
 
@@ -123,12 +133,15 @@ def stream_chunks(
     chunks: Iterator[Any],
     chat_details: Any,
     kwargs: Dict[str, Any],
+    start_time: float,
+    end_time: float,
 ):
     """Streams the chunks of the completion and traces the completion."""
     collected_output_data = []
     collected_function_calls = []
     raw_outputs = []
-    start_time = time.time()
+    # Use the timing from the actual OCI call (passed as parameter)
+    # start_time is already provided
     
     # For grouping raw outputs into a more organized structure
     streaming_stats = {
@@ -187,6 +200,9 @@ def stream_chunks(
                 if hasattr(chunk, 'data') and hasattr(chunk.data, 'usage'):
                     usage = chunk.data.usage
                     num_of_prompt_tokens = getattr(usage, 'prompt_tokens', 0)
+                else:
+                    # OCI doesn't provide usage info, estimate from chat_details
+                    num_of_prompt_tokens = estimate_prompt_tokens_from_chat_details(chat_details)
                     
             if i > 0:
                 num_of_completion_tokens = i + 1
@@ -343,6 +359,8 @@ def handle_non_streaming_chat(
     response: Any,
     chat_details: Any,
     kwargs: Dict[str, Any],
+    start_time: float,
+    end_time: float,
 ) -> Any:
     """Handles the chat method when streaming is disabled.
 
@@ -360,9 +378,8 @@ def handle_non_streaming_chat(
     Any
         The chat completion response.
     """
-    start_time = time.time()
-    # The response is now passed directly, no need to call chat_func here
-    end_time = time.time() # This will be adjusted after processing
+    # Use the timing from the actual OCI call (passed as parameters)
+    # start_time and end_time are already provided
 
     try:
         # Parse response and extract data
@@ -370,7 +387,6 @@ def handle_non_streaming_chat(
         tokens_info = extract_tokens_info(response, chat_details)
         model_id = extract_model_id(chat_details)
 
-        end_time = time.time()
         latency = (end_time - start_time) * 1000
         
         # Extract additional metadata
@@ -567,6 +583,28 @@ def parse_non_streaming_output_data(response) -> Union[str, Dict[str, Any], None
         logger.debug("Error parsing output data: %s", e)
     
     return str(data)
+
+
+def estimate_prompt_tokens_from_chat_details(chat_details) -> int:
+    """Estimate prompt tokens from chat details when OCI doesn't provide usage info."""
+    if not chat_details:
+        return 10  # Fallback estimate
+    
+    try:
+        input_text = ""
+        if hasattr(chat_details, 'chat_request') and hasattr(chat_details.chat_request, 'messages'):
+            for msg in chat_details.chat_request.messages:
+                if hasattr(msg, 'content') and msg.content:
+                    for content_item in msg.content:
+                        if hasattr(content_item, 'text'):
+                            input_text += content_item.text + " "
+        
+        # Rough estimation: ~4 characters per token
+        estimated_tokens = max(1, len(input_text) // 4)
+        return estimated_tokens
+    except Exception as e:
+        logger.debug("Error estimating prompt tokens: %s", e)
+        return 10  # Fallback estimate
 
 
 def extract_tokens_info(response, chat_details=None) -> Dict[str, int]:
