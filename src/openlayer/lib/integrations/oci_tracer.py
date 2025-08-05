@@ -10,6 +10,7 @@ try:
     import oci
     from oci.generative_ai_inference import GenerativeAiInferenceClient
     from oci.generative_ai_inference.models import GenericChatRequest, ChatDetails
+
     HAVE_OCI = True
 except ImportError:
     HAVE_OCI = False
@@ -61,15 +62,15 @@ def trace_oci_genai(
     def traced_chat_func(*args, **kwargs):
         # Extract chat_details from args or kwargs
         chat_details = args[0] if args else kwargs.get("chat_details")
-        
+
         if chat_details is None:
             raise ValueError("Could not determine chat_details from arguments.")
 
         # Check if streaming is enabled
         stream = False
-        if hasattr(chat_details, 'chat_request'):
+        if hasattr(chat_details, "chat_request"):
             chat_request = chat_details.chat_request
-            stream = getattr(chat_request, 'is_stream', False)
+            stream = getattr(chat_request, "is_stream", False)
 
         # Measure timing around the actual OCI call
         start_time = time.time()
@@ -142,7 +143,7 @@ def stream_chunks(
     raw_outputs = []
     # Use the timing from the actual OCI call (passed as parameter)
     # start_time is already provided
-    
+
     # For grouping raw outputs into a more organized structure
     streaming_stats = {
         "total_chunks": 0,
@@ -155,137 +156,138 @@ def stream_chunks(
     first_token_time = None
     num_of_completion_tokens = num_of_prompt_tokens = None
     latency = None
-    
+
     try:
         i = 0
         for i, chunk in enumerate(chunks):
             streaming_stats["total_chunks"] = i + 1
             current_time = time.time()
-            
+
             if streaming_stats["first_chunk_time"] is None:
                 streaming_stats["first_chunk_time"] = current_time
             streaming_stats["last_chunk_time"] = current_time
-            
+
             # Store raw output in a more organized way
             chunk_data = None
-            if hasattr(chunk, 'data'):
-                if hasattr(chunk.data, '__dict__'):
+            if hasattr(chunk, "data"):
+                if hasattr(chunk.data, "__dict__"):
                     chunk_data = chunk.data.__dict__
                 else:
                     chunk_data = str(chunk.data)
             else:
                 chunk_data = str(chunk)
-            
+
             # Keep sample chunks (first 3 and last 3) instead of all chunks
             if i < 3:  # First 3 chunks
-                streaming_stats["chunk_sample"].append({
-                    "index": i,
-                    "type": "first",
-                    "data": chunk_data,
-                    "timestamp": current_time
-                })
+                streaming_stats["chunk_sample"].append(
+                    {"index": i, "type": "first", "data": chunk_data, "timestamp": current_time}
+                )
             elif i < 100:  # Don't store every chunk for very long streams
                 # Store every 10th chunk for middle chunks
                 if i % 10 == 0:
-                    streaming_stats["chunk_sample"].append({
-                        "index": i,
-                        "type": "middle",
-                        "data": chunk_data,
-                        "timestamp": current_time
-                    })
-            
+                    streaming_stats["chunk_sample"].append(
+                        {"index": i, "type": "middle", "data": chunk_data, "timestamp": current_time}
+                    )
+
             if i == 0:
                 first_token_time = time.time()
                 # Extract prompt tokens from first chunk if available
-                if hasattr(chunk, 'data') and hasattr(chunk.data, 'usage'):
+                if hasattr(chunk, "data") and hasattr(chunk.data, "usage"):
                     usage = chunk.data.usage
-                    num_of_prompt_tokens = getattr(usage, 'prompt_tokens', 0)
+                    num_of_prompt_tokens = getattr(usage, "prompt_tokens", 0)
                 else:
                     # OCI doesn't provide usage info, estimate from chat_details
                     num_of_prompt_tokens = estimate_prompt_tokens_from_chat_details(chat_details)
-                    
+
             if i > 0:
                 num_of_completion_tokens = i + 1
-                
+
             # Extract content from chunk based on OCI response structure
             try:
-                if hasattr(chunk, 'data'):
+                if hasattr(chunk, "data"):
                     # Handle OCI SSE Event chunks where data is a JSON string
                     if isinstance(chunk.data, str):
                         try:
                             import json
+
                             parsed_data = json.loads(chunk.data)
-                            
+
                             # Handle OCI streaming structure: message.content[0].text
-                            if 'message' in parsed_data and 'content' in parsed_data['message']:
-                                content = parsed_data['message']['content']
+                            if "message" in parsed_data and "content" in parsed_data["message"]:
+                                content = parsed_data["message"]["content"]
                                 if isinstance(content, list) and content:
                                     for content_item in content:
-                                        if isinstance(content_item, dict) and content_item.get('type') == 'TEXT':
-                                            text = content_item.get('text', '')
+                                        if isinstance(content_item, dict) and content_item.get("type") == "TEXT":
+                                            text = content_item.get("text", "")
                                             if text:  # Only append non-empty text
                                                 collected_output_data.append(text)
                                 elif content:  # Handle as string
                                     collected_output_data.append(str(content))
-                            
+
                             # Handle function calls if present
-                            elif 'function_call' in parsed_data:
-                                collected_function_calls.append({
-                                    "name": parsed_data['function_call'].get('name', ''),
-                                    "arguments": parsed_data['function_call'].get('arguments', '')
-                                })
-                            
+                            elif "function_call" in parsed_data:
+                                collected_function_calls.append(
+                                    {
+                                        "name": parsed_data["function_call"].get("name", ""),
+                                        "arguments": parsed_data["function_call"].get("arguments", ""),
+                                    }
+                                )
+
                             # Handle direct text field
-                            elif 'text' in parsed_data:
-                                text = parsed_data['text']
+                            elif "text" in parsed_data:
+                                text = parsed_data["text"]
                                 if text:
                                     collected_output_data.append(text)
-                                    
+
                         except json.JSONDecodeError as e:
                             logger.debug("Error parsing chunk JSON: %s", e)
-                    
+
                     # Handle object-based chunks (fallback for other structures)
                     else:
                         data = chunk.data
-                        
+
                         # Handle different response structures
-                        if hasattr(data, 'choices') and data.choices:
+                        if hasattr(data, "choices") and data.choices:
                             choice = data.choices[0]
-                            
+
                             # Handle delta content
-                            if hasattr(choice, 'delta'):
+                            if hasattr(choice, "delta"):
                                 delta = choice.delta
-                                if hasattr(delta, 'content') and delta.content:
+                                if hasattr(delta, "content") and delta.content:
                                     collected_output_data.append(delta.content)
-                                elif hasattr(delta, 'function_call') and delta.function_call:
-                                    collected_function_calls.append({
-                                        "name": getattr(delta.function_call, 'name', ''),
-                                        "arguments": getattr(delta.function_call, 'arguments', '')
-                                    })
-                            
+                                elif hasattr(delta, "function_call") and delta.function_call:
+                                    collected_function_calls.append(
+                                        {
+                                            "name": getattr(delta.function_call, "name", ""),
+                                            "arguments": getattr(delta.function_call, "arguments", ""),
+                                        }
+                                    )
+
                             # Handle message content
-                            elif hasattr(choice, 'message'):
+                            elif hasattr(choice, "message"):
                                 message = choice.message
-                                if hasattr(message, 'content') and message.content:
+                                if hasattr(message, "content") and message.content:
                                     collected_output_data.append(message.content)
-                                elif hasattr(message, 'function_call') and message.function_call:
-                                    collected_function_calls.append({
-                                        "name": getattr(message.function_call, 'name', ''),
-                                        "arguments": getattr(message.function_call, 'arguments', '')
-                                    })
-                        
+                                elif hasattr(message, "function_call") and message.function_call:
+                                    collected_function_calls.append(
+                                        {
+                                            "name": getattr(message.function_call, "name", ""),
+                                            "arguments": getattr(message.function_call, "arguments", ""),
+                                        }
+                                    )
+
                         # Handle text-only responses
-                        elif hasattr(data, 'text') and data.text:
+                        elif hasattr(data, "text") and data.text:
                             collected_output_data.append(data.text)
-                        
+
             except Exception as chunk_error:
                 logger.debug("Error processing chunk: %s", chunk_error)
-                
+
             yield chunk
-            
+
         end_time = time.time()
         latency = (end_time - start_time) * 1000
-        
+
     except Exception as e:
         logger.error("Failed yield chunk. %s", e)
     finally:
@@ -295,21 +297,23 @@ def stream_chunks(
             if collected_output_data:
                 output_data = "".join(collected_output_data)
             elif collected_function_calls:
-                output_data = collected_function_calls[0] if len(collected_function_calls) == 1 else collected_function_calls
+                output_data = (
+                    collected_function_calls[0] if len(collected_function_calls) == 1 else collected_function_calls
+                )
             else:
                 output_data = ""
-                
+
             # chat_details is passed directly as parameter
             model_id = extract_model_id(chat_details)
-            
+
             # Calculate total tokens
             total_tokens = (num_of_prompt_tokens or 0) + (num_of_completion_tokens or 0)
-            
+
             # Add streaming metadata
             streaming_metadata = {
                 "timeToFirstToken": ((first_token_time - start_time) * 1000 if first_token_time else None),
             }
-            
+
             # Extract additional metadata from the first chunk if available
             additional_metadata = {}
             if raw_outputs:
@@ -320,10 +324,10 @@ def stream_chunks(
                     for key in ["model_id", "model_version", "time_created", "finish_reason", "api_format"]:
                         if key in first_chunk:
                             additional_metadata[key] = first_chunk[key]
-            
+
             # Combine streaming and additional metadata
             metadata = {**streaming_metadata, **additional_metadata}
-            
+
             trace_args = create_trace_args(
                 end_time=end_time,
                 inputs=extract_inputs_from_chat_details(chat_details),
@@ -337,8 +341,13 @@ def stream_chunks(
                 raw_output={
                     "streaming_summary": {
                         "total_chunks": streaming_stats["total_chunks"],
-                        "duration_seconds": (streaming_stats["last_chunk_time"] - streaming_stats["first_chunk_time"]) if streaming_stats["last_chunk_time"] and streaming_stats["first_chunk_time"] else 0,
-                        "chunks_per_second": streaming_stats["total_chunks"] / max(0.001, (streaming_stats["last_chunk_time"] - streaming_stats["first_chunk_time"])) if streaming_stats["last_chunk_time"] and streaming_stats["first_chunk_time"] else 0,
+                        "duration_seconds": (streaming_stats["last_chunk_time"] - streaming_stats["first_chunk_time"])
+                        if streaming_stats["last_chunk_time"] and streaming_stats["first_chunk_time"]
+                        else 0,
+                        "chunks_per_second": streaming_stats["total_chunks"]
+                        / max(0.001, (streaming_stats["last_chunk_time"] - streaming_stats["first_chunk_time"]))
+                        if streaming_stats["last_chunk_time"] and streaming_stats["first_chunk_time"]
+                        else 0,
                     },
                     "sample_chunks": streaming_stats["chunk_sample"],
                     "complete_response": "".join(collected_output_data) if collected_output_data else None,
@@ -347,7 +356,7 @@ def stream_chunks(
                 metadata=metadata,
             )
             add_to_trace(**trace_args)
-            
+
         except Exception as e:
             logger.error(
                 "Failed to trace the streaming OCI chat completion request with Openlayer. %s",
@@ -388,10 +397,10 @@ def handle_non_streaming_chat(
         model_id = extract_model_id(chat_details)
 
         latency = (end_time - start_time) * 1000
-        
+
         # Extract additional metadata
         additional_metadata = extract_response_metadata(response)
-        
+
         trace_args = create_trace_args(
             end_time=end_time,
             inputs=extract_inputs_from_chat_details(chat_details),
@@ -402,186 +411,183 @@ def handle_non_streaming_chat(
             completion_tokens=tokens_info.get("output_tokens", 0),
             model=model_id,
             model_parameters=get_model_parameters(chat_details),
-            raw_output=response.data.__dict__ if hasattr(response, 'data') else response.__dict__,
+            raw_output=response.data.__dict__ if hasattr(response, "data") else response.__dict__,
             id=None,
             metadata=additional_metadata,
         )
-        
+
         add_to_trace(**trace_args)
-        
+
     except Exception as e:
         logger.error("Failed to trace the OCI chat completion request with Openlayer. %s", e)
-    
+
     return response
 
 
 def extract_response_metadata(response) -> Dict[str, Any]:
     """Extract additional metadata from the OCI response."""
     metadata = {}
-    
-    if not hasattr(response, 'data'):
+
+    if not hasattr(response, "data"):
         return metadata
-    
+
     try:
         data = response.data
-        
+
         # Extract model_id and model_version
-        if hasattr(data, 'model_id'):
+        if hasattr(data, "model_id"):
             metadata["model_id"] = data.model_id
-        if hasattr(data, 'model_version'):
+        if hasattr(data, "model_version"):
             metadata["model_version"] = data.model_version
-            
+
         # Extract chat response metadata
-        if hasattr(data, 'chat_response'):
+        if hasattr(data, "chat_response"):
             chat_response = data.chat_response
-            
+
             # Extract time_created
-            if hasattr(chat_response, 'time_created'):
+            if hasattr(chat_response, "time_created"):
                 metadata["time_created"] = str(chat_response.time_created)
-            
+
             # Extract finish_reason from first choice
-            if hasattr(chat_response, 'choices') and chat_response.choices:
+            if hasattr(chat_response, "choices") and chat_response.choices:
                 choice = chat_response.choices[0]
-                if hasattr(choice, 'finish_reason'):
+                if hasattr(choice, "finish_reason"):
                     metadata["finish_reason"] = choice.finish_reason
-                
+
                 # Extract index
-                if hasattr(choice, 'index'):
+                if hasattr(choice, "index"):
                     metadata["choice_index"] = choice.index
-            
+
             # Extract API format
-            if hasattr(chat_response, 'api_format'):
+            if hasattr(chat_response, "api_format"):
                 metadata["api_format"] = chat_response.api_format
-                
+
     except Exception as e:
         logger.debug("Error extracting response metadata: %s", e)
-    
+
     return metadata
 
 
 def extract_inputs_from_chat_details(chat_details) -> Dict[str, Any]:
     """Extract inputs from the chat details in a clean format."""
     inputs = {}
-    
+
     if chat_details is None:
         return inputs
-    
+
     try:
-        if hasattr(chat_details, 'chat_request'):
+        if hasattr(chat_details, "chat_request"):
             chat_request = chat_details.chat_request
-            
+
             # Extract messages in clean format
-            if hasattr(chat_request, 'messages') and chat_request.messages:
+            if hasattr(chat_request, "messages") and chat_request.messages:
                 messages = []
                 for msg in chat_request.messages:
                     # Extract role
-                    role = getattr(msg, 'role', 'USER')
-                    
+                    role = getattr(msg, "role", "USER")
+
                     # Extract content text
                     content_text = ""
-                    if hasattr(msg, 'content') and msg.content:
+                    if hasattr(msg, "content") and msg.content:
                         # Handle content as list of content objects
                         if isinstance(msg.content, list):
                             text_parts = []
                             for content_item in msg.content:
-                                if hasattr(content_item, 'text'):
+                                if hasattr(content_item, "text"):
                                     text_parts.append(content_item.text)
-                                elif isinstance(content_item, dict) and 'text' in content_item:
-                                    text_parts.append(content_item['text'])
+                                elif isinstance(content_item, dict) and "text" in content_item:
+                                    text_parts.append(content_item["text"])
                             content_text = " ".join(text_parts)
                         else:
                             content_text = str(msg.content)
-                    
-                    messages.append({
-                        "role": role,
-                        "content": content_text
-                    })
-                
+
+                    messages.append({"role": role, "content": content_text})
+
                 inputs["prompt"] = messages
-            
+
             # Extract system message if present
-            if hasattr(chat_request, 'system_message') and chat_request.system_message:
+            if hasattr(chat_request, "system_message") and chat_request.system_message:
                 inputs["system"] = chat_request.system_message
-                
+
             # Extract tools if present
-            if hasattr(chat_request, 'tools') and chat_request.tools:
+            if hasattr(chat_request, "tools") and chat_request.tools:
                 inputs["tools"] = chat_request.tools
-        
+
     except Exception as e:
         logger.debug("Error extracting inputs: %s", e)
         inputs["prompt"] = str(chat_details)
-    
+
     return inputs
 
 
 def parse_non_streaming_output_data(response) -> Union[str, Dict[str, Any], None]:
     """Parses the output data from a non-streaming completion, extracting clean text."""
-    if not hasattr(response, 'data'):
+    if not hasattr(response, "data"):
         return str(response)
-        
+
     try:
         data = response.data
-        
+
         # Handle OCI chat response structure
-        if hasattr(data, 'chat_response'):
+        if hasattr(data, "chat_response"):
             chat_response = data.chat_response
-            if hasattr(chat_response, 'choices') and chat_response.choices:
+            if hasattr(chat_response, "choices") and chat_response.choices:
                 choice = chat_response.choices[0]
-                
+
                 # Extract text from message content
-                if hasattr(choice, 'message') and choice.message:
+                if hasattr(choice, "message") and choice.message:
                     message = choice.message
-                    if hasattr(message, 'content') and message.content:
+                    if hasattr(message, "content") and message.content:
                         # Handle content as list of content objects
                         if isinstance(message.content, list):
                             text_parts = []
                             for content_item in message.content:
-                                if hasattr(content_item, 'text'):
+                                if hasattr(content_item, "text"):
                                     text_parts.append(content_item.text)
-                                elif isinstance(content_item, dict) and 'text' in content_item:
-                                    text_parts.append(content_item['text'])
+                                elif isinstance(content_item, dict) and "text" in content_item:
+                                    text_parts.append(content_item["text"])
                             return " ".join(text_parts)
                         else:
                             return str(message.content)
-        
+
         # Handle choice-based responses (fallback)
-        elif hasattr(data, 'choices') and data.choices:
+        elif hasattr(data, "choices") and data.choices:
             choice = data.choices[0]
-            
+
             # Handle message content
-            if hasattr(choice, 'message'):
+            if hasattr(choice, "message"):
                 message = choice.message
-                if hasattr(message, 'content') and message.content:
+                if hasattr(message, "content") and message.content:
                     if isinstance(message.content, list):
                         text_parts = []
                         for content_item in message.content:
-                            if hasattr(content_item, 'text'):
+                            if hasattr(content_item, "text"):
                                 text_parts.append(content_item.text)
                         return " ".join(text_parts)
                     return str(message.content)
-                elif hasattr(message, 'function_call') and message.function_call:
+                elif hasattr(message, "function_call") and message.function_call:
                     return {
                         "function_call": {
-                            "name": getattr(message.function_call, 'name', ''),
-                            "arguments": getattr(message.function_call, 'arguments', '')
+                            "name": getattr(message.function_call, "name", ""),
+                            "arguments": getattr(message.function_call, "arguments", ""),
                         }
                     }
-            
+
             # Handle text content directly
-            elif hasattr(choice, 'text') and choice.text:
+            elif hasattr(choice, "text") and choice.text:
                 return choice.text
-        
+
         # Handle direct text responses
-        elif hasattr(data, 'text') and data.text:
+        elif hasattr(data, "text") and data.text:
             return data.text
-            
+
         # Handle generated_text field
-        elif hasattr(data, 'generated_text') and data.generated_text:
+        elif hasattr(data, "generated_text") and data.generated_text:
             return data.generated_text
-        
+
     except Exception as e:
         logger.debug("Error parsing output data: %s", e)
-    
+
     return str(data)
 
 
@@ -589,16 +595,16 @@ def estimate_prompt_tokens_from_chat_details(chat_details) -> int:
     """Estimate prompt tokens from chat details when OCI doesn't provide usage info."""
     if not chat_details:
         return 10  # Fallback estimate
-    
+
     try:
         input_text = ""
-        if hasattr(chat_details, 'chat_request') and hasattr(chat_details.chat_request, 'messages'):
+        if hasattr(chat_details, "chat_request") and hasattr(chat_details.chat_request, "messages"):
             for msg in chat_details.chat_request.messages:
-                if hasattr(msg, 'content') and msg.content:
+                if hasattr(msg, "content") and msg.content:
                     for content_item in msg.content:
-                        if hasattr(content_item, 'text'):
+                        if hasattr(content_item, "text"):
                             input_text += content_item.text + " "
-        
+
         # Rough estimation: ~4 characters per token
         estimated_tokens = max(1, len(input_text) // 4)
         return estimated_tokens
@@ -610,46 +616,46 @@ def estimate_prompt_tokens_from_chat_details(chat_details) -> int:
 def extract_tokens_info(response, chat_details=None) -> Dict[str, int]:
     """Extract token usage information from the response."""
     tokens_info = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
-    
+
     try:
         # First, try the standard locations for token usage
-        if hasattr(response, 'data'):
+        if hasattr(response, "data"):
             # Check multiple possible locations for usage info
             usage_locations = [
-                getattr(response.data, 'usage', None),
-                getattr(getattr(response.data, 'chat_response', None), 'usage', None),
+                getattr(response.data, "usage", None),
+                getattr(getattr(response.data, "chat_response", None), "usage", None),
             ]
-            
+
             for usage in usage_locations:
                 if usage is not None:
-                    tokens_info["input_tokens"] = getattr(usage, 'prompt_tokens', 0)
-                    tokens_info["output_tokens"] = getattr(usage, 'completion_tokens', 0)
+                    tokens_info["input_tokens"] = getattr(usage, "prompt_tokens", 0)
+                    tokens_info["output_tokens"] = getattr(usage, "completion_tokens", 0)
                     tokens_info["total_tokens"] = tokens_info["input_tokens"] + tokens_info["output_tokens"]
                     logger.debug("Found token usage info: %s", tokens_info)
                     return tokens_info
-            
+
             # If no usage info found, estimate based on text length
             # This is common for OCI which doesn't return token counts
             logger.debug("No token usage found in response, estimating from text length")
-            
+
             # Estimate input tokens from chat_details
             if chat_details:
                 try:
                     input_text = ""
-                    if hasattr(chat_details, 'chat_request') and hasattr(chat_details.chat_request, 'messages'):
+                    if hasattr(chat_details, "chat_request") and hasattr(chat_details.chat_request, "messages"):
                         for msg in chat_details.chat_request.messages:
-                            if hasattr(msg, 'content') and msg.content:
+                            if hasattr(msg, "content") and msg.content:
                                 for content_item in msg.content:
-                                    if hasattr(content_item, 'text'):
+                                    if hasattr(content_item, "text"):
                                         input_text += content_item.text + " "
-                    
+
                     # Rough estimation: ~4 characters per token
                     estimated_input_tokens = max(1, len(input_text) // 4)
                     tokens_info["input_tokens"] = estimated_input_tokens
                 except Exception as e:
                     logger.debug("Error estimating input tokens: %s", e)
                     tokens_info["input_tokens"] = 10  # Fallback estimate
-            
+
             # Estimate output tokens from response
             try:
                 output_text = parse_non_streaming_output_data(response)
@@ -662,15 +668,15 @@ def extract_tokens_info(response, chat_details=None) -> Dict[str, int]:
             except Exception as e:
                 logger.debug("Error estimating output tokens: %s", e)
                 tokens_info["output_tokens"] = 5  # Fallback estimate
-            
+
             tokens_info["total_tokens"] = tokens_info["input_tokens"] + tokens_info["output_tokens"]
             logger.debug("Estimated token usage: %s", tokens_info)
-    
+
     except Exception as e:
         logger.debug("Error extracting/estimating token info: %s", e)
         # Provide minimal fallback estimates
         tokens_info = {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}
-    
+
     return tokens_info
 
 
@@ -678,49 +684,49 @@ def extract_model_id(chat_details) -> str:
     """Extract model ID from chat details."""
     if chat_details is None:
         return "unknown"
-        
+
     try:
-        if hasattr(chat_details, 'chat_request'):
+        if hasattr(chat_details, "chat_request"):
             chat_request = chat_details.chat_request
-            if hasattr(chat_request, 'model_id') and chat_request.model_id:
+            if hasattr(chat_request, "model_id") and chat_request.model_id:
                 return chat_request.model_id
-        
+
         # Try to extract from serving mode
-        if hasattr(chat_details, 'serving_mode'):
+        if hasattr(chat_details, "serving_mode"):
             serving_mode = chat_details.serving_mode
-            if hasattr(serving_mode, 'model_id') and serving_mode.model_id:
+            if hasattr(serving_mode, "model_id") and serving_mode.model_id:
                 return serving_mode.model_id
-                
+
     except Exception as e:
         logger.debug("Error extracting model ID: %s", e)
-        
+
     return "unknown"
 
 
 def get_model_parameters(chat_details) -> Dict[str, Any]:
     """Gets the model parameters from the chat details."""
-    if chat_details is None or not hasattr(chat_details, 'chat_request'):
+    if chat_details is None or not hasattr(chat_details, "chat_request"):
         return {}
-        
+
     try:
         chat_request = chat_details.chat_request
-        
+
         return {
-            "max_tokens": getattr(chat_request, 'max_tokens', None),
-            "temperature": getattr(chat_request, 'temperature', None),
-            "top_p": getattr(chat_request, 'top_p', None),
-            "top_k": getattr(chat_request, 'top_k', None),
-            "frequency_penalty": getattr(chat_request, 'frequency_penalty', None),
-            "presence_penalty": getattr(chat_request, 'presence_penalty', None),
-            "stop": getattr(chat_request, 'stop', None),
-            "tools": getattr(chat_request, 'tools', None),
-            "tool_choice": getattr(chat_request, 'tool_choice', None),
-            "is_stream": getattr(chat_request, 'is_stream', None),
-            "is_echo": getattr(chat_request, 'is_echo', None),
-            "log_probs": getattr(chat_request, 'log_probs', None),
-            "logit_bias": getattr(chat_request, 'logit_bias', None),
-            "num_generations": getattr(chat_request, 'num_generations', None),
-            "seed": getattr(chat_request, 'seed', None),
+            "max_tokens": getattr(chat_request, "max_tokens", None),
+            "temperature": getattr(chat_request, "temperature", None),
+            "top_p": getattr(chat_request, "top_p", None),
+            "top_k": getattr(chat_request, "top_k", None),
+            "frequency_penalty": getattr(chat_request, "frequency_penalty", None),
+            "presence_penalty": getattr(chat_request, "presence_penalty", None),
+            "stop": getattr(chat_request, "stop", None),
+            "tools": getattr(chat_request, "tools", None),
+            "tool_choice": getattr(chat_request, "tool_choice", None),
+            "is_stream": getattr(chat_request, "is_stream", None),
+            "is_echo": getattr(chat_request, "is_echo", None),
+            "log_probs": getattr(chat_request, "log_probs", None),
+            "logit_bias": getattr(chat_request, "logit_bias", None),
+            "num_generations": getattr(chat_request, "num_generations", None),
+            "seed": getattr(chat_request, "seed", None),
         }
     except Exception as e:
         logger.debug("Error extracting model parameters: %s", e)
