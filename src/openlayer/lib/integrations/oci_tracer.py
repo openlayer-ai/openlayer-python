@@ -59,73 +59,85 @@ def trace_oci_genai(
 
     @wraps(chat_func)
     def traced_chat_func(*args, **kwargs):
-        inference_id = kwargs.pop("inference_id", None)
-        
         # Extract chat_details from args or kwargs
         chat_details = args[0] if args else kwargs.get("chat_details")
         
+        if chat_details is None:
+            raise ValueError("Could not determine chat_details from arguments.")
+
         # Check if streaming is enabled
         stream = False
         if hasattr(chat_details, 'chat_request'):
             chat_request = chat_details.chat_request
             stream = getattr(chat_request, 'is_stream', False)
-            
+
+        # Call the original OCI client chat method
+        response = chat_func(*args, **kwargs)
+
         if stream:
             return handle_streaming_chat(
-                *args,
-                **kwargs,
-                chat_func=chat_func,
-                inference_id=inference_id,
+                response=response,
+                chat_details=chat_details,
+                kwargs=kwargs,
             )
-        return handle_non_streaming_chat(
-            *args,
-            **kwargs,
-            chat_func=chat_func,
-            inference_id=inference_id,
-        )
+        else:
+            return handle_non_streaming_chat(
+                response=response,
+                chat_details=chat_details,
+                kwargs=kwargs,
+            )
 
     client.chat = traced_chat_func
     return client
 
 
 def handle_streaming_chat(
-    chat_func: callable,
-    *args,
-    inference_id: Optional[str] = None,
-    **kwargs,
+    response: Iterator[Any],
+    chat_details: Any,
+    kwargs: Dict[str, Any],
 ) -> Iterator[Any]:
     """Handles the chat method when streaming is enabled.
 
     Parameters
     ----------
-    chat_func : callable
-        The chat method to handle.
-    inference_id : Optional[str], optional
-        A user-generated inference id, by default None
+    response : Iterator[Any]
+        The streaming response from the OCI chat method.
+    chat_details : Any
+        The chat details object.
+    kwargs : Dict[str, Any]
+        Additional keyword arguments.
 
     Returns
     -------
     Iterator[Any]
         A generator that yields the chunks of the completion.
     """
-    response = chat_func(*args, **kwargs)
     return stream_chunks(
-        chunks=response,
+        chunks=response.data.events(),
+        chat_details=chat_details,
         kwargs=kwargs,
-        inference_id=inference_id,
     )
 
 
 def stream_chunks(
     chunks: Iterator[Any],
+    chat_details: Any,
     kwargs: Dict[str, Any],
-    inference_id: Optional[str] = None,
 ):
     """Streams the chunks of the completion and traces the completion."""
     collected_output_data = []
     collected_function_calls = []
     raw_outputs = []
     start_time = time.time()
+    
+    # For grouping raw outputs into a more organized structure
+    streaming_stats = {
+        "total_chunks": 0,
+        "first_chunk_time": None,
+        "last_chunk_time": None,
+        "chunk_sample": [],  # Keep first few and last few chunks
+        "content_progression": [],  # Track content building up
+    }
     end_time = None
     first_token_time = None
     num_of_completion_tokens = num_of_prompt_tokens = None
@@ -134,11 +146,40 @@ def stream_chunks(
     try:
         i = 0
         for i, chunk in enumerate(chunks):
-            # Store raw output
+            streaming_stats["total_chunks"] = i + 1
+            current_time = time.time()
+            
+            if streaming_stats["first_chunk_time"] is None:
+                streaming_stats["first_chunk_time"] = current_time
+            streaming_stats["last_chunk_time"] = current_time
+            
+            # Store raw output in a more organized way
+            chunk_data = None
             if hasattr(chunk, 'data'):
-                raw_outputs.append(chunk.data.__dict__)
+                if hasattr(chunk.data, '__dict__'):
+                    chunk_data = chunk.data.__dict__
+                else:
+                    chunk_data = str(chunk.data)
             else:
-                raw_outputs.append(str(chunk))
+                chunk_data = str(chunk)
+            
+            # Keep sample chunks (first 3 and last 3) instead of all chunks
+            if i < 3:  # First 3 chunks
+                streaming_stats["chunk_sample"].append({
+                    "index": i,
+                    "type": "first",
+                    "data": chunk_data,
+                    "timestamp": current_time
+                })
+            elif i < 100:  # Don't store every chunk for very long streams
+                # Store every 10th chunk for middle chunks
+                if i % 10 == 0:
+                    streaming_stats["chunk_sample"].append({
+                        "index": i,
+                        "type": "middle",
+                        "data": chunk_data,
+                        "timestamp": current_time
+                    })
             
             if i == 0:
                 first_token_time = time.time()
@@ -153,37 +194,73 @@ def stream_chunks(
             # Extract content from chunk based on OCI response structure
             try:
                 if hasattr(chunk, 'data'):
-                    data = chunk.data
-                    
-                    # Handle different response structures
-                    if hasattr(data, 'choices') and data.choices:
-                        choice = data.choices[0]
-                        
-                        # Handle delta content
-                        if hasattr(choice, 'delta'):
-                            delta = choice.delta
-                            if hasattr(delta, 'content') and delta.content:
-                                collected_output_data.append(delta.content)
-                            elif hasattr(delta, 'function_call') and delta.function_call:
+                    # Handle OCI SSE Event chunks where data is a JSON string
+                    if isinstance(chunk.data, str):
+                        try:
+                            import json
+                            parsed_data = json.loads(chunk.data)
+                            
+                            # Handle OCI streaming structure: message.content[0].text
+                            if 'message' in parsed_data and 'content' in parsed_data['message']:
+                                content = parsed_data['message']['content']
+                                if isinstance(content, list) and content:
+                                    for content_item in content:
+                                        if isinstance(content_item, dict) and content_item.get('type') == 'TEXT':
+                                            text = content_item.get('text', '')
+                                            if text:  # Only append non-empty text
+                                                collected_output_data.append(text)
+                                elif content:  # Handle as string
+                                    collected_output_data.append(str(content))
+                            
+                            # Handle function calls if present
+                            elif 'function_call' in parsed_data:
                                 collected_function_calls.append({
-                                    "name": getattr(delta.function_call, 'name', ''),
-                                    "arguments": getattr(delta.function_call, 'arguments', '')
+                                    "name": parsed_data['function_call'].get('name', ''),
+                                    "arguments": parsed_data['function_call'].get('arguments', '')
                                 })
-                        
-                        # Handle message content
-                        elif hasattr(choice, 'message'):
-                            message = choice.message
-                            if hasattr(message, 'content') and message.content:
-                                collected_output_data.append(message.content)
-                            elif hasattr(message, 'function_call') and message.function_call:
-                                collected_function_calls.append({
-                                    "name": getattr(message.function_call, 'name', ''),
-                                    "arguments": getattr(message.function_call, 'arguments', '')
-                                })
+                            
+                            # Handle direct text field
+                            elif 'text' in parsed_data:
+                                text = parsed_data['text']
+                                if text:
+                                    collected_output_data.append(text)
+                                    
+                        except json.JSONDecodeError as e:
+                            logger.debug("Error parsing chunk JSON: %s", e)
                     
-                    # Handle text-only responses
-                    elif hasattr(data, 'text') and data.text:
-                        collected_output_data.append(data.text)
+                    # Handle object-based chunks (fallback for other structures)
+                    else:
+                        data = chunk.data
+                        
+                        # Handle different response structures
+                        if hasattr(data, 'choices') and data.choices:
+                            choice = data.choices[0]
+                            
+                            # Handle delta content
+                            if hasattr(choice, 'delta'):
+                                delta = choice.delta
+                                if hasattr(delta, 'content') and delta.content:
+                                    collected_output_data.append(delta.content)
+                                elif hasattr(delta, 'function_call') and delta.function_call:
+                                    collected_function_calls.append({
+                                        "name": getattr(delta.function_call, 'name', ''),
+                                        "arguments": getattr(delta.function_call, 'arguments', '')
+                                    })
+                            
+                            # Handle message content
+                            elif hasattr(choice, 'message'):
+                                message = choice.message
+                                if hasattr(message, 'content') and message.content:
+                                    collected_output_data.append(message.content)
+                                elif hasattr(message, 'function_call') and message.function_call:
+                                    collected_function_calls.append({
+                                        "name": getattr(message.function_call, 'name', ''),
+                                        "arguments": getattr(message.function_call, 'arguments', '')
+                                    })
+                        
+                        # Handle text-only responses
+                        elif hasattr(data, 'text') and data.text:
+                            collected_output_data.append(data.text)
                         
             except Exception as chunk_error:
                 logger.debug("Error processing chunk: %s", chunk_error)
@@ -206,17 +283,30 @@ def stream_chunks(
             else:
                 output_data = ""
                 
-            # Extract chat_details from kwargs for input processing
-            chat_details = kwargs.get("chat_details") or (args[0] if args else None)
+            # chat_details is passed directly as parameter
             model_id = extract_model_id(chat_details)
             
             # Calculate total tokens
             total_tokens = (num_of_prompt_tokens or 0) + (num_of_completion_tokens or 0)
             
             # Add streaming metadata
-            metadata = {
+            streaming_metadata = {
                 "timeToFirstToken": ((first_token_time - start_time) * 1000 if first_token_time else None),
             }
+            
+            # Extract additional metadata from the first chunk if available
+            additional_metadata = {}
+            if raw_outputs:
+                # Try to extract metadata from the first chunk or response structure
+                first_chunk = raw_outputs[0]
+                if isinstance(first_chunk, dict):
+                    # Look for common OCI response metadata fields
+                    for key in ["model_id", "model_version", "time_created", "finish_reason", "api_format"]:
+                        if key in first_chunk:
+                            additional_metadata[key] = first_chunk[key]
+            
+            # Combine streaming and additional metadata
+            metadata = {**streaming_metadata, **additional_metadata}
             
             trace_args = create_trace_args(
                 end_time=end_time,
@@ -228,8 +318,16 @@ def stream_chunks(
                 completion_tokens=num_of_completion_tokens or 0,
                 model=model_id,
                 model_parameters=get_model_parameters(chat_details),
-                raw_output=raw_outputs,
-                id=inference_id,
+                raw_output={
+                    "streaming_summary": {
+                        "total_chunks": streaming_stats["total_chunks"],
+                        "duration_seconds": (streaming_stats["last_chunk_time"] - streaming_stats["first_chunk_time"]) if streaming_stats["last_chunk_time"] and streaming_stats["first_chunk_time"] else 0,
+                        "chunks_per_second": streaming_stats["total_chunks"] / max(0.001, (streaming_stats["last_chunk_time"] - streaming_stats["first_chunk_time"])) if streaming_stats["last_chunk_time"] and streaming_stats["first_chunk_time"] else 0,
+                    },
+                    "sample_chunks": streaming_stats["chunk_sample"],
+                    "complete_response": "".join(collected_output_data) if collected_output_data else None,
+                },
+                id=None,
                 metadata=metadata,
             )
             add_to_trace(**trace_args)
@@ -242,19 +340,20 @@ def stream_chunks(
 
 
 def handle_non_streaming_chat(
-    chat_func: callable,
-    *args,
-    inference_id: Optional[str] = None,
-    **kwargs,
+    response: Any,
+    chat_details: Any,
+    kwargs: Dict[str, Any],
 ) -> Any:
     """Handles the chat method when streaming is disabled.
 
     Parameters
     ----------
-    chat_func : callable
-        The chat method to handle.
-    inference_id : Optional[str], optional
-        A user-generated inference id, by default None
+    response : Any
+        The response from the OCI chat method.
+    chat_details : Any
+        The chat details object.
+    kwargs : Dict[str, Any]
+        Additional keyword arguments.
 
     Returns
     -------
@@ -262,30 +361,34 @@ def handle_non_streaming_chat(
         The chat completion response.
     """
     start_time = time.time()
-    response = chat_func(*args, **kwargs)
-    end_time = time.time()
-    
+    # The response is now passed directly, no need to call chat_func here
+    end_time = time.time() # This will be adjusted after processing
+
     try:
-        # Extract chat_details for input processing
-        chat_details = args[0] if args else kwargs.get("chat_details")
-        
         # Parse response and extract data
         output_data = parse_non_streaming_output_data(response)
-        tokens_info = extract_tokens_info(response)
+        tokens_info = extract_tokens_info(response, chat_details)
         model_id = extract_model_id(chat_details)
+
+        end_time = time.time()
+        latency = (end_time - start_time) * 1000
+        
+        # Extract additional metadata
+        additional_metadata = extract_response_metadata(response)
         
         trace_args = create_trace_args(
             end_time=end_time,
             inputs=extract_inputs_from_chat_details(chat_details),
             output=output_data,
-            latency=(end_time - start_time) * 1000,
+            latency=latency,
             tokens=tokens_info.get("total_tokens", 0),
             prompt_tokens=tokens_info.get("input_tokens", 0),
             completion_tokens=tokens_info.get("output_tokens", 0),
             model=model_id,
             model_parameters=get_model_parameters(chat_details),
             raw_output=response.data.__dict__ if hasattr(response, 'data') else response.__dict__,
-            id=inference_id,
+            id=None,
+            metadata=additional_metadata,
         )
         
         add_to_trace(**trace_args)
@@ -296,8 +399,52 @@ def handle_non_streaming_chat(
     return response
 
 
+def extract_response_metadata(response) -> Dict[str, Any]:
+    """Extract additional metadata from the OCI response."""
+    metadata = {}
+    
+    if not hasattr(response, 'data'):
+        return metadata
+    
+    try:
+        data = response.data
+        
+        # Extract model_id and model_version
+        if hasattr(data, 'model_id'):
+            metadata["model_id"] = data.model_id
+        if hasattr(data, 'model_version'):
+            metadata["model_version"] = data.model_version
+            
+        # Extract chat response metadata
+        if hasattr(data, 'chat_response'):
+            chat_response = data.chat_response
+            
+            # Extract time_created
+            if hasattr(chat_response, 'time_created'):
+                metadata["time_created"] = str(chat_response.time_created)
+            
+            # Extract finish_reason from first choice
+            if hasattr(chat_response, 'choices') and chat_response.choices:
+                choice = chat_response.choices[0]
+                if hasattr(choice, 'finish_reason'):
+                    metadata["finish_reason"] = choice.finish_reason
+                
+                # Extract index
+                if hasattr(choice, 'index'):
+                    metadata["choice_index"] = choice.index
+            
+            # Extract API format
+            if hasattr(chat_response, 'api_format'):
+                metadata["api_format"] = chat_response.api_format
+                
+    except Exception as e:
+        logger.debug("Error extracting response metadata: %s", e)
+    
+    return metadata
+
+
 def extract_inputs_from_chat_details(chat_details) -> Dict[str, Any]:
-    """Extract inputs from the chat details."""
+    """Extract inputs from the chat details in a clean format."""
     inputs = {}
     
     if chat_details is None:
@@ -307,15 +454,33 @@ def extract_inputs_from_chat_details(chat_details) -> Dict[str, Any]:
         if hasattr(chat_details, 'chat_request'):
             chat_request = chat_details.chat_request
             
-            # Extract messages
+            # Extract messages in clean format
             if hasattr(chat_request, 'messages') and chat_request.messages:
-                # Convert messages to serializable format
                 messages = []
                 for msg in chat_request.messages:
-                    if hasattr(msg, '__dict__'):
-                        messages.append(msg.__dict__)
-                    else:
-                        messages.append(str(msg))
+                    # Extract role
+                    role = getattr(msg, 'role', 'USER')
+                    
+                    # Extract content text
+                    content_text = ""
+                    if hasattr(msg, 'content') and msg.content:
+                        # Handle content as list of content objects
+                        if isinstance(msg.content, list):
+                            text_parts = []
+                            for content_item in msg.content:
+                                if hasattr(content_item, 'text'):
+                                    text_parts.append(content_item.text)
+                                elif isinstance(content_item, dict) and 'text' in content_item:
+                                    text_parts.append(content_item['text'])
+                            content_text = " ".join(text_parts)
+                        else:
+                            content_text = str(msg.content)
+                    
+                    messages.append({
+                        "role": role,
+                        "content": content_text
+                    })
+                
                 inputs["prompt"] = messages
             
             # Extract system message if present
@@ -334,22 +499,50 @@ def extract_inputs_from_chat_details(chat_details) -> Dict[str, Any]:
 
 
 def parse_non_streaming_output_data(response) -> Union[str, Dict[str, Any], None]:
-    """Parses the output data from a non-streaming completion."""
+    """Parses the output data from a non-streaming completion, extracting clean text."""
     if not hasattr(response, 'data'):
         return str(response)
         
     try:
         data = response.data
         
-        # Handle choice-based responses
-        if hasattr(data, 'choices') and data.choices:
+        # Handle OCI chat response structure
+        if hasattr(data, 'chat_response'):
+            chat_response = data.chat_response
+            if hasattr(chat_response, 'choices') and chat_response.choices:
+                choice = chat_response.choices[0]
+                
+                # Extract text from message content
+                if hasattr(choice, 'message') and choice.message:
+                    message = choice.message
+                    if hasattr(message, 'content') and message.content:
+                        # Handle content as list of content objects
+                        if isinstance(message.content, list):
+                            text_parts = []
+                            for content_item in message.content:
+                                if hasattr(content_item, 'text'):
+                                    text_parts.append(content_item.text)
+                                elif isinstance(content_item, dict) and 'text' in content_item:
+                                    text_parts.append(content_item['text'])
+                            return " ".join(text_parts)
+                        else:
+                            return str(message.content)
+        
+        # Handle choice-based responses (fallback)
+        elif hasattr(data, 'choices') and data.choices:
             choice = data.choices[0]
             
             # Handle message content
             if hasattr(choice, 'message'):
                 message = choice.message
                 if hasattr(message, 'content') and message.content:
-                    return message.content
+                    if isinstance(message.content, list):
+                        text_parts = []
+                        for content_item in message.content:
+                            if hasattr(content_item, 'text'):
+                                text_parts.append(content_item.text)
+                        return " ".join(text_parts)
+                    return str(message.content)
                 elif hasattr(message, 'function_call') and message.function_call:
                     return {
                         "function_call": {
@@ -376,18 +569,69 @@ def parse_non_streaming_output_data(response) -> Union[str, Dict[str, Any], None
     return str(data)
 
 
-def extract_tokens_info(response) -> Dict[str, int]:
+def extract_tokens_info(response, chat_details=None) -> Dict[str, int]:
     """Extract token usage information from the response."""
     tokens_info = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
     
     try:
-        if hasattr(response, 'data') and hasattr(response.data, 'usage'):
-            usage = response.data.usage
-            tokens_info["input_tokens"] = getattr(usage, 'prompt_tokens', 0)
-            tokens_info["output_tokens"] = getattr(usage, 'completion_tokens', 0)
+        # First, try the standard locations for token usage
+        if hasattr(response, 'data'):
+            # Check multiple possible locations for usage info
+            usage_locations = [
+                getattr(response.data, 'usage', None),
+                getattr(getattr(response.data, 'chat_response', None), 'usage', None),
+            ]
+            
+            for usage in usage_locations:
+                if usage is not None:
+                    tokens_info["input_tokens"] = getattr(usage, 'prompt_tokens', 0)
+                    tokens_info["output_tokens"] = getattr(usage, 'completion_tokens', 0)
+                    tokens_info["total_tokens"] = tokens_info["input_tokens"] + tokens_info["output_tokens"]
+                    logger.debug("Found token usage info: %s", tokens_info)
+                    return tokens_info
+            
+            # If no usage info found, estimate based on text length
+            # This is common for OCI which doesn't return token counts
+            logger.debug("No token usage found in response, estimating from text length")
+            
+            # Estimate input tokens from chat_details
+            if chat_details:
+                try:
+                    input_text = ""
+                    if hasattr(chat_details, 'chat_request') and hasattr(chat_details.chat_request, 'messages'):
+                        for msg in chat_details.chat_request.messages:
+                            if hasattr(msg, 'content') and msg.content:
+                                for content_item in msg.content:
+                                    if hasattr(content_item, 'text'):
+                                        input_text += content_item.text + " "
+                    
+                    # Rough estimation: ~4 characters per token
+                    estimated_input_tokens = max(1, len(input_text) // 4)
+                    tokens_info["input_tokens"] = estimated_input_tokens
+                except Exception as e:
+                    logger.debug("Error estimating input tokens: %s", e)
+                    tokens_info["input_tokens"] = 10  # Fallback estimate
+            
+            # Estimate output tokens from response
+            try:
+                output_text = parse_non_streaming_output_data(response)
+                if isinstance(output_text, str):
+                    # Rough estimation: ~4 characters per token
+                    estimated_output_tokens = max(1, len(output_text) // 4)
+                    tokens_info["output_tokens"] = estimated_output_tokens
+                else:
+                    tokens_info["output_tokens"] = 5  # Fallback estimate
+            except Exception as e:
+                logger.debug("Error estimating output tokens: %s", e)
+                tokens_info["output_tokens"] = 5  # Fallback estimate
+            
             tokens_info["total_tokens"] = tokens_info["input_tokens"] + tokens_info["output_tokens"]
+            logger.debug("Estimated token usage: %s", tokens_info)
+    
     except Exception as e:
-        logger.debug("Error extracting token info: %s", e)
+        logger.debug("Error extracting/estimating token info: %s", e)
+        # Provide minimal fallback estimates
+        tokens_info = {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}
     
     return tokens_info
 
