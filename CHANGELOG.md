@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.77 (2025-08-06)
+
+Full Changelog: [v0.2.0-alpha.76...v0.2.0-alpha.77](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.76...v0.2.0-alpha.77)
+
+### Bug Fixes
+
+* add OCI tracer to init ([#498](https://github.com/openlayer-ai/openlayer-python/issues/498)) ([e7e0633](https://github.com/openlayer-ai/openlayer-python/commit/e7e06336a506d8056509ae082cdfe0aa0fad0e5c))
+
 ## 0.2.0-alpha.76 (2025-08-06)
 
 Full Changelog: [v0.2.0-alpha.75...v0.2.0-alpha.76](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.75...v0.2.0-alpha.76)
