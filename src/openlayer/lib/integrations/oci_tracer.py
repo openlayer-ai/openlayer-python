@@ -9,8 +9,6 @@ from typing import Any, Dict, Iterator, Optional, Union, TYPE_CHECKING
 try:
     import oci
     from oci.generative_ai_inference import GenerativeAiInferenceClient
-    from oci.generative_ai_inference.models import GenericChatRequest, ChatDetails
-
     HAVE_OCI = True
 except ImportError:
     HAVE_OCI = False
@@ -380,8 +378,8 @@ def extract_inputs_from_chat_details(chat_details) -> Dict[str, Any]:
             if hasattr(chat_request, "messages") and chat_request.messages:
                 messages = []
                 for msg in chat_request.messages:
-                    # Extract role
-                    role = getattr(msg, "role", "USER")
+                    # Extract role and convert to OpenAI format (lowercase)
+                    role = getattr(msg, "role", "USER").lower()
 
                     # Extract content text
                     content_text = ""
@@ -401,10 +399,6 @@ def extract_inputs_from_chat_details(chat_details) -> Dict[str, Any]:
                     messages.append({"role": role, "content": content_text})
 
                 inputs["prompt"] = messages
-
-            # Extract system message if present
-            if hasattr(chat_request, "system_message") and chat_request.system_message:
-                inputs["system"] = chat_request.system_message
 
             # Extract tools if present
             if hasattr(chat_request, "tools") and chat_request.tools:
