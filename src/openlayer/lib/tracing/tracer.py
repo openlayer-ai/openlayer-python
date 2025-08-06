@@ -208,34 +208,113 @@ def trace(
     def decorator(func):
         func_signature = inspect.signature(func)
 
-        @wraps(func)
-        def wrapper(*func_args, **func_kwargs):
-            if step_kwargs.get("name") is None:
-                step_kwargs["name"] = func.__name__
+        if step_kwargs.get("name") is None:
+            step_kwargs["name"] = func.__name__
+        step_name = step_kwargs["name"]
 
-            with create_step(*step_args, inference_pipeline_id=inference_pipeline_id, **step_kwargs) as step:
-                output = exception = None
-                try:
-                    output = func(*func_args, **func_kwargs)
-                except Exception as exc:
-                    _log_step_exception(step, exc)
-                    exception = exc
+        # Check if it's a generator function
+        if inspect.isgeneratorfunction(func):
+            # For sync generators, use class-based approach to delay trace creation
+            # until actual iteration begins (not when generator object is created)
+            @wraps(func)
+            def sync_generator_wrapper(*func_args, **func_kwargs):
+                class TracedSyncGenerator:
+                    def __init__(self):
+                        self._original_gen = None
+                        self._step = None
+                        self._is_root_step = False
+                        self._token = None
+                        self._output_chunks = []
+                        self._trace_initialized = False
 
-                # Extract inputs and finalize logging using optimized helper
-                _process_wrapper_inputs_and_outputs(
-                    step=step,
-                    func_signature=func_signature,
-                    func_args=func_args,
-                    func_kwargs=func_kwargs,
-                    context_kwarg=context_kwarg,
-                    output=output,
-                )
+                    def __iter__(self):
+                        return self
 
-                if exception is not None:
-                    raise exception
-            return output
+                    def __next__(self):
+                        # Initialize tracing on first iteration only
+                        if not self._trace_initialized:
+                            self._original_gen = func(*func_args, **func_kwargs)
+                            self._step, self._is_root_step, self._token = _create_and_initialize_step(
+                                step_name=step_name,
+                                step_type=enums.StepType.USER_CALL,
+                                inputs=None,
+                                output=None,
+                                metadata=None,
+                            )
+                            self._inputs = _extract_function_inputs(
+                                func_signature=func_signature,
+                                func_args=func_args,
+                                func_kwargs=func_kwargs,
+                                context_kwarg=context_kwarg,
+                            )
+                            self._trace_initialized = True
 
-        return wrapper
+                        try:
+                            chunk = next(self._original_gen)
+                            self._output_chunks.append(chunk)
+                            return chunk
+                        except StopIteration:
+                            # Finalize trace when generator is exhausted
+                            output = _join_output_chunks(self._output_chunks)
+                            _finalize_sync_generator_step(
+                                step=self._step,
+                                token=self._token,
+                                is_root_step=self._is_root_step,
+                                step_name=step_name,
+                                inputs=self._inputs,
+                                output=output,
+                                inference_pipeline_id=inference_pipeline_id,
+                            )
+                            raise
+                        except Exception as exc:
+                            # Handle exceptions
+                            if self._step:
+                                _log_step_exception(self._step, exc)
+                                output = _join_output_chunks(self._output_chunks)
+                                _finalize_sync_generator_step(
+                                    step=self._step,
+                                    token=self._token,
+                                    is_root_step=self._is_root_step,
+                                    step_name=step_name,
+                                    inputs=self._inputs,
+                                    output=output,
+                                    inference_pipeline_id=inference_pipeline_id,
+                                )
+                            raise
+
+                return TracedSyncGenerator()
+
+            return sync_generator_wrapper
+        else:
+            # Handle regular functions
+            @wraps(func)
+            def wrapper(*func_args, **func_kwargs):
+                if step_kwargs.get("name") is None:
+                    step_kwargs["name"] = func.__name__
+
+                with create_step(*step_args, inference_pipeline_id=inference_pipeline_id, **step_kwargs) as step:
+                    output = exception = None
+                    try:
+                        output = func(*func_args, **func_kwargs)
+                    except Exception as exc:
+                        _log_step_exception(step, exc)
+                        exception = exc
+
+                    # Extract inputs and finalize logging using optimized helper
+                    _process_wrapper_inputs_and_outputs(
+                        step=step,
+                        func_signature=func_signature,
+                        func_args=func_args,
+                        func_kwargs=func_kwargs,
+                        context_kwarg=context_kwarg,
+                        output=output,
+                    )
+
+                    if exception is not None:
+                        raise exception
+                return output
+
+            return wrapper
 
     return decorator
 
@@ -637,7 +716,26 @@ def _finalize_step_logging(
     )
 
 
-# ----------------------------- Async generator specific functions ----------------------------- #
+# ----------------------------- Generator specific functions ----------------------------- #
+
+
+def _finalize_sync_generator_step(
+    step: steps.Step,
+    token: Any,
+    is_root_step: bool,
+    step_name: str,
+    inputs: dict,
+    output: Any,
+    inference_pipeline_id: Optional[str] = None,
+) -> None:
+    """Finalize sync generator step - called when generator is consumed."""
+    _current_step.reset(token)
+    _finalize_step_logging(step=step, inputs=inputs, output=output, start_time=step.start_time)
+    _handle_trace_completion(
+        is_root_step=is_root_step,
+        step_name=step_name,
+        inference_pipeline_id=inference_pipeline_id,
+    )
 
 
 def _finalize_async_generator_step(
