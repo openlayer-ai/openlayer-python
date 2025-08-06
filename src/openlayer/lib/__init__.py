@@ -113,12 +113,23 @@ def trace_bedrock(client):
     return bedrock_tracer.trace_bedrock(client)
 
 
-def trace_oci(client):
-    """Trace OCI queries."""
+
+def trace_oci_genai(client, estimate_tokens: bool = True):
+    """Trace OCI GenAI chat completions.
+    
+    Args:
+        client: OCI GenAI client.
+        estimate_tokens: Whether to estimate tokens when not available. Defaults to True.
+    """
     # pylint: disable=import-outside-toplevel
-    import oci
+    try:
+        import oci
+    except ImportError:
+        raise ImportError("oci is required for OCI GenAI tracing. Install with: pip install oci")
+
     from .integrations import oci_tracer
 
     if not isinstance(client, oci.generative_ai_inference.GenerativeAiInferenceClient):
-        raise ValueError("Invalid client. Please provide an OCI Generative AI client.")
-    return oci_tracer.trace_oci_genai(client)
+        raise ValueError("Invalid client. Please provide an OCI GenAI client.")
+
+    return oci_tracer.trace_oci_genai(client, estimate_tokens=estimate_tokens)
