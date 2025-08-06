@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 def trace_oci_genai(
     client: "GenerativeAiInferenceClient",
+    estimate_tokens: bool = True,
 ) -> "GenerativeAiInferenceClient":
     """Patch the OCI Generative AI client to trace chat completions.
 
@@ -47,6 +48,9 @@ def trace_oci_genai(
     ----------
     client : GenerativeAiInferenceClient
         The OCI Generative AI client to patch.
+    estimate_tokens : bool, optional
+        Whether to estimate token counts when not provided by the OCI response.
+        Defaults to True. When False, token fields will be None if not available.
 
     Returns
     -------
@@ -84,6 +88,7 @@ def trace_oci_genai(
                 kwargs=kwargs,
                 start_time=start_time,
                 end_time=end_time,
+                estimate_tokens=estimate_tokens,
             )
         else:
             return handle_non_streaming_chat(
@@ -92,6 +97,7 @@ def trace_oci_genai(
                 kwargs=kwargs,
                 start_time=start_time,
                 end_time=end_time,
+                estimate_tokens=estimate_tokens,
             )
 
     client.chat = traced_chat_func
@@ -104,6 +110,7 @@ def handle_streaming_chat(
     kwargs: Dict[str, Any],
     start_time: float,
     end_time: float,
+    estimate_tokens: bool = True,
 ) -> Iterator[Any]:
     """Handles the chat method when streaming is enabled.
 
@@ -127,6 +134,7 @@ def handle_streaming_chat(
         kwargs=kwargs,
         start_time=start_time,
         end_time=end_time,
+        estimate_tokens=estimate_tokens,
     )
 
 
@@ -136,6 +144,7 @@ def stream_chunks(
     kwargs: Dict[str, Any],
     start_time: float,
     end_time: float,
+    estimate_tokens: bool = True,
 ):
     """Streams the chunks of the completion and traces the completion."""
     collected_output_data = []
@@ -164,15 +173,18 @@ def stream_chunks(
                     usage = chunk.data.usage
                     num_of_prompt_tokens = getattr(usage, "prompt_tokens", 0)
                 else:
-                    # OCI doesn't provide usage info, estimate from chat_details
-                    num_of_prompt_tokens = estimate_prompt_tokens_from_chat_details(chat_details)
+                    # OCI doesn't provide usage info, estimate from chat_details if enabled
+                    if estimate_tokens:
+                        num_of_prompt_tokens = estimate_prompt_tokens_from_chat_details(chat_details)
+                    else:
+                        num_of_prompt_tokens = None
                     
                 # Store first chunk sample (only for debugging)
                 if hasattr(chunk, "data"):
                     chunk_samples.append({"index": 0, "type": "first"})
             
-            # Update completion tokens count
-            if i > 0:
+            # Update completion tokens count (estimation based)
+            if i > 0 and estimate_tokens:
                 num_of_completion_tokens = i + 1
 
             # Fast content extraction - optimized for performance
@@ -208,8 +220,11 @@ def stream_chunks(
             # chat_details is passed directly as parameter
             model_id = extract_model_id(chat_details)
 
-            # Calculate total tokens
-            total_tokens = (num_of_prompt_tokens or 0) + (num_of_completion_tokens or 0)
+            # Calculate total tokens - handle None values properly
+            if estimate_tokens:
+                total_tokens = (num_of_prompt_tokens or 0) + (num_of_completion_tokens or 0)
+            else:
+                total_tokens = None if num_of_prompt_tokens is None and num_of_completion_tokens is None else ((num_of_prompt_tokens or 0) + (num_of_completion_tokens or 0))
 
             # Simplified metadata - only essential timing info
             metadata = {
@@ -222,8 +237,8 @@ def stream_chunks(
                 output=output_data,
                 latency=latency,
                 tokens=total_tokens,
-                prompt_tokens=num_of_prompt_tokens or 0,
-                completion_tokens=num_of_completion_tokens or 0,
+                prompt_tokens=num_of_prompt_tokens,
+                completion_tokens=num_of_completion_tokens,
                 model=model_id,
                 model_parameters=get_model_parameters(chat_details),
                 raw_output={
@@ -251,6 +266,7 @@ def handle_non_streaming_chat(
     kwargs: Dict[str, Any],
     start_time: float,
     end_time: float,
+    estimate_tokens: bool = True,
 ) -> Any:
     """Handles the chat method when streaming is disabled.
 
@@ -274,7 +290,7 @@ def handle_non_streaming_chat(
     try:
         # Parse response and extract data
         output_data = parse_non_streaming_output_data(response)
-        tokens_info = extract_tokens_info(response, chat_details)
+        tokens_info = extract_tokens_info(response, chat_details, estimate_tokens)
         model_id = extract_model_id(chat_details)
 
         latency = (end_time - start_time) * 1000
@@ -287,9 +303,9 @@ def handle_non_streaming_chat(
             inputs=extract_inputs_from_chat_details(chat_details),
             output=output_data,
             latency=latency,
-            tokens=tokens_info.get("total_tokens", 0),
-            prompt_tokens=tokens_info.get("input_tokens", 0),
-            completion_tokens=tokens_info.get("output_tokens", 0),
+            tokens=tokens_info.get("total_tokens"),
+            prompt_tokens=tokens_info.get("input_tokens"),
+            completion_tokens=tokens_info.get("output_tokens"),
             model=model_id,
             model_parameters=get_model_parameters(chat_details),
             raw_output=response.data.__dict__ if hasattr(response, "data") else response.__dict__,
@@ -472,10 +488,10 @@ def parse_non_streaming_output_data(response) -> Union[str, Dict[str, Any], None
     return str(data)
 
 
-def estimate_prompt_tokens_from_chat_details(chat_details) -> int:
+def estimate_prompt_tokens_from_chat_details(chat_details) -> Optional[int]:
     """Estimate prompt tokens from chat details when OCI doesn't provide usage info."""
     if not chat_details:
-        return 10  # Fallback estimate
+        return None
 
     try:
         input_text = ""
@@ -491,72 +507,107 @@ def estimate_prompt_tokens_from_chat_details(chat_details) -> int:
         return estimated_tokens
     except Exception as e:
         logger.debug("Error estimating prompt tokens: %s", e)
-        return 10  # Fallback estimate
+        return None
 
 
-def extract_tokens_info(response, chat_details=None) -> Dict[str, int]:
-    """Extract token usage information from the response."""
-    tokens_info = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+def extract_tokens_info(response, chat_details=None, estimate_tokens: bool = True) -> Dict[str, Optional[int]]:
+    """Extract token usage information from the response.
+    
+    Handles both CohereChatResponse and GenericChatResponse types from OCI.
+    
+    Parameters
+    ----------
+    response : Any
+        The OCI chat response object (CohereChatResponse or GenericChatResponse)
+    chat_details : Any, optional
+        The chat details for token estimation if needed
+    estimate_tokens : bool, optional
+        Whether to estimate tokens when not available in response. Defaults to True.
+        
+    Returns
+    -------
+    Dict[str, Optional[int]]
+        Dictionary with token counts. Values can be None if unavailable and estimation disabled.
+    """
+    tokens_info = {"input_tokens": None, "output_tokens": None, "total_tokens": None}
 
     try:
-        # First, try the standard locations for token usage
+        # Extract token usage from OCI response (handles both CohereChatResponse and GenericChatResponse)
         if hasattr(response, "data"):
-            # Check multiple possible locations for usage info
-            usage_locations = [
-                getattr(response.data, "usage", None),
-                getattr(getattr(response.data, "chat_response", None), "usage", None),
-            ]
+            usage = None
+            
+            # For CohereChatResponse: response.data.usage
+            if hasattr(response.data, "usage"):
+                usage = response.data.usage
+            # For GenericChatResponse: response.data.chat_response.usage  
+            elif hasattr(response.data, "chat_response") and hasattr(response.data.chat_response, "usage"):
+                usage = response.data.chat_response.usage
+                
+            if usage is not None:
+                # Extract tokens from usage object
+                prompt_tokens = getattr(usage, "prompt_tokens", None)
+                completion_tokens = getattr(usage, "completion_tokens", None)
+                total_tokens = getattr(usage, "total_tokens", None)
+                
+                tokens_info["input_tokens"] = prompt_tokens
+                tokens_info["output_tokens"] = completion_tokens
+                tokens_info["total_tokens"] = total_tokens or (
+                    (prompt_tokens + completion_tokens) if prompt_tokens is not None and completion_tokens is not None else None
+                )
+                logger.debug("Found token usage info: %s", tokens_info)
+                return tokens_info
 
-            for usage in usage_locations:
-                if usage is not None:
-                    tokens_info["input_tokens"] = getattr(usage, "prompt_tokens", 0)
-                    tokens_info["output_tokens"] = getattr(usage, "completion_tokens", 0)
-                    tokens_info["total_tokens"] = tokens_info["input_tokens"] + tokens_info["output_tokens"]
-                    logger.debug("Found token usage info: %s", tokens_info)
-                    return tokens_info
+            # If no usage info found, estimate based on text length only if estimation is enabled
+            if estimate_tokens:
+                logger.debug("No token usage found in response, estimating from text length")
+                
+                # Estimate input tokens from chat_details
+                if chat_details:
+                    try:
+                        input_text = ""
+                        if hasattr(chat_details, "chat_request") and hasattr(chat_details.chat_request, "messages"):
+                            for msg in chat_details.chat_request.messages:
+                                if hasattr(msg, "content") and msg.content:
+                                    for content_item in msg.content:
+                                        if hasattr(content_item, "text"):
+                                            input_text += content_item.text + " "
 
-            # If no usage info found, estimate based on text length
-            # This is common for OCI which doesn't return token counts
-            logger.debug("No token usage found in response, estimating from text length")
+                        # Rough estimation: ~4 characters per token
+                        estimated_input_tokens = max(1, len(input_text) // 4)
+                        tokens_info["input_tokens"] = estimated_input_tokens
+                    except Exception as e:
+                        logger.debug("Error estimating input tokens: %s", e)
+                        tokens_info["input_tokens"] = None
 
-            # Estimate input tokens from chat_details
-            if chat_details:
+                # Estimate output tokens from response
                 try:
-                    input_text = ""
-                    if hasattr(chat_details, "chat_request") and hasattr(chat_details.chat_request, "messages"):
-                        for msg in chat_details.chat_request.messages:
-                            if hasattr(msg, "content") and msg.content:
-                                for content_item in msg.content:
-                                    if hasattr(content_item, "text"):
-                                        input_text += content_item.text + " "
-
-                    # Rough estimation: ~4 characters per token
-                    estimated_input_tokens = max(1, len(input_text) // 4)
-                    tokens_info["input_tokens"] = estimated_input_tokens
+                    output_text = parse_non_streaming_output_data(response)
+                    if isinstance(output_text, str):
+                        # Rough estimation: ~4 characters per token
+                        estimated_output_tokens = max(1, len(output_text) // 4)
+                        tokens_info["output_tokens"] = estimated_output_tokens
+                    else:
+                        tokens_info["output_tokens"] = None
                 except Exception as e:
-                    logger.debug("Error estimating input tokens: %s", e)
-                    tokens_info["input_tokens"] = 10  # Fallback estimate
+                    logger.debug("Error estimating output tokens: %s", e)
+                    tokens_info["output_tokens"] = None
 
-            # Estimate output tokens from response
-            try:
-                output_text = parse_non_streaming_output_data(response)
-                if isinstance(output_text, str):
-                    # Rough estimation: ~4 characters per token
-                    estimated_output_tokens = max(1, len(output_text) // 4)
-                    tokens_info["output_tokens"] = estimated_output_tokens
+                # Calculate total tokens only if we have estimates
+                if tokens_info["input_tokens"] is not None and tokens_info["output_tokens"] is not None:
+                    tokens_info["total_tokens"] = tokens_info["input_tokens"] + tokens_info["output_tokens"]
+                elif tokens_info["input_tokens"] is not None or tokens_info["output_tokens"] is not None:
+                    tokens_info["total_tokens"] = (tokens_info["input_tokens"] or 0) + (tokens_info["output_tokens"] or 0)
                 else:
-                    tokens_info["output_tokens"] = 5  # Fallback estimate
-            except Exception as e:
-                logger.debug("Error estimating output tokens: %s", e)
-                tokens_info["output_tokens"] = 5  # Fallback estimate
-
-            tokens_info["total_tokens"] = tokens_info["input_tokens"] + tokens_info["output_tokens"]
-            logger.debug("Estimated token usage: %s", tokens_info)
+                    tokens_info["total_tokens"] = None
+                    
+                logger.debug("Estimated token usage: %s", tokens_info)
+            else:
+                logger.debug("No token usage found in response and estimation disabled, returning None values")
 
     except Exception as e:
         logger.debug("Error extracting/estimating token info: %s", e)
-        # Provide minimal fallback estimates
-        tokens_info = {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}
+        # Always return None values on exceptions (no more fallback values)
+        tokens_info = {"input_tokens": None, "output_tokens": None, "total_tokens": None}
 
     return tokens_info
 
