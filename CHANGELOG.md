@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.76 (2025-08-06)
+
+Full Changelog: [v0.2.0-alpha.75...v0.2.0-alpha.76](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.75...v0.2.0-alpha.76)
+
+### Features
+
+* **client:** support file upload requests ([348bf62](https://github.com/openlayer-ai/openlayer-python/commit/348bf62632f34c9f807422225717eac4772e2f89))
+* **tracing:** add OCI Generative AI LLM tracing integration ([7e0621f](https://github.com/openlayer-ai/openlayer-python/commit/7e0621f954e4f9927b05544079157aec6c79d16f))
+* **tracing:** add OCI Generative AI tracing examples and documentation ([fbad796](https://github.com/openlayer-ai/openlayer-python/commit/fbad79691dd4bfb93376a72817eae2c70f39fbae))
+* **tracing:** enhance OCI Generative AI tracing notebook and integration ([c0ae879](https://github.com/openlayer-ai/openlayer-python/commit/c0ae8793bfc4f16da6604266de6e1a85b30ac341))
+* **tracing:** enhance OCI tracing functionality with token estimation options ([488ba7c](https://github.com/openlayer-ai/openlayer-python/commit/488ba7cd802e4982017e9a0e571a7db8d3f3d5ee))
+* **tracing:** enhance OCI tracing with timing and token estimation ([a517015](https://github.com/openlayer-ai/openlayer-python/commit/a517015d0c9838f09b1e4333ded92a7c2c283974))
+* **tracing:** update OCI Generative AI tracing notebook and remove examples ([2e02aa2](https://github.com/openlayer-ai/openlayer-python/commit/2e02aa2825308b93275dfd4da851d43368848926))
+
+
+### Chores
+
+* **internal:** fix ruff target version ([be3b860](https://github.com/openlayer-ai/openlayer-python/commit/be3b86012d324b6a1417636ff9e2960531870f81))
+
+
+### Refactors
+
+* **tracing:** clean up OCI tracing notebook by removing commented code ([e91fe47](https://github.com/openlayer-ai/openlayer-python/commit/e91fe4726589e77f7debaa0d6e9f6ea13e4d8523))
+* **tracing:** improve code formatting and consistency in oci_tracer.py ([d0700ae](https://github.com/openlayer-ai/openlayer-python/commit/d0700ae70bec89c256b6953d25244fbb54e594e6))
+* **tracing:** optimize chunk streaming and content extraction in oci_tracer.py ([a17bd88](https://github.com/openlayer-ai/openlayer-python/commit/a17bd88d14e4548632612f427bb77b3d699f5c1e))
+* **tracing:** streamline input extraction in OCI tracer ([915cd7b](https://github.com/openlayer-ai/openlayer-python/commit/915cd7b5a0b1f554614d6cb23d27ea8d87f8b0e6))
+
 ## 0.2.0-alpha.75 (2025-07-31)
 
 Full Changelog: [v0.2.0-alpha.74...v0.2.0-alpha.75](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.74...v0.2.0-alpha.75)
