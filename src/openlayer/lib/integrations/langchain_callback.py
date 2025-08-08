@@ -8,6 +8,7 @@ from uuid import UUID
 try:
     from langchain import schema as langchain_schema
     from langchain.callbacks.base import BaseCallbackHandler
+
     HAVE_LANGCHAIN = True
 except ImportError:
     HAVE_LANGCHAIN = False
@@ -20,6 +21,7 @@ from ..tracing import tracer, steps, traces, enums
 from .. import utils
 
 LANGCHAIN_TO_OPENLAYER_PROVIDER_MAP = {
+    "azure-openai-chat": "Azure",
     "openai-chat": "OpenAI",
     "chat-ollama": "Ollama",
     "vertexai": "Google",
@@ -267,7 +269,9 @@ class OpenlayerHandler(BaseCallbackHandlerClass):  # type: ignore[misc]
         # For everything else, convert to string
         return str(obj)
 
-    def _message_to_dict(self, message: "langchain_schema.BaseMessage") -> Dict[str, str]:
+    def _message_to_dict(
+        self, message: "langchain_schema.BaseMessage"
+    ) -> Dict[str, str]:
         """Convert a LangChain message to a JSON-serializable dictionary."""
         message_type = getattr(message, "type", "user")
 
