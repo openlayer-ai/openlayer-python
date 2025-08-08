@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.78 (2025-08-08)
+
+Full Changelog: [v0.2.0-alpha.77...v0.2.0-alpha.78](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.77...v0.2.0-alpha.78)
+
+### Chores
+
+* recognize Azure as a provider in the LangChain callback handler ([3509bc0](https://github.com/openlayer-ai/openlayer-python/commit/3509bc08bb49eaf859582627c8c85c8ce77eda6a))
+
 ## 0.2.0-alpha.77 (2025-08-06)
 
 Full Changelog: [v0.2.0-alpha.76...v0.2.0-alpha.77](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.76...v0.2.0-alpha.77)
