@@ -23,24 +23,28 @@ logger = logging.getLogger(__name__)
 TRUE_LIST = ["true", "on", "1"]
 
 _publish = utils.get_env_variable("OPENLAYER_DISABLE_PUBLISH") not in TRUE_LIST
-_verify_ssl = (utils.get_env_variable("OPENLAYER_VERIFY_SSL") or "true").lower() in TRUE_LIST
+_verify_ssl = (
+    utils.get_env_variable("OPENLAYER_VERIFY_SSL") or "true"
+).lower() in TRUE_LIST
 _client = None
 
 # Configuration variables for programmatic setup
 _configured_api_key: Optional[str] = None
 _configured_pipeline_id: Optional[str] = None
 _configured_base_url: Optional[str] = None
+_configured_guardrails: Optional[List[Any]] = None
 
 
 def configure(
     api_key: Optional[str] = None,
     inference_pipeline_id: Optional[str] = None,
     base_url: Optional[str] = None,
+    guardrails: Optional[List[Any]] = None,
 ) -> None:
     """Configure the Openlayer tracer with custom settings.
 
     This function allows you to programmatically set the API key, inference pipeline ID,
-    and base URL for the Openlayer client, instead of relying on environment variables.
+    base URL, and global guardrails for the Openlayer client.
 
     Args:
         api_key: The Openlayer API key. If not provided, falls back to OPENLAYER_API_KEY environment variable.
@@ -48,21 +52,30 @@ def configure(
             If not provided, falls back to OPENLAYER_INFERENCE_PIPELINE_ID environment variable.
         base_url: The base URL for the Openlayer API. If not provided, falls back to
             OPENLAYER_BASE_URL environment variable or the default.
+        guardrails: List of guardrail instances to apply globally to all LLM helper functions
+            (trace_openai, trace_anthropic, etc.). Does not affect @trace() decorator.
 
     Examples:
         >>> import openlayer.lib.tracing.tracer as tracer
-        >>> # Configure with API key and pipeline ID
-        >>> tracer.configure(api_key="your_api_key_here", inference_pipeline_id="your_pipeline_id_here")
-        >>> # Now use the decorators normally
-        >>> @tracer.trace()
-        >>> def my_function():
-        ...     return "result"
+        >>> from openlayer.lib.guardrails import PIIGuardrail
+        >>>
+        >>> # Configure with API key, pipeline ID, and global guardrails
+        >>> pii_guard = PIIGuardrail()
+        >>> tracer.configure(
+        ...     api_key="your_api_key_here",
+        ...     inference_pipeline_id="your_pipeline_id_here",
+        ...     guardrails=[pii_guard]
+        ... )
+        >>>
+        >>> # Now all LLM helper functions will use the configured guardrails
+        >>> traced_client = tracer.trace_openai(openai.OpenAI())
     """
-    global _configured_api_key, _configured_pipeline_id, _configured_base_url, _client
+    global _configured_api_key, _configured_pipeline_id, _configured_base_url, _configured_guardrails, _client
 
     _configured_api_key = api_key
     _configured_pipeline_id = inference_pipeline_id
     _configured_base_url = base_url
+    _configured_guardrails = guardrails
 
     # Reset the client so it gets recreated with new configuration
     _client = None
@@ -128,8 +141,46 @@ def create_step(
     output: Optional[Any] = None,
     metadata: Optional[Dict[str, Any]] = None,
     inference_pipeline_id: Optional[str] = None,
+    guardrails: Optional[List[Any]] = None,
 ) -> Generator[steps.Step, None, None]:
-    """Starts a trace and yields a Step object."""
+    """Starts a trace and yields a Step object with optional guardrails."""
+    # Apply input guardrails if provided
+    original_inputs = inputs
+    guardrail_metadata = {}
+
+    if guardrails and inputs is not None:
+        try:
+            # Convert inputs to dict format for guardrail processing
+            if not isinstance(inputs, dict):
+                inputs_dict = {"input": inputs}
+            else:
+                inputs_dict = inputs
+
+            modified_inputs_dict, input_guardrail_metadata = _apply_input_guardrails(
+                guardrails,
+                inputs_dict,
+            )
+            guardrail_metadata.update(input_guardrail_metadata)
+
+            # Check if function should be skipped
+            if (
+                hasattr(modified_inputs_dict, "__class__")
+                and modified_inputs_dict.__class__.__name__ == "SkipFunctionExecution"
+            ):
+                # For create_step, we'll return None output and skip processing
+                inputs = original_inputs  # Keep original for logging
+            else:
+                # Update inputs with guardrail modifications
+                if isinstance(original_inputs, dict):
+                    inputs = modified_inputs_dict
+                else:
+                    inputs = modified_inputs_dict.get("input", original_inputs)
+
+        except Exception as e:
+            # Log guardrail errors but don't fail step creation
+            if not hasattr(e, "guardrail_name"):
+                logger.error("Error applying guardrails to step creation: %s", e)
+
     new_step, is_root_step, token = _create_and_initialize_step(
         step_name=name,
         step_type=step_type,
@@ -137,9 +188,54 @@ def create_step(
         output=output,
         metadata=metadata,
     )
+
     try:
         yield new_step
     finally:
+        # Apply output guardrails if provided
+        if guardrails and new_step.output is not None:
+            try:
+                final_output, output_guardrail_metadata = _apply_output_guardrails(
+                    guardrails,
+                    new_step.output,
+                    inputs if isinstance(inputs, dict) else {"input": inputs},
+                )
+                guardrail_metadata.update(output_guardrail_metadata)
+
+                if final_output != new_step.output:
+                    new_step.output = final_output
+
+            except Exception as e:
+                if not hasattr(e, "guardrail_name"):
+                    logger.error("Error applying output guardrails to step: %s", e)
+
+        # Add guardrail metadata to step
+        if guardrail_metadata:
+            step_metadata = new_step.metadata or {}
+            step_metadata.update(
+                {
+                    "guardrails": guardrail_metadata,
+                    "has_guardrails": True,
+                    "guardrail_actions": [
+                        metadata.get("action")
+                        for metadata in guardrail_metadata.values()
+                    ],
+                    "guardrail_names": [
+                        key.replace("input_", "").replace("output_", "")
+                        for key in guardrail_metadata.keys()
+                    ],
+                }
+            )
+            # Add action flags
+            actions = step_metadata["guardrail_actions"]
+            step_metadata["guardrail_blocked"] = "blocked" in actions
+            step_metadata["guardrail_modified"] = (
+                "redacted" in actions or "modified" in actions
+            )
+            step_metadata["guardrail_allowed"] = "allow" in actions
+
+            new_step.metadata = step_metadata
+
         if new_step.end_time is None:
             new_step.end_time = time.time()
         if new_step.latency is None:
@@ -154,11 +250,29 @@ def create_step(
         )
 
 
-def add_chat_completion_step_to_trace(**kwargs) -> None:
-    """Adds a chat completion step to the trace."""
+def add_chat_completion_step_to_trace(
+    guardrails: Optional[List[Any]] = None, **kwargs
+) -> None:
+    """Adds a chat completion step to the trace with optional guardrails.
+
+    Args:
+        guardrails: Optional list of guardrail instances to apply. If None, uses
+        configured global guardrails.
+        **kwargs: Step data including inputs, output, metadata, etc.
+    """
+    # Use provided guardrails or fall back to configured global guardrails
+    effective_guardrails = guardrails or _configured_guardrails
+
+    # Extract inputs and output for guardrail processing
+    inputs = kwargs.get("inputs")
+    output = kwargs.get("output")
+
     with create_step(
         step_type=enums.StepType.CHAT_COMPLETION,
         name=kwargs.get("name", "Chat Completion"),
+        inputs=inputs,
+        output=output,
+        guardrails=effective_guardrails,
     ) as step:
         step.log(**kwargs)
 
@@ -167,9 +281,16 @@ def trace(
     *step_args,
     inference_pipeline_id: Optional[str] = None,
     context_kwarg: Optional[str] = None,
+    guardrails: Optional[List[Any]] = None,
     **step_kwargs,
 ):
-    """Decorator to trace a function.
+    """Decorator to trace a function with optional guardrails.
+
+    Args:
+        inference_pipeline_id: Optional pipeline ID to override default
+        context_kwarg: Name of function parameter containing context for RAG
+        guardrails: List of guardrail instances to apply to inputs/outputs
+        **step_kwargs: Additional step configuration
 
     Examples
     --------
@@ -180,13 +301,17 @@ def trace(
 
     >>> import os
     >>> from openlayer.tracing import tracer
+    >>> from openlayer.lib.guardrails import PIIGuardrail
     >>>
     >>> # Set the environment variables
     >>> os.environ["OPENLAYER_API_KEY"] = "YOUR_OPENLAYER_API_KEY_HERE"
     >>> os.environ["OPENLAYER_PROJECT_NAME"] = "YOUR_OPENLAYER_PROJECT_NAME_HERE"
     >>>
-    >>> # Decorate all the functions you want to trace
-    >>> @tracer.trace()
+    >>> # Create guardrail instance
+    >>> pii_guardrail = PIIGuardrail(name="PII Protection")
+    >>>
+    >>> # Decorate functions with tracing and guardrails
+    >>> @tracer.trace(guardrails=[pii_guardrail])
     >>> def main(user_query: str) -> str:
     >>>     context = retrieve_context(user_query)
     >>>     answer = generate_answer(user_query, context)
@@ -196,7 +321,7 @@ def trace(
     >>> def retrieve_context(user_query: str) -> str:
     >>>     return "Some context"
     >>>
-    >>> @tracer.trace()
+    >>> @tracer.trace(guardrails=[pii_guardrail])
     >>> def generate_answer(user_query: str, context: str) -> str:
     >>>     return "Some answer"
     >>>
@@ -234,12 +359,14 @@ def trace(
                         # Initialize tracing on first iteration only
                         if not self._trace_initialized:
                             self._original_gen = func(*func_args, **func_kwargs)
-                            self._step, self._is_root_step, self._token = _create_and_initialize_step(
-                                step_name=step_name,
-                                step_type=enums.StepType.USER_CALL,
-                                inputs=None,
-                                output=None,
-                                metadata=None,
+                            self._step, self._is_root_step, self._token = (
+                                _create_and_initialize_step(
+                                    step_name=step_name,
+                                    step_type=enums.StepType.USER_CALL,
+                                    inputs=None,
+                                    output=None,
+                                    metadata=None,
+                                )
                             )
                             self._inputs = _extract_function_inputs(
                                 func_signature=func_signature,
@@ -286,17 +413,103 @@ def trace(
 
             return sync_generator_wrapper
         else:
-            # Handle regular functions
+            # Handle regular functions with guardrail support
             @wraps(func)
             def wrapper(*func_args, **func_kwargs):
                 if step_kwargs.get("name") is None:
                     step_kwargs["name"] = func.__name__
 
-                with create_step(*step_args, inference_pipeline_id=inference_pipeline_id, **step_kwargs) as step:
+                with create_step(
+                    *step_args,
+                    inference_pipeline_id=inference_pipeline_id,
+                    **step_kwargs,
+                ) as step:
                     output = exception = None
+                    original_inputs = None
+                    modified_inputs = None
+                    guardrail_metadata = {}
+
                     try:
-                        output = func(*func_args, **func_kwargs)
+                        # Extract original inputs for guardrail processing
+                        original_inputs = _extract_function_inputs(
+                            func_signature=func_signature,
+                            func_args=func_args,
+                            func_kwargs=func_kwargs,
+                            context_kwarg=context_kwarg,
+                        )
+
+                        # Apply input guardrails
+                        modified_inputs, input_guardrail_metadata = (
+                            _apply_input_guardrails(
+                                guardrails or [],
+                                original_inputs,
+                            )
+                        )
+                        guardrail_metadata.update(input_guardrail_metadata)
+
+                        # Check if function execution should be skipped
+                        if (
+                            hasattr(modified_inputs, "__class__")
+                            and modified_inputs.__class__.__name__
+                            == "SkipFunctionExecution"
+                        ):
+                            # Function execution was blocked with SKIP_FUNCTION strategy
+                            output = None
+                            logger.debug(
+                                "Function %s execution skipped by guardrail",
+                                func.__name__,
+                            )
+                        else:
+                            # Execute function with potentially modified inputs
+                            if modified_inputs != original_inputs:
+                                # Reconstruct function arguments from modified inputs
+                                bound = func_signature.bind(*func_args, **func_kwargs)
+                                bound.apply_defaults()
+
+                                # Update bound arguments with modified values
+                                for (
+                                    param_name,
+                                    modified_value,
+                                ) in modified_inputs.items():
+                                    if param_name in bound.arguments:
+                                        bound.arguments[param_name] = modified_value
+
+                                output = func(*bound.args, **bound.kwargs)
+                            else:
+                                output = func(*func_args, **func_kwargs)
+
+                        # Apply output guardrails (skip if function was skipped)
+                        if (
+                            hasattr(modified_inputs, "__class__")
+                            and modified_inputs.__class__.__name__
+                            == "SkipFunctionExecution"
+                        ):
+                            final_output, output_guardrail_metadata = output, {}
+                            # Use original inputs for logging since modified_inputs
+                            # is a special marker
+                            modified_inputs = original_inputs
+                        else:
+                            final_output, output_guardrail_metadata = (
+                                _apply_output_guardrails(
+                                    guardrails or [],
+                                    output,
+                                    modified_inputs or original_inputs,
+                                )
+                            )
+                        guardrail_metadata.update(output_guardrail_metadata)
+
+                        if final_output != output:
+                            output = final_output
+
                     except Exception as exc:
+                        # Check if this is a guardrail exception
+                        if hasattr(exc, "guardrail_name"):
+                            guardrail_metadata[f"{exc.guardrail_name}_blocked"] = {
+                                "action": "blocked",
+                                "reason": exc.reason,
+                                "metadata": getattr(exc, "metadata", {}),
+                            }
+
                         _log_step_exception(step, exc)
                         exception = exc
 
@@ -308,6 +521,7 @@ def trace(
                         func_kwargs=func_kwargs,
                         context_kwarg=context_kwarg,
                         output=output,
+                        guardrail_metadata=guardrail_metadata,
                     )
 
                     if exception is not None:
@@ -323,11 +537,13 @@ def trace_async(
     *step_args,
     inference_pipeline_id: Optional[str] = None,
     context_kwarg: Optional[str] = None,
+    guardrails: Optional[List[Any]] = None,
     **step_kwargs,
 ):
     """Decorator to trace async functions and async generators.
 
-    This decorator automatically detects whether the function is a regular async function
+    This decorator automatically detects whether the function is a regular async
+    function
     or an async generator and handles both cases appropriately.
 
     Examples
@@ -379,12 +595,14 @@ def trace_async(
                             # Initialize tracing on first iteration only
                             if not self._trace_initialized:
                                 self._original_gen = func(*func_args, **func_kwargs)
-                                self._step, self._is_root_step, self._token = _create_and_initialize_step(
-                                    step_name=step_name,
-                                    step_type=enums.StepType.USER_CALL,
-                                    inputs=None,
-                                    output=None,
-                                    metadata=None,
+                                self._step, self._is_root_step, self._token = (
+                                    _create_and_initialize_step(
+                                        step_name=step_name,
+                                        step_type=enums.StepType.USER_CALL,
+                                        inputs=None,
+                                        output=None,
+                                        metadata=None,
+                                    )
                                 )
                                 self._inputs = _extract_function_inputs(
                                     func_signature=func_signature,
@@ -456,6 +674,7 @@ def trace_async(
                             func_kwargs=func_kwargs,
                             context_kwarg=context_kwarg,
                             output=output,
+                            guardrail_metadata={},  # TODO: Add guardrail support
                         )
 
                         return output
@@ -485,6 +704,7 @@ def trace_async(
                         func_kwargs=func_kwargs,
                         context_kwarg=context_kwarg,
                         output=output,
+                        guardrail_metadata={},  # TODO: Add guardrail support
                     )
 
                     if exception is not None:
@@ -528,15 +748,15 @@ def log_context(context: List[str]) -> None:
 
 def update_current_trace(**kwargs) -> None:
     """Updates the current trace metadata with the provided values.
-    
+
     This function allows users to set trace-level metadata dynamically
     during execution without having to pass it through function arguments.
-    
+
     All provided key-value pairs will be stored in the trace metadata.
-        
+
     Example:
         >>> from openlayer.lib import trace, update_current_trace
-        >>> 
+        >>>
         >>> @trace()
         >>> def my_function():
         >>>     # Update trace with user context
@@ -555,27 +775,27 @@ def update_current_trace(**kwargs) -> None:
             "(e.g., inside a function decorated with @trace)."
         )
         return
-    
+
     current_trace.update_metadata(**kwargs)
     logger.debug("Updated current trace metadata")
 
 
 def update_current_step(
     attributes: Optional[Dict[str, Any]] = None,
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None,
 ) -> None:
     """Updates the current step with the provided attributes.
-    
+
     This function allows users to set step-level metadata dynamically
     during execution.
-    
+
     Args:
         attributes: Optional dictionary of attributes to set on the step
         metadata: Optional dictionary of metadata to merge with existing metadata
-        
+
     Example:
         >>> from openlayer.lib import trace, update_current_step
-        >>> 
+        >>>
         >>> @trace()
         >>> def my_function():
         >>>     # Update current step with additional context
@@ -592,7 +812,7 @@ def update_current_step(
             "(e.g., inside a function decorated with @trace)."
         )
         return
-    
+
     # Update step attributes using the existing log method
     update_data = {}
     if metadata is not None:
@@ -600,15 +820,15 @@ def update_current_step(
         existing_metadata = current_step.metadata or {}
         existing_metadata.update(metadata)
         update_data["metadata"] = existing_metadata
-    
+
     # Handle generic attributes by setting them directly on the step
     if attributes is not None:
         for key, value in attributes.items():
             setattr(current_step, key, value)
-            
+
     if update_data:
         current_step.log(**update_data)
-        
+
     logger.debug("Updated current step metadata")
 
 
@@ -664,7 +884,9 @@ def _create_and_initialize_step(
     return new_step, is_root_step, token
 
 
-def _handle_trace_completion(is_root_step: bool, step_name: str, inference_pipeline_id: Optional[str] = None) -> None:
+def _handle_trace_completion(
+    is_root_step: bool, step_name: str, inference_pipeline_id: Optional[str] = None
+) -> None:
     """Handle trace completion and data streaming."""
     if is_root_step:
         logger.debug("Ending the trace...")
@@ -740,15 +962,23 @@ def _process_wrapper_inputs_and_outputs(
     func_kwargs: dict,
     context_kwarg: Optional[str],
     output: Any,
+    guardrail_metadata: Optional[Dict[str, Any]] = None,
 ) -> None:
-    """Extract function inputs and finalize step logging - common pattern across wrappers."""
+    """Extract function inputs and finalize step logging - common pattern across
+    wrappers."""
     inputs = _extract_function_inputs(
         func_signature=func_signature,
         func_args=func_args,
         func_kwargs=func_kwargs,
         context_kwarg=context_kwarg,
     )
-    _finalize_step_logging(step=step, inputs=inputs, output=output, start_time=step.start_time)
+    _finalize_step_logging(
+        step=step,
+        inputs=inputs,
+        output=output,
+        start_time=step.start_time,
+        guardrail_metadata=guardrail_metadata,
+    )
 
 
 def _extract_function_inputs(
@@ -782,6 +1012,7 @@ def _finalize_step_logging(
     inputs: dict,
     output: Any,
     start_time: float,
+    guardrail_metadata: Optional[Dict[str, Any]] = None,
 ) -> None:
     """Finalize step timing and logging."""
     if step.end_time is None:
@@ -795,10 +1026,36 @@ def _finalize_step_logging(
     else:
         step.log(output=output)
 
+    # Add guardrail metadata to step metadata
+    step_metadata = {}
+    if guardrail_metadata:
+        step_metadata["guardrails"] = guardrail_metadata
+
+        # Add summary fields for easy filtering
+        step_metadata["has_guardrails"] = True
+        step_metadata["guardrail_actions"] = [
+            metadata.get("action") for metadata in guardrail_metadata.values()
+        ]
+        step_metadata["guardrail_names"] = [
+            key.replace("input_", "").replace("output_", "")
+            for key in guardrail_metadata.keys()
+        ]
+
+        # Add flags for specific actions for easy filtering
+        actions = step_metadata["guardrail_actions"]
+        step_metadata["guardrail_blocked"] = "blocked" in actions
+        step_metadata["guardrail_modified"] = (
+            "redacted" in actions or "modified" in actions
+        )
+        step_metadata["guardrail_allowed"] = "allow" in actions
+    else:
+        step_metadata["has_guardrails"] = False
+
     step.log(
         inputs=inputs,
         end_time=step.end_time,
         latency=step.latency,
+        metadata=step_metadata,
     )
 
 
@@ -821,9 +1078,14 @@ def _finalize_sync_generator_step(
         # Context variable was created in a different context (e.g., different thread)
         # This can happen in async/multi-threaded environments like FastAPI/OpenWebUI
         # We can safely ignore this as the step finalization will still complete
-        logger.debug("Context variable reset failed - generator consumed in different context")
-    
-    _finalize_step_logging(step=step, inputs=inputs, output=output, start_time=step.start_time)
+        logger.debug(
+            "Context variable reset failed - generator consumed in different context"
+        )
+
+    _finalize_step_logging(
+        step=step, inputs=inputs, output=output, start_time=step.start_time
+    )
+
     _handle_trace_completion(
         is_root_step=is_root_step,
         step_name=step_name,
@@ -842,7 +1104,13 @@ def _finalize_async_generator_step(
 ) -> None:
     """Finalize async generator step - called when generator is consumed."""
     _current_step.reset(token)
-    _finalize_step_logging(step=step, inputs=inputs, output=output, start_time=step.start_time)
+    _finalize_step_logging(
+        step=step,
+        inputs=inputs,
+        output=output,
+        start_time=step.start_time,
+        guardrail_metadata={},  # TODO: Add guardrail support for async generators
+    )
     _handle_trace_completion(
         is_root_step=is_root_step,
         step_name=step_name,
@@ -894,12 +1162,12 @@ def post_process_trace(
         "steps": processed_steps,
         **root_step.metadata,
     }
-    
+
     # Include trace-level metadata if set - extract keys to row/record level
     if trace_obj.metadata is not None:
         # Add each trace metadata key directly to the row/record level
         trace_data.update(trace_obj.metadata)
-    
+
     if root_step.ground_truth:
         trace_data["groundTruth"] = root_step.ground_truth
     if input_variables:
@@ -910,3 +1178,265 @@ def post_process_trace(
         trace_data["context"] = context
 
     return trace_data, input_variable_names
+
+
+# ----------------------------- Guardrail helper functions ----------------------------- #
+
+
+def _apply_input_guardrails(
+    guardrails: List[Any],
+    inputs: Dict[str, Any],
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """Apply guardrails to function inputs.
+
+    Args:
+        guardrails: List of guardrail instances
+        inputs: Extracted function inputs
+        func_args: Original function args
+        func_kwargs: Original function kwargs
+        func_signature: Function signature
+
+    Returns:
+        Tuple of (modified_inputs, guardrail_metadata)
+    """
+    if not guardrails:
+        return inputs, {}
+
+    modified_inputs = inputs.copy()
+    guardrail_metadata = {}
+
+    for guardrail in guardrails:
+        try:
+            # Import here to avoid circular imports
+            from ..guardrails.base import BaseGuardrail, GuardrailBlockedException
+
+            if not isinstance(guardrail, BaseGuardrail):
+                logger.warning("Skipping invalid guardrail: %s", guardrail)
+                continue
+
+            if not guardrail.is_enabled():
+                continue
+
+            result = guardrail.check_input(modified_inputs)
+
+            # Store guardrail metadata
+            guardrail_key = f"input_{guardrail.name.lower().replace(' ', '_')}"
+            guardrail_metadata[guardrail_key] = {
+                "action": result.action.value,
+                "reason": result.reason,
+                "metadata": result.metadata or {},
+            }
+
+            if result.action.value == "block":
+                return _handle_guardrail_block(
+                    guardrail=guardrail,
+                    result=result,
+                    modified_inputs=modified_inputs,
+                    guardrail_metadata=guardrail_metadata,
+                    guardrail_key=guardrail_key,
+                    is_input=True,
+                )
+            elif result.action.value == "modify" and result.modified_data is not None:
+                modified_inputs = result.modified_data
+                logger.debug("Guardrail %s modified inputs", guardrail.name)
+
+        except Exception as e:
+            if hasattr(e, "guardrail_name"):
+                # Re-raise guardrail exceptions
+                raise
+            else:
+                # Log other exceptions but don't fail the trace
+                logger.error("Error applying input guardrail %s: %s", guardrail.name, e)
+                guardrail_key = f"input_{guardrail.name.lower().replace(' ', '_')}"
+                guardrail_metadata[guardrail_key] = {
+                    "action": "error",
+                    "reason": str(e),
+                    "metadata": {},
+                }
+
+    return modified_inputs, guardrail_metadata
+
+
+def _apply_output_guardrails(
+    guardrails: List[Any], output: Any, inputs: Dict[str, Any]
+) -> Tuple[Any, Dict[str, Any]]:
+    """Apply guardrails to function output.
+
+    Args:
+        guardrails: List of guardrail instances
+        output: Function output
+        inputs: Function inputs for context
+
+    Returns:
+        Tuple of (modified_output, guardrail_metadata)
+    """
+    if not guardrails:
+        return output, {}
+
+    modified_output = output
+    guardrail_metadata = {}
+
+    for guardrail in guardrails:
+        try:
+            # Import here to avoid circular imports
+            from ..guardrails.base import BaseGuardrail, GuardrailBlockedException
+
+            if not isinstance(guardrail, BaseGuardrail):
+                logger.warning("Skipping invalid guardrail: %s", guardrail)
+                continue
+
+            if not guardrail.is_enabled():
+                continue
+
+            result = guardrail.check_output(modified_output, inputs)
+
+            # Store guardrail metadata
+            guardrail_key = f"output_{guardrail.name.lower().replace(' ', '_')}"
+            guardrail_metadata[guardrail_key] = {
+                "action": result.action.value,
+                "reason": result.reason,
+                "metadata": result.metadata or {},
+            }
+
+            if result.action.value == "block":
+                return _handle_guardrail_block(
+                    guardrail=guardrail,
+                    result=result,
+                    modified_output=modified_output,
+                    guardrail_metadata=guardrail_metadata,
+                    guardrail_key=guardrail_key,
+                    is_input=False,
+                )
+            elif result.action.value == "modify" and result.modified_data is not None:
+                modified_output = result.modified_data
+                logger.debug("Guardrail %s modified output", guardrail.name)
+
+        except Exception as e:
+            if hasattr(e, "guardrail_name"):
+                # Re-raise guardrail exceptions
+                raise
+            else:
+                # Log other exceptions but don't fail the trace
+                logger.error(
+                    "Error applying output guardrail %s: %s", guardrail.name, e
+                )
+                guardrail_key = f"output_{guardrail.name.lower().replace(' ', '_')}"
+                guardrail_metadata[guardrail_key] = {
+                    "action": "error",
+                    "reason": str(e),
+                    "metadata": {},
+                }
+
+    return modified_output, guardrail_metadata
+
+
+def _handle_guardrail_block(
+    guardrail: Any,
+    result: Any,
+    modified_inputs: Optional[Dict[str, Any]] = None,
+    modified_output: Optional[Any] = None,
+    guardrail_metadata: Optional[Dict[str, Any]] = None,
+    guardrail_key: Optional[str] = None,
+    is_input: bool = True,
+) -> Tuple[Any, Dict[str, Any]]:
+    """Handle different block strategies for guardrails.
+
+    Args:
+        guardrail: The guardrail instance
+        result: The GuardrailResult with block action
+        modified_inputs: Current inputs (for input guardrails)
+        modified_output: Current output (for output guardrails)
+        guardrail_metadata: Current guardrail metadata
+        guardrail_key: Key for storing metadata
+        is_input: True if this is an input guardrail, False for output
+
+    Returns:
+        Tuple of (data, metadata) or raises exception based on strategy
+    """
+    from ..guardrails.base import BlockStrategy, GuardrailBlockedException
+
+    strategy = getattr(result, "block_strategy", None)
+    if strategy is None:
+        strategy = BlockStrategy.RAISE_EXCEPTION
+
+    # Update metadata to reflect the blocking strategy used
+    if guardrail_metadata is not None and guardrail_key is not None:
+        guardrail_metadata[guardrail_key].update(
+            {
+                "block_strategy": strategy.value,
+                "error_message": getattr(result, "error_message", None),
+            }
+        )
+
+    if strategy == BlockStrategy.RAISE_EXCEPTION:
+        # Original behavior - raise exception (breaks pipeline)
+        raise GuardrailBlockedException(
+            guardrail_name=guardrail.name,
+            reason=result.reason
+            or f"{'Input' if is_input else 'Output'} blocked by guardrail",
+            metadata=result.metadata,
+        )
+
+    elif strategy == BlockStrategy.RETURN_EMPTY:
+        # Return empty/None response (graceful)
+        if is_input:
+            # For input blocking, return empty inputs
+            empty_inputs = {key: "" for key in (modified_inputs or {})}
+            logger.info(
+                "Guardrail %s blocked input, returning empty inputs", guardrail.name
+            )
+            return empty_inputs, guardrail_metadata or {}
+        else:
+            # For output blocking, return None
+            logger.info("Guardrail %s blocked output, returning None", guardrail.name)
+            return None, guardrail_metadata or {}
+
+    elif strategy == BlockStrategy.RETURN_ERROR_MESSAGE:
+        # Return error message (graceful)
+        error_msg = getattr(
+            result, "error_message", "Request blocked due to policy violation"
+        )
+        logger.info(
+            "Guardrail %s blocked %s, returning error message",
+            guardrail.name,
+            "input" if is_input else "output",
+        )
+
+        if is_input:
+            # For input blocking, replace inputs with error message
+            error_inputs = {key: error_msg for key in (modified_inputs or {})}
+            return error_inputs, guardrail_metadata or {}
+        else:
+            # For output blocking, return error message
+            return error_msg, guardrail_metadata or {}
+
+    elif strategy == BlockStrategy.SKIP_FUNCTION:
+        # Skip function execution, return None (graceful)
+        logger.info(
+            "Guardrail %s blocked %s, skipping execution",
+            guardrail.name,
+            "input" if is_input else "output",
+        )
+
+        if is_input:
+            # For input blocking, this will be handled by the main wrapper
+            # We'll use a special marker to indicate function should be skipped
+            class SkipFunctionExecution:
+                pass
+
+            return SkipFunctionExecution(), guardrail_metadata or {}
+        else:
+            # For output blocking, return None
+            return None, guardrail_metadata or {}
+
+    else:
+        # Fallback to raising exception
+        logger.warning(
+            "Unknown block strategy %s, falling back to raising exception", strategy
+        )
+        raise GuardrailBlockedException(
+            guardrail_name=guardrail.name,
+            reason=result.reason
+            or f"{'Input' if is_input else 'Output'} blocked by guardrail",
+            metadata=result.metadata,
+        )
