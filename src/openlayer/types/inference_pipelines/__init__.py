@@ -8,3 +8,6 @@ from .row_update_response import RowUpdateResponse as RowUpdateResponse
 from .data_stream_response import DataStreamResponse as DataStreamResponse
 from .test_result_list_params import TestResultListParams as TestResultListParams
 from .test_result_list_response import TestResultListResponse as TestResultListResponse
+from .export_data_params import ExportDataParams as ExportDataParams
+from .export_data_response import ExportDataResponse as ExportDataResponse
+from .task_status_response import TaskStatusResponse as TaskStatusResponse

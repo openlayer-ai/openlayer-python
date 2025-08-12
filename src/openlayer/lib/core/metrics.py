@@ -100,7 +100,7 @@ class MetricRunner:
             type=str,
             required=False,
             default="",
-            help="The name of the dataset to compute the metric on. Runs on all " "datasets if not provided.",
+            help="The name of the dataset to compute the metric on. Runs on all datasets if not provided.",
         )
 
         # Parse the arguments
@@ -231,7 +231,7 @@ class BaseMetric(abc.ABC):
         for dataset in datasets:
             # Check if the metric has already been computed
             if os.path.exists(os.path.join(dataset.output_path, "metrics", f"{self.key}.json")):
-                print(f"Metric ({self.key}) already computed on {dataset.name}. " "Skipping.")
+                print(f"Metric ({self.key}) already computed on {dataset.name}. Skipping.")
                 continue
 
             try:

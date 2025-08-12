@@ -24,6 +24,7 @@ from .rows import (
     AsyncRowsResourceWithStreamingResponse,
 )
 from ...types import inference_pipeline_update_params, inference_pipeline_retrieve_params
+from ...types.inference_pipelines import export_data_params
 from ..._types import NOT_GIVEN, Body, Query, Headers, NoneType, NotGiven
 from ..._utils import maybe_transform, async_maybe_transform
 from ..._compat import cached_property
@@ -45,6 +46,8 @@ from .test_results import (
 from ..._base_client import make_request_options
 from ...types.inference_pipeline_update_response import InferencePipelineUpdateResponse
 from ...types.inference_pipeline_retrieve_response import InferencePipelineRetrieveResponse
+from ...types.inference_pipelines.export_data_response import ExportDataResponse
+from ...types.inference_pipelines.task_status_response import TaskStatusResponse
 
 __all__ = ["InferencePipelinesResource", "AsyncInferencePipelinesResource"]
 
@@ -214,6 +217,95 @@ class InferencePipelinesResource(SyncAPIResource):
             cast_to=NoneType,
         )
 
+    def export_data(
+        self,
+        inference_pipeline_id: str,
+        *,
+        start: int,
+        end: int,
+        fmt: Literal["json", "csv"],
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+    ) -> ExportDataResponse:
+        """
+        Export data from inference pipeline for a specified time range.
+
+        Args:
+          start: Start timestamp (Unix timestamp in seconds) for the data export range.
+
+          end: End timestamp (Unix timestamp in seconds) for the data export range.
+
+          fmt: Export format. Supported formats: 'json', 'csv'.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        if not inference_pipeline_id:
+            raise ValueError(
+                f"Expected a non-empty value for `inference_pipeline_id` but received {inference_pipeline_id!r}"
+            )
+        return self._post(
+            f"/inference-pipelines/{inference_pipeline_id}/export",
+            body=maybe_transform(
+                {
+                    "start": start,
+                    "end": end,
+                    "fmt": fmt,
+                },
+                export_data_params.ExportDataParams,
+            ),
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=ExportDataResponse,
+        )
+
+    def get_task_status(
+        self,
+        task_result_url: str,
+        *,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+    ) -> TaskStatusResponse:
+        """
+        Get the status of an export task using the task result URL.
+
+        Args:
+          task_result_url: The task result URL returned from export_data method.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        if not task_result_url:
+            raise ValueError(
+                f"Expected a non-empty value for `task_result_url` but received {task_result_url!r}"
+            )
+        return self._get(
+            task_result_url,
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=TaskStatusResponse,
+        )
+
 
 class AsyncInferencePipelinesResource(AsyncAPIResource):
     @cached_property
@@ -380,6 +472,95 @@ class AsyncInferencePipelinesResource(AsyncAPIResource):
             cast_to=NoneType,
         )
 
+    async def export_data(
+        self,
+        inference_pipeline_id: str,
+        *,
+        start: int,
+        end: int,
+        fmt: Literal["json", "csv"],
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+    ) -> ExportDataResponse:
+        """
+        Export data from inference pipeline for a specified time range.
+
+        Args:
+          start: Start timestamp (Unix timestamp in seconds) for the data export range.
+
+          end: End timestamp (Unix timestamp in seconds) for the data export range.
+
+          fmt: Export format. Supported formats: 'json', 'csv'.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        if not inference_pipeline_id:
+            raise ValueError(
+                f"Expected a non-empty value for `inference_pipeline_id` but received {inference_pipeline_id!r}"
+            )
+        return await self._post(
+            f"/inference-pipelines/{inference_pipeline_id}/export",
+            body=await async_maybe_transform(
+                {
+                    "start": start,
+                    "end": end,
+                    "fmt": fmt,
+                },
+                export_data_params.ExportDataParams,
+            ),
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=ExportDataResponse,
+        )
+
+    async def get_task_status(
+        self,
+        task_result_url: str,
+        *,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+    ) -> TaskStatusResponse:
+        """
+        Get the status of an export task using the task result URL.
+
+        Args:
+          task_result_url: The task result URL returned from export_data method.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        if not task_result_url:
+            raise ValueError(
+                f"Expected a non-empty value for `task_result_url` but received {task_result_url!r}"
+            )
+        return await self._get(
+            task_result_url,
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=TaskStatusResponse,
+        )
+
 
 class InferencePipelinesResourceWithRawResponse:
     def __init__(self, inference_pipelines: InferencePipelinesResource) -> None:
@@ -393,6 +574,12 @@ class InferencePipelinesResourceWithRawResponse:
         )
         self.delete = to_raw_response_wrapper(
             inference_pipelines.delete,
+        )
+        self.export_data = to_raw_response_wrapper(
+            inference_pipelines.export_data,
+        )
+        self.get_task_status = to_raw_response_wrapper(
+            inference_pipelines.get_task_status,
         )
 
     @cached_property
@@ -421,6 +608,12 @@ class AsyncInferencePipelinesResourceWithRawResponse:
         self.delete = async_to_raw_response_wrapper(
             inference_pipelines.delete,
         )
+        self.export_data = async_to_raw_response_wrapper(
+            inference_pipelines.export_data,
+        )
+        self.get_task_status = async_to_raw_response_wrapper(
+            inference_pipelines.get_task_status,
+        )
 
     @cached_property
     def data(self) -> AsyncDataResourceWithRawResponse:
@@ -448,6 +641,12 @@ class InferencePipelinesResourceWithStreamingResponse:
         self.delete = to_streamed_response_wrapper(
             inference_pipelines.delete,
         )
+        self.export_data = to_streamed_response_wrapper(
+            inference_pipelines.export_data,
+        )
+        self.get_task_status = to_streamed_response_wrapper(
+            inference_pipelines.get_task_status,
+        )
 
     @cached_property
     def data(self) -> DataResourceWithStreamingResponse:
@@ -474,6 +673,12 @@ class AsyncInferencePipelinesResourceWithStreamingResponse:
         )
         self.delete = async_to_streamed_response_wrapper(
             inference_pipelines.delete,
+        )
+        self.export_data = async_to_streamed_response_wrapper(
+            inference_pipelines.export_data,
+        )
+        self.get_task_status = async_to_streamed_response_wrapper(
+            inference_pipelines.get_task_status,
         )
 
     @cached_property
