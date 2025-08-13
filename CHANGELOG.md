@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.79 (2025-08-13)
+
+Full Changelog: [v0.2.0-alpha.78...v0.2.0-alpha.79](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.78...v0.2.0-alpha.79)
+
+### Features
+
+* **tracing:** enhance tracing for synchronous generator functions ([1aab21a](https://github.com/openlayer-ai/openlayer-python/commit/1aab21a2a13b492b23d6ad619795cd110e37ee9a))
+
+
+### Chores
+
+* **internal:** update comment in script ([572168d](https://github.com/openlayer-ai/openlayer-python/commit/572168d08447309191f4376ed65a774a13e5b19c))
+* update @stainless-api/prism-cli to v5.15.0 ([9887b4b](https://github.com/openlayer-ai/openlayer-python/commit/9887b4b2e1e0cf1a6b5e86106cf94abe08e9f514))
+
 ## 0.2.0-alpha.78 (2025-08-08)
 
 Full Changelog: [v0.2.0-alpha.77...v0.2.0-alpha.78](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.77...v0.2.0-alpha.78)
