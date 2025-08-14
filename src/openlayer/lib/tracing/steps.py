@@ -2,7 +2,7 @@
 
 import time
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional, List
 
 from .. import utils
 from . import enums
@@ -229,6 +229,39 @@ class HandoffStep(Step):
         return step_dict
 
 
+class GuardrailStep(Step):
+    """Step for tracking guardrail execution."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.step_type = enums.StepType.GUARDRAIL
+        self.action: Optional[str] = None
+        self.blocked_entities: Optional[List[str]] = None
+        self.confidence_threshold: float = None
+        self.reason: Optional[str] = None
+        self.detected_entities: Optional[List[str]] = None
+        self.redacted_entities: Optional[List[str]] = None
+        self.block_strategy: Optional[str] = None
+        self.data_type: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Dictionary representation of the GuardrailStep."""
+        step_dict = super().to_dict()
+        step_dict.update(
+            {
+                "action": self.action,
+                "blockedEntities": self.blocked_entities,
+                "confidenceThreshold": self.confidence_threshold,
+                "reason": self.reason,
+                "detectedEntities": self.detected_entities,
+                "blockStrategy": self.block_strategy,
+                "redactedEntities": self.redacted_entities,
+                "dataType": self.data_type,
+            }
+        )
+        return step_dict
+
+
 # ----------------------------- Factory function ----------------------------- #
 def step_factory(step_type: enums.StepType, *args, **kwargs) -> Step:
     """Factory function to create a step based on the step_type."""
@@ -241,5 +274,6 @@ def step_factory(step_type: enums.StepType, *args, **kwargs) -> Step:
         enums.StepType.RETRIEVER: RetrieverStep,
         enums.StepType.TOOL: ToolStep,
         enums.StepType.HANDOFF: HandoffStep,
+        enums.StepType.GUARDRAIL: GuardrailStep,
     }
     return step_type_mapping[step_type](*args, **kwargs)
