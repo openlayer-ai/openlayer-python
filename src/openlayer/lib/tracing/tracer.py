@@ -729,7 +729,14 @@ def _finalize_sync_generator_step(
     inference_pipeline_id: Optional[str] = None,
 ) -> None:
     """Finalize sync generator step - called when generator is consumed."""
-    _current_step.reset(token)
+    try:
+        _current_step.reset(token)
+    except ValueError:
+        # Context variable was created in a different context (e.g., different thread)
+        # This can happen in async/multi-threaded environments like FastAPI/OpenWebUI
+        # We can safely ignore this as the step finalization will still complete
+        logger.debug("Context variable reset failed - generator consumed in different context")
+    
     _finalize_step_logging(step=step, inputs=inputs, output=output, start_time=step.start_time)
     _handle_trace_completion(
         is_root_step=is_root_step,
