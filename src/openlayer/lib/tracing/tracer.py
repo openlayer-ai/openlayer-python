@@ -15,6 +15,7 @@ from ..._client import Openlayer
 from ...types.inference_pipelines.data_stream_params import ConfigLlmData
 from .. import utils
 from . import enums, steps, traces
+from ..guardrails.base import GuardrailResult, GuardrailAction
 
 logger = logging.getLogger(__name__)
 
@@ -1200,7 +1201,7 @@ def _apply_input_guardrails(
     guardrails: List[Any],
     inputs: Dict[str, Any],
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    """Apply guardrails to function inputs.
+    """Apply guardrails to function inputs, creating guardrail steps.
 
     Args:
         guardrails: List of guardrail instances
@@ -1213,9 +1214,9 @@ def _apply_input_guardrails(
         return inputs, {}
 
     modified_inputs = inputs.copy()
-    guardrail_metadata = {}
+    overall_metadata = {}
 
-    for guardrail in guardrails:
+    for i, guardrail in enumerate(guardrails):
         try:
             # Import here to avoid circular imports
             from ..guardrails.base import BaseGuardrail, GuardrailBlockedException
@@ -1227,50 +1228,112 @@ def _apply_input_guardrails(
             if not guardrail.is_enabled():
                 continue
 
-            result = guardrail.check_input(modified_inputs)
+            # Create a guardrail step for this check
+            with create_step(
+                name=f"{guardrail.name} - Input",
+                step_type=enums.StepType.GUARDRAIL,
+            ) as guardrail_step:
+                try:
+                    # Apply the guardrail
+                    result = guardrail.check_input(modified_inputs)
 
-            # Store guardrail metadata
-            guardrail_key = f"input_{guardrail.name.lower().replace(' ', '_')}"
-            guardrail_metadata[guardrail_key] = {
-                "action": result.action.value,
-                "reason": result.reason,
-                "metadata": result.metadata or {},
-            }
+                    # Store guardrail metadata for main function step
+                    guardrail_key = f"input_{guardrail.name.lower().replace(' ', '_')}"
+                    overall_metadata[guardrail_key] = {
+                        "action": result.action.value,
+                        "reason": result.reason,
+                        "metadata": result.metadata or {},
+                    }
 
-            if result.action.value == "block":
-                return _handle_guardrail_block(
-                    guardrail=guardrail,
-                    result=result,
-                    modified_inputs=modified_inputs,
-                    guardrail_metadata=guardrail_metadata,
-                    guardrail_key=guardrail_key,
-                    is_input=True,
-                )
-            elif result.action.value == "modify" and result.modified_data is not None:
-                modified_inputs = result.modified_data
-                logger.debug("Guardrail %s modified inputs", guardrail.name)
+                    # Prepare step logging data
+                    step_log_data = {
+                        "action": result.action.value,
+                        "reason": result.reason,
+                        "data_type": "input",
+                        "inputs": {"original_data": modified_inputs},
+                    }
+
+                    if result.action.value == "block":
+                        # Handle the block according to strategy
+                        final_inputs, block_metadata = _handle_guardrail_block(
+                            guardrail=guardrail,
+                            result=result,
+                            modified_inputs=modified_inputs,
+                            guardrail_metadata=overall_metadata,
+                            guardrail_key=guardrail_key,
+                            is_input=True,
+                        )
+
+                        # Add final output if different
+                        if final_inputs != modified_inputs:
+                            step_log_data["output"] = final_inputs
+
+                        # Log once with all data
+                        guardrail_step.log(**step_log_data)
+                        return final_inputs, overall_metadata
+
+                    elif (
+                        result.action.value == "modify"
+                        and result.modified_data is not None
+                    ):
+                        step_log_data["output"] = result.modified_data
+                        modified_inputs = result.modified_data
+                        logger.debug("Guardrail %s modified inputs", guardrail.name)
+
+                    else:  # allow
+                        step_log_data["output"] = modified_inputs
+
+                    # Single log call with all data
+                    guardrail_step.log(**step_log_data)
+
+                except Exception as e:
+                    # Create error result for the guardrail step
+                    error_result = GuardrailResult(
+                        action=GuardrailAction.ALLOW,  # Default to allow on error
+                        reason=f"Guardrail error: {str(e)}",
+                        metadata={"error": str(e), "error_type": type(e).__name__},
+                    )
+                    guardrail_step.log(
+                        inputs={"original_data": modified_inputs},
+                        output=modified_inputs,
+                    )
+
+                    if hasattr(e, "guardrail_name"):
+                        # Re-raise guardrail exceptions
+                        raise
+                    else:
+                        # Log other exceptions but don't fail the trace
+                        logger.error(
+                            "Error applying input guardrail %s: %s", guardrail.name, e
+                        )
+                        guardrail_key = (
+                            f"input_{guardrail.name.lower().replace(' ', '_')}"
+                        )
+                        overall_metadata[guardrail_key] = {
+                            "action": "error",
+                            "reason": str(e),
+                            "metadata": {"error_type": type(e).__name__},
+                            "guardrail_name": guardrail.name,
+                        }
 
         except Exception as e:
+            # Handle exceptions that occur outside the guardrail step context
             if hasattr(e, "guardrail_name"):
-                # Re-raise guardrail exceptions
                 raise
             else:
-                # Log other exceptions but don't fail the trace
-                logger.error("Error applying input guardrail %s: %s", guardrail.name, e)
-                guardrail_key = f"input_{guardrail.name.lower().replace(' ', '_')}"
-                guardrail_metadata[guardrail_key] = {
-                    "action": "error",
-                    "reason": str(e),
-                    "metadata": {},
-                }
+                logger.error(
+                    "Error setting up input guardrail %s: %s",
+                    getattr(guardrail, "name", f"guardrail_{i}"),
+                    e,
+                )
 
-    return modified_inputs, guardrail_metadata
+    return modified_inputs, overall_metadata
 
 
 def _apply_output_guardrails(
     guardrails: List[Any], output: Any, inputs: Dict[str, Any]
 ) -> Tuple[Any, Dict[str, Any]]:
-    """Apply guardrails to function output.
+    """Apply guardrails to function output, creating guardrail steps.
 
     Args:
         guardrails: List of guardrail instances
@@ -1284,9 +1347,9 @@ def _apply_output_guardrails(
         return output, {}
 
     modified_output = output
-    guardrail_metadata = {}
+    overall_metadata = {}
 
-    for guardrail in guardrails:
+    for i, guardrail in enumerate(guardrails):
         try:
             # Import here to avoid circular imports
             from ..guardrails.base import BaseGuardrail, GuardrailBlockedException
@@ -1298,46 +1361,106 @@ def _apply_output_guardrails(
             if not guardrail.is_enabled():
                 continue
 
-            result = guardrail.check_output(modified_output, inputs)
+            # Create a guardrail step for this check
+            with create_step(
+                name=f"{guardrail.name} - Output",
+                step_type=enums.StepType.GUARDRAIL,
+            ) as guardrail_step:
+                try:
+                    # Apply the guardrail
+                    result = guardrail.check_output(modified_output, inputs)
 
-            # Store guardrail metadata
-            guardrail_key = f"output_{guardrail.name.lower().replace(' ', '_')}"
-            guardrail_metadata[guardrail_key] = {
-                "action": result.action.value,
-                "reason": result.reason,
-                "metadata": result.metadata or {},
-            }
+                    # Store guardrail metadata for main function step
+                    guardrail_key = f"output_{guardrail.name.lower().replace(' ', '_')}"
+                    overall_metadata[guardrail_key] = {
+                        "action": result.action.value,
+                        "reason": result.reason,
+                        "metadata": result.metadata or {},
+                    }
 
-            if result.action.value == "block":
-                return _handle_guardrail_block(
-                    guardrail=guardrail,
-                    result=result,
-                    modified_output=modified_output,
-                    guardrail_metadata=guardrail_metadata,
-                    guardrail_key=guardrail_key,
-                    is_input=False,
-                )
-            elif result.action.value == "modify" and result.modified_data is not None:
-                modified_output = result.modified_data
-                logger.debug("Guardrail %s modified output", guardrail.name)
+                    # Prepare step logging data
+                    step_log_data = {
+                        "action": result.action.value,
+                        "reason": result.reason,
+                        "data_type": "output",
+                        "inputs": {"original_data": modified_output},
+                    }
+
+                    if result.action.value == "block":
+                        # Handle the block according to strategy
+                        final_output, block_metadata = _handle_guardrail_block(
+                            guardrail=guardrail,
+                            result=result,
+                            modified_output=modified_output,
+                            guardrail_metadata=overall_metadata,
+                            guardrail_key=guardrail_key,
+                            is_input=False,
+                        )
+
+                        # Add final output if different
+                        if final_output != modified_output:
+                            step_log_data["output"] = final_output
+
+                        # Log once with all data
+                        guardrail_step.log(**step_log_data)
+                        return final_output, overall_metadata
+
+                    elif (
+                        result.action.value == "modify"
+                        and result.modified_data is not None
+                    ):
+                        step_log_data["output"] = result.modified_data
+                        modified_output = result.modified_data
+                        logger.debug("Guardrail %s modified output", guardrail.name)
+
+                    else:  # allow
+                        step_log_data["output"] = modified_output
+
+                    # Single log call with all data
+                    guardrail_step.log(**step_log_data)
+
+                except Exception as e:
+                    # Create error result for the guardrail step
+                    error_result = GuardrailResult(
+                        action=GuardrailAction.ALLOW,  # Default to allow on error
+                        reason=f"Guardrail error: {str(e)}",
+                        metadata={"error": str(e), "error_type": type(e).__name__},
+                    )
+                    guardrail_step.log(
+                        inputs={"original_data": modified_output},
+                        output=modified_output,
+                    )
+
+                    if hasattr(e, "guardrail_name"):
+                        # Re-raise guardrail exceptions
+                        raise
+                    else:
+                        # Log other exceptions but don't fail the trace
+                        logger.error(
+                            "Error applying output guardrail %s: %s", guardrail.name, e
+                        )
+                        guardrail_key = (
+                            f"output_{guardrail.name.lower().replace(' ', '_')}"
+                        )
+                        overall_metadata[guardrail_key] = {
+                            "action": "error",
+                            "reason": str(e),
+                            "metadata": {"error_type": type(e).__name__},
+                        }
+                        guardrail_step.log(**overall_metadata[guardrail_key])
 
         except Exception as e:
+            # Handle exceptions that occur outside the guardrail step context
             if hasattr(e, "guardrail_name"):
-                # Re-raise guardrail exceptions
                 raise
             else:
-                # Log other exceptions but don't fail the trace
                 logger.error(
-                    "Error applying output guardrail %s: %s", guardrail.name, e
+                    "Error setting up output guardrail %s: %s",
+                    getattr(guardrail, "name", f"guardrail_{i}"),
+                    e,
                 )
-                guardrail_key = f"output_{guardrail.name.lower().replace(' ', '_')}"
-                guardrail_metadata[guardrail_key] = {
-                    "action": "error",
-                    "reason": str(e),
-                    "metadata": {},
-                }
 
-    return modified_output, guardrail_metadata
+    return modified_output, overall_metadata
 
 
 def _handle_guardrail_block(
