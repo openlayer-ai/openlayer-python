@@ -555,7 +555,7 @@ def trace_async(
 
                                     # Process inputs through guardrails
                                     modified_inputs, input_metadata = (
-                                        _apply_guardrails_to_inputs(
+                                        _apply_input_guardrails(
                                             guardrails,
                                             inputs,
                                         )
@@ -592,14 +592,13 @@ def trace_async(
 
                         except Exception as exc:
                             _log_step_exception(step, exc)
-                            exception = exc
-                            raise
+                            raise exc
 
                         # Apply output guardrails if provided
                         if guardrails and output is not None:
                             try:
                                 final_output, output_metadata = (
-                                    _apply_guardrails_to_outputs(
+                                    _apply_output_guardrails(
                                         guardrails,
                                         output,
                                         _extract_function_inputs(
@@ -656,7 +655,7 @@ def trace_async(
 
                                 # Process inputs through guardrails
                                 modified_inputs, input_metadata = (
-                                    _apply_guardrails_to_inputs(
+                                    _apply_input_guardrails(
                                         guardrails,
                                         inputs,
                                     )
@@ -696,17 +695,15 @@ def trace_async(
                     # Apply output guardrails if provided
                     if guardrails and output is not None:
                         try:
-                            final_output, output_metadata = (
-                                _apply_guardrails_to_outputs(
-                                    guardrails,
-                                    output,
-                                    _extract_function_inputs(
-                                        func_signature=func_signature,
-                                        func_args=func_args,
-                                        func_kwargs=func_kwargs,
-                                        context_kwarg=context_kwarg,
-                                    ),
-                                )
+                            final_output, output_metadata = _apply_output_guardrails(
+                                guardrails,
+                                output,
+                                _extract_function_inputs(
+                                    func_signature=func_signature,
+                                    func_args=func_args,
+                                    func_kwargs=func_kwargs,
+                                    context_kwarg=context_kwarg,
+                                ),
                             )
                             guardrail_metadata.update(output_metadata)
 
