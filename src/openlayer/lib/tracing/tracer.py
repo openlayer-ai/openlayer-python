@@ -32,19 +32,17 @@ _client = None
 _configured_api_key: Optional[str] = None
 _configured_pipeline_id: Optional[str] = None
 _configured_base_url: Optional[str] = None
-_configured_guardrails: Optional[List[Any]] = None
 
 
 def configure(
     api_key: Optional[str] = None,
     inference_pipeline_id: Optional[str] = None,
     base_url: Optional[str] = None,
-    guardrails: Optional[List[Any]] = None,
 ) -> None:
     """Configure the Openlayer tracer with custom settings.
 
     This function allows you to programmatically set the API key, inference pipeline ID,
-    base URL, and global guardrails for the Openlayer client.
+    and base URL for the Openlayer client, instead of relying on environment variables.
 
     Args:
         api_key: The Openlayer API key. If not provided, falls back to OPENLAYER_API_KEY environment variable.
@@ -52,30 +50,21 @@ def configure(
             If not provided, falls back to OPENLAYER_INFERENCE_PIPELINE_ID environment variable.
         base_url: The base URL for the Openlayer API. If not provided, falls back to
             OPENLAYER_BASE_URL environment variable or the default.
-        guardrails: List of guardrail instances to apply globally to all LLM helper functions
-            (trace_openai, trace_anthropic, etc.). Does not affect @trace() decorator.
 
     Examples:
         >>> import openlayer.lib.tracing.tracer as tracer
-        >>> from openlayer.lib.guardrails import PIIGuardrail
-        >>>
-        >>> # Configure with API key, pipeline ID, and global guardrails
-        >>> pii_guard = PIIGuardrail()
-        >>> tracer.configure(
-        ...     api_key="your_api_key_here",
-        ...     inference_pipeline_id="your_pipeline_id_here",
-        ...     guardrails=[pii_guard]
-        ... )
-        >>>
-        >>> # Now all LLM helper functions will use the configured guardrails
-        >>> traced_client = tracer.trace_openai(openai.OpenAI())
+        >>> # Configure with API key and pipeline ID
+        >>> tracer.configure(api_key="your_api_key_here", inference_pipeline_id="your_pipeline_id_here")
+        >>> # Now use the decorators normally
+        >>> @tracer.trace()
+        >>> def my_function():
+        ...     return "result"
     """
-    global _configured_api_key, _configured_pipeline_id, _configured_base_url, _configured_guardrails, _client
+    global _configured_api_key, _configured_pipeline_id, _configured_base_url, _client
 
     _configured_api_key = api_key
     _configured_pipeline_id = inference_pipeline_id
     _configured_base_url = base_url
-    _configured_guardrails = guardrails
 
     # Reset the client so it gets recreated with new configuration
     _client = None
@@ -141,46 +130,8 @@ def create_step(
     output: Optional[Any] = None,
     metadata: Optional[Dict[str, Any]] = None,
     inference_pipeline_id: Optional[str] = None,
-    guardrails: Optional[List[Any]] = None,
 ) -> Generator[steps.Step, None, None]:
-    """Starts a trace and yields a Step object with optional guardrails."""
-    # Apply input guardrails if provided
-    original_inputs = inputs
-    guardrail_metadata = {}
-
-    if guardrails and inputs is not None:
-        try:
-            # Convert inputs to dict format for guardrail processing
-            if not isinstance(inputs, dict):
-                inputs_dict = {"input": inputs}
-            else:
-                inputs_dict = inputs
-
-            modified_inputs_dict, input_guardrail_metadata = _apply_input_guardrails(
-                guardrails,
-                inputs_dict,
-            )
-            guardrail_metadata.update(input_guardrail_metadata)
-
-            # Check if function should be skipped
-            if (
-                hasattr(modified_inputs_dict, "__class__")
-                and modified_inputs_dict.__class__.__name__ == "SkipFunctionExecution"
-            ):
-                # For create_step, we'll return None output and skip processing
-                inputs = original_inputs  # Keep original for logging
-            else:
-                # Update inputs with guardrail modifications
-                if isinstance(original_inputs, dict):
-                    inputs = modified_inputs_dict
-                else:
-                    inputs = modified_inputs_dict.get("input", original_inputs)
-
-        except Exception as e:
-            # Log guardrail errors but don't fail step creation
-            if not hasattr(e, "guardrail_name"):
-                logger.error("Error applying guardrails to step creation: %s", e)
-
+    """Starts a trace and yields a Step object."""
     new_step, is_root_step, token = _create_and_initialize_step(
         step_name=name,
         step_type=step_type,
@@ -188,54 +139,9 @@ def create_step(
         output=output,
         metadata=metadata,
     )
-
     try:
         yield new_step
     finally:
-        # Apply output guardrails if provided
-        if guardrails and new_step.output is not None:
-            try:
-                final_output, output_guardrail_metadata = _apply_output_guardrails(
-                    guardrails,
-                    new_step.output,
-                    inputs if isinstance(inputs, dict) else {"input": inputs},
-                )
-                guardrail_metadata.update(output_guardrail_metadata)
-
-                if final_output != new_step.output:
-                    new_step.output = final_output
-
-            except Exception as e:
-                if not hasattr(e, "guardrail_name"):
-                    logger.error("Error applying output guardrails to step: %s", e)
-
-        # Add guardrail metadata to step
-        if guardrail_metadata:
-            step_metadata = new_step.metadata or {}
-            step_metadata.update(
-                {
-                    "guardrails": guardrail_metadata,
-                    "has_guardrails": True,
-                    "guardrail_actions": [
-                        metadata.get("action")
-                        for metadata in guardrail_metadata.values()
-                    ],
-                    "guardrail_names": [
-                        key.replace("input_", "").replace("output_", "")
-                        for key in guardrail_metadata.keys()
-                    ],
-                }
-            )
-            # Add action flags
-            actions = step_metadata["guardrail_actions"]
-            step_metadata["guardrail_blocked"] = "blocked" in actions
-            step_metadata["guardrail_modified"] = (
-                "redacted" in actions or "modified" in actions
-            )
-            step_metadata["guardrail_allowed"] = "allow" in actions
-
-            new_step.metadata = step_metadata
-
         if new_step.end_time is None:
             new_step.end_time = time.time()
         if new_step.latency is None:
@@ -250,29 +156,11 @@ def create_step(
         )
 
 
-def add_chat_completion_step_to_trace(
-    guardrails: Optional[List[Any]] = None, **kwargs
-) -> None:
-    """Adds a chat completion step to the trace with optional guardrails.
-
-    Args:
-        guardrails: Optional list of guardrail instances to apply. If None, uses
-        configured global guardrails.
-        **kwargs: Step data including inputs, output, metadata, etc.
-    """
-    # Use provided guardrails or fall back to configured global guardrails
-    effective_guardrails = guardrails or _configured_guardrails
-
-    # Extract inputs and output for guardrail processing
-    inputs = kwargs.get("inputs")
-    output = kwargs.get("output")
-
+def add_chat_completion_step_to_trace(**kwargs) -> None:
+    """Adds a chat completion step to the trace."""
     with create_step(
         step_type=enums.StepType.CHAT_COMPLETION,
         name=kwargs.get("name", "Chat Completion"),
-        inputs=inputs,
-        output=output,
-        guardrails=effective_guardrails,
     ) as step:
         step.log(**kwargs)
 
@@ -285,12 +173,6 @@ def trace(
     **step_kwargs,
 ):
     """Decorator to trace a function with optional guardrails.
-
-    Args:
-        inference_pipeline_id: Optional pipeline ID to override default
-        context_kwarg: Name of function parameter containing context for RAG
-        guardrails: List of guardrail instances to apply to inputs/outputs
-        **step_kwargs: Additional step configuration
 
     Examples
     --------
@@ -1192,9 +1074,6 @@ def _apply_input_guardrails(
     Args:
         guardrails: List of guardrail instances
         inputs: Extracted function inputs
-        func_args: Original function args
-        func_kwargs: Original function kwargs
-        func_signature: Function signature
 
     Returns:
         Tuple of (modified_inputs, guardrail_metadata)
