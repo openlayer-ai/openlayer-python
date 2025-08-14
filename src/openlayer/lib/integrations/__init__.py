@@ -5,9 +5,9 @@ __all__ = []
 
 # Optional imports - only import if dependencies are available
 try:
-    from .langchain_callback import OpenlayerHandler
+    from .langchain_callback import OpenlayerHandler, AsyncOpenlayerHandler
 
-    __all__.append("OpenlayerHandler")
+    __all__.extend(["OpenlayerHandler", "AsyncOpenlayerHandler"])
 except ImportError:
     pass
 

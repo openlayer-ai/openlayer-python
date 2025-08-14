@@ -7,7 +7,7 @@ from uuid import UUID
 
 try:
     from langchain import schema as langchain_schema
-    from langchain.callbacks.base import BaseCallbackHandler
+    from langchain.callbacks.base import BaseCallbackHandler, AsyncCallbackHandler
 
     HAVE_LANGCHAIN = True
 except ImportError:
@@ -15,7 +15,7 @@ except ImportError:
 
 if TYPE_CHECKING:
     from langchain import schema as langchain_schema
-    from langchain.callbacks.base import BaseCallbackHandler
+    from langchain.callbacks.base import BaseCallbackHandler, AsyncCallbackHandler
 
 from ..tracing import tracer, steps, traces, enums
 from .. import utils
@@ -30,17 +30,21 @@ LANGCHAIN_TO_OPENLAYER_PROVIDER_MAP = {
 
 if HAVE_LANGCHAIN:
     BaseCallbackHandlerClass = BaseCallbackHandler
+    AsyncCallbackHandlerClass = AsyncCallbackHandler
 else:
     BaseCallbackHandlerClass = object
+    AsyncCallbackHandlerClass = object
 
 
-class OpenlayerHandler(BaseCallbackHandlerClass):  # type: ignore[misc]
-    """LangChain callback handler that logs to Openlayer."""
+class OpenlayerHandlerMixin:
+    """Mixin class containing shared logic for both sync and async Openlayer
+    handlers."""
 
     def __init__(self, **kwargs: Any) -> None:
         if not HAVE_LANGCHAIN:
             raise ImportError(
-                "LangChain library is not installed. Please install it with: pip install langchain"
+                "LangChain library is not installed. Please install it with: pip "
+                "install langchain"
             )
         super().__init__()
         self.metadata: Dict[str, Any] = kwargs or {}
@@ -301,6 +305,11 @@ class OpenlayerHandler(BaseCallbackHandlerClass):  # type: ignore[misc]
         metadata: Dict[str, Any],
     ) -> Dict[str, Any]:
         """Extract model information generically."""
+        # Handle case where parameters can be None
+        serialized = serialized or {}
+        invocation_params = invocation_params or {}
+        metadata = metadata or {}
+
         provider = invocation_params.get("_type")
         if provider in LANGCHAIN_TO_OPENLAYER_PROVIDER_MAP:
             provider = LANGCHAIN_TO_OPENLAYER_PROVIDER_MAP[provider]
@@ -370,9 +379,18 @@ class OpenlayerHandler(BaseCallbackHandlerClass):  # type: ignore[misc]
                 output += generation.text.replace("\n", " ")
         return output
 
-    # ---------------------- LangChain Callback Methods ---------------------- #
+    def _safe_parse_json(self, input_str: str) -> Any:
+        """Safely parse JSON string, returning the string if parsing fails."""
+        try:
+            import json
 
-    def on_llm_start(
+            return json.loads(input_str)
+        except (json.JSONDecodeError, TypeError):
+            return input_str
+
+    # ---------------------- Common Callback Logic ---------------------- #
+
+    def _handle_llm_start(
         self,
         serialized: Dict[str, Any],
         prompts: List[str],
@@ -384,7 +402,7 @@ class OpenlayerHandler(BaseCallbackHandlerClass):  # type: ignore[misc]
         name: Optional[str] = None,
         **kwargs: Any,
     ) -> Any:
-        """Run when LLM starts running."""
+        """Common logic for LLM start."""
         invocation_params = kwargs.get("invocation_params", {})
         model_info = self._extract_model_info(
             serialized, invocation_params, metadata or {}
@@ -403,7 +421,7 @@ class OpenlayerHandler(BaseCallbackHandlerClass):  # type: ignore[misc]
             **model_info,
         )
 
-    def on_chat_model_start(
+    def _handle_chat_model_start(
         self,
         serialized: Dict[str, Any],
         messages: List[List["langchain_schema.BaseMessage"]],
@@ -415,7 +433,7 @@ class OpenlayerHandler(BaseCallbackHandlerClass):  # type: ignore[misc]
         name: Optional[str] = None,
         **kwargs: Any,
     ) -> Any:
-        """Run when Chat Model starts running."""
+        """Common logic for chat model start."""
         invocation_params = kwargs.get("invocation_params", {})
         model_info = self._extract_model_info(
             serialized, invocation_params, metadata or {}
@@ -434,7 +452,7 @@ class OpenlayerHandler(BaseCallbackHandlerClass):  # type: ignore[misc]
             **model_info,
         )
 
-    def on_llm_end(
+    def _handle_llm_end(
         self,
         response: "langchain_schema.LLMResult",
         *,
@@ -443,7 +461,7 @@ class OpenlayerHandler(BaseCallbackHandlerClass):  # type: ignore[misc]
         tags: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> Any:
-        """Run when LLM ends running."""
+        """Common logic for LLM end."""
         if run_id not in self.steps:
             return
 
@@ -457,7 +475,7 @@ class OpenlayerHandler(BaseCallbackHandlerClass):  # type: ignore[misc]
             **token_info,
         )
 
-    def on_llm_error(
+    def _handle_llm_error(
         self,
         error: Union[Exception, KeyboardInterrupt],
         *,
@@ -465,14 +483,10 @@ class OpenlayerHandler(BaseCallbackHandlerClass):  # type: ignore[misc]
         parent_run_id: Optional[UUID] = None,
         **kwargs: Any,
     ) -> Any:
-        """Run when LLM errors."""
+        """Common logic for LLM error."""
         self._end_step(run_id=run_id, parent_run_id=parent_run_id, error=str(error))
 
-    def on_llm_new_token(self, token: str, **kwargs: Any) -> Any:
-        """Run on new LLM token. Only available when streaming is enabled."""
-        pass
-
-    def on_chain_start(
+    def _handle_chain_start(
         self,
         serialized: Dict[str, Any],
         inputs: Dict[str, Any],
@@ -484,8 +498,10 @@ class OpenlayerHandler(BaseCallbackHandlerClass):  # type: ignore[misc]
         name: Optional[str] = None,
         **kwargs: Any,
     ) -> Any:
-        """Run when chain starts running."""
+        """Common logic for chain start."""
         # Extract chain name from serialized data or use provided name
+        # Handle case where serialized can be None
+        serialized = serialized or {}
         chain_name = (
             name
             or (serialized.get("id", [])[-1] if serialized.get("id") else None)
@@ -510,7 +526,7 @@ class OpenlayerHandler(BaseCallbackHandlerClass):  # type: ignore[misc]
             },
         )
 
-    def on_chain_end(
+    def _handle_chain_end(
         self,
         outputs: Dict[str, Any],
         *,
@@ -519,17 +535,17 @@ class OpenlayerHandler(BaseCallbackHandlerClass):  # type: ignore[misc]
         tags: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> Any:
-        """Run when chain ends running."""
+        """Common logic for chain end."""
         if run_id not in self.steps:
             return
 
         self._end_step(
             run_id=run_id,
             parent_run_id=parent_run_id,
-            output=outputs,  # Direct output - conversion happens at the end
+            output=outputs,
         )
 
-    def on_chain_error(
+    def _handle_chain_error(
         self,
         error: Union[Exception, KeyboardInterrupt],
         *,
@@ -537,10 +553,10 @@ class OpenlayerHandler(BaseCallbackHandlerClass):  # type: ignore[misc]
         parent_run_id: Optional[UUID] = None,
         **kwargs: Any,
     ) -> Any:
-        """Run when chain errors."""
+        """Common logic for chain error."""
         self._end_step(run_id=run_id, parent_run_id=parent_run_id, error=str(error))
 
-    def on_tool_start(
+    def _handle_tool_start(
         self,
         serialized: Dict[str, Any],
         input_str: str,
@@ -553,7 +569,9 @@ class OpenlayerHandler(BaseCallbackHandlerClass):  # type: ignore[misc]
         inputs: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
     ) -> Any:
-        """Run when tool starts running."""
+        """Common logic for tool start."""
+        # Handle case where serialized can be None
+        serialized = serialized or {}
         tool_name = (
             name
             or (serialized.get("id", [])[-1] if serialized.get("id") else None)
@@ -577,7 +595,7 @@ class OpenlayerHandler(BaseCallbackHandlerClass):  # type: ignore[misc]
             },
         )
 
-    def on_tool_end(
+    def _handle_tool_end(
         self,
         output: str,
         *,
@@ -585,7 +603,7 @@ class OpenlayerHandler(BaseCallbackHandlerClass):  # type: ignore[misc]
         parent_run_id: Optional[UUID] = None,
         **kwargs: Any,
     ) -> Any:
-        """Run when tool ends running."""
+        """Common logic for tool end."""
         if run_id not in self.steps:
             return
 
@@ -595,7 +613,7 @@ class OpenlayerHandler(BaseCallbackHandlerClass):  # type: ignore[misc]
             output=output,
         )
 
-    def on_tool_error(
+    def _handle_tool_error(
         self,
         error: Union[Exception, KeyboardInterrupt],
         *,
@@ -603,22 +621,19 @@ class OpenlayerHandler(BaseCallbackHandlerClass):  # type: ignore[misc]
         parent_run_id: Optional[UUID] = None,
         **kwargs: Any,
     ) -> Any:
-        """Run when tool errors."""
+        """Common logic for tool error."""
         self._end_step(run_id=run_id, parent_run_id=parent_run_id, error=str(error))
 
-    def on_text(self, text: str, **kwargs: Any) -> Any:
-        """Run on arbitrary text."""
-        pass
-
-    def on_agent_action(
+    def _handle_agent_action(
         self,
         action: "langchain_schema.AgentAction",
         *,
         run_id: UUID,
         parent_run_id: Optional[UUID] = None,
+        tags: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> Any:
-        """Run on agent action."""
+        """Common logic for agent action."""
         self._start_step(
             run_id=run_id,
             parent_run_id=parent_run_id,
@@ -632,15 +647,16 @@ class OpenlayerHandler(BaseCallbackHandlerClass):  # type: ignore[misc]
             metadata={"agent_action": True, **kwargs},
         )
 
-    def on_agent_finish(
+    def _handle_agent_finish(
         self,
         finish: "langchain_schema.AgentFinish",
         *,
         run_id: UUID,
         parent_run_id: Optional[UUID] = None,
+        tags: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> Any:
-        """Run on agent end."""
+        """Common logic for agent finish."""
         if run_id not in self.steps:
             return
 
@@ -650,13 +666,380 @@ class OpenlayerHandler(BaseCallbackHandlerClass):  # type: ignore[misc]
             output=finish.return_values,
         )
 
-    # ---------------------- Helper Methods ---------------------- #
+    def _handle_retriever_start(
+        self,
+        serialized: Dict[str, Any],
+        query: str,
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        tags: Optional[List[str]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> Any:
+        """Common logic for retriever start."""
+        # Handle case where serialized can be None
+        serialized = serialized or {}
+        retriever_name = (
+            serialized.get("id", [])[-1] if serialized.get("id") else "Retriever"
+        )
 
-    def _safe_parse_json(self, input_str: str) -> Any:
-        """Safely parse JSON string, returning the string if parsing fails."""
-        try:
-            import json
+        self._start_step(
+            run_id=run_id,
+            parent_run_id=parent_run_id,
+            name=retriever_name,
+            step_type=enums.StepType.USER_CALL,
+            inputs={"query": query},
+            metadata={
+                "tags": tags,
+                "serialized": serialized,
+                **(metadata or {}),
+                **kwargs,
+            },
+        )
 
-            return json.loads(input_str)
-        except (json.JSONDecodeError, TypeError):
-            return input_str
+    def _handle_retriever_end(
+        self,
+        documents: List[Any],
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        tags: Optional[List[str]] = None,
+        **kwargs: Any,
+    ) -> Any:
+        """Common logic for retriever end."""
+        if run_id not in self.steps:
+            return
+
+        # Extract document content
+        doc_contents = []
+        for doc in documents:
+            if hasattr(doc, "page_content"):
+                doc_contents.append(doc.page_content)
+            else:
+                doc_contents.append(str(doc))
+
+        self._end_step(
+            run_id=run_id,
+            parent_run_id=parent_run_id,
+            output={"documents": doc_contents, "count": len(documents)},
+        )
+
+    def _handle_retriever_error(
+        self,
+        error: Exception,
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        tags: Optional[List[str]] = None,
+        **kwargs: Any,
+    ) -> Any:
+        """Common logic for retriever error."""
+        self._end_step(run_id=run_id, parent_run_id=parent_run_id, error=str(error))
+
+
+class OpenlayerHandler(OpenlayerHandlerMixin, BaseCallbackHandlerClass):  # type: ignore[misc]
+    """LangChain callback handler that logs to Openlayer."""
+
+    def on_llm_start(
+        self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
+    ) -> Any:
+        """Run when LLM starts running."""
+        return self._handle_llm_start(serialized, prompts, **kwargs)
+
+    def on_chat_model_start(
+        self,
+        serialized: Dict[str, Any],
+        messages: List[List["langchain_schema.BaseMessage"]],
+        **kwargs: Any,
+    ) -> Any:
+        """Run when Chat Model starts running."""
+        return self._handle_chat_model_start(serialized, messages, **kwargs)
+
+    def on_llm_end(self, response: "langchain_schema.LLMResult", **kwargs: Any) -> Any:
+        """Run when LLM ends running."""
+        return self._handle_llm_end(response, **kwargs)
+
+    def on_llm_error(
+        self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
+    ) -> Any:
+        """Run when LLM errors."""
+        return self._handle_llm_error(error, **kwargs)
+
+    def on_llm_new_token(self, token: str, **kwargs: Any) -> Any:
+        """Run on new LLM token. Only available when streaming is enabled."""
+        pass
+
+    def on_chain_start(
+        self, serialized: Dict[str, Any], inputs: Dict[str, Any], **kwargs: Any
+    ) -> Any:
+        """Run when chain starts running."""
+        return self._handle_chain_start(serialized, inputs, **kwargs)
+
+    def on_chain_end(self, outputs: Dict[str, Any], **kwargs: Any) -> Any:
+        """Run when chain ends running."""
+        return self._handle_chain_end(outputs, **kwargs)
+
+    def on_chain_error(
+        self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
+    ) -> Any:
+        """Run when chain errors."""
+        return self._handle_chain_error(error, **kwargs)
+
+    def on_tool_start(
+        self, serialized: Dict[str, Any], input_str: str, **kwargs: Any
+    ) -> Any:
+        """Run when tool starts running."""
+        return self._handle_tool_start(serialized, input_str, **kwargs)
+
+    def on_tool_end(self, output: str, **kwargs: Any) -> Any:
+        """Run when tool ends running."""
+        return self._handle_tool_end(output, **kwargs)
+
+    def on_tool_error(
+        self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
+    ) -> Any:
+        """Run when tool errors."""
+        return self._handle_tool_error(error, **kwargs)
+
+    def on_text(self, text: str, **kwargs: Any) -> Any:
+        """Run on arbitrary text."""
+        pass
+
+    def on_agent_action(
+        self, action: "langchain_schema.AgentAction", **kwargs: Any
+    ) -> Any:
+        """Run on agent action."""
+        return self._handle_agent_action(action, **kwargs)
+
+    def on_agent_finish(
+        self, finish: "langchain_schema.AgentFinish", **kwargs: Any
+    ) -> Any:
+        """Run on agent end."""
+        return self._handle_agent_finish(finish, **kwargs)
+
+
+class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  # type: ignore[misc]
+    """Async LangChain callback handler that logs to Openlayer."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        # For async: manage our own trace mapping since context vars are unreliable
+        self._traces_by_root: Dict[UUID, traces.Trace] = {}
+
+    def _start_step(
+        self,
+        run_id: UUID,
+        parent_run_id: Optional[UUID],
+        name: str,
+        step_type: enums.StepType = enums.StepType.CHAT_COMPLETION,
+        inputs: Optional[Any] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        **step_kwargs: Any,
+    ) -> steps.Step:
+        """Start a new step - async version with explicit trace management."""
+        if run_id in self.steps:
+            return self.steps[run_id]
+
+        # Create the step
+        step = steps.step_factory(
+            step_type=step_type,
+            name=name,
+            inputs=inputs,
+            metadata={**self.metadata, **(metadata or {})},
+        )
+        step.start_time = time.time()
+
+        # Set step-specific attributes
+        for key, value in step_kwargs.items():
+            if hasattr(step, key):
+                setattr(step, key, value)
+
+        # Handle parent-child relationships
+        if parent_run_id is not None and parent_run_id in self.steps:
+            # This step has a parent - add as nested step
+            parent_step = self.steps[parent_run_id]
+            parent_step.add_nested_step(step)
+        else:
+            # This is a root step - create a new trace
+            trace = traces.Trace()
+            trace.add_step(step)
+            self._traces_by_root[run_id] = trace
+            self.root_steps.add(run_id)
+
+        self.steps[run_id] = step
+        return step
+
+    def _end_step(
+        self,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        output: Optional[Any] = None,
+        error: Optional[str] = None,
+        **step_kwargs: Any,
+    ) -> None:
+        """End a step - async version with explicit upload logic."""
+        if run_id not in self.steps:
+            return
+
+        step = self.steps.pop(run_id)
+        is_root_step = run_id in self.root_steps
+
+        if is_root_step:
+            self.root_steps.remove(run_id)
+
+        # Update step with final data
+        if step.end_time is None:
+            step.end_time = time.time()
+        if step.latency is None:
+            step.latency = (step.end_time - step.start_time) * 1000
+
+        # Set output and error
+        if output is not None:
+            step.output = output
+        if error is not None:
+            step.metadata = {**step.metadata, "error": error}
+
+        # Set additional step attributes
+        for key, value in step_kwargs.items():
+            if hasattr(step, key):
+                setattr(step, key, value)
+
+        # If this is a root step, process and upload the trace
+        if is_root_step and run_id in self._traces_by_root:
+            trace = self._traces_by_root.pop(run_id)
+            self._process_and_upload_async_trace(trace)
+
+    def _process_and_upload_async_trace(self, trace: traces.Trace) -> None:
+        """Process and upload trace for async handler."""
+        # Convert all LangChain objects
+        for step in trace.steps:
+            self._convert_step_objects_recursively(step)
+
+        # Use tracer's post-processing
+        trace_data, input_variable_names = tracer.post_process_trace(trace)
+
+        # Build config
+        config = dict(
+            tracer.ConfigLlmData(
+                output_column_name="output",
+                input_variable_names=input_variable_names,
+                latency_column_name="latency",
+                cost_column_name="cost",
+                timestamp_column_name="inferenceTimestamp",
+                inference_id_column_name="inferenceId",
+                num_of_token_column_name="tokens",
+            )
+        )
+
+        if "groundTruth" in trace_data:
+            config.update({"ground_truth_column_name": "groundTruth"})
+        if "context" in trace_data:
+            config.update({"context_column_name": "context"})
+
+        root_step = trace.steps[0] if trace.steps else None
+        if (
+            root_step
+            and isinstance(root_step, steps.ChatCompletionStep)
+            and root_step.inputs
+            and "prompt" in root_step.inputs
+        ):
+            config.update({"prompt": root_step.inputs["prompt"]})
+
+        # Upload to Openlayer
+        if tracer._publish:
+            try:
+                client = tracer._get_client()
+                if client:
+                    client.inference_pipelines.data.stream(
+                        inference_pipeline_id=utils.get_env_variable(
+                            "OPENLAYER_INFERENCE_PIPELINE_ID"
+                        ),
+                        rows=[trace_data],
+                        config=config,
+                    )
+            except Exception as err:
+                tracer.logger.error("Could not stream data to Openlayer %s", err)
+
+    # All callback methods remain the same - just delegate to mixin
+    async def on_llm_start(
+        self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
+    ) -> Any:
+        return self._handle_llm_start(serialized, prompts, **kwargs)
+
+    async def on_chat_model_start(
+        self,
+        serialized: Dict[str, Any],
+        messages: List[List["langchain_schema.BaseMessage"]],
+        **kwargs: Any,
+    ) -> Any:
+        return self._handle_chat_model_start(serialized, messages, **kwargs)
+
+    async def on_llm_end(
+        self, response: "langchain_schema.LLMResult", **kwargs: Any
+    ) -> Any:
+        return self._handle_llm_end(response, **kwargs)
+
+    async def on_llm_error(
+        self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
+    ) -> Any:
+        return self._handle_llm_error(error, **kwargs)
+
+    async def on_llm_new_token(self, token: str, **kwargs: Any) -> Any:
+        pass
+
+    async def on_chain_start(
+        self, serialized: Dict[str, Any], inputs: Dict[str, Any], **kwargs: Any
+    ) -> Any:
+        return self._handle_chain_start(serialized, inputs, **kwargs)
+
+    async def on_chain_end(self, outputs: Dict[str, Any], **kwargs: Any) -> Any:
+        return self._handle_chain_end(outputs, **kwargs)
+
+    async def on_chain_error(
+        self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
+    ) -> Any:
+        return self._handle_chain_error(error, **kwargs)
+
+    async def on_tool_start(
+        self, serialized: Dict[str, Any], input_str: str, **kwargs: Any
+    ) -> Any:
+        return self._handle_tool_start(serialized, input_str, **kwargs)
+
+    async def on_tool_end(self, output: str, **kwargs: Any) -> Any:
+        return self._handle_tool_end(output, **kwargs)
+
+    async def on_tool_error(
+        self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
+    ) -> Any:
+        return self._handle_tool_error(error, **kwargs)
+
+    async def on_text(self, text: str, **kwargs: Any) -> Any:
+        pass
+
+    async def on_agent_action(
+        self, action: "langchain_schema.AgentAction", **kwargs: Any
+    ) -> Any:
+        return self._handle_agent_action(action, **kwargs)
+
+    async def on_agent_finish(
+        self, finish: "langchain_schema.AgentFinish", **kwargs: Any
+    ) -> Any:
+        return self._handle_agent_finish(finish, **kwargs)
+
+    async def on_retriever_start(
+        self, serialized: Dict[str, Any], query: str, **kwargs: Any
+    ) -> Any:
+        return self._handle_retriever_start(serialized, query, **kwargs)
+
+    async def on_retriever_end(self, documents: List[Any], **kwargs: Any) -> Any:
+        return self._handle_retriever_end(documents, **kwargs)
+
+    async def on_retriever_error(self, error: Exception, **kwargs: Any) -> Any:
+        return self._handle_retriever_error(error, **kwargs)
+
+    async def on_retry(self, retry_state: Any, **kwargs: Any) -> Any:
+        pass
+
+    async def on_custom_event(self, name: str, data: Any, **kwargs: Any) -> Any:
+        pass
