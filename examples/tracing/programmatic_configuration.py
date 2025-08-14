@@ -123,7 +123,9 @@ if __name__ == "__main__":
     print("=" * 50)
 
     # Note: Replace the placeholder API keys and IDs with real values
-    print("Note: Replace placeholder API keys and pipeline IDs with real values before running.")
+    print(
+        "Note: Replace placeholder API keys and pipeline IDs with real values before running."
+    )
     print()
 
     try:
