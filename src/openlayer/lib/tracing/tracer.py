@@ -540,13 +540,83 @@ def trace_async(
                         **step_kwargs,
                     ) as step:
                         output = exception = None
+                        guardrail_metadata = {}
 
                         try:
-                            output = await func(*func_args, **func_kwargs)
+                            # Apply input guardrails if provided
+                            if guardrails:
+                                try:
+                                    inputs = _extract_function_inputs(
+                                        func_signature=func_signature,
+                                        func_args=func_args,
+                                        func_kwargs=func_kwargs,
+                                        context_kwarg=context_kwarg,
+                                    )
+
+                                    # Process inputs through guardrails
+                                    modified_inputs, input_metadata = (
+                                        _apply_guardrails_to_inputs(
+                                            guardrails,
+                                            inputs,
+                                        )
+                                    )
+                                    guardrail_metadata.update(input_metadata)
+
+                                    # Execute function with potentially modified inputs
+                                    if modified_inputs != inputs:
+                                        # Reconstruct function arguments from modified inputs
+                                        bound = func_signature.bind(
+                                            *func_args, **func_kwargs
+                                        )
+                                        bound.apply_defaults()
+
+                                        # Update bound arguments with modified values
+                                        for (
+                                            param_name,
+                                            modified_value,
+                                        ) in modified_inputs.items():
+                                            if param_name in bound.arguments:
+                                                bound.arguments[param_name] = (
+                                                    modified_value
+                                                )
+
+                                        output = await func(*bound.args, **bound.kwargs)
+                                    else:
+                                        output = await func(*func_args, **func_kwargs)
+                                except Exception as e:
+                                    # Log guardrail errors but don't fail function execution
+                                    logger.error("Guardrail error: %s", e)
+                                    output = await func(*func_args, **func_kwargs)
+                            else:
+                                output = await func(*func_args, **func_kwargs)
+
                         except Exception as exc:
                             _log_step_exception(step, exc)
                             exception = exc
                             raise
+
+                        # Apply output guardrails if provided
+                        if guardrails and output is not None:
+                            try:
+                                final_output, output_metadata = (
+                                    _apply_guardrails_to_outputs(
+                                        guardrails,
+                                        output,
+                                        _extract_function_inputs(
+                                            func_signature=func_signature,
+                                            func_args=func_args,
+                                            func_kwargs=func_kwargs,
+                                            context_kwarg=context_kwarg,
+                                        ),
+                                    )
+                                )
+                                guardrail_metadata.update(output_metadata)
+
+                                if final_output != output:
+                                    output = final_output
+                            except Exception as e:
+                                # Log guardrail errors but don't fail function execution
+                                logger.error("Output guardrail error: %s", e)
 
                         # Extract inputs and finalize logging
                         _process_wrapper_inputs_and_outputs(
@@ -556,7 +626,7 @@ def trace_async(
                             func_kwargs=func_kwargs,
                             context_kwarg=context_kwarg,
                             output=output,
-                            guardrail_metadata={},  # TODO: Add guardrail support
+                            guardrail_metadata=guardrail_metadata,
                         )
 
                         return output
@@ -572,11 +642,79 @@ def trace_async(
                     **step_kwargs,
                 ) as step:
                     output = exception = None
+                    guardrail_metadata = {}
                     try:
-                        output = func(*func_args, **func_kwargs)
+                        # Apply input guardrails if provided
+                        if guardrails:
+                            try:
+                                inputs = _extract_function_inputs(
+                                    func_signature=func_signature,
+                                    func_args=func_args,
+                                    func_kwargs=func_kwargs,
+                                    context_kwarg=context_kwarg,
+                                )
+
+                                # Process inputs through guardrails
+                                modified_inputs, input_metadata = (
+                                    _apply_guardrails_to_inputs(
+                                        guardrails,
+                                        inputs,
+                                    )
+                                )
+                                guardrail_metadata.update(input_metadata)
+
+                                # Execute function with potentially modified inputs
+                                if modified_inputs != inputs:
+                                    # Reconstruct function arguments from modified inputs
+                                    bound = func_signature.bind(
+                                        *func_args, **func_kwargs
+                                    )
+                                    bound.apply_defaults()
+
+                                    # Update bound arguments with modified values
+                                    for (
+                                        param_name,
+                                        modified_value,
+                                    ) in modified_inputs.items():
+                                        if param_name in bound.arguments:
+                                            bound.arguments[param_name] = modified_value
+
+                                    output = func(*bound.args, **bound.kwargs)
+                                else:
+                                    output = func(*func_args, **func_kwargs)
+                            except Exception as e:
+                                # Log guardrail errors but don't fail function execution
+                                logger.error("Guardrail error: %s", e)
+                                output = func(*func_args, **func_kwargs)
+                        else:
+                            output = func(*func_args, **func_kwargs)
+
                     except Exception as exc:
                         _log_step_exception(step, exc)
                         exception = exc
+
+                    # Apply output guardrails if provided
+                    if guardrails and output is not None:
+                        try:
+                            final_output, output_metadata = (
+                                _apply_guardrails_to_outputs(
+                                    guardrails,
+                                    output,
+                                    _extract_function_inputs(
+                                        func_signature=func_signature,
+                                        func_args=func_args,
+                                        func_kwargs=func_kwargs,
+                                        context_kwarg=context_kwarg,
+                                    ),
+                                )
+                            )
+                            guardrail_metadata.update(output_metadata)
+
+                            if final_output != output:
+                                output = final_output
+                        except Exception as e:
+                            # Log guardrail errors but don't fail function execution
+                            logger.error("Output guardrail error: %s", e)
 
                     # Extract inputs and finalize logging
                     _process_wrapper_inputs_and_outputs(
@@ -586,7 +724,7 @@ def trace_async(
                         func_kwargs=func_kwargs,
                         context_kwarg=context_kwarg,
                         output=output,
-                        guardrail_metadata={},  # TODO: Add guardrail support
+                        guardrail_metadata=guardrail_metadata,
                     )
 
                     if exception is not None:
@@ -987,11 +1125,7 @@ def _finalize_async_generator_step(
     """Finalize async generator step - called when generator is consumed."""
     _current_step.reset(token)
     _finalize_step_logging(
-        step=step,
-        inputs=inputs,
-        output=output,
-        start_time=step.start_time,
-        guardrail_metadata={},  # TODO: Add guardrail support for async generators
+        step=step, inputs=inputs, output=output, start_time=step.start_time
     )
     _handle_trace_completion(
         is_root_step=is_root_step,
