@@ -3,7 +3,13 @@
 import logging
 from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING
 
-from .base import BaseGuardrail, GuardrailAction, GuardrailResult, BlockStrategy, register_guardrail
+from .base import (
+    BaseGuardrail,
+    GuardrailAction,
+    GuardrailResult,
+    BlockStrategy,
+    register_guardrail,
+)
 
 if TYPE_CHECKING:
     try:
@@ -18,6 +24,7 @@ try:
     from presidio_analyzer import AnalyzerEngine, RecognizerResult
     from presidio_anonymizer import AnonymizerEngine
     from presidio_anonymizer.entities import OperatorConfig
+
     HAVE_PRESIDIO = True
 except ImportError:
     HAVE_PRESIDIO = False
@@ -31,19 +38,31 @@ logger = logging.getLogger(__name__)
 
 class PIIGuardrail(BaseGuardrail):
     """PII detection and protection guardrail using Microsoft Presidio."""
-    
+
     # Default entity types that trigger blocking (high-risk PII)
     DEFAULT_BLOCK_ENTITIES = {
-        'CREDIT_CARD', 'CRYPTO', 'IBAN_CODE', 'IP_ADDRESS', 'US_SSN',
-        'US_BANK_NUMBER', 'US_DRIVER_LICENSE', 'US_PASSPORT'
+        "CREDIT_CARD",
+        "CRYPTO",
+        "IBAN_CODE",
+        "IP_ADDRESS",
+        "US_SSN",
+        "US_BANK_NUMBER",
+        "US_DRIVER_LICENSE",
+        "US_PASSPORT",
     }
-    
+
     # Default entity types that get redacted/modified (medium-risk PII)
     DEFAULT_REDACT_ENTITIES = {
-        'PHONE_NUMBER', 'EMAIL_ADDRESS', 'PERSON', 'LOCATION',
-        'DATE_TIME', 'NRP', 'MEDICAL_LICENSE', 'URL'
+        "PHONE_NUMBER",
+        "EMAIL_ADDRESS",
+        "PERSON",
+        "LOCATION",
+        "DATE_TIME",
+        "NRP",
+        "MEDICAL_LICENSE",
+        "URL",
     }
-    
+
     def __init__(
         self,
         name: str = "PII Guardrail",
@@ -54,10 +73,10 @@ class PIIGuardrail(BaseGuardrail):
         language: str = "en",
         block_strategy: BlockStrategy = BlockStrategy.RETURN_ERROR_MESSAGE,
         block_message: str = "Request blocked due to sensitive information",
-        **config
+        **config,
     ):
         """Initialize PII guardrail.
-        
+
         Args:
             name: Human-readable name for this guardrail
             enabled: Whether this guardrail is active
@@ -74,124 +93,131 @@ class PIIGuardrail(BaseGuardrail):
                 "Presidio is required for PII guardrail. "
                 "Install with: pip install presidio-analyzer presidio-anonymizer"
             )
-        
+
         super().__init__(name=name, enabled=enabled, **config)
-        
+
         self.block_entities = block_entities or self.DEFAULT_BLOCK_ENTITIES.copy()
         self.redact_entities = redact_entities or self.DEFAULT_REDACT_ENTITIES.copy()
         self.confidence_threshold = confidence_threshold
         self.language = language
         self.block_strategy = block_strategy
         self.block_message = block_message
-        
+
         # Initialize Presidio engines
         self.analyzer = AnalyzerEngine()
         self.anonymizer = AnonymizerEngine()
-        
-        logger.debug(f"Initialized PII guardrail with block_entities={self.block_entities}, "
-                    f"redact_entities={self.redact_entities}, threshold={confidence_threshold}")
-    
+
+        logger.debug(
+            f"Initialized PII guardrail with block_entities={self.block_entities}, "
+            f"redact_entities={self.redact_entities}, threshold={confidence_threshold}"
+        )
+
     def check_input(self, inputs: Dict[str, Any]) -> GuardrailResult:
         """Check function inputs for PII."""
         return self._check_data(inputs, data_type="input")
-    
+
     def check_output(self, output: Any, inputs: Dict[str, Any]) -> GuardrailResult:
         """Check function output for PII."""
         return self._check_data(output, data_type="output")
-    
+
     def _check_data(self, data: Any, data_type: str) -> GuardrailResult:
-        """Check arbitrary data for PII.
-        
-        Args:
-            data: Data to check (can be dict, string, or other types)
-            data_type: Type of data being checked ("input" or "output")
-            
-        Returns:
-            GuardrailResult with appropriate action
-        """
+        """Check arbitrary data for PII."""
         if not self.enabled:
             return GuardrailResult(
                 action=GuardrailAction.ALLOW,
-                metadata={"guardrail": self.name, "action": "allow", "reason": "disabled"}
+                metadata={
+                    "guardrail": self.name,
+                    "action": "allow",
+                    "reason": "disabled",
+                },
             )
-        
+
         # Extract text content from data
         text_content = self._extract_text(data)
         if not text_content:
             return GuardrailResult(
                 action=GuardrailAction.ALLOW,
-                metadata={"guardrail": self.name, "action": "allow", "reason": "no_text_content"}
+                metadata={
+                    "guardrail": self.name,
+                    "action": "allow",
+                    "reason": "no_text_content",
+                },
             )
-        
-        # Analyze for PII
-        analysis_results = []
+
+        # Analyze for PII and map results to their source text
         detected_entities = set()
-        
+        self._text_to_results = {}  # Store mapping for redaction phase
+
         for text in text_content:
             results = self.analyzer.analyze(
                 text=text,
                 language=self.language,
-                entities=list(self.block_entities | self.redact_entities)
+                entities=list(self.block_entities | self.redact_entities),
             )
-            
+
             # Filter by confidence threshold
             filtered_results = [
-                result for result in results 
+                result
+                for result in results
                 if result.score >= self.confidence_threshold
             ]
-            
-            analysis_results.extend(filtered_results)
+
             detected_entities.update(result.entity_type for result in filtered_results)
-        
+            self._text_to_results[text] = (
+                filtered_results  # Map text to its specific results
+            )
+
         # Determine action based on detected entities
         blocked_entities = detected_entities & self.block_entities
         redacted_entities = detected_entities & self.redact_entities
-        
+
         metadata = {
             "guardrail": self.name,
             "detected_entities": list(detected_entities),
             "blocked_entities": list(blocked_entities),
             "redacted_entities": list(redacted_entities),
             "confidence_threshold": self.confidence_threshold,
-            "data_type": data_type
+            "data_type": data_type,
         }
-        
+
         if blocked_entities:
             return GuardrailResult(
                 action=GuardrailAction.BLOCK,
                 metadata={**metadata, "action": "blocked"},
                 reason=f"Detected high-risk PII entities: {', '.join(blocked_entities)}",
                 block_strategy=self.block_strategy,
-                error_message=self.block_message
+                error_message=self.block_message,
             )
-        
+
         elif redacted_entities:
-            # Redact the sensitive information
-            modified_data = self._redact_data(data, analysis_results)
+            # Redact the sensitive information using our stored mapping
+            modified_data = self._redact_data(
+                data, None
+            )  # analysis_results not needed anymore
             return GuardrailResult(
                 action=GuardrailAction.MODIFY,
                 modified_data=modified_data,
                 metadata={**metadata, "action": "redacted"},
-                reason=f"Redacted PII entities: {', '.join(redacted_entities)}"
+                reason=f"Redacted PII entities: {', '.join(redacted_entities)}",
             )
-        
+
         else:
             return GuardrailResult(
                 action=GuardrailAction.ALLOW,
-                metadata={**metadata, "action": "allow", "reason": "no_pii_detected"}
+                metadata={**metadata, "action": "allow", "reason": "no_pii_detected"},
             )
-    
+
     def _extract_text(self, data: Any) -> List[str]:
         """Extract text content from various data types.
-        
+
         Args:
             data: Data to extract text from
-            
+
         Returns:
             List of text strings found in the data
         """
         texts = []
-        
+
         if isinstance(data, str):
             texts.append(data)
         elif isinstance(data, dict):
@@ -200,88 +226,101 @@ class PIIGuardrail(BaseGuardrail):
         elif isinstance(data, (list, tuple)):
             for item in data:
                 texts.extend(self._extract_text(item))
-        elif hasattr(data, '__str__') and not isinstance(data, (int, float, bool)):
+        elif hasattr(data, "__str__") and not isinstance(data, (int, float, bool)):
             # Convert other types to string, but skip basic numeric/boolean types
             text_repr = str(data)
-            if text_repr and text_repr not in ('True', 'False', 'None'):
+            if text_repr and text_repr not in ("True", "False", "None"):
                 texts.append(text_repr)
-        
+
         return [text for text in texts if text and len(text.strip()) > 0]
-    
-    def _redact_data(self, data: Any, analysis_results: List["RecognizerResult"]) -> Any:
-        """Redact PII from data based on analysis results.
-        
-        Args:
-            data: Original data
-            analysis_results: List of PII detection results
-            
-        Returns:
-            Data with PII redacted
-        """
+
+    def _redact_data(
+        self, data: Any, analysis_results: List["RecognizerResult"] = None
+    ) -> Any:
+        """Redact PII from data using pre-computed text-to-results mapping."""
         if isinstance(data, str):
-            return self._redact_text(data, analysis_results)
+            return self._redact_text_with_mapping(data)
         elif isinstance(data, dict):
-            return {key: self._redact_data(value, analysis_results) for key, value in data.items()}
+            return {
+                key: self._redact_data(value, analysis_results)
+                for key, value in data.items()
+            }
         elif isinstance(data, list):
             return [self._redact_data(item, analysis_results) for item in data]
         elif isinstance(data, tuple):
             return tuple(self._redact_data(item, analysis_results) for item in data)
         else:
             # For other types, convert to string, redact, and return as string
-            if hasattr(data, '__str__'):
+            if hasattr(data, "__str__"):
                 text_repr = str(data)
-                if text_repr and text_repr not in ('True', 'False', 'None'):
-                    return self._redact_text(text_repr, analysis_results)
+                if text_repr and text_repr not in ("True", "False", "None"):
+                    return self._redact_text_with_mapping(text_repr)
             return data
-    
-    def _redact_text(self, text: str, analysis_results: List["RecognizerResult"]) -> str:
-        """Redact PII from a text string.
-        
-        Args:
-            text: Original text
-            analysis_results: List of PII detection results for this text
-            
-        Returns:
-            Text with PII redacted
-        """
-        # Filter results to only those that should be redacted (not blocked)
-        relevant_results = [
-            result for result in analysis_results
-            if result.entity_type in self.redact_entities and result.score >= self.confidence_threshold
-        ]
-        
-        if not relevant_results:
+
+    def _redact_text_with_mapping(self, text: str) -> str:
+        """Redact PII from text using pre-computed analysis results."""
+        if not text or not hasattr(self, "_text_to_results"):
             return text
-        
+
+        # Get the analysis results specific to this text
+        relevant_results = self._text_to_results.get(text, [])
+
+        # Filter to only redaction entities (not blocking entities)
+        redact_results = [
+            result
+            for result in relevant_results
+            if result.entity_type in self.redact_entities
+            and result.score >= self.confidence_threshold
+        ]
+
+        if not redact_results:
+            return text
+
         # Use Presidio anonymizer to redact
         try:
             anonymized_result = self.anonymizer.anonymize(
                 text=text,
-                analyzer_results=relevant_results,
+                analyzer_results=redact_results,
                 operators={
                     "DEFAULT": OperatorConfig("replace", {"new_value": "[REDACTED]"}),
-                    "PHONE_NUMBER": OperatorConfig("replace", {"new_value": "[PHONE-REDACTED]"}),
-                    "EMAIL_ADDRESS": OperatorConfig("replace", {"new_value": "[EMAIL-REDACTED]"}),
-                    "PERSON": OperatorConfig("replace", {"new_value": "[NAME-REDACTED]"}),
-                    "LOCATION": OperatorConfig("replace", {"new_value": "[LOCATION-REDACTED]"}),
-                }
+                    "PHONE_NUMBER": OperatorConfig(
+                        "replace", {"new_value": "[PHONE-REDACTED]"}
+                    ),
+                    "EMAIL_ADDRESS": OperatorConfig(
+                        "replace", {"new_value": "[EMAIL-REDACTED]"}
+                    ),
+                    "PERSON": OperatorConfig(
+                        "replace", {"new_value": "[NAME-REDACTED]"}
+                    ),
+                    "LOCATION": OperatorConfig(
+                        "replace", {"new_value": "[LOCATION-REDACTED]"}
+                    ),
+                },
             )
             return anonymized_result.text
         except Exception as e:
-            logger.warning(f"Failed to anonymize text: {e}")
+            logger.warning(f"Failed to anonymize text '{text[:50]}...': {e}")
             # Fallback to simple replacement
             return "[REDACTED]"
-    
+
+    def _redact_text(
+        self, text: str, analysis_results: List["RecognizerResult"]
+    ) -> str:
+        """Legacy method - redirects to mapping-based approach."""
+        return self._redact_text_with_mapping(text)
+
     def get_metadata(self) -> Dict[str, Any]:
         """Get metadata about this guardrail for trace logging."""
         base_metadata = super().get_metadata()
-        base_metadata.update({
-            "block_entities": list(self.block_entities),
-            "redact_entities": list(self.redact_entities),
-            "confidence_threshold": self.confidence_threshold,
-            "language": self.language,
-            "presidio_available": HAVE_PRESIDIO
-        })
+        base_metadata.update(
+            {
+                "block_entities": list(self.block_entities),
+                "redact_entities": list(self.redact_entities),
+                "confidence_threshold": self.confidence_threshold,
+                "language": self.language,
+                "presidio_available": HAVE_PRESIDIO,
+            }
+        )
         return base_metadata
 
 
