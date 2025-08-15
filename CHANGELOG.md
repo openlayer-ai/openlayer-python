@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.80 (2025-08-15)
+
+Full Changelog: [v0.2.0-alpha.79...v0.2.0-alpha.80](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.79...v0.2.0-alpha.80)
+
+### Features
+
+* **examples:** add async LangChain callback handler notebook ([9f612c8](https://github.com/openlayer-ai/openlayer-python/commit/9f612c8264dab90d480fc1df87a16ca4fec44b8d))
+* **integrations:** async Openlayer callback handler ([f1b9761](https://github.com/openlayer-ai/openlayer-python/commit/f1b9761c4b915a6b9de8b6b08069cf11fb6345e3))
+
+
+### Chores
+
+* update async LangChain callback handler notebook ([5dea2a9](https://github.com/openlayer-ai/openlayer-python/commit/5dea2a973bfa4df757b241f72d24b12d213408d6))
+
 ## 0.2.0-alpha.79 (2025-08-13)
 
 Full Changelog: [v0.2.0-alpha.78...v0.2.0-alpha.79](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.78...v0.2.0-alpha.79)
