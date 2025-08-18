@@ -15,7 +15,7 @@ from datetime import datetime
 os.environ["OPENLAYER_API_KEY"] = "your-api-key-here"
 os.environ["OPENLAYER_INFERENCE_PIPELINE_ID"] = "your-pipeline-id-here"
 
-import openlayer
+from openlayer.lib import trace, trace_async, update_current_trace, update_current_span
 
 
 class UserSession:
@@ -34,7 +34,7 @@ class ChatApplication:
     def __init__(self):
         self.active_sessions: Dict[str, UserSession] = {}
     
-    @openlayer.trace()
+    @trace()
     def handle_user_request(self, request_text: str, session_token: str) -> str:
         """Main request handler that dynamically sets trace metadata."""
         
@@ -42,7 +42,7 @@ class ChatApplication:
         user_session = self.get_user_session(session_token)
         
         # Set trace-level metadata with user context
-        openlayer.update_current_trace(
+        update_current_trace(
             name=f"chat_request_{user_session.user_id}",
             user_id=user_session.user_id,
             tags=["chat", "user_request", user_session.preferences.get("tier", "free")],
@@ -62,7 +62,7 @@ class ChatApplication:
         final_response = self.postprocess_response(response, user_session)
         
         # Update trace with final output
-        openlayer.update_current_trace(
+        update_current_trace(
             output={"response": final_response, "processing_time": "0.5s"},
             metadata={
                 "response_length": len(final_response),
@@ -73,12 +73,12 @@ class ChatApplication:
         user_session.interaction_count += 1
         return final_response
     
-    @openlayer.trace()
+    @trace()
     def preprocess_request(self, text: str, user_session: UserSession) -> str:
         """Preprocess user request with step-level metadata."""
         
         # Update current step with preprocessing context
-        openlayer.update_current_span(
+        update_current_span(
             metadata={
                 "preprocessing_type": "standard",
                 "user_preferences_applied": True,
@@ -97,14 +97,14 @@ class ChatApplication:
             
         return processed
     
-    @openlayer.trace()
+    @trace()
     def generate_response(self, processed_text: str, user_session: UserSession) -> str:
         """Generate AI response with model metadata."""
         
         # Set model-specific metadata
         model_version = "gpt-4" if user_session.preferences.get("tier") == "premium" else "gpt-3.5-turbo"
         
-        openlayer.update_current_span(
+        update_current_span(
             metadata={
                 "model_used": model_version,
                 "temperature": 0.7,
@@ -127,11 +127,11 @@ class ChatApplication:
             
         return response
     
-    @openlayer.trace()
+    @trace()
     def postprocess_response(self, response: str, user_session: UserSession) -> str:
         """Postprocess response with personalization metadata."""
         
-        openlayer.update_current_span(
+        update_current_span(
             metadata={
                 "personalization_applied": True,
                 "content_filtering": user_session.preferences.get("content_filter", "moderate"),
@@ -170,12 +170,12 @@ class ChatApplication:
         return text.replace("can't", "cannot").replace("won't", "will not")
 
 
-@openlayer.trace()
+@trace()
 def batch_processing_example():
     """Example showing batch processing with trace metadata updates."""
     
     # Set trace metadata for batch job
-    openlayer.update_current_trace(
+    update_current_trace(
         name="batch_user_requests",
         tags=["batch", "processing", "multiple_users"],
         metadata={
@@ -199,7 +199,7 @@ def batch_processing_example():
         results.append(result)
         
         # Update batch progress
-        openlayer.update_current_trace(
+        update_current_trace(
             metadata={
                 "requests_processed": i + 1,
                 "progress_percentage": ((i + 1) / len(test_requests)) * 100
@@ -207,7 +207,7 @@ def batch_processing_example():
         )
     
     # Update final batch metadata
-    openlayer.update_current_trace(
+    update_current_trace(
         output={"batch_results": results, "total_processed": len(results)},
         metadata={
             "processing_complete": True,
@@ -219,18 +219,18 @@ def batch_processing_example():
     return results
 
 
-@openlayer.trace()
+@trace()
 def error_handling_example():
     """Example showing error handling with trace metadata."""
     
-    openlayer.update_current_trace(
+    update_current_trace(
         name="error_handling_demo",
         metadata={"expected_behavior": "demonstrate error tracing"}
     )
     
     try:
         # Simulate some processing
-        openlayer.update_current_span(
+        update_current_span(
             metadata={"processing_step": "initial_validation"}
         )
         
@@ -239,7 +239,7 @@ def error_handling_example():
         
     except ValueError as e:
         # Update trace with error information
-        openlayer.update_current_trace(
+        update_current_trace(
             metadata={
                 "error_occurred": True,
                 "error_type": type(e).__name__,
@@ -252,11 +252,11 @@ def error_handling_example():
         return f"Error handled: {str(e)}"
 
 
-@openlayer.trace_async()
+@trace_async()
 async def async_example():
     """Example showing async trace metadata updates."""
     
-    openlayer.update_current_trace(
+    update_current_trace(
         name="async_processing",
         metadata={"execution_mode": "async"},
         tags=["async", "demo"]
@@ -265,12 +265,12 @@ async def async_example():
     # Simulate async processing steps
     import asyncio
     
-    openlayer.update_current_span(
+    update_current_span(
         metadata={"step": "async_sleep_simulation"}
     )
     await asyncio.sleep(0.1)
     
-    openlayer.update_current_trace(
+    update_current_trace(
         metadata={"async_complete": True},
         output="Async processing completed"
     )
