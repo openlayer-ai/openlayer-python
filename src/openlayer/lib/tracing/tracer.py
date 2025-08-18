@@ -526,6 +526,130 @@ def log_context(context: List[str]) -> None:
         logger.warning("No current step found to log context.")
 
 
+def update_current_trace(
+    name: Optional[str] = None,
+    tags: Optional[List[str]] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+    thread_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+    input: Optional[Any] = None,
+    output: Optional[Any] = None,
+    feedback: Optional['traces.Feedback'] = None,
+    test_case: Optional['traces.LLMTestCase'] = None,
+) -> None:
+    """Updates the current trace metadata with the provided values.
+    
+    This function allows users to set trace-level metadata dynamically
+    during execution without having to pass it through function arguments.
+    
+    Args:
+        name: Optional trace name
+        tags: Optional list of tags for the trace
+        metadata: Optional dictionary of metadata to merge with existing metadata
+        thread_id: Optional thread identifier
+        user_id: Optional user identifier 
+        input: Optional trace input data
+        output: Optional trace output data
+        feedback: Optional feedback data
+        test_case: Optional LLM test case data
+        
+    Example:
+        >>> import openlayer
+        >>> 
+        >>> @openlayer.trace()
+        >>> def my_function():
+        >>>     # Update trace with user context
+        >>>     openlayer.update_current_trace(
+        >>>         user_id="user123",
+        >>>         metadata={"session_id": "sess456"}
+        >>>     )
+        >>>     return "result"
+    """
+    current_trace = get_current_trace()
+    if current_trace is None:
+        logger.warning(
+            "update_current_trace() called without an active trace. "
+            "Make sure to call this function within a traced context "
+            "(e.g., inside a function decorated with @trace)."
+        )
+        return
+    
+    current_trace.update_metadata(
+        name=name,
+        tags=tags,
+        metadata=metadata,
+        thread_id=thread_id,
+        user_id=user_id,
+        input=input,
+        output=output,
+        feedback=feedback,
+        test_case=test_case,
+    )
+    logger.debug("Updated current trace metadata")
+
+
+def update_current_span(
+    attributes: Optional[Dict[str, Any]] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+    test_case: Optional['traces.LLMTestCase'] = None,
+    feedback: Optional['traces.Feedback'] = None,
+) -> None:
+    """Updates the current step (span) with the provided attributes.
+    
+    This function allows users to set step-level metadata dynamically
+    during execution.
+    
+    Args:
+        attributes: Optional dictionary of attributes to set on the step
+        metadata: Optional dictionary of metadata to merge with existing metadata
+        test_case: Optional LLM test case data
+        feedback: Optional feedback data
+        
+    Example:
+        >>> import openlayer
+        >>> 
+        >>> @openlayer.trace()
+        >>> def my_function():
+        >>>     # Update current step with additional context
+        >>>     openlayer.update_current_span(
+        >>>         metadata={"model_version": "v1.2.3"}
+        >>>     )
+        >>>     return "result"
+    """
+    current_step = get_current_step()
+    if current_step is None:
+        logger.warning(
+            "update_current_span() called without an active step. "
+            "Make sure to call this function within a traced context "
+            "(e.g., inside a function decorated with @trace)."
+        )
+        return
+    
+    # Update step attributes using the existing log method
+    update_data = {}
+    if metadata is not None:
+        # Merge with existing metadata
+        existing_metadata = current_step.metadata or {}
+        existing_metadata.update(metadata)
+        update_data["metadata"] = existing_metadata
+    
+    if test_case is not None:
+        update_data["test_case"] = test_case
+        
+    if feedback is not None:
+        update_data["feedback"] = feedback
+    
+    # Handle generic attributes by setting them directly on the step
+    if attributes is not None:
+        for key, value in attributes.items():
+            setattr(current_step, key, value)
+            
+    if update_data:
+        current_step.log(**update_data)
+        
+    logger.debug("Updated current step metadata")
+
+
 def run_async_func(coroutine: Awaitable[Any]) -> Any:
     """Runs an async function while preserving the context. This is needed
     for tracing async functions.
@@ -801,6 +925,28 @@ def post_process_trace(
         "steps": processed_steps,
         **root_step.metadata,
     }
+    
+    # Include trace-level metadata if set
+    if trace_obj.name is not None:
+        trace_data["trace_name"] = trace_obj.name
+    if trace_obj.tags is not None:
+        trace_data["tags"] = trace_obj.tags
+    if trace_obj.metadata is not None:
+        # Merge trace-level metadata (higher precedence than root step metadata)
+        trace_data.update(trace_obj.metadata)
+    if trace_obj.thread_id is not None:
+        trace_data["thread_id"] = trace_obj.thread_id
+    if trace_obj.user_id is not None:
+        trace_data["user_id"] = trace_obj.user_id
+    if trace_obj.input is not None:
+        trace_data["trace_input"] = trace_obj.input
+    if trace_obj.output is not None:
+        trace_data["trace_output"] = trace_obj.output
+    if trace_obj.feedback is not None:
+        trace_data["feedback"] = trace_obj.feedback
+    if trace_obj.test_case is not None:
+        trace_data["test_case"] = trace_obj.test_case
+    
     if root_step.ground_truth:
         trace_data["groundTruth"] = root_step.ground_truth
     if input_variables:
