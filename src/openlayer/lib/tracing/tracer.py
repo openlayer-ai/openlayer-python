@@ -526,42 +526,24 @@ def log_context(context: List[str]) -> None:
         logger.warning("No current step found to log context.")
 
 
-def update_current_trace(
-    name: Optional[str] = None,
-    tags: Optional[List[str]] = None,
-    metadata: Optional[Dict[str, Any]] = None,
-    thread_id: Optional[str] = None,
-    user_id: Optional[str] = None,
-    input: Optional[Any] = None,
-    output: Optional[Any] = None,
-    feedback: Optional['traces.Feedback'] = None,
-    test_case: Optional['traces.LLMTestCase'] = None,
-) -> None:
+def update_current_trace(**kwargs) -> None:
     """Updates the current trace metadata with the provided values.
     
     This function allows users to set trace-level metadata dynamically
     during execution without having to pass it through function arguments.
     
-    Args:
-        name: Optional trace name
-        tags: Optional list of tags for the trace
-        metadata: Optional dictionary of metadata to merge with existing metadata
-        thread_id: Optional thread identifier
-        user_id: Optional user identifier 
-        input: Optional trace input data
-        output: Optional trace output data
-        feedback: Optional feedback data
-        test_case: Optional LLM test case data
+    All provided key-value pairs will be stored in the trace metadata.
         
     Example:
-        >>> import openlayer
+        >>> from openlayer.lib import trace, update_current_trace
         >>> 
-        >>> @openlayer.trace()
+        >>> @trace()
         >>> def my_function():
         >>>     # Update trace with user context
-        >>>     openlayer.update_current_trace(
+        >>>     update_current_trace(
         >>>         user_id="user123",
-        >>>         metadata={"session_id": "sess456"}
+        >>>         session_id="sess456",
+        >>>         custom_field="any_value"
         >>>     )
         >>>     return "result"
     """
@@ -574,17 +556,7 @@ def update_current_trace(
         )
         return
     
-    current_trace.update_metadata(
-        name=name,
-        tags=tags,
-        metadata=metadata,
-        thread_id=thread_id,
-        user_id=user_id,
-        input=input,
-        output=output,
-        feedback=feedback,
-        test_case=test_case,
-    )
+    current_trace.update_metadata(**kwargs)
     logger.debug("Updated current trace metadata")
 
 
@@ -927,25 +899,9 @@ def post_process_trace(
     }
     
     # Include trace-level metadata if set
-    if trace_obj.name is not None:
-        trace_data["trace_name"] = trace_obj.name
-    if trace_obj.tags is not None:
-        trace_data["tags"] = trace_obj.tags
     if trace_obj.metadata is not None:
         # Merge trace-level metadata (higher precedence than root step metadata)
         trace_data.update(trace_obj.metadata)
-    if trace_obj.thread_id is not None:
-        trace_data["thread_id"] = trace_obj.thread_id
-    if trace_obj.user_id is not None:
-        trace_data["user_id"] = trace_obj.user_id
-    if trace_obj.input is not None:
-        trace_data["trace_input"] = trace_obj.input
-    if trace_obj.output is not None:
-        trace_data["trace_output"] = trace_obj.output
-    if trace_obj.feedback is not None:
-        trace_data["feedback"] = trace_obj.feedback
-    if trace_obj.test_case is not None:
-        trace_data["test_case"] = trace_obj.test_case
     
     if root_step.ground_truth:
         trace_data["groundTruth"] = root_step.ground_truth

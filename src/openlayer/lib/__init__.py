@@ -31,11 +31,6 @@ update_current_trace = tracer.update_current_trace
 update_current_span = tracer.update_current_span
 
 
-# --------------------------------- OCI GenAI -------------------------------- #
-# Alias for backward compatibility
-trace_oci = trace_oci_genai
-
-
 def trace_anthropic(client):
     """Trace Anthropic chat completions."""
     # pylint: disable=import-outside-toplevel
@@ -147,3 +142,8 @@ def trace_oci_genai(client, estimate_tokens: bool = True):
         raise ValueError("Invalid client. Please provide an OCI GenAI client.")
 
     return oci_tracer.trace_oci_genai(client, estimate_tokens=estimate_tokens)
+
+
+# --------------------------------- OCI GenAI -------------------------------- #
+# Alias for backward compatibility
+trace_oci = trace_oci_genai
