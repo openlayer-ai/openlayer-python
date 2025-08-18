@@ -14,15 +14,11 @@ __all__ = [
     "trace_oci_genai",
     "trace_oci",  # Alias for backward compatibility
     "update_current_trace",
-    "update_current_span",
-    # Type definitions for trace metadata
-    "LLMTestCase",
-    "Feedback",
+    "update_current_span"
 ]
 
 # ---------------------------------- Tracing --------------------------------- #
 from .tracing import tracer
-from .tracing.traces import LLMTestCase, Feedback
 
 configure = tracer.configure
 trace = tracer.trace

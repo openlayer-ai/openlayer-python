@@ -562,9 +562,7 @@ def update_current_trace(**kwargs) -> None:
 
 def update_current_span(
     attributes: Optional[Dict[str, Any]] = None,
-    metadata: Optional[Dict[str, Any]] = None,
-    test_case: Optional['traces.LLMTestCase'] = None,
-    feedback: Optional['traces.Feedback'] = None,
+    metadata: Optional[Dict[str, Any]] = None
 ) -> None:
     """Updates the current step (span) with the provided attributes.
     
@@ -574,16 +572,14 @@ def update_current_span(
     Args:
         attributes: Optional dictionary of attributes to set on the step
         metadata: Optional dictionary of metadata to merge with existing metadata
-        test_case: Optional LLM test case data
-        feedback: Optional feedback data
         
     Example:
-        >>> import openlayer
+        >>> from openlayer.lib import trace, update_current_span
         >>> 
-        >>> @openlayer.trace()
+        >>> @trace()
         >>> def my_function():
         >>>     # Update current step with additional context
-        >>>     openlayer.update_current_span(
+        >>>     update_current_span(
         >>>         metadata={"model_version": "v1.2.3"}
         >>>     )
         >>>     return "result"
@@ -604,12 +600,6 @@ def update_current_span(
         existing_metadata = current_step.metadata or {}
         existing_metadata.update(metadata)
         update_data["metadata"] = existing_metadata
-    
-    if test_case is not None:
-        update_data["test_case"] = test_case
-        
-    if feedback is not None:
-        update_data["feedback"] = feedback
     
     # Handle generic attributes by setting them directly on the step
     if attributes is not None:

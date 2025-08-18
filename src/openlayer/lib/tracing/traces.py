@@ -5,11 +5,6 @@ from typing import Any, Dict, List, Optional
 from .steps import Step
 
 
-# Type definitions for metadata updates
-LLMTestCase = Dict[str, Any]  # Placeholder for LLM test case data
-Feedback = Dict[str, Any]     # Placeholder for feedback data
-
-
 class Trace:
     """Trace, defined as a sequence of steps.
 
