@@ -11,15 +11,29 @@ __all__ = [
     "trace_async_openai",
     "trace_async",
     "trace_bedrock",
-    "trace_oci",
+    "trace_oci_genai",
+    "trace_oci",  # Alias for backward compatibility
+    "update_current_trace",
+    "update_current_span",
+    # Type definitions for trace metadata
+    "LLMTestCase",
+    "Feedback",
 ]
 
 # ---------------------------------- Tracing --------------------------------- #
 from .tracing import tracer
+from .tracing.traces import LLMTestCase, Feedback
 
 configure = tracer.configure
 trace = tracer.trace
 trace_async = tracer.trace_async
+update_current_trace = tracer.update_current_trace
+update_current_span = tracer.update_current_span
+
+
+# --------------------------------- OCI GenAI -------------------------------- #
+# Alias for backward compatibility
+trace_oci = trace_oci_genai
 
 
 def trace_anthropic(client):
