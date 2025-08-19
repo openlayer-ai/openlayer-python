@@ -741,10 +741,49 @@ class OpenlayerHandlerMixin:
 class OpenlayerHandler(OpenlayerHandlerMixin, BaseCallbackHandlerClass):  # type: ignore[misc]
     """LangChain callback handler that logs to Openlayer."""
 
+    def __init__(
+        self,
+        ignore_llm=False,
+        ignore_chat_model=False,
+        ignore_chain=False,
+        ignore_retriever=False,
+        ignore_agent=False,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(**kwargs)
+        # Store the ignore flags as instance variables
+        self._ignore_llm = ignore_llm
+        self._ignore_chat_model = ignore_chat_model
+        self._ignore_chain = ignore_chain
+        self._ignore_retriever = ignore_retriever
+        self._ignore_agent = ignore_agent
+
+    @property
+    def ignore_llm(self) -> bool:
+        return self._ignore_llm
+
+    @property
+    def ignore_chat_model(self) -> bool:
+        return self._ignore_chat_model
+
+    @property
+    def ignore_chain(self) -> bool:
+        return self._ignore_chain
+
+    @property
+    def ignore_retriever(self) -> bool:
+        return self._ignore_retriever
+
+    @property
+    def ignore_agent(self) -> bool:
+        return self._ignore_agent
+
     def on_llm_start(
         self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
     ) -> Any:
         """Run when LLM starts running."""
+        if self.ignore_llm:
+            return
         return self._handle_llm_start(serialized, prompts, **kwargs)
 
     def on_chat_model_start(
@@ -754,16 +793,22 @@ class OpenlayerHandler(OpenlayerHandlerMixin, BaseCallbackHandlerClass):  # type
         **kwargs: Any,
     ) -> Any:
         """Run when Chat Model starts running."""
+        if self.ignore_chat_model:
+            return
         return self._handle_chat_model_start(serialized, messages, **kwargs)
 
     def on_llm_end(self, response: "langchain_schema.LLMResult", **kwargs: Any) -> Any:
         """Run when LLM ends running."""
+        if self.ignore_llm:
+            return
         return self._handle_llm_end(response, **kwargs)
 
     def on_llm_error(
         self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
     ) -> Any:
         """Run when LLM errors."""
+        if self.ignore_llm:
+            return
         return self._handle_llm_error(error, **kwargs)
 
     def on_llm_new_token(self, token: str, **kwargs: Any) -> Any:
@@ -774,32 +819,44 @@ class OpenlayerHandler(OpenlayerHandlerMixin, BaseCallbackHandlerClass):  # type
         self, serialized: Dict[str, Any], inputs: Dict[str, Any], **kwargs: Any
     ) -> Any:
         """Run when chain starts running."""
+        if self.ignore_chain:
+            return
         return self._handle_chain_start(serialized, inputs, **kwargs)
 
     def on_chain_end(self, outputs: Dict[str, Any], **kwargs: Any) -> Any:
         """Run when chain ends running."""
+        if self.ignore_chain:
+            return
         return self._handle_chain_end(outputs, **kwargs)
 
     def on_chain_error(
         self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
     ) -> Any:
         """Run when chain errors."""
+        if self.ignore_chain:
+            return
         return self._handle_chain_error(error, **kwargs)
 
     def on_tool_start(
         self, serialized: Dict[str, Any], input_str: str, **kwargs: Any
     ) -> Any:
         """Run when tool starts running."""
+        if self.ignore_retriever:
+            return
         return self._handle_tool_start(serialized, input_str, **kwargs)
 
     def on_tool_end(self, output: str, **kwargs: Any) -> Any:
         """Run when tool ends running."""
+        if self.ignore_retriever:
+            return
         return self._handle_tool_end(output, **kwargs)
 
     def on_tool_error(
         self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
     ) -> Any:
         """Run when tool errors."""
+        if self.ignore_retriever:
+            return
         return self._handle_tool_error(error, **kwargs)
 
     def on_text(self, text: str, **kwargs: Any) -> Any:
@@ -810,22 +867,60 @@ class OpenlayerHandler(OpenlayerHandlerMixin, BaseCallbackHandlerClass):  # type
         self, action: "langchain_schema.AgentAction", **kwargs: Any
     ) -> Any:
         """Run on agent action."""
+        if self.ignore_agent:
+            return
         return self._handle_agent_action(action, **kwargs)
 
     def on_agent_finish(
         self, finish: "langchain_schema.AgentFinish", **kwargs: Any
     ) -> Any:
         """Run on agent end."""
+        if self.ignore_agent:
+            return
         return self._handle_agent_finish(finish, **kwargs)
 
 
 class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  # type: ignore[misc]
     """Async LangChain callback handler that logs to Openlayer."""
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        ignore_llm=False,
+        ignore_chat_model=False,
+        ignore_chain=False,
+        ignore_retriever=False,
+        ignore_agent=False,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(**kwargs)
+        # Store the ignore flags as instance variables
+        self._ignore_llm = ignore_llm
+        self._ignore_chat_model = ignore_chat_model
+        self._ignore_chain = ignore_chain
+        self._ignore_retriever = ignore_retriever
+        self._ignore_agent = ignore_agent
         # For async: manage our own trace mapping since context vars are unreliable
         self._traces_by_root: Dict[UUID, traces.Trace] = {}
+
+    @property
+    def ignore_llm(self) -> bool:
+        return self._ignore_llm
+
+    @property
+    def ignore_chat_model(self) -> bool:
+        return self._ignore_chat_model
+
+    @property
+    def ignore_chain(self) -> bool:
+        return self._ignore_chain
+
+    @property
+    def ignore_retriever(self) -> bool:
+        return self._ignore_retriever
+
+    @property
+    def ignore_agent(self) -> bool:
+        return self._ignore_agent
 
     def _start_step(
         self,
@@ -965,6 +1060,8 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
     async def on_llm_start(
         self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
     ) -> Any:
+        if self.ignore_llm:
+            return
         return self._handle_llm_start(serialized, prompts, **kwargs)
 
     async def on_chat_model_start(
@@ -973,16 +1070,22 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
         messages: List[List["langchain_schema.BaseMessage"]],
         **kwargs: Any,
     ) -> Any:
+        if self.ignore_chat_model:
+            return
         return self._handle_chat_model_start(serialized, messages, **kwargs)
 
     async def on_llm_end(
         self, response: "langchain_schema.LLMResult", **kwargs: Any
     ) -> Any:
+        if self.ignore_llm:
+            return
         return self._handle_llm_end(response, **kwargs)
 
     async def on_llm_error(
         self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
     ) -> Any:
+        if self.ignore_llm:
+            return
         return self._handle_llm_error(error, **kwargs)
 
     async def on_llm_new_token(self, token: str, **kwargs: Any) -> Any:
@@ -991,27 +1094,39 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
     async def on_chain_start(
         self, serialized: Dict[str, Any], inputs: Dict[str, Any], **kwargs: Any
     ) -> Any:
+        if self.ignore_chain:
+            return
         return self._handle_chain_start(serialized, inputs, **kwargs)
 
     async def on_chain_end(self, outputs: Dict[str, Any], **kwargs: Any) -> Any:
+        if self.ignore_chain:
+            return
         return self._handle_chain_end(outputs, **kwargs)
 
     async def on_chain_error(
         self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
     ) -> Any:
+        if self.ignore_chain:
+            return
         return self._handle_chain_error(error, **kwargs)
 
     async def on_tool_start(
         self, serialized: Dict[str, Any], input_str: str, **kwargs: Any
     ) -> Any:
+        if self.ignore_retriever:  # Note: tool events use ignore_retriever flag
+            return
         return self._handle_tool_start(serialized, input_str, **kwargs)
 
     async def on_tool_end(self, output: str, **kwargs: Any) -> Any:
+        if self.ignore_retriever:
+            return
         return self._handle_tool_end(output, **kwargs)
 
     async def on_tool_error(
         self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
     ) -> Any:
+        if self.ignore_retriever:
+            return
         return self._handle_tool_error(error, **kwargs)
 
     async def on_text(self, text: str, **kwargs: Any) -> Any:
@@ -1020,22 +1135,32 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
     async def on_agent_action(
         self, action: "langchain_schema.AgentAction", **kwargs: Any
     ) -> Any:
+        if self.ignore_agent:
+            return
         return self._handle_agent_action(action, **kwargs)
 
     async def on_agent_finish(
         self, finish: "langchain_schema.AgentFinish", **kwargs: Any
     ) -> Any:
+        if self.ignore_agent:
+            return
         return self._handle_agent_finish(finish, **kwargs)
 
     async def on_retriever_start(
         self, serialized: Dict[str, Any], query: str, **kwargs: Any
     ) -> Any:
+        if self.ignore_retriever:
+            return
         return self._handle_retriever_start(serialized, query, **kwargs)
 
     async def on_retriever_end(self, documents: List[Any], **kwargs: Any) -> Any:
+        if self.ignore_retriever:
+            return
         return self._handle_retriever_end(documents, **kwargs)
 
     async def on_retriever_error(self, error: Exception, **kwargs: Any) -> Any:
+        if self.ignore_retriever:
+            return
         return self._handle_retriever_error(error, **kwargs)
 
     async def on_retry(self, retry_state: Any, **kwargs: Any) -> Any:
