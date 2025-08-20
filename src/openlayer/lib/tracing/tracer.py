@@ -560,11 +560,11 @@ def update_current_trace(**kwargs) -> None:
     logger.debug("Updated current trace metadata")
 
 
-def update_current_span(
+def update_current_step(
     attributes: Optional[Dict[str, Any]] = None,
     metadata: Optional[Dict[str, Any]] = None
 ) -> None:
-    """Updates the current step (span) with the provided attributes.
+    """Updates the current step with the provided attributes.
     
     This function allows users to set step-level metadata dynamically
     during execution.
@@ -574,12 +574,12 @@ def update_current_span(
         metadata: Optional dictionary of metadata to merge with existing metadata
         
     Example:
-        >>> from openlayer.lib import trace, update_current_span
+        >>> from openlayer.lib import trace, update_current_step
         >>> 
         >>> @trace()
         >>> def my_function():
         >>>     # Update current step with additional context
-        >>>     update_current_span(
+        >>>     update_current_step(
         >>>         metadata={"model_version": "v1.2.3"}
         >>>     )
         >>>     return "result"
@@ -587,7 +587,7 @@ def update_current_span(
     current_step = get_current_step()
     if current_step is None:
         logger.warning(
-            "update_current_span() called without an active step. "
+            "update_current_step() called without an active step. "
             "Make sure to call this function within a traced context "
             "(e.g., inside a function decorated with @trace)."
         )
@@ -895,9 +895,9 @@ def post_process_trace(
         **root_step.metadata,
     }
     
-    # Include trace-level metadata if set
+    # Include trace-level metadata if set - extract keys to row/record level
     if trace_obj.metadata is not None:
-        # Merge trace-level metadata (higher precedence than root step metadata)
+        # Add each trace metadata key directly to the row/record level
         trace_data.update(trace_obj.metadata)
     
     if root_step.ground_truth:

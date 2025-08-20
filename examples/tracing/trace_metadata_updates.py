@@ -15,7 +15,7 @@ from datetime import datetime
 os.environ["OPENLAYER_API_KEY"] = "your-api-key-here"
 os.environ["OPENLAYER_INFERENCE_PIPELINE_ID"] = "your-pipeline-id-here"
 
-from openlayer.lib import trace, trace_async, update_current_trace, update_current_span
+from openlayer.lib import trace, trace_async, update_current_trace, update_current_step
 
 
 class UserSession:
@@ -78,7 +78,7 @@ class ChatApplication:
         """Preprocess user request with step-level metadata."""
         
         # Update current step with preprocessing context
-        update_current_span(
+        update_current_step(
             metadata={
                 "preprocessing_type": "standard",
                 "user_preferences_applied": True,
@@ -104,7 +104,7 @@ class ChatApplication:
         # Set model-specific metadata
         model_version = "gpt-4" if user_session.preferences.get("tier") == "premium" else "gpt-3.5-turbo"
         
-        update_current_span(
+        update_current_step(
             metadata={
                 "model_used": model_version,
                 "temperature": 0.7,
@@ -131,7 +131,7 @@ class ChatApplication:
     def postprocess_response(self, response: str, user_session: UserSession) -> str:
         """Postprocess response with personalization metadata."""
         
-        update_current_span(
+        update_current_step(
             metadata={
                 "personalization_applied": True,
                 "content_filtering": user_session.preferences.get("content_filter", "moderate"),
@@ -230,7 +230,7 @@ def error_handling_example():
     
     try:
         # Simulate some processing
-        update_current_span(
+        update_current_step(
             metadata={"processing_step": "initial_validation"}
         )
         
@@ -265,7 +265,7 @@ async def async_example():
     # Simulate async processing steps
     import asyncio
     
-    update_current_span(
+    update_current_step(
         metadata={"step": "async_sleep_simulation"}
     )
     await asyncio.sleep(0.1)

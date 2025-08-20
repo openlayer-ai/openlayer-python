@@ -14,7 +14,7 @@ __all__ = [
     "trace_oci_genai",
     "trace_oci",  # Alias for backward compatibility
     "update_current_trace",
-    "update_current_span"
+    "update_current_step"
 ]
 
 # ---------------------------------- Tracing --------------------------------- #
@@ -24,7 +24,7 @@ configure = tracer.configure
 trace = tracer.trace
 trace_async = tracer.trace_async
 update_current_trace = tracer.update_current_trace
-update_current_span = tracer.update_current_span
+update_current_step = tracer.update_current_step
 
 
 def trace_anthropic(client):
