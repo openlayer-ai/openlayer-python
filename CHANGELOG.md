@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.81 (2025-08-20)
+
+Full Changelog: [v0.2.0-alpha.80...v0.2.0-alpha.81](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.80...v0.2.0-alpha.81)
+
+### Bug Fixes
+
+* **tracing:** improve error handling in sync generator finalization ([c8360cb](https://github.com/openlayer-ai/openlayer-python/commit/c8360cb989baef4d5ee5ad6ac61ae4a89332d8fb))
+
 ## 0.2.0-alpha.80 (2025-08-15)
 
 Full Changelog: [v0.2.0-alpha.79...v0.2.0-alpha.80](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.79...v0.2.0-alpha.80)
