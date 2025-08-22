@@ -50,6 +50,8 @@ class OpenlayerHandlerMixin:
         self.metadata: Dict[str, Any] = kwargs or {}
         self.steps: Dict[UUID, steps.Step] = {}
         self.root_steps: set[UUID] = set()  # Track which steps are root
+        # Extract inference_id from kwargs if provided
+        self._inference_id = kwargs.get("inference_id")
 
     def _start_step(
         self,
@@ -105,6 +107,9 @@ class OpenlayerHandlerMixin:
             # Track root steps (those without parent_run_id)
             if parent_run_id is None:
                 self.root_steps.add(run_id)
+                # Override step ID with custom inference_id if provided
+                if self._inference_id is not None:
+                    step.id = self._inference_id
 
         self.steps[run_id] = step
         return step
@@ -748,8 +753,12 @@ class OpenlayerHandler(OpenlayerHandlerMixin, BaseCallbackHandlerClass):  # type
         ignore_chain=False,
         ignore_retriever=False,
         ignore_agent=False,
+        inference_id: Optional[Any] = None,
         **kwargs: Any,
     ) -> None:
+        # Add inference_id to kwargs so it gets passed to mixin
+        if inference_id is not None:
+            kwargs["inference_id"] = inference_id
         super().__init__(**kwargs)
         # Store the ignore flags as instance variables
         self._ignore_llm = ignore_llm
@@ -890,8 +899,12 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
         ignore_chain=False,
         ignore_retriever=False,
         ignore_agent=False,
+        inference_id: Optional[Any] = None,
         **kwargs: Any,
     ) -> None:
+        # Add inference_id to kwargs so it gets passed to mixin
+        if inference_id is not None:
+            kwargs["inference_id"] = inference_id
         super().__init__(**kwargs)
         # Store the ignore flags as instance variables
         self._ignore_llm = ignore_llm
@@ -961,6 +974,10 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
             trace.add_step(step)
             self._traces_by_root[run_id] = trace
             self.root_steps.add(run_id)
+
+            # Override step ID with custom inference_id if provided
+            if self._inference_id is not None:
+                step.id = self._inference_id
 
         self.steps[run_id] = step
         return step
