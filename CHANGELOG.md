@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.82 (2025-08-26)
+
+Full Changelog: [v0.2.0-alpha.81...v0.2.0-alpha.82](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.81...v0.2.0-alpha.82)
+
+### Features
+
+* accept custom inference id ([862a5b6](https://github.com/openlayer-ai/openlayer-python/commit/862a5b6e7061e6c725e99a3a8989d47f62cc51b2))
+* allow ignore flags for callback handlers ([d65007f](https://github.com/openlayer-ai/openlayer-python/commit/d65007f803c283595403ccfbf97250032f436f71))
+
+
+### Chores
+
+* **internal:** change ci workflow machines ([2283e73](https://github.com/openlayer-ai/openlayer-python/commit/2283e732c80a7cec3f22dc14884f3fc93e864fd3))
+* update github action ([75f6569](https://github.com/openlayer-ai/openlayer-python/commit/75f6569d946f29b757ec2f75d9589516df46aa37))
+
 ## 0.2.0-alpha.81 (2025-08-20)
 
 Full Changelog: [v0.2.0-alpha.80...v0.2.0-alpha.81](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.80...v0.2.0-alpha.81)
