@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.83 (2025-08-27)
+
+Full Changelog: [v0.2.0-alpha.82...v0.2.0-alpha.83](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.82...v0.2.0-alpha.83)
+
+### Features
+
+* specify custom args when running openlayer batch ([2249f11](https://github.com/openlayer-ai/openlayer-python/commit/2249f11524156e66cdb421c7d4cae60ad5f83cf9))
+
 ## 0.2.0-alpha.82 (2025-08-26)
 
 Full Changelog: [v0.2.0-alpha.81...v0.2.0-alpha.82](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.81...v0.2.0-alpha.82)
