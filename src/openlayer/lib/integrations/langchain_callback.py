@@ -2,7 +2,7 @@
 
 # pylint: disable=unused-argument
 import time
-from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING, Callable
 from uuid import UUID
 
 try:
@@ -52,6 +52,8 @@ class OpenlayerHandlerMixin:
         self.root_steps: set[UUID] = set()  # Track which steps are root
         # Extract inference_id from kwargs if provided
         self._inference_id = kwargs.get("inference_id")
+        # Extract metadata_transformer from kwargs if provided
+        self._metadata_transformer = kwargs.get("metadata_transformer")
 
     def _start_step(
         self,
@@ -207,6 +209,25 @@ class OpenlayerHandlerMixin:
         # Reset trace context only for standalone traces
         tracer._current_trace.set(None)
 
+    def _process_metadata(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
+        """Apply user-defined metadata transformation if provided."""
+        if not metadata:
+            return {}
+
+        # First convert LangChain objects to JSON-serializable format
+        converted_metadata = self._convert_langchain_objects(metadata)
+
+        # Then apply custom transformer if provided
+        if self._metadata_transformer:
+            try:
+                return self._metadata_transformer(converted_metadata)
+            except Exception as e:
+                # Log warning but continue with unconverted metadata
+                tracer.logger.warning(f"Metadata transformer failed: {e}")
+                return converted_metadata
+
+        return converted_metadata
+
     def _convert_step_objects_recursively(self, step: steps.Step) -> None:
         """Convert all LangChain objects in a step and its nested steps."""
         # Convert step attributes
@@ -217,7 +238,7 @@ class OpenlayerHandlerMixin:
             converted_output = self._convert_langchain_objects(step.output)
             step.output = utils.json_serialize(converted_output)
         if step.metadata is not None:
-            step.metadata = self._convert_langchain_objects(step.metadata)
+            step.metadata = self._process_metadata(step.metadata)
 
         # Convert nested steps recursively
         for nested_step in step.steps:
@@ -754,11 +775,16 @@ class OpenlayerHandler(OpenlayerHandlerMixin, BaseCallbackHandlerClass):  # type
         ignore_retriever=False,
         ignore_agent=False,
         inference_id: Optional[Any] = None,
+        metadata_transformer: Optional[
+            Callable[[Dict[str, Any]], Dict[str, Any]]
+        ] = None,
         **kwargs: Any,
     ) -> None:
-        # Add inference_id to kwargs so it gets passed to mixin
+        # Add both inference_id and metadata_transformer to kwargs so they get passed to mixin
         if inference_id is not None:
             kwargs["inference_id"] = inference_id
+        if metadata_transformer is not None:
+            kwargs["metadata_transformer"] = metadata_transformer
         super().__init__(**kwargs)
         # Store the ignore flags as instance variables
         self._ignore_llm = ignore_llm
@@ -900,11 +926,16 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
         ignore_retriever=False,
         ignore_agent=False,
         inference_id: Optional[Any] = None,
+        metadata_transformer: Optional[
+            Callable[[Dict[str, Any]], Dict[str, Any]]
+        ] = None,
         **kwargs: Any,
     ) -> None:
-        # Add inference_id to kwargs so it gets passed to mixin
+        # Add both inference_id and metadata_transformer to kwargs so they get passed to mixin
         if inference_id is not None:
             kwargs["inference_id"] = inference_id
+        if metadata_transformer is not None:
+            kwargs["metadata_transformer"] = metadata_transformer
         super().__init__(**kwargs)
         # Store the ignore flags as instance variables
         self._ignore_llm = ignore_llm
