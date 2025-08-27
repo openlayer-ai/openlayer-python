@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.84 (2025-08-27)
+
+Full Changelog: [v0.2.0-alpha.83...v0.2.0-alpha.84](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.83...v0.2.0-alpha.84)
+
+### Bug Fixes
+
+* avoid newer type syntax ([d9f76bc](https://github.com/openlayer-ai/openlayer-python/commit/d9f76bc8c18559839a3645cec7b28d284a2d3336))
+
+
+### Chores
+
+* **internal:** update pyright exclude list ([e27a895](https://github.com/openlayer-ai/openlayer-python/commit/e27a895ad479fb27323ae93cf527359a081692d4))
+
 ## 0.2.0-alpha.83 (2025-08-27)
 
 Full Changelog: [v0.2.0-alpha.82...v0.2.0-alpha.83](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.82...v0.2.0-alpha.83)
