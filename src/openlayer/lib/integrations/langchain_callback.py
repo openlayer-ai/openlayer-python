@@ -492,7 +492,16 @@ class OpenlayerHandlerMixin:
             return
 
         output = self._extract_output(response)
-        token_info = self._extract_token_info(response)
+
+        # Only extract token info if it hasn't been set during streaming
+        step = self.steps[run_id]
+        token_info = {}
+        if not (
+            hasattr(step, "prompt_tokens")
+            and step.prompt_tokens is not None
+            and step.prompt_tokens > 0
+        ):
+            token_info = self._extract_token_info(response)
 
         self._end_step(
             run_id=run_id,
@@ -763,6 +772,35 @@ class OpenlayerHandlerMixin:
         """Common logic for retriever error."""
         self._end_step(run_id=run_id, parent_run_id=parent_run_id, error=str(error))
 
+    def _handle_llm_new_token(self, token: str, **kwargs: Any) -> Any:
+        """Common logic for LLM new token."""
+        # Safely check for chunk and usage_metadata
+        chunk = kwargs.get("chunk")
+        if (
+            chunk
+            and hasattr(chunk, "message")
+            and hasattr(chunk.message, "usage_metadata")
+        ):
+            usage = chunk.message.usage_metadata
+
+            # Only proceed if usage is not None
+            if usage:
+                # Extract run_id from kwargs (should be provided by LangChain)
+                run_id = kwargs.get("run_id")
+                if run_id and run_id in self.steps:
+                    # Convert usage to the expected format like _extract_token_info does
+                    token_info = {
+                        "prompt_tokens": usage.get("input_tokens", 0),
+                        "completion_tokens": usage.get("output_tokens", 0),
+                        "tokens": usage.get("total_tokens", 0),
+                    }
+
+                    # Update the step with token usage information
+                    step = self.steps[run_id]
+                    if isinstance(step, steps.ChatCompletionStep):
+                        step.log(**token_info)
+        return
+
 
 class OpenlayerHandler(OpenlayerHandlerMixin, BaseCallbackHandlerClass):  # type: ignore[misc]
     """LangChain callback handler that logs to Openlayer."""
@@ -848,7 +886,7 @@ class OpenlayerHandler(OpenlayerHandlerMixin, BaseCallbackHandlerClass):  # type
 
     def on_llm_new_token(self, token: str, **kwargs: Any) -> Any:
         """Run on new LLM token. Only available when streaming is enabled."""
-        pass
+        return self._handle_llm_new_token(token, **kwargs)
 
     def on_chain_start(
         self, serialized: Dict[str, Any], inputs: Dict[str, Any], **kwargs: Any
@@ -1137,7 +1175,7 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
         return self._handle_llm_error(error, **kwargs)
 
     async def on_llm_new_token(self, token: str, **kwargs: Any) -> Any:
-        pass
+        return self._handle_llm_new_token(token, **kwargs)
 
     async def on_chain_start(
         self, serialized: Dict[str, Any], inputs: Dict[str, Any], **kwargs: Any
