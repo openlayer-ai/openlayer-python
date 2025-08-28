@@ -574,6 +574,23 @@ class OpenlayerHandlerMixin:
         if run_id not in self.steps:
             return
 
+        # Check if this is a ConversationalRetrievalChain with source documents
+        if isinstance(outputs, dict) and "source_documents" in outputs:
+            source_docs = outputs["source_documents"]
+            if source_docs:
+                # Extract content from source documents
+                context_list = []
+                for doc in source_docs:
+                    if hasattr(doc, "page_content"):
+                        context_list.append(doc.page_content)
+                    else:
+                        context_list.append(str(doc))
+
+                if context_list:
+                    current_trace = tracer.get_current_trace()
+                    if current_trace:
+                        current_trace.update_metadata(context=context_list)
+
         self._end_step(
             run_id=run_id,
             parent_run_id=parent_run_id,
@@ -753,6 +770,10 @@ class OpenlayerHandlerMixin:
                 doc_contents.append(doc.page_content)
             else:
                 doc_contents.append(str(doc))
+
+        current_trace = tracer.get_current_trace()
+        if current_trace:
+            current_trace.update_metadata(context=doc_contents)
 
         self._end_step(
             run_id=run_id,
