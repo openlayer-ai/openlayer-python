@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.85 (2025-08-29)
+
+Full Changelog: [v0.2.0-alpha.84...v0.2.0-alpha.85](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.84...v0.2.0-alpha.85)
+
+### Features
+
+* accept metadata transformer for LangChain callback handler ([9c1e276](https://github.com/openlayer-ai/openlayer-python/commit/9c1e276c4a07090879255b87ec35c7329033de73))
+* log context for LangChain callback handler ([a1846e0](https://github.com/openlayer-ai/openlayer-python/commit/a1846e0d044b846196c776dad005183ce9ea2391))
+* parse usage after response streaming ([063fc77](https://github.com/openlayer-ai/openlayer-python/commit/063fc7701e8bd7604d447b9e88302c54a8f54898))
+
 ## 0.2.0-alpha.84 (2025-08-27)
 
 Full Changelog: [v0.2.0-alpha.83...v0.2.0-alpha.84](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.83...v0.2.0-alpha.84)
