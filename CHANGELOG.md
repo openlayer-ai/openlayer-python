@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.86 (2025-09-02)
+
+Full Changelog: [v0.2.0-alpha.85...v0.2.0-alpha.86](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.85...v0.2.0-alpha.86)
+
+### Features
+
+* add Python 3.13 support with conditional PyArrow dependencies ([fbe37d6](https://github.com/openlayer-ai/openlayer-python/commit/fbe37d6a6382fe05e4cfb6c01020ed3b7618efff))
+
+
+### Chores
+
+* **internal:** add Sequence related utils ([5a28f7f](https://github.com/openlayer-ai/openlayer-python/commit/5a28f7f9ea38da7aa922248a9b5f086607af542c))
+
 ## 0.2.0-alpha.85 (2025-08-29)
 
 Full Changelog: [v0.2.0-alpha.84...v0.2.0-alpha.85](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.84...v0.2.0-alpha.85)
