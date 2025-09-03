@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import List, Union, Iterable, Optional
+from typing import Union, Iterable, Optional
 from typing_extensions import Literal, Required, Annotated, TypedDict
 
+from ..._types import SequenceNotStr
 from ..._utils import PropertyInfo
 
 __all__ = ["TestCreateParams", "Threshold", "ThresholdInsightParameter"]
@@ -165,5 +166,5 @@ class Threshold(TypedDict, total=False):
     threshold_mode: Annotated[Literal["automatic", "manual"], PropertyInfo(alias="thresholdMode")]
     """Whether to use automatic anomaly detection or manual thresholds"""
 
-    value: Union[float, bool, str, List[str]]
+    value: Union[float, bool, str, SequenceNotStr[str]]
     """The value to be compared."""

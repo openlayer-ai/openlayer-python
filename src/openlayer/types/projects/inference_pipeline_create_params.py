@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Optional
 from typing_extensions import Literal, Required, Annotated, TypedDict
 
+from ..._types import SequenceNotStr
 from ..._utils import PropertyInfo
 
 __all__ = ["InferencePipelineCreateParams", "Project", "Workspace"]
@@ -51,4 +52,4 @@ class Workspace(TypedDict, total=False):
     saml_only_access: Annotated[bool, PropertyInfo(alias="samlOnlyAccess")]
     """Whether the workspace only allows SAML authentication."""
 
-    wildcard_domains: Annotated[List[str], PropertyInfo(alias="wildcardDomains")]
+    wildcard_domains: Annotated[SequenceNotStr[str], PropertyInfo(alias="wildcardDomains")]
