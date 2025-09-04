@@ -2,7 +2,7 @@
 
 import time
 import uuid
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from .. import utils
 from . import enums
@@ -54,10 +54,10 @@ class Step:
             "name": self.name,
             "id": str(self.id),
             "type": self.step_type.value,
-            "inputs": self.inputs,
-            "output": self.output,
-            "groundTruth": self.ground_truth,
-            "metadata": self.metadata,
+            "inputs": utils.json_serialize(self.inputs),
+            "output": utils.json_serialize(self.output),
+            "groundTruth": utils.json_serialize(self.ground_truth),
+            "metadata": utils.json_serialize(self.metadata),
             "steps": [nested_step.to_dict() for nested_step in self.steps],
             "latency": self.latency,
             "startTime": self.start_time,
@@ -119,6 +119,116 @@ class ChatCompletionStep(Step):
         return step_dict
 
 
+class AgentStep(Step):
+    """Agent step represents an agent in the trace."""
+
+    def __init__(
+        self,
+        name: str,
+        inputs: Optional[Any] = None,
+        output: Optional[Any] = None,
+        metadata: Optional[Dict[str, any]] = None,
+    ) -> None:
+        super().__init__(name=name, inputs=inputs, output=output, metadata=metadata)
+        self.step_type = enums.StepType.AGENT
+        self.tool: str = None
+        self.action: Any = None
+        self.agent_type: str = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Dictionary representation of the AgentStep."""
+        step_dict = super().to_dict()
+        step_dict.update(
+            {
+                "tool": self.tool,
+                "action": self.action,
+                "agentType": self.agent_type,
+            }
+        )
+        return step_dict
+
+
+class RetrieverStep(Step):
+    """Retriever step represents a retriever in the trace."""
+
+    def __init__(
+        self,
+        name: str,
+        inputs: Optional[Any] = None,
+        output: Optional[Any] = None,
+        metadata: Optional[Dict[str, any]] = None,
+    ) -> None:
+        super().__init__(name=name, inputs=inputs, output=output, metadata=metadata)
+        self.step_type = enums.StepType.RETRIEVER
+        self.documents: List[Any] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Dictionary representation of the RetrieverStep."""
+        step_dict = super().to_dict()
+        step_dict.update(
+            {
+                "documents": self.documents,
+            }
+        )
+        return step_dict
+
+
+class ToolStep(Step):
+    """Tool step represents a tool in the trace."""
+
+    def __init__(
+        self,
+        name: str,
+        inputs: Optional[Any] = None,
+        output: Optional[Any] = None,
+        metadata: Optional[Dict[str, any]] = None,
+    ) -> None:
+        super().__init__(name=name, inputs=inputs, output=output, metadata=metadata)
+        self.step_type = enums.StepType.TOOL
+        self.function_name: str = None
+        self.arguments: Any = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Dictionary representation of the ToolStep."""
+        step_dict = super().to_dict()
+        step_dict.update(
+            {
+                "functionName": self.function_name,
+                "arguments": self.arguments,
+            }
+        )
+        return step_dict
+
+
+class HandoffStep(Step):
+    """Handoff step represents a handoff in the trace."""
+
+    def __init__(
+        self,
+        name: str,
+        inputs: Optional[Any] = None,
+        output: Optional[Any] = None,
+        metadata: Optional[Dict[str, any]] = None,
+    ) -> None:
+        super().__init__(name=name, inputs=inputs, output=output, metadata=metadata)
+        self.step_type = enums.StepType.HANDOFF
+        self.from_component: str = None
+        self.to_component: str = None
+        self.handoff_data: Any = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Dictionary representation of the HandoffStep."""
+        step_dict = super().to_dict()
+        step_dict.update(
+            {
+                "fromComponent": self.from_component,
+                "toComponent": self.to_component,
+                "handoffData": self.handoff_data,
+            }
+        )
+        return step_dict
+
+
 # ----------------------------- Factory function ----------------------------- #
 def step_factory(step_type: enums.StepType, *args, **kwargs) -> Step:
     """Factory function to create a step based on the step_type."""
@@ -127,5 +237,9 @@ def step_factory(step_type: enums.StepType, *args, **kwargs) -> Step:
     step_type_mapping = {
         enums.StepType.USER_CALL: UserCallStep,
         enums.StepType.CHAT_COMPLETION: ChatCompletionStep,
+        enums.StepType.AGENT: AgentStep,
+        enums.StepType.RETRIEVER: RetrieverStep,
+        enums.StepType.TOOL: ToolStep,
+        enums.StepType.HANDOFF: HandoffStep,
     }
     return step_type_mapping[step_type](*args, **kwargs)

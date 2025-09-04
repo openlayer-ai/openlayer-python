@@ -48,6 +48,15 @@ def json_serialize(data):
         return [json_serialize(item) for item in data]
     elif isinstance(data, tuple):
         return tuple(json_serialize(item) for item in data)
+    elif isinstance(data, type):
+        # Handle model classes/metaclasses
+        return str(data.__name__ if hasattr(data, "__name__") else data)
+    elif hasattr(data, "model_dump") and callable(getattr(data, "model_dump")):
+        # Handle Pydantic model instances
+        try:
+            return json_serialize(data.model_dump())
+        except Exception:
+            return str(data)
     else:
         # Fallback: Convert to string if not serializable
         try:
