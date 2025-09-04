@@ -190,18 +190,22 @@ class OpenlayerHandlerMixin:
             and root_step.inputs
             and "prompt" in root_step.inputs
         ):
-            config.update({"prompt": root_step.inputs["prompt"]})
+            config.update({"prompt": utils.json_serialize(root_step.inputs["prompt"])})
 
         if tracer._publish:
             try:
                 client = tracer._get_client()
                 if client:
+                    # Apply final JSON serialization to ensure everything is serializable
+                    serialized_trace_data = utils.json_serialize(trace_data)
+                    serialized_config = utils.json_serialize(config)
+
                     client.inference_pipelines.data.stream(
                         inference_pipeline_id=utils.get_env_variable(
                             "OPENLAYER_INFERENCE_PIPELINE_ID"
                         ),
-                        rows=[trace_data],
-                        config=config,
+                        rows=[serialized_trace_data],
+                        config=serialized_config,
                     )
             except Exception as err:  # pylint: disable=broad-except
                 tracer.logger.error("Could not stream data to Openlayer %s", err)
@@ -269,6 +273,17 @@ class OpenlayerHandlerMixin:
         # Handle objects with messages attribute
         if hasattr(obj, "messages"):
             return [self._convert_langchain_objects(m) for m in obj.messages]
+
+        # Handle Pydantic model instances
+        if hasattr(obj, "model_dump") and callable(getattr(obj, "model_dump")):
+            try:
+                return self._convert_langchain_objects(obj.model_dump())
+            except Exception:
+                pass
+
+        # Handle Pydantic model classes/metaclasses (type objects)
+        if isinstance(obj, type):
+            return str(obj.__name__ if hasattr(obj, "__name__") else obj)
 
         # Handle other LangChain objects with common attributes
         if hasattr(obj, "dict") and callable(getattr(obj, "dict")):
@@ -556,6 +571,7 @@ class OpenlayerHandlerMixin:
             metadata={
                 "tags": tags,
                 "serialized": serialized,
+                "is_chain": True,
                 **(metadata or {}),
                 **kwargs,
             },
@@ -637,7 +653,7 @@ class OpenlayerHandlerMixin:
             run_id=run_id,
             parent_run_id=parent_run_id,
             name=tool_name,
-            step_type=enums.StepType.USER_CALL,
+            step_type=enums.StepType.TOOL,
             inputs=tool_input,
             metadata={
                 "tags": tags,
@@ -645,6 +661,8 @@ class OpenlayerHandlerMixin:
                 **(metadata or {}),
                 **kwargs,
             },
+            function_name=tool_name,
+            arguments=tool_input,
         )
 
     def _handle_tool_end(
@@ -690,13 +708,16 @@ class OpenlayerHandlerMixin:
             run_id=run_id,
             parent_run_id=parent_run_id,
             name=f"Agent Tool: {action.tool}",
-            step_type=enums.StepType.USER_CALL,
+            step_type=enums.StepType.AGENT,
             inputs={
                 "tool": action.tool,
                 "tool_input": action.tool_input,
                 "log": action.log,
             },
             metadata={"agent_action": True, **kwargs},
+            tool=action.tool,
+            action=action,
+            agent_type="langchain_agent",
         )
 
     def _handle_agent_finish(
@@ -740,7 +761,7 @@ class OpenlayerHandlerMixin:
             run_id=run_id,
             parent_run_id=parent_run_id,
             name=retriever_name,
-            step_type=enums.StepType.USER_CALL,
+            step_type=enums.StepType.RETRIEVER,
             inputs={"query": query},
             metadata={
                 "tags": tags,
@@ -774,6 +795,11 @@ class OpenlayerHandlerMixin:
         current_trace = tracer.get_current_trace()
         if current_trace:
             current_trace.update_metadata(context=doc_contents)
+
+        # Update the step with RetrieverStep-specific attributes
+        step = self.steps[run_id]
+        if isinstance(step, steps.RetrieverStep):
+            step.documents = doc_contents
 
         self._end_step(
             run_id=run_id,
@@ -1146,19 +1172,23 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
             and root_step.inputs
             and "prompt" in root_step.inputs
         ):
-            config.update({"prompt": root_step.inputs["prompt"]})
+            config.update({"prompt": utils.json_serialize(root_step.inputs["prompt"])})
 
         # Upload to Openlayer
         if tracer._publish:
             try:
                 client = tracer._get_client()
                 if client:
+                    # Apply final JSON serialization to ensure everything is serializable
+                    serialized_trace_data = utils.json_serialize(trace_data)
+                    serialized_config = utils.json_serialize(config)
+
                     client.inference_pipelines.data.stream(
                         inference_pipeline_id=utils.get_env_variable(
                             "OPENLAYER_INFERENCE_PIPELINE_ID"
                         ),
-                        rows=[trace_data],
-                        config=config,
+                        rows=[serialized_trace_data],
+                        config=serialized_config,
                     )
             except Exception as err:
                 tracer.logger.error("Could not stream data to Openlayer %s", err)
