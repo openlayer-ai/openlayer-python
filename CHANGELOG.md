@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.87 (2025-09-04)
+
+Full Changelog: [v0.2.0-alpha.86...v0.2.0-alpha.87](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.86...v0.2.0-alpha.87)
+
+### Features
+
+* improve future compat with pydantic v3 ([88a15df](https://github.com/openlayer-ai/openlayer-python/commit/88a15df047bc0b4ddf388dfc18693f363cc11c48))
+* **types:** replace List[str] with SequenceNotStr in params ([8838b80](https://github.com/openlayer-ai/openlayer-python/commit/8838b8041ae034bfe7c59a5cd259ffaba4138434))
+
 ## 0.2.0-alpha.86 (2025-09-02)
 
 Full Changelog: [v0.2.0-alpha.85...v0.2.0-alpha.86](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.85...v0.2.0-alpha.86)
