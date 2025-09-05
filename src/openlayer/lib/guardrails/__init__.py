@@ -6,16 +6,12 @@ from .base import (
     GuardrailResult,
     BaseGuardrail,
     GuardrailBlockedException,
-    GuardrailRegistry,
 )
-from .pii import PIIGuardrail
 
 __all__ = [
     "GuardrailAction",
     "BlockStrategy",
-    "GuardrailResult", 
+    "GuardrailResult",
     "BaseGuardrail",
     "GuardrailBlockedException",
-    "GuardrailRegistry",
-    "PIIGuardrail",
 ]
