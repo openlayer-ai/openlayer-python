@@ -1044,8 +1044,10 @@ def _finalize_step_logging(
     else:
         step.log(output=output)
 
+    # Start with existing metadata instead of overwriting it
+    step_metadata = step.metadata.copy() if step.metadata else {}
+
     # Add guardrail metadata to step metadata
-    step_metadata = {}
     if guardrail_metadata:
         step_metadata["guardrails"] = guardrail_metadata
 
