@@ -5,10 +5,11 @@ pytest tests/test_tracing_core.py -v
 """
 
 # ruff: noqa: ARG001
+# pyright: reportUnknownMemberType=false
+# pyright: reportUnknownArgumentType=false
 
-import time
 import asyncio
-from typing import Generator
+from typing import Any, Set, Dict, List, Generator
 from unittest.mock import patch
 
 import pytest
@@ -19,14 +20,14 @@ from openlayer.lib.tracing import enums, steps, tracer, traces
 class TestBasicTracing:
     """Test basic tracing functionality."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Setup before each test - reset global state."""
         tracer._configured_api_key = None
         tracer._configured_pipeline_id = None
         tracer._configured_base_url = None
         tracer._client = None
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         """Cleanup after each test."""
         tracer._configured_api_key = None
         tracer._configured_pipeline_id = None
@@ -34,7 +35,7 @@ class TestBasicTracing:
         tracer._client = None
 
     @patch.object(tracer, "_publish", False)
-    def test_sync_function_tracing(self):
+    def test_sync_function_tracing(self) -> None:
         """Test that sync functions are traced correctly."""
 
         @tracer.trace()
@@ -45,7 +46,7 @@ class TestBasicTracing:
         assert result == "test: 42"
 
     @patch.object(tracer, "_publish", False)
-    def test_async_function_tracing(self):
+    def test_async_function_tracing(self) -> None:
         """Test that async functions are traced correctly."""
 
         @tracer.trace_async()
@@ -57,7 +58,7 @@ class TestBasicTracing:
         assert result == 42
 
     @patch.object(tracer, "_publish", False)
-    def test_sync_generator_tracing(self):
+    def test_sync_generator_tracing(self) -> None:
         """Test that sync generators are traced correctly."""
 
         @tracer.trace()
@@ -70,7 +71,7 @@ class TestBasicTracing:
         assert results == [0, 1, 2]
 
     @patch.object(tracer, "_publish", False)
-    def test_nested_tracing(self):
+    def test_nested_tracing(self) -> None:
         """Test that nested traced functions work correctly."""
 
         @tracer.trace()
@@ -88,20 +89,20 @@ class TestBasicTracing:
 class TestContextManagement:
     """Test context management functionality."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         tracer._configured_api_key = None
         tracer._configured_pipeline_id = None
         tracer._configured_base_url = None
         tracer._client = None
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         tracer._configured_api_key = None
         tracer._configured_pipeline_id = None
         tracer._configured_base_url = None
         tracer._client = None
 
     @patch.object(tracer, "_publish", False)
-    def test_create_step_context_manager(self):
+    def test_create_step_context_manager(self) -> None:
         """Test the create_step context manager."""
         with tracer.create_step("test_step") as step:
             assert step.name == "test_step"
@@ -110,25 +111,25 @@ class TestContextManagement:
 class TestTraceDataStructure:
     """Test trace data structure and content."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         tracer._configured_api_key = None
         tracer._configured_pipeline_id = None
         tracer._configured_base_url = None
         tracer._client = None
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         tracer._configured_api_key = None
         tracer._configured_pipeline_id = None
         tracer._configured_base_url = None
         tracer._client = None
 
     @patch.object(tracer, "_publish", False)
-    def test_trace_captures_inputs_and_outputs(self):
+    def test_trace_captures_inputs_and_outputs(self) -> None:
         """Test that trace captures function inputs and outputs correctly."""
         captured_trace = None
 
         @tracer.trace()
-        def test_function(a: int, b: str = "default", **kwargs):
+        def test_function(a: int, b: str = "default", **kwargs: Any) -> Dict[str, Any]:
             current_trace = tracer.get_current_trace()
             nonlocal captured_trace
             captured_trace = current_trace
@@ -163,7 +164,7 @@ class TestTraceDataStructure:
         assert root_step.latency > 0  # Should have some latency
 
     @patch.object(tracer, "_publish", False)
-    def test_nested_trace_structure(self):
+    def test_nested_trace_structure(self) -> None:
         """Test that nested traces create proper parent-child relationships."""
         captured_trace = None
 
@@ -211,24 +212,22 @@ class TestTraceDataStructure:
         assert root_step.output == 26
 
     @patch.object(tracer, "_publish", False)
-    def test_step_timing_data(self):
+    def test_step_timing_data(self) -> None:
         """Test that step timing data is captured correctly."""
 
         @tracer.trace()
-        def timed_function():
+        def timed_function() -> str:
             import time
 
             time.sleep(0.01)  # 10ms delay
             return "done"
 
-        start_time = time.time()
         result = timed_function()
-        end_time = time.time()
 
         assert result == "done"
 
         # Get the trace to examine timing
-        with tracer.create_step("dummy") as dummy_step:
+        with tracer.create_step("dummy") as _dummy_step:
             pass  # This will finish the previous trace
 
         # The timing should be reasonable
@@ -236,20 +235,22 @@ class TestTraceDataStructure:
         # with a context manager approach
 
     @patch.object(tracer, "_publish", False)
-    def test_step_ids_are_unique(self):
+    def test_step_ids_are_unique(self) -> None:
         """Test that each step gets a unique ID."""
-        step_ids = set()
+        step_ids: Set[str] = set()
 
         @tracer.trace()
-        def function1():
+        def function1() -> str:
             step = tracer.get_current_step()
-            step_ids.add(str(step.id))
+            if step is not None:
+                step_ids.add(str(step.id))
             return "result1"
 
         @tracer.trace()
-        def function2():
+        def function2() -> str:
             step = tracer.get_current_step()
-            step_ids.add(str(step.id))
+            if step is not None:
+                step_ids.add(str(step.id))
             return "result2"
 
         function1()
@@ -259,12 +260,12 @@ class TestTraceDataStructure:
         assert len(step_ids) == 2
 
     @patch.object(tracer, "_publish", False)
-    def test_context_kwarg_functionality(self):
+    def test_context_kwarg_functionality(self) -> None:
         """Test that context_kwarg properly captures context data."""
         captured_context = None
 
         @tracer.trace(context_kwarg="context_data")
-        def rag_function(query: str, context_data: list):
+        def rag_function(query: str, context_data: List[str]) -> str:  # noqa: ARG001
             nonlocal captured_context
             captured_context = tracer.get_rag_context()
             return f"Answer for {query} using context"
@@ -279,25 +280,25 @@ class TestTraceDataStructure:
 class TestTraceMetadata:
     """Test trace metadata functionality."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         tracer._configured_api_key = None
         tracer._configured_pipeline_id = None
         tracer._configured_base_url = None
         tracer._client = None
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         tracer._configured_api_key = None
         tracer._configured_pipeline_id = None
         tracer._configured_base_url = None
         tracer._client = None
 
     @patch.object(tracer, "_publish", False)
-    def test_update_current_trace_metadata(self):
+    def test_update_current_trace_metadata(self) -> None:
         """Test that trace metadata can be updated during execution."""
         captured_trace = None
 
         @tracer.trace()
-        def test_function():
+        def test_function() -> str:
             tracer.update_current_trace(
                 user_id="user123", session_id="session456", custom_field="custom_value"
             )
@@ -307,18 +308,19 @@ class TestTraceMetadata:
 
         test_function()
 
+        assert captured_trace is not None
         assert captured_trace.metadata is not None
         assert captured_trace.metadata["user_id"] == "user123"
         assert captured_trace.metadata["session_id"] == "session456"
         assert captured_trace.metadata["custom_field"] == "custom_value"
 
     @patch.object(tracer, "_publish", False)
-    def test_update_current_step_metadata(self):
+    def test_update_current_step_metadata(self) -> None:
         """Test that step metadata can be updated during execution."""
         captured_step = None
 
         @tracer.trace()
-        def test_function():
+        def test_function() -> str:
             tracer.update_current_step(
                 metadata={"model_version": "v1.2.3"},
                 attributes={"custom_attr": "value"},
@@ -329,17 +331,18 @@ class TestTraceMetadata:
 
         test_function()
 
+        assert captured_step is not None
         assert captured_step.metadata is not None
         assert captured_step.metadata["model_version"] == "v1.2.3"
         assert captured_step.custom_attr == "value"
 
     @patch.object(tracer, "_publish", False)
-    def test_log_output_overrides_function_output(self):
+    def test_log_output_overrides_function_output(self) -> None:
         """Test that log_output overrides the function's return value in trace."""
         captured_step = None
 
         @tracer.trace()
-        def test_function():
+        def test_function() -> str:
             tracer.log_output("manual output")
             nonlocal captured_step
             captured_step = tracer.get_current_step()
@@ -352,25 +355,27 @@ class TestTraceMetadata:
 
         # But trace should show manual output
         # Note: The manual output logging happens via metadata flag
+        assert captured_step is not None
+        assert captured_step.metadata is not None
         assert captured_step.metadata.get("manual_output_logged") is True
 
 
 class TestTraceSerialization:
     """Test trace serialization and post-processing."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         tracer._configured_api_key = None
         tracer._configured_pipeline_id = None
         tracer._configured_base_url = None
         tracer._client = None
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         tracer._configured_api_key = None
         tracer._configured_pipeline_id = None
         tracer._configured_base_url = None
         tracer._client = None
 
-    def test_step_to_dict_format(self):
+    def test_step_to_dict_format(self) -> None:
         """Test step serialization format."""
         step = steps.Step(
             name="test_step",
@@ -379,8 +384,9 @@ class TestTraceSerialization:
             metadata={"meta1": "metavalue1"},
         )
         step.step_type = enums.StepType.USER_CALL
-        step.end_time = step.start_time + 0.1
-        step.latency = 100.0
+        # Fix the assignment issue by setting the end_time and latency properly
+        step.end_time = step.start_time + 0.1  # type: ignore
+        step.latency = 100.0  # type: ignore
 
         step_dict = step.to_dict()
 
@@ -395,7 +401,7 @@ class TestTraceSerialization:
         assert step_dict["output"] == {"result": "success"}
         assert step_dict["metadata"] == {"meta1": "metavalue1"}
 
-    def test_trace_to_dict_format(self):
+    def test_trace_to_dict_format(self) -> None:
         """Test trace serialization format."""
         trace = traces.Trace()
 
@@ -418,12 +424,12 @@ class TestTraceSerialization:
         assert trace_dict[0]["steps"][0]["name"] == "nested_step"
 
     @patch.object(tracer, "_publish", False)
-    def test_post_process_trace_format(self):
+    def test_post_process_trace_format(self) -> None:
         """Test the post_process_trace function output format."""
         captured_trace = None
 
         @tracer.trace()
-        def test_function(param1: str, param2: int):
+        def test_function(param1: str, param2: int) -> Dict[str, str]:  # noqa: ARG001
             tracer.update_current_trace(user_id="test_user")
             tracer.log_context(["context1", "context2"])
             nonlocal captured_trace
@@ -433,6 +439,7 @@ class TestTraceSerialization:
         test_function("test_param", 42)
 
         # Process the trace
+        assert captured_trace is not None
         trace_data, input_variable_names = tracer.post_process_trace(captured_trace)
 
         # Verify trace_data structure
@@ -472,19 +479,19 @@ class TestTraceSerialization:
 class TestStepTypes:
     """Test different step types and their specific behavior."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         tracer._configured_api_key = None
         tracer._configured_pipeline_id = None
         tracer._configured_base_url = None
         tracer._client = None
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         tracer._configured_api_key = None
         tracer._configured_pipeline_id = None
         tracer._configured_base_url = None
         tracer._client = None
 
-    def test_step_factory_creates_correct_types(self):
+    def test_step_factory_creates_correct_types(self) -> None:
         """Test that step factory creates the correct step types."""
         step_types_mapping = {
             enums.StepType.USER_CALL: steps.UserCallStep,
@@ -500,7 +507,7 @@ class TestStepTypes:
             assert isinstance(step, expected_class)
             assert step.step_type == step_type
 
-    def test_chat_completion_step_serialization(self):
+    def test_chat_completion_step_serialization(self) -> None:
         """Test ChatCompletionStep specific serialization."""
         step = steps.ChatCompletionStep(name="chat_step")
         step.inputs = {"prompt": [{"role": "user", "content": "Hello"}]}
@@ -515,9 +522,9 @@ class TestStepTypes:
         assert step_dict["provider"] == "openai"
 
     @patch.object(tracer, "_publish", False)
-    def test_add_chat_completion_step(self):
+    def test_add_chat_completion_step(self) -> None:
         """Test adding a chat completion step to trace."""
-        captured_steps = []
+        captured_steps: List[Any] = []
 
         with tracer.create_step("main_step") as main_step:
             tracer.add_chat_completion_step_to_trace(
@@ -537,25 +544,25 @@ class TestStepTypes:
 class TestErrorHandlingInTraces:
     """Test error handling and exception capture in traces."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         tracer._configured_api_key = None
         tracer._configured_pipeline_id = None
         tracer._configured_base_url = None
         tracer._client = None
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         tracer._configured_api_key = None
         tracer._configured_pipeline_id = None
         tracer._configured_base_url = None
         tracer._client = None
 
     @patch.object(tracer, "_publish", False)
-    def test_exception_captured_in_metadata(self):
+    def test_exception_captured_in_metadata(self) -> None:
         """Test that exceptions are captured in step metadata."""
         captured_step = None
 
         @tracer.trace()
-        def error_function():
+        def error_function() -> None:
             nonlocal captured_step
             captured_step = tracer.get_current_step()
             raise ValueError("Test error message")
@@ -565,22 +572,23 @@ class TestErrorHandlingInTraces:
 
         # Verify exception was logged in metadata
         assert captured_step is not None
+        assert captured_step.metadata is not None
         assert "Exceptions" in captured_step.metadata
         assert "Test error message" in captured_step.metadata["Exceptions"]
 
     @patch.object(tracer, "_publish", False)
-    def test_nested_exception_handling(self):
+    def test_nested_exception_handling(self) -> None:
         """Test exception handling in nested traced functions."""
-        captured_steps = []
+        captured_steps: List[Any] = []
 
         @tracer.trace()
-        def inner_error_function():
+        def inner_error_function() -> None:
             step = tracer.get_current_step()
             captured_steps.append(step)
             raise RuntimeError("Inner error")
 
         @tracer.trace()
-        def outer_function():
+        def outer_function() -> None:
             step = tracer.get_current_step()
             captured_steps.append(step)
             return inner_error_function()
@@ -593,5 +601,7 @@ class TestErrorHandlingInTraces:
 
         # Inner step should have exception metadata
         inner_step = captured_steps[0]
+        assert inner_step is not None
+        assert inner_step.metadata is not None
         assert "Exceptions" in inner_step.metadata
         assert "Inner error" in inner_step.metadata["Exceptions"]
