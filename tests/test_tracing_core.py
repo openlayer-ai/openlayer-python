@@ -4,13 +4,16 @@ Usage:
 pytest tests/test_tracing_core.py -v
 """
 
-import asyncio
+# ruff: noqa: ARG001
+
 import time
+import asyncio
 from typing import Generator
 from unittest.mock import patch
+
 import pytest
 
-from openlayer.lib.tracing import tracer, enums, steps, traces
+from openlayer.lib.tracing import enums, steps, tracer, traces
 
 
 class TestBasicTracing:
