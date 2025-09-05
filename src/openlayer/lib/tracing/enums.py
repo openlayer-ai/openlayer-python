@@ -4,9 +4,10 @@ import enum
 
 
 class StepType(enum.Enum):
-    USER_CALL = "user_call"
-    CHAT_COMPLETION = "chat_completion"
     AGENT = "agent"
+    CHAT_COMPLETION = "chat_completion"
+    GUARDRAIL = "guardrail"
+    HANDOFF = "handoff"
     RETRIEVER = "retriever"
     TOOL = "tool"
-    HANDOFF = "handoff"
+    USER_CALL = "user_call"
