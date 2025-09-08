@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.89 (2025-09-08)
+
+Full Changelog: [v0.2.0-alpha.88...v0.2.0-alpha.89](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.88...v0.2.0-alpha.89)
+
+### Features
+
+* add guardrails system with PII protection ([0bcc636](https://github.com/openlayer-ai/openlayer-python/commit/0bcc6366c438f6e501381601245b114c8990dbdc))
+* integrate guardrails into tracing system ([b846ba5](https://github.com/openlayer-ai/openlayer-python/commit/b846ba512fcaba2ad5b1ccf743983ffcc7aa9610))
+* introduce guardrail step typ ([73c53c6](https://github.com/openlayer-ai/openlayer-python/commit/73c53c627193ae78f7752b08eb9b5d301d6107be))
+
+
+### Bug Fixes
+
+* PII redaction and trace function calls ([5f49d4a](https://github.com/openlayer-ai/openlayer-python/commit/5f49d4a3e41c45056162cb7620e5061616752d8f))
+
+
+### Chores
+
+* add missing type annotations ([86d2d54](https://github.com/openlayer-ai/openlayer-python/commit/86d2d54a1880c199aa22f9eb790d9632c59a0a13))
+* cleanup unnecessary files ([d91fd55](https://github.com/openlayer-ai/openlayer-python/commit/d91fd55a10f4f6d72e07674245645b181478c7d9))
+* completes OPEN-7287 remove concrete guardrail implementations ([623f812](https://github.com/openlayer-ai/openlayer-python/commit/623f812901d8574d399604394048282335ea071b))
+* completes OPEN-7289 write unit tests for the tracer ([c80943f](https://github.com/openlayer-ai/openlayer-python/commit/c80943f0b8f147ab6b0be2feadac0efeab4cf539))
+* update tracer implementation ([9abe566](https://github.com/openlayer-ai/openlayer-python/commit/9abe566c3bed316d890cddd77ae9560a6899d293))
+
+
+### Documentation
+
+* add comprehensive guardrails usage examples ([be7d827](https://github.com/openlayer-ai/openlayer-python/commit/be7d82759ce3dbf1bec27e0d1790c6e4776c892c))
+
+
+### Refactors
+
+* simplify guardrails integration and clean up examples ([4dde617](https://github.com/openlayer-ai/openlayer-python/commit/4dde6175d904aacb6d0519386880b35f9b8bf4ef))
+
 ## 0.2.0-alpha.88 (2025-09-04)
 
 Full Changelog: [v0.2.0-alpha.87...v0.2.0-alpha.88](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.87...v0.2.0-alpha.88)
