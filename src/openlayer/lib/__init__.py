@@ -3,7 +3,7 @@
 __all__ = [
     "configure",
     "trace",
-    "trace_anthropic",
+    "trace_anthropic", 
     "trace_openai",
     "trace_openai_assistant_thread_run",
     "trace_mistral",
@@ -14,11 +14,24 @@ __all__ = [
     "trace_oci_genai",
     "trace_oci",  # Alias for backward compatibility
     "update_current_trace",
-    "update_current_step"
+    "update_current_step",
+    # User and session context functions
+    "set_user_session_context",
+    "update_trace_user_session",
+    "get_current_user_id",
+    "get_current_session_id",
+    "clear_user_session_context",
 ]
 
 # ---------------------------------- Tracing --------------------------------- #
 from .tracing import tracer
+from .tracing.context import (
+    set_user_session_context,
+    update_trace_user_session,
+    get_current_user_id,
+    get_current_session_id,
+    clear_user_session_context,
+)
 
 configure = tracer.configure
 trace = tracer.trace
