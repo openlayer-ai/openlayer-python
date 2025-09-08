@@ -16,6 +16,7 @@ from ...types.inference_pipelines.data_stream_params import ConfigLlmData
 from .. import utils
 from . import enums, steps, traces
 from ..guardrails.base import GuardrailResult, GuardrailAction
+from .context import UserSessionContext
 
 logger = logging.getLogger(__name__)
 
@@ -923,6 +924,12 @@ def _handle_trace_completion(
                 num_of_token_column_name="tokens",
             )
         )
+        
+        # Add reserved column configurations for user context
+        if "user_id" in trace_data:
+            config.update({"user_id_column_name": "user_id"})
+        if "session_id" in trace_data:
+            config.update({"session_id_column_name": "session_id"})
         if "groundTruth" in trace_data:
             config.update({"ground_truth_column_name": "groundTruth"})
         if "context" in trace_data:
@@ -1184,7 +1191,16 @@ def post_process_trace(
     if trace_obj.metadata is not None:
         # Add each trace metadata key directly to the row/record level
         trace_data.update(trace_obj.metadata)
-
+    
+    # Add reserved columns for user and session context
+    user_id = UserSessionContext.get_user_id()
+    if user_id is not None:
+        trace_data["user_id"] = user_id
+    
+    session_id = UserSessionContext.get_session_id()
+    if session_id is not None:
+        trace_data["session_id"] = session_id
+    
     if root_step.ground_truth:
         trace_data["groundTruth"] = root_step.ground_truth
     if input_variables:
