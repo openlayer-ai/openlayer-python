@@ -779,6 +779,7 @@ def update_current_trace(**kwargs) -> None:
         >>> def my_function():
         >>>     # Update trace with user context
         >>>     update_current_trace(
+        >>>         inferenceId="custom_inference_id",
         >>>         user_id="user123",
         >>>         session_id="sess456",
         >>>         custom_field="any_value"
@@ -1170,7 +1171,7 @@ def post_process_trace(
 
     trace_data = {
         "inferenceTimestamp": root_step.start_time,
-        "inferenceId": str(root_step.id),
+        "inferenceId": trace_obj.inference_id or str(root_step.id),
         "output": root_step.output,
         "latency": root_step.latency,
         "cost": processed_steps[0].get("cost", 0),
