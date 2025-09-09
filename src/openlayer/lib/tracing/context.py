@@ -1,5 +1,5 @@
 """
-Streamlined user and session context management for OpenLayer tracing.
+Streamlined user and session context management for Openlayer tracing.
 
 This module provides simple functions to set user_id and session_id in middleware
 and override them anywhere in your traced code.

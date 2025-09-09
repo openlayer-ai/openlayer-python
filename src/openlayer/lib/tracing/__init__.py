@@ -1,4 +1,4 @@
-"""OpenLayer tracing module."""
+"""Openlayer tracing module."""
 
 from .tracer import (
     trace,
@@ -13,13 +13,6 @@ from .tracer import (
     create_step,
 )
 
-from .context import (
-    set_user_session_context,
-    update_trace_user_session,
-    get_current_user_id,
-    get_current_session_id,
-    clear_user_session_context,
-)
 
 __all__ = [
     # Core tracing functions
@@ -33,12 +26,5 @@ __all__ = [
     "get_current_trace",
     "get_current_step", 
     "create_step",
-    
-    # User and session context functions
-    "set_user_session_context",
-    "update_trace_user_session",
-    "get_current_user_id",
-    "get_current_session_id",
-    "clear_user_session_context",
 ]
 
