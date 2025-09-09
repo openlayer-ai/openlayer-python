@@ -82,12 +82,18 @@ class ConfigLlmData(TypedDict, total=False):
     Applies to RAG use cases. Providing the question enables RAG-specific metrics.
     """
 
+    session_id_column_name: Annotated[Optional[str], PropertyInfo(alias="sessionIdColumnName")]
+    """Name of the column with the session id."""
+
     timestamp_column_name: Annotated[str, PropertyInfo(alias="timestampColumnName")]
     """Name of the column with the timestamps.
 
     Timestamps must be in UNIX sec format. If not provided, the upload timestamp is
     used.
     """
+
+    user_id_column_name: Annotated[Optional[str], PropertyInfo(alias="userIdColumnName")]
+    """Name of the column with the user id."""
 
 
 class ConfigTabularClassificationData(TypedDict, total=False):
