@@ -41,8 +41,11 @@ class ChatApplication:
         # Get user session (this info isn't available as function arguments)
         user_session = self.get_user_session(session_token)
         
-        # Set trace-level metadata with user context
+        # Set trace-level metadata with user context and custom inference ID
+        custom_inference_id = f"chat_{user_session.user_id}_{user_session.interaction_count}_{int(datetime.now().timestamp())}"
+        
         update_current_trace(
+            inferenceId=custom_inference_id,
             name=f"chat_request_{user_session.user_id}",
             user_id=user_session.user_id,
             tags=["chat", "user_request", user_session.preferences.get("tier", "free")],
@@ -174,25 +177,28 @@ class ChatApplication:
 def batch_processing_example():
     """Example showing batch processing with trace metadata updates."""
     
-    # Set trace metadata for batch job
-    update_current_trace(
-        name="batch_user_requests",
-        tags=["batch", "processing", "multiple_users"],
-        metadata={
-            "batch_size": 3,
-            "processing_start": datetime.now().isoformat(),
-        }
-    )
-    
-    app = ChatApplication()
-    results = []
-    
     # Process multiple requests
     test_requests = [
         ("Hello there!", "premium_session_123"),
         ("What's the weather like?", "free_session_456"), 
         ("Help me with coding", "premium_session_789")
     ]
+    
+    # Set trace metadata for batch job with custom batch ID
+    batch_inference_id = f"batch_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{len(test_requests)}_items"
+    
+    update_current_trace(
+        inferenceId=batch_inference_id,
+        name="batch_user_requests",
+        tags=["batch", "processing", "multiple_users"],
+        metadata={
+            "batch_size": len(test_requests),
+            "processing_start": datetime.now().isoformat(),
+        }
+    )
+    
+    app = ChatApplication()
+    results = []
     
     for i, (request, session) in enumerate(test_requests):
         result = app.handle_user_request(request, session)

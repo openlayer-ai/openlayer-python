@@ -16,6 +16,7 @@ class Trace:
         self.steps = []
         self.current_step = None
         self.metadata: Optional[Dict[str, Any]] = None
+        self.inference_id: Optional[str] = None
 
     def add_step(self, step: Step) -> None:
         """Adds a step to the trace."""
@@ -26,10 +27,15 @@ class Trace:
         
         All provided key-value pairs will be stored in self.metadata.
         Special handling for 'metadata' key which gets merged with existing metadata.
+        Special handling for 'inferenceId' which gets stored in dedicated field.
         """
         # Initialize metadata if it doesn't exist
         if self.metadata is None:
             self.metadata = {}
+        
+        # Handle special case for inferenceId - store in dedicated field
+        if 'inferenceId' in kwargs:
+            self.inference_id = kwargs.pop('inferenceId')
         
         # Handle special case for 'metadata' key - merge with existing
         if 'metadata' in kwargs:
