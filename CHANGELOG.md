@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.92 (2025-09-09)
+
+Full Changelog: [v0.2.0-alpha.91...v0.2.0-alpha.92](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.91...v0.2.0-alpha.92)
+
+### Chores
+
+* completes OPEN-7314 Process input/output of root step of LangGraph graphs ([9cad000](https://github.com/openlayer-ai/openlayer-python/commit/9cad000f3d201dde4641eba6b3ae49ecf0db5496))
+
 ## 0.2.0-alpha.91 (2025-09-09)
 
 Full Changelog: [v0.2.0-alpha.90...v0.2.0-alpha.91](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.90...v0.2.0-alpha.91)
