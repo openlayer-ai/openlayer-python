@@ -89,12 +89,6 @@ class ConfigLlmData(TypedDict, total=False):
     used.
     """
 
-    user_id_column_name: Annotated[str, PropertyInfo(alias="userIdColumnName")]
-    """Name of the column with the user IDs."""
-
-    session_id_column_name: Annotated[str, PropertyInfo(alias="sessionIdColumnName")]
-    """Name of the column with the session IDs."""
-
 
 class ConfigTabularClassificationData(TypedDict, total=False):
     class_names: Required[Annotated[SequenceNotStr[str], PropertyInfo(alias="classNames")]]
