@@ -55,7 +55,9 @@ class TestData:
                     }
                 ],
                 "question_column_name": "question",
+                "session_id_column_name": "session_id",
                 "timestamp_column_name": "timestamp",
+                "user_id_column_name": "user_id",
             },
             rows=[
                 {
@@ -174,7 +176,9 @@ class TestAsyncData:
                     }
                 ],
                 "question_column_name": "question",
+                "session_id_column_name": "session_id",
                 "timestamp_column_name": "timestamp",
+                "user_id_column_name": "user_id",
             },
             rows=[
                 {
