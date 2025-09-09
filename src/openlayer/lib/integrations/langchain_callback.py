@@ -562,6 +562,11 @@ class OpenlayerHandlerMixin:
         if tags and "langsmith:hidden" in tags:
             return
 
+        if chain_name == "LangGraph" and inputs.get("messages"):
+            inputs = {
+                "prompt": inputs.get("messages"),
+            }
+
         self._start_step(
             run_id=run_id,
             parent_run_id=parent_run_id,
@@ -571,7 +576,6 @@ class OpenlayerHandlerMixin:
             metadata={
                 "tags": tags,
                 "serialized": serialized,
-                "is_chain": True,
                 **(metadata or {}),
                 **kwargs,
             },
@@ -606,6 +610,15 @@ class OpenlayerHandlerMixin:
                     current_trace = tracer.get_current_trace()
                     if current_trace:
                         current_trace.update_metadata(context=context_list)
+
+        # Parse output for LangGraph
+        step = self.steps[run_id]
+        if step.name == "LangGraph" and outputs.get("messages"):
+            if isinstance(outputs.get("messages"), list):
+                if isinstance(
+                    outputs.get("messages")[-1], langchain_schema.BaseMessage
+                ):
+                    outputs = outputs.get("messages")[-1].content
 
         self._end_step(
             run_id=run_id,
