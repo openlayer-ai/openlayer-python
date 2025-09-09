@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.91 (2025-09-09)
+
+Full Changelog: [v0.2.0-alpha.90...v0.2.0-alpha.91](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.90...v0.2.0-alpha.91)
+
+### ⚠ BREAKING CHANGES
+
+* **tracing:** None - fully backward compatible
+
+### Features
+
+* **tracing:** enable custom inferenceId for trace decorator ([1f01ca5](https://github.com/openlayer-ai/openlayer-python/commit/1f01ca5e39dc2b232d56ab8f04fa8886bea15720))
+
 ## 0.2.0-alpha.90 (2025-09-09)
 
 Full Changelog: [v0.2.0-alpha.89...v0.2.0-alpha.90](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.89...v0.2.0-alpha.90)
