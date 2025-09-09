@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.90 (2025-09-09)
+
+Full Changelog: [v0.2.0-alpha.89...v0.2.0-alpha.90](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.89...v0.2.0-alpha.90)
+
+### Bug Fixes
+
+* closes OPEN-7311 relax numpy&lt;2.0 requirement ([c2ab667](https://github.com/openlayer-ai/openlayer-python/commit/c2ab667260f797bcb3c604f77d7117e6bb94f338))
+
 ## 0.2.0-alpha.89 (2025-09-08)
 
 Full Changelog: [v0.2.0-alpha.88...v0.2.0-alpha.89](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.88...v0.2.0-alpha.89)
