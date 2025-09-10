@@ -342,19 +342,19 @@ def get_model_parameters(kwargs: Dict[str, Any]) -> Dict[str, Any]:
 
 def create_trace_args(
     end_time: float,
-    inputs: Dict,
+    inputs: Dict[str, Any],
     output: str,
     latency: float,
     tokens: int,
     prompt_tokens: int,
     completion_tokens: int,
     model: str,
-    model_parameters: Optional[Dict] = None,
-    metadata: Optional[Dict] = None,
+    model_parameters: Optional[Dict[str, Any]] = None,
+    metadata: Optional[Dict[str, Any]] = None,
     raw_output: Optional[str] = None,
     id: Optional[str] = None,
     cost: Optional[float] = None,
-) -> Dict:
+) -> Dict[str, Any]:
     """Returns a dictionary with the trace arguments."""
     trace_args = {
         "end_time": end_time,
