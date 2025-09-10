@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.93 (2025-09-10)
+
+Full Changelog: [v0.2.0-alpha.92...v0.2.0-alpha.93](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.92...v0.2.0-alpha.93)
+
+### Features
+
+* Add user_id and session_id in traces to track users and sessions ([b7cd032](https://github.com/openlayer-ai/openlayer-python/commit/b7cd032d7bc0ad80d5d025decc7db46720b81349))
+* **api:** api update ([e65c84e](https://github.com/openlayer-ai/openlayer-python/commit/e65c84e5420874636c405ddd5cce8dd2f4e69bbf))
+
+
+### Chores
+
+* closes OPEN-7337 Exclude examples from linting action ([9730dc0](https://github.com/openlayer-ai/openlayer-python/commit/9730dc0d7e9ccbd5db08a9188caa3bff337a0d20))
+* exclude custom lib from linting action ([89f0d21](https://github.com/openlayer-ai/openlayer-python/commit/89f0d2117df3ab07da397877cd24f5fbd0bca14d))
+* **internal:** move mypy configurations to `pyproject.toml` file ([49b32b4](https://github.com/openlayer-ai/openlayer-python/commit/49b32b4095ad06abda2ef43fc04edd3ba9620c52))
+* **internal:** version bump ([cb69e2e](https://github.com/openlayer-ai/openlayer-python/commit/cb69e2e0a1765615efda7a7ff7af4badbb3b7c68))
+* **internal:** version bump ([59e1a98](https://github.com/openlayer-ai/openlayer-python/commit/59e1a983a9b7e9975a34520e26055e7ef6b236cb))
+* **tests:** simplify `get_platform` test ([d30a165](https://github.com/openlayer-ai/openlayer-python/commit/d30a16505f86135c3f5980307a9ae073de1a4708))
+
+
+### Styles
+
+* reverted back to previous version for data_stream_params.py ([89d6a5d](https://github.com/openlayer-ai/openlayer-python/commit/89d6a5d4c1e47f13662dc95feee4dde27371318a))
+
+
+### Refactors
+
+* import fixes ([bd78a73](https://github.com/openlayer-ai/openlayer-python/commit/bd78a73b6d692d04c06f862a934767d87653ad8c))
+
 ## 0.2.0-alpha.92 (2025-09-09)
 
 Full Changelog: [v0.2.0-alpha.91...v0.2.0-alpha.92](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.91...v0.2.0-alpha.92)
