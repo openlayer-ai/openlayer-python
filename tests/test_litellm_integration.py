@@ -1,8 +1,9 @@
 """Test LiteLLM integration."""
 
 import builtins
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
 
 
 class TestLiteLLMIntegration:
