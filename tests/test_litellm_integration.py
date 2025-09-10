@@ -1,6 +1,7 @@
 """Test LiteLLM integration."""
 
 import builtins
+from typing import Any, Dict
 from unittest.mock import Mock, patch
 
 import pytest
@@ -30,7 +31,7 @@ class TestLiteLLMIntegration:
 
     @patch('openlayer.lib.integrations.litellm_tracer.HAVE_LITELLM', True)
     @patch('openlayer.lib.integrations.litellm_tracer.litellm')
-    def test_trace_litellm_patches_completion(self, mock_litellm):
+    def test_trace_litellm_patches_completion(self, mock_litellm: Mock) -> None:
         """Test that trace_litellm successfully patches litellm.completion."""
         from openlayer.lib.integrations.litellm_tracer import trace_litellm
         
@@ -177,7 +178,7 @@ class TestLiteLLMIntegration:
         """Test trace arguments creation."""
         from openlayer.lib.integrations.litellm_tracer import create_trace_args
         
-        args = create_trace_args(
+        args: Dict[str, Any] = create_trace_args(
             end_time=1234567890.0,
             inputs={"prompt": "test"},
             output="response",
@@ -218,7 +219,7 @@ class TestLiteLLMIntegration:
         
         # Mock import to fail for litellm specifically
         original_import = builtins.__import__
-        def mock_import(name, *args, **kwargs):
+        def mock_import(name: str, *args: Any, **kwargs: Any) -> Any:
             if name == 'litellm':
                 raise ImportError("No module named 'litellm'")
             return original_import(name, *args, **kwargs)
@@ -261,7 +262,7 @@ class TestLiteLLMIntegration:
 
     @patch('openlayer.lib.integrations.litellm_tracer.HAVE_LITELLM', True)
     @patch('openlayer.lib.integrations.litellm_tracer.litellm')
-    def test_detect_provider_with_litellm_method(self, mock_litellm):
+    def test_detect_provider_with_litellm_method(self, mock_litellm: Mock) -> None:
         """Test provider detection using LiteLLM's get_llm_provider method."""
         from openlayer.lib.integrations.litellm_tracer import detect_provider_from_response
         
