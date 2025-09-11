@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.94 (2025-09-11)
+
+Full Changelog: [v0.2.0-alpha.93...v0.2.0-alpha.94](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.93...v0.2.0-alpha.94)
+
+### Bug Fixes
+
+* custom args with run_batch_from_df ([4a45a89](https://github.com/openlayer-ai/openlayer-python/commit/4a45a899811b1c778b8cecabd82b5f97c46346ab))
+
 ## 0.2.0-alpha.93 (2025-09-10)
 
 Full Changelog: [v0.2.0-alpha.92...v0.2.0-alpha.93](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.92...v0.2.0-alpha.93)
