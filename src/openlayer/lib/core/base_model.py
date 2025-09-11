@@ -91,12 +91,10 @@ class OpenlayerModel(abc.ABC):
             raise ValueError(f"Unsupported dataset format: {dataset_path}")
 
         # Call the model's run_batch method, passing in the DataFrame
-        output_df, config = self.run_batch_from_df(df, custom_args=self.custom_args)
+        output_df, config = self.run_batch_from_df(df)
         self.write_output_to_directory(output_df, config, output_dir, fmt)
 
-    def run_batch_from_df(
-        self, df: pd.DataFrame, custom_args: dict = None
-    ) -> Tuple[pd.DataFrame, dict]:
+    def run_batch_from_df(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, dict]:
         """Function that runs the model and returns the result."""
         # Ensure the 'output' column exists
         if "output" not in df.columns:
@@ -104,10 +102,6 @@ class OpenlayerModel(abc.ABC):
 
         # Get the signature of the 'run' method
         run_signature = inspect.signature(self.run)
-
-        # If the model has a custom_args attribute, update it
-        if hasattr(self, "custom_args") and custom_args is not None:
-            self.custom_args.update(custom_args)
 
         for index, row in df.iterrows():
             # Filter row_dict to only include keys that are valid parameters

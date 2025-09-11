@@ -25,9 +25,7 @@ from ..tracing import tracer
 logger = logging.getLogger(__name__)
 
 
-def trace_bedrock(
-    client: "boto3.client",
-) -> "boto3.client":
+def trace_bedrock(client: "boto3.client") -> "boto3.client":
     """Patch the Bedrock client to trace model invocations.
 
     The following information is collected for each model invocation:
