@@ -13,6 +13,7 @@ __all__ = [
     "trace_bedrock",
     "trace_oci_genai",
     "trace_oci",  # Alias for backward compatibility
+    "trace_litellm",
     "update_current_trace",
     "update_current_step",
     # User and session context functions
@@ -156,3 +157,37 @@ def trace_oci_genai(client, estimate_tokens: bool = True):
 # --------------------------------- OCI GenAI -------------------------------- #
 # Alias for backward compatibility
 trace_oci = trace_oci_genai
+
+
+# --------------------------------- LiteLLM ---------------------------------- #
+def trace_litellm():
+    """Enable tracing for LiteLLM completions.
+    
+    This function patches litellm.completion to automatically trace all completions
+    made through the LiteLLM library, which provides a unified interface to 100+ LLM APIs.
+    
+    Example:
+        >>> import litellm
+        >>> from openlayer.lib import trace_litellm
+        >>> 
+        >>> # Enable tracing
+        >>> trace_litellm()
+        >>> 
+        >>> # Use LiteLLM normally - tracing happens automatically
+        >>> response = litellm.completion(
+        ...     model="gpt-3.5-turbo",
+        ...     messages=[{"role": "user", "content": "Hello!"}],
+        ...     inference_id="custom-id-123"  # Optional OpenLayer parameter
+        ... )
+    """
+    # pylint: disable=import-outside-toplevel
+    try:
+        import litellm
+    except ImportError:
+        raise ImportError(
+            "litellm is required for LiteLLM tracing. Install with: pip install litellm"
+        )
+
+    from .integrations import litellm_tracer
+
+    return litellm_tracer.trace_litellm()

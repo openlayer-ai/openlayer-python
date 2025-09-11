@@ -33,6 +33,7 @@ INTEGRATION_DEPENDENCIES = {
     "groq_tracer": ["groq"],
     "oci_tracer": ["oci"],
     "langchain_callback": ["langchain", "langchain_core", "langchain_community"],
+    "litellm_tracer": ["litellm"],
 }
 
 # Expected patterns for integration modules
