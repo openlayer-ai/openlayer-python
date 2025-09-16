@@ -4,7 +4,7 @@ import builtins
 from typing import Any, Dict
 from unittest.mock import Mock, patch
 
-import pytest
+import pytest  # type: ignore
 
 
 class TestLiteLLMIntegration:
@@ -23,11 +23,11 @@ class TestLiteLLMIntegration:
         with patch('openlayer.lib.integrations.litellm_tracer.HAVE_LITELLM', False):
             from openlayer.lib.integrations.litellm_tracer import trace_litellm
             
-            with pytest.raises(ImportError) as exc_info:
+            with pytest.raises(ImportError) as exc_info:  # type: ignore
                 trace_litellm()
             
-            assert "LiteLLM library is not installed" in str(exc_info.value)
-            assert "pip install litellm" in str(exc_info.value)
+            assert "LiteLLM library is not installed" in str(exc_info.value)  # type: ignore
+            assert "pip install litellm" in str(exc_info.value)  # type: ignore
 
     @patch('openlayer.lib.integrations.litellm_tracer.HAVE_LITELLM', True)
     @patch('openlayer.lib.integrations.litellm_tracer.litellm')
@@ -52,14 +52,14 @@ class TestLiteLLMIntegration:
         from openlayer.lib.integrations.litellm_tracer import detect_provider_from_model_name
         
         test_cases = [
-            ("gpt-4", "openai"),
-            ("gpt-3.5-turbo", "openai"),
-            ("claude-3-opus-20240229", "anthropic"),
-            ("claude-3-haiku-20240307", "anthropic"),
-            ("gemini-pro", "google"),
-            ("llama-2-70b", "meta"),
-            ("mistral-large-latest", "mistral"),
-            ("command-r-plus", "cohere"),
+            ("gpt-4", "OpenAI"),
+            ("gpt-3.5-turbo", "OpenAI"),
+            ("claude-3-opus-20240229", "Anthropic"),
+            ("claude-3-haiku-20240307", "Anthropic"),
+            ("gemini-pro", "Google"),
+            ("llama-2-70b", "Meta"),
+            ("mistral-large-latest", "Mistral"),
+            ("command-r-plus", "Cohere"),
             ("unknown-model", "unknown"),
         ]
         
@@ -225,11 +225,11 @@ class TestLiteLLMIntegration:
             return original_import(name, *args, **kwargs)
         
         with patch('builtins.__import__', side_effect=mock_import):
-            with pytest.raises(ImportError) as exc_info:
+            with pytest.raises(ImportError) as exc_info:  # type: ignore
                 trace_litellm()
             
-            assert "litellm is required for LiteLLM tracing" in str(exc_info.value)
-            assert "pip install litellm" in str(exc_info.value)
+            assert "litellm is required for LiteLLM tracing" in str(exc_info.value)  # type: ignore
+            assert "pip install litellm" in str(exc_info.value)  # type: ignore
 
     @patch('openlayer.lib.integrations.litellm_tracer.HAVE_LITELLM', True)
     def test_extract_litellm_metadata(self):
