@@ -54,7 +54,7 @@ def trace_litellm() -> None:
     >>> response = litellm.completion(
     ...     model="gpt-3.5-turbo",
     ...     messages=[{"role": "user", "content": "Hello!"}],
-    ...     inference_id="custom-id-123"  # Optional OpenLayer parameter
+    ...     inference_id="custom-id-123"  # Optional Openlayer parameter
     ... )
     """
     if not HAVE_LITELLM:
@@ -480,17 +480,17 @@ def detect_provider_from_model_name(model_name: str) -> str:
     model_lower = model_name.lower()
     
     if model_lower.startswith(('gpt-', 'o1-', 'text-davinci', 'text-curie', 'text-babbage', 'text-ada')):
-        return "openai"
+        return "OpenAI"
     elif model_lower.startswith(('claude-', 'claude')):
-        return "anthropic"
+        return "Anthropic"
     elif 'gemini' in model_lower or 'palm' in model_lower:
-        return "google"
+        return "Google"
     elif 'llama' in model_lower:
-        return "meta"
+        return "Meta"
     elif model_lower.startswith('mistral'):
-        return "mistral"
+        return "Mistral"
     elif model_lower.startswith('command'):
-        return "cohere"
+        return "Cohere"
     else:
         return "unknown"
 
