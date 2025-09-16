@@ -177,7 +177,7 @@ def trace_litellm():
         >>> response = litellm.completion(
         ...     model="gpt-3.5-turbo",
         ...     messages=[{"role": "user", "content": "Hello!"}],
-        ...     inference_id="custom-id-123"  # Optional OpenLayer parameter
+        ...     inference_id="custom-id-123"  # Optional Openlayer parameter
         ... )
     """
     # pylint: disable=import-outside-toplevel
