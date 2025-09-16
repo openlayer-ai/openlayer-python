@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.0 (2025-09-16)
+
+Full Changelog: [v0.2.0-alpha.94...v0.2.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.94...v0.2.0)
+
+### Features
+
+* integrated litellm for tracing ([49c1cb1](https://github.com/openlayer-ai/openlayer-python/commit/49c1cb1205f0d1e1668ef14ba8f707eb5bc79332))
+
+
+### Bug Fixes
+
+* fixed model names and OpenLayer to Openlayer. ([572a1f2](https://github.com/openlayer-ai/openlayer-python/commit/572a1f2a01a41c7ed8d3b4947c4dd8ed5f408a35))
+
+
+### Styles
+
+* lint fixes ([c138716](https://github.com/openlayer-ai/openlayer-python/commit/c1387161f2b5b3b0b7bffe78f0857e8930e3561c))
+
 ## 0.2.0-alpha.94 (2025-09-11)
 
 Full Changelog: [v0.2.0-alpha.93...v0.2.0-alpha.94](https://github.com/openlayer-ai/openlayer-python/compare/v0.2.0-alpha.93...v0.2.0-alpha.94)
