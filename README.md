@@ -17,7 +17,7 @@ The REST API documentation can be found on [openlayer.com](https://openlayer.com
 
 ```sh
 # install from PyPI
-pip install --pre openlayer
+pip install openlayer
 ```
 
 ## Usage
@@ -109,7 +109,7 @@ You can enable this by installing `aiohttp`:
 
 ```sh
 # install from PyPI
-pip install --pre openlayer[aiohttp]
+pip install openlayer[aiohttp]
 ```
 
 Then you can enable it by instantiating the client with `http_client=DefaultAioHttpClient()`:
