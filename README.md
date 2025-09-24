@@ -319,27 +319,28 @@ On timeout, an `APITimeoutError` is thrown.
 
 Note that requests that time out are [retried twice by default](#retries).
 
-#### Tracing Timeouts
+#### Tracing Configuration
 
-When using the tracing decorators (`@trace()` and `@trace_async()`), you can also configure timeouts for the underlying API calls to Openlayer using the `tracer.configure()` function:
+When using the tracing decorators (`@trace()` and `@trace_async()`), you can configure timeouts and retries for the underlying API calls to Openlayer using the `configure()` function:
 
 ```python
 from openlayer.lib import trace, configure
 
-# Configure timeout for tracing API calls (in seconds)
+# Configure timeout and retries for tracing API calls
 configure(
     api_key="your_api_key_here",
     inference_pipeline_id="your_pipeline_id_here", 
-    timeout=30.0  # 30 seconds timeout for tracing API calls (int or float)
+    timeout=30.0,     # 30 seconds timeout for tracing API calls (int or float)
+    max_retries=5     # Maximum number of retries for failed requests (default: 2)
 )
 
 # Now use the decorators normally
-trace()
+@trace()
 def my_function():
     return "result"
 ```
 
-This timeout setting applies to all API calls made by the tracer when streaming trace data to Openlayer. If not specified, the default timeout of 60 seconds is used.
+These settings apply to all API calls made by the tracer when streaming trace data to Openlayer. If not specified, the defaults are 60 seconds timeout and 2 retries.
 
 ## Advanced
 
