@@ -40,6 +40,7 @@ def configure(
     api_key: Optional[str] = None,
     inference_pipeline_id: Optional[str] = None,
     base_url: Optional[str] = None,
+    timeout: Optional[int] = None,
 ) -> None:
     """Configure the Openlayer tracer with custom settings.
 
@@ -52,6 +53,7 @@ def configure(
             If not provided, falls back to OPENLAYER_INFERENCE_PIPELINE_ID environment variable.
         base_url: The base URL for the Openlayer API. If not provided, falls back to
             OPENLAYER_BASE_URL environment variable or the default.
+        timeout: The timeout for the Openlayer API. Defaults to 1 minute.
 
     Examples:
         >>> import openlayer.lib.tracing.tracer as tracer
@@ -62,11 +64,12 @@ def configure(
         >>> def my_function():
         ...     return "result"
     """
-    global _configured_api_key, _configured_pipeline_id, _configured_base_url, _client
+    global _configured_api_key, _configured_pipeline_id, _configured_base_url, _configured_timeout, _client
 
     _configured_api_key = api_key
     _configured_pipeline_id = inference_pipeline_id
     _configured_base_url = base_url
+    _configured_timeout = timeout
 
     # Reset the client so it gets recreated with new configuration
     _client = None
@@ -89,6 +92,9 @@ def _get_client() -> Optional[Openlayer]:
         # Use configured base URL if available, otherwise fall back to environment variable
         if _configured_base_url is not None:
             client_kwargs["base_url"] = _configured_base_url
+
+        if _configured_timeout is not None:
+            client_kwargs["timeout"] = _configured_timeout
 
         if _verify_ssl:
             _client = Openlayer(**client_kwargs)
