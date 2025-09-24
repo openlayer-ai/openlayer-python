@@ -8,7 +8,7 @@ import time
 import traceback
 from contextlib import contextmanager
 from functools import wraps
-from typing import Any, Awaitable, Dict, Generator, List, Optional, Tuple
+from typing import Any, Awaitable, Dict, Generator, List, Optional, Tuple, Union
 
 from ..._base_client import DefaultHttpxClient
 from ..._client import Openlayer
@@ -34,13 +34,14 @@ _client = None
 _configured_api_key: Optional[str] = None
 _configured_pipeline_id: Optional[str] = None
 _configured_base_url: Optional[str] = None
+_configured_timeout: Optional[Union[int, float]] = None
 
 
 def configure(
     api_key: Optional[str] = None,
     inference_pipeline_id: Optional[str] = None,
     base_url: Optional[str] = None,
-    timeout: Optional[int] = None,
+    timeout: Optional[Union[int, float]] = None,
 ) -> None:
     """Configure the Openlayer tracer with custom settings.
 
@@ -53,7 +54,7 @@ def configure(
             If not provided, falls back to OPENLAYER_INFERENCE_PIPELINE_ID environment variable.
         base_url: The base URL for the Openlayer API. If not provided, falls back to
             OPENLAYER_BASE_URL environment variable or the default.
-        timeout: The timeout for the Openlayer API. Defaults to 1 minute.
+        timeout: The timeout for the Openlayer API in seconds (int or float). Defaults to 60 seconds.
 
     Examples:
         >>> import openlayer.lib.tracing.tracer as tracer
