@@ -15,6 +15,7 @@ class TestTracerConfiguration:
         tracer._configured_api_key = None
         tracer._configured_pipeline_id = None
         tracer._configured_base_url = None
+        tracer._configured_timeout = None
         tracer._client = None
 
     def test_configure_sets_global_variables(self):
@@ -22,12 +23,14 @@ class TestTracerConfiguration:
         api_key = "test_api_key"
         pipeline_id = "test_pipeline_id"
         base_url = "https://test.api.com"
+        timeout = 30.5
 
-        tracer.configure(api_key=api_key, inference_pipeline_id=pipeline_id, base_url=base_url)
+        tracer.configure(api_key=api_key, inference_pipeline_id=pipeline_id, base_url=base_url, timeout=timeout)
 
         assert tracer._configured_api_key == api_key
         assert tracer._configured_pipeline_id == pipeline_id
         assert tracer._configured_base_url == base_url
+        assert tracer._configured_timeout == timeout
 
     def test_configure_resets_client(self):
         """Test that configure() resets the client to force recreation."""
@@ -76,6 +79,30 @@ class TestTracerConfiguration:
             tracer._get_client()
 
             mock_openlayer.assert_called_once_with(api_key=api_key, base_url=base_url)
+
+    @patch("openlayer.lib.tracing.tracer.Openlayer")
+    def test_get_client_uses_configured_timeout(self, mock_openlayer: Any) -> None:
+        """Test that _get_client() uses the configured timeout."""
+        with patch.object(tracer, "_publish", True):
+            timeout = 45.5
+            tracer.configure(timeout=timeout)
+
+            tracer._get_client()
+
+            mock_openlayer.assert_called_once_with(timeout=timeout)
+
+    @patch("openlayer.lib.tracing.tracer.Openlayer")
+    def test_get_client_uses_all_configured_values(self, mock_openlayer: Any) -> None:
+        """Test that _get_client() uses all configured values together."""
+        with patch.object(tracer, "_publish", True):
+            api_key = "configured_api_key"
+            base_url = "https://configured.api.com"
+            timeout = 25
+            tracer.configure(api_key=api_key, base_url=base_url, timeout=timeout)
+
+            tracer._get_client()
+
+            mock_openlayer.assert_called_once_with(api_key=api_key, base_url=base_url, timeout=timeout)
 
     @patch("openlayer.lib.tracing.tracer.DefaultHttpxClient")
     @patch("openlayer.lib.tracing.tracer.Openlayer")
@@ -150,13 +177,17 @@ class TestTracerConfiguration:
         """Test that configure() with None values doesn't overwrite existing config."""
         # Set initial configuration
         tracer.configure(
-            api_key="initial_key", inference_pipeline_id="initial_pipeline", base_url="https://initial.com"
+            api_key="initial_key", 
+            inference_pipeline_id="initial_pipeline", 
+            base_url="https://initial.com",
+            timeout=60.0
         )
 
         # Configure with None values
-        tracer.configure(api_key=None, inference_pipeline_id=None, base_url=None)
+        tracer.configure(api_key=None, inference_pipeline_id=None, base_url=None, timeout=None)
 
         # Values should be set to None (this is the expected behavior)
         assert tracer._configured_api_key is None
         assert tracer._configured_pipeline_id is None
         assert tracer._configured_base_url is None
+        assert tracer._configured_timeout is None
