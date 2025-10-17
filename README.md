@@ -101,6 +101,65 @@ asyncio.run(main())
 
 Functionality between the synchronous and asynchronous clients is otherwise identical.
 
+## LLM Tracing
+
+Openlayer provides automatic tracing for popular LLM providers, enabling you to monitor model performance, token usage, and response quality.
+
+### OpenAI Tracing
+
+Trace OpenAI chat completions (including the new structured output `parse` method) with automatic monitoring:
+
+```python
+import openai
+from openlayer.lib import trace_openai
+
+# Trace your OpenAI client
+client = trace_openai(openai.OpenAI())
+
+# Use normally - both create and parse methods are automatically traced
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+
+# NEW: Parse method support for structured outputs
+from pydantic import BaseModel
+
+class Person(BaseModel):
+    name: str
+    age: int
+
+structured_response = client.chat.completions.parse(
+    model="gpt-4o-mini", 
+    messages=[{"role": "user", "content": "Extract: John Doe, 30 years old"}],
+    response_format=Person
+)
+```
+
+**What gets traced:**
+- Input messages and model parameters
+- Response content (structured data for parse method)
+- Token usage and latency metrics
+- Raw API responses for debugging
+- Custom inference IDs for request tracking
+
+### Other LLM Providers
+
+```python
+from openlayer.lib import trace_anthropic, trace_mistral, trace_groq
+
+# Anthropic
+anthropic_client = trace_anthropic(anthropic.Anthropic())
+
+# Mistral  
+mistral_client = trace_mistral(mistralai.Mistral())
+
+# Groq
+groq_client = trace_groq(groq.Groq())
+```
+
+See the [examples directory](examples/tracing/) for comprehensive tracing examples with all supported providers.
+
 ### With aiohttp
 
 By default, the async client uses `httpx` for HTTP requests. However, for improved concurrency performance you may also use `aiohttp` as the HTTP backend.
