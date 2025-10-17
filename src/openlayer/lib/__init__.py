@@ -3,7 +3,7 @@
 __all__ = [
     "configure",
     "trace",
-    "trace_anthropic", 
+    "trace_anthropic",
     "trace_openai",
     "trace_openai_assistant_thread_run",
     "trace_mistral",
@@ -16,6 +16,10 @@ __all__ = [
     "trace_litellm",
     "update_current_trace",
     "update_current_step",
+    # Offline buffer management functions
+    "replay_buffered_traces",
+    "get_buffer_status",
+    "clear_offline_buffer",
     # User and session context functions
     "set_user_session_context",
     "update_trace_user_session",
@@ -39,6 +43,11 @@ trace = tracer.trace
 trace_async = tracer.trace_async
 update_current_trace = tracer.update_current_trace
 update_current_step = tracer.update_current_step
+
+# Offline buffer management functions
+replay_buffered_traces = tracer.replay_buffered_traces
+get_buffer_status = tracer.get_buffer_status
+clear_offline_buffer = tracer.clear_offline_buffer
 
 
 def trace_anthropic(client):
@@ -115,27 +124,19 @@ def trace_bedrock(client):
     try:
         import boto3
     except ImportError:
-        raise ImportError(
-            "boto3 is required for Bedrock tracing. Install with: pip install boto3"
-        )
+        raise ImportError("boto3 is required for Bedrock tracing. Install with: pip install boto3")
 
     from .integrations import bedrock_tracer
 
     # Check if it's a boto3 client for bedrock-runtime service
-    if (
-        not hasattr(client, "_service_model")
-        or client._service_model.service_name != "bedrock-runtime"
-    ):
-        raise ValueError(
-            "Invalid client. Please provide a boto3 bedrock-runtime client."
-        )
+    if not hasattr(client, "_service_model") or client._service_model.service_name != "bedrock-runtime":
+        raise ValueError("Invalid client. Please provide a boto3 bedrock-runtime client.")
     return bedrock_tracer.trace_bedrock(client)
-
 
 
 def trace_oci_genai(client, estimate_tokens: bool = True):
     """Trace OCI GenAI chat completions.
-    
+
     Args:
         client: OCI GenAI client.
         estimate_tokens: Whether to estimate tokens when not available. Defaults to True.
@@ -162,31 +163,27 @@ trace_oci = trace_oci_genai
 # --------------------------------- LiteLLM ---------------------------------- #
 def trace_litellm():
     """Enable tracing for LiteLLM completions.
-    
+
     This function patches litellm.completion to automatically trace all completions
     made through the LiteLLM library, which provides a unified interface to 100+ LLM APIs.
-    
+
     Example:
         >>> import litellm
         >>> from openlayer.lib import trace_litellm
-        >>> 
         >>> # Enable tracing
         >>> trace_litellm()
-        >>> 
         >>> # Use LiteLLM normally - tracing happens automatically
         >>> response = litellm.completion(
         ...     model="gpt-3.5-turbo",
         ...     messages=[{"role": "user", "content": "Hello!"}],
-        ...     inference_id="custom-id-123"  # Optional Openlayer parameter
+        ...     inference_id="custom-id-123",  # Optional Openlayer parameter
         ... )
     """
     # pylint: disable=import-outside-toplevel
     try:
         import litellm
     except ImportError:
-        raise ImportError(
-            "litellm is required for LiteLLM tracing. Install with: pip install litellm"
-        )
+        raise ImportError("litellm is required for LiteLLM tracing. Install with: pip install litellm")
 
     from .integrations import litellm_tracer
 
