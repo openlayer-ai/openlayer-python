@@ -3,12 +3,17 @@
 import asyncio
 import contextvars
 import inspect
+import json
 import logging
+import os
+import threading
 import time
 import traceback
+import uuid
 from contextlib import contextmanager
 from functools import wraps
-from typing import Any, Awaitable, Dict, Generator, List, Optional, Tuple, Union
+from pathlib import Path
+from typing import Any, Awaitable, Callable, Dict, Generator, List, Optional, Tuple, Union
 
 from ..._base_client import DefaultHttpxClient
 from ..._client import Openlayer
@@ -18,6 +23,11 @@ from . import enums, steps, traces
 from ..guardrails.base import GuardrailResult, GuardrailAction
 from .context import UserSessionContext
 
+# Type aliases for callback functions
+OnFlushFailureCallback = Callable[[Dict[str, Any], Dict[str, Any], Exception], None]
+OnReplaySuccessCallback = Callable[[Dict[str, Any], Dict[str, Any]], None]
+OnReplayFailureCallback = Callable[[Dict[str, Any], Dict[str, Any], Exception], None]
+
 logger = logging.getLogger(__name__)
 
 # ----------------------------- Module setup and globals ----------------------------- #
@@ -25,9 +35,7 @@ logger = logging.getLogger(__name__)
 TRUE_LIST = ["true", "on", "1"]
 
 _publish = utils.get_env_variable("OPENLAYER_DISABLE_PUBLISH") not in TRUE_LIST
-_verify_ssl = (
-    utils.get_env_variable("OPENLAYER_VERIFY_SSL") or "true"
-).lower() in TRUE_LIST
+_verify_ssl = (utils.get_env_variable("OPENLAYER_VERIFY_SSL") or "true").lower() in TRUE_LIST
 _client = None
 
 # Configuration variables for programmatic setup
@@ -37,6 +45,12 @@ _configured_base_url: Optional[str] = None
 _configured_timeout: Optional[Union[int, float]] = None
 _configured_max_retries: Optional[int] = None
 
+# Offline buffering and callback configuration
+_configured_on_flush_failure: Optional[OnFlushFailureCallback] = None
+_configured_offline_buffer_enabled: bool = False
+_configured_offline_buffer_path: Optional[str] = None
+_configured_max_buffer_size: Optional[int] = None
+
 
 def configure(
     api_key: Optional[str] = None,
@@ -44,11 +58,16 @@ def configure(
     base_url: Optional[str] = None,
     timeout: Optional[Union[int, float]] = None,
     max_retries: Optional[int] = None,
+    on_flush_failure: Optional[OnFlushFailureCallback] = None,
+    offline_buffer_enabled: bool = False,
+    offline_buffer_path: Optional[str] = None,
+    max_buffer_size: Optional[int] = None,
 ) -> None:
     """Configure the Openlayer tracer with custom settings.
 
     This function allows you to programmatically set the API key, inference pipeline ID,
-    base URL, timeout, and retry settings for the Openlayer client, instead of relying on environment variables.
+    base URL, timeout, retry settings, and offline buffering for the Openlayer client,
+    instead of relying on environment variables.
 
     Args:
         api_key: The Openlayer API key. If not provided, falls back to OPENLAYER_API_KEY environment variable.
@@ -58,26 +77,60 @@ def configure(
             OPENLAYER_BASE_URL environment variable or the default.
         timeout: The timeout for the Openlayer API in seconds (int or float). Defaults to 60 seconds.
         max_retries: The maximum number of retries for failed API requests. Defaults to 2.
+        on_flush_failure: Optional callback function called when trace data fails to send to Openlayer.
+            Should accept (trace_data, config, error) as arguments.
+        offline_buffer_enabled: Enable offline buffering of failed traces. Defaults to False.
+        offline_buffer_path: Directory path for storing buffered traces. Defaults to ~/.openlayer/buffer.
+        max_buffer_size: Maximum number of trace files to store in buffer. Defaults to 1000.
 
     Examples:
         >>> import openlayer.lib.tracing.tracer as tracer
         >>> # Configure with API key and pipeline ID
         >>> tracer.configure(api_key="your_api_key_here", inference_pipeline_id="your_pipeline_id_here")
+        >>> # Configure with failure callback and offline buffering
+        >>> def on_failure(trace_data, config, error):
+        ...     print(f"Failed to send trace: {error}")
+        ...     # Could also log to monitoring system, send alerts, etc.
+        >>> tracer.configure(
+        ...     api_key="your_api_key_here",
+        ...     inference_pipeline_id="your_pipeline_id_here",
+        ...     on_flush_failure=on_failure,
+        ...     offline_buffer_enabled=True,
+        ...     offline_buffer_path="/tmp/openlayer_buffer",
+        ...     max_buffer_size=500,
+        ... )
         >>> # Now use the decorators normally
         >>> @tracer.trace()
         >>> def my_function():
         ...     return "result"
     """
-    global _configured_api_key, _configured_pipeline_id, _configured_base_url, _configured_timeout, _configured_max_retries, _client
+    global \
+        _configured_api_key, \
+        _configured_pipeline_id, \
+        _configured_base_url, \
+        _configured_timeout, \
+        _configured_max_retries, \
+        _client
+    global \
+        _configured_on_flush_failure, \
+        _configured_offline_buffer_enabled, \
+        _configured_offline_buffer_path, \
+        _configured_max_buffer_size, \
+        _offline_buffer
 
     _configured_api_key = api_key
     _configured_pipeline_id = inference_pipeline_id
     _configured_base_url = base_url
     _configured_timeout = timeout
     _configured_max_retries = max_retries
+    _configured_on_flush_failure = on_flush_failure
+    _configured_offline_buffer_enabled = offline_buffer_enabled
+    _configured_offline_buffer_path = offline_buffer_path
+    _configured_max_buffer_size = max_buffer_size
 
-    # Reset the client so it gets recreated with new configuration
+    # Reset the client and buffer so they get recreated with new configuration
     _client = None
+    _offline_buffer = None
 
 
 def _get_client() -> Optional[Openlayer]:
@@ -120,6 +173,190 @@ _current_step = contextvars.ContextVar("current_step")
 _current_trace = contextvars.ContextVar("current_trace")
 _rag_context = contextvars.ContextVar("rag_context")
 
+# ----------------------------- Offline Buffer Implementation ----------------------------- #
+
+
+class OfflineBuffer:
+    """Handles offline buffering of trace data when platform communication fails."""
+
+    def __init__(
+        self,
+        buffer_path: Optional[str] = None,
+        max_buffer_size: Optional[int] = None,
+    ):
+        """Initialize the offline buffer.
+
+        Args:
+            buffer_path: Directory path for storing buffered traces.
+                        Defaults to ~/.openlayer/buffer.
+            max_buffer_size: Maximum number of trace files to store.
+                           Defaults to 1000.
+        """
+        self.buffer_path = Path(buffer_path or os.path.expanduser("~/.openlayer/buffer"))
+        self.max_buffer_size = max_buffer_size or 1000
+        self._lock = threading.RLock()
+
+        # Create buffer directory if it doesn't exist
+        self.buffer_path.mkdir(parents=True, exist_ok=True)
+
+        logger.debug("Initialized offline buffer at %s", self.buffer_path)
+
+    def store_trace(self, trace_data: Dict[str, Any], config: Dict[str, Any], inference_pipeline_id: str) -> bool:
+        """Store a failed trace to the offline buffer.
+
+        Args:
+            trace_data: The trace data that failed to send
+            config: The configuration used for streaming
+            inference_pipeline_id: The pipeline ID used
+
+        Returns:
+            True if successfully stored, False otherwise
+        """
+        try:
+            with self._lock:
+                # Check buffer size limit
+                existing_files = list(self.buffer_path.glob("trace_*.json"))
+                if len(existing_files) >= self.max_buffer_size:
+                    # Remove oldest file to make room
+                    oldest_file = min(existing_files, key=lambda f: f.stat().st_mtime)
+                    oldest_file.unlink()
+                    logger.debug("Removed oldest buffered trace: %s", oldest_file)
+
+                # Create filename with timestamp and unique suffix
+                timestamp = int(time.time() * 1000)  # milliseconds
+                unique_id = str(uuid.uuid4())[:8]  # Short unique identifier
+                filename = f"trace_{timestamp}_{os.getpid()}_{unique_id}.json"
+                file_path = self.buffer_path / filename
+
+                # Prepare the complete data payload
+                buffered_payload = {
+                    "trace_data": trace_data,
+                    "config": config,
+                    "inference_pipeline_id": inference_pipeline_id,
+                    "timestamp": timestamp,
+                    "metadata": {
+                        "buffer_version": "1.0",
+                        "created_by": "openlayer-python-sdk",
+                        "process_id": os.getpid(),
+                    },
+                }
+
+                # Write to file atomically
+                with file_path.open("w", encoding="utf-8") as f:
+                    json.dump(buffered_payload, f, ensure_ascii=False, indent=2)
+
+                logger.info("Stored trace to offline buffer: %s", file_path)
+                return True
+
+        except Exception as e:
+            logger.error("Failed to store trace to offline buffer: %s", e)
+            return False
+
+    def get_buffered_traces(self) -> List[Dict[str, Any]]:
+        """Get all buffered traces from disk.
+
+        Returns:
+            List of buffered trace payloads
+        """
+        traces = []
+
+        try:
+            with self._lock:
+                trace_files = sorted(self.buffer_path.glob("trace_*.json"), key=lambda f: f.stat().st_mtime)
+
+                for file_path in trace_files:
+                    try:
+                        with file_path.open("r", encoding="utf-8") as f:
+                            payload = json.load(f)
+                            payload["_file_path"] = str(file_path)
+                            traces.append(payload)
+                    except Exception as e:
+                        logger.error("Failed to read buffered trace %s: %s", file_path, e)
+
+        except Exception as e:
+            logger.error("Failed to get buffered traces: %s", e)
+
+        return traces
+
+    def remove_trace(self, file_path: str) -> bool:
+        """Remove a successfully replayed trace from the buffer.
+
+        Args:
+            file_path: Path to the trace file to remove
+
+        Returns:
+            True if successfully removed, False otherwise
+        """
+        try:
+            with self._lock:
+                Path(file_path).unlink(missing_ok=True)
+                logger.debug("Removed successfully replayed trace: %s", file_path)
+                return True
+        except Exception as e:
+            logger.error("Failed to remove buffered trace %s: %s", file_path, e)
+            return False
+
+    def get_buffer_status(self) -> Dict[str, Any]:
+        """Get current buffer status.
+
+        Returns:
+            Dictionary with buffer statistics
+        """
+        try:
+            with self._lock:
+                trace_files = list(self.buffer_path.glob("trace_*.json"))
+                total_size = sum(f.stat().st_size for f in trace_files)
+
+                return {
+                    "buffer_path": str(self.buffer_path),
+                    "total_traces": len(trace_files),
+                    "max_buffer_size": self.max_buffer_size,
+                    "total_size_bytes": total_size,
+                    "oldest_trace": (min(trace_files, key=lambda f: f.stat().st_mtime).name if trace_files else None),
+                    "newest_trace": (max(trace_files, key=lambda f: f.stat().st_mtime).name if trace_files else None),
+                }
+        except Exception as e:
+            logger.error("Failed to get buffer status: %s", e)
+            return {"error": str(e)}
+
+    def clear_buffer(self) -> int:
+        """Clear all buffered traces.
+
+        Returns:
+            Number of traces removed
+        """
+        try:
+            with self._lock:
+                trace_files = list(self.buffer_path.glob("trace_*.json"))
+                count = len(trace_files)
+
+                for file_path in trace_files:
+                    file_path.unlink(missing_ok=True)
+
+                logger.info("Cleared %d traces from offline buffer", count)
+                return count
+        except Exception as e:
+            logger.error("Failed to clear buffer: %s", e)
+            return 0
+
+
+# Global offline buffer instance
+_offline_buffer: Optional[OfflineBuffer] = None
+
+
+def _get_offline_buffer() -> Optional[OfflineBuffer]:
+    """Get or create the offline buffer instance."""
+    global _offline_buffer
+
+    if _configured_offline_buffer_enabled and _offline_buffer is None:
+        _offline_buffer = OfflineBuffer(
+            buffer_path=_configured_offline_buffer_path,
+            max_buffer_size=_configured_max_buffer_size,
+        )
+
+    return _offline_buffer if _configured_offline_buffer_enabled else None
+
+
 # ----------------------------- Public API functions ----------------------------- #
 
 
@@ -146,6 +383,7 @@ def create_step(
     output: Optional[Any] = None,
     metadata: Optional[Dict[str, Any]] = None,
     inference_pipeline_id: Optional[str] = None,
+    on_flush_failure: Optional[OnFlushFailureCallback] = None,
 ) -> Generator[steps.Step, None, None]:
     """Starts a trace and yields a Step object."""
     new_step, is_root_step, token = _create_and_initialize_step(
@@ -169,6 +407,7 @@ def create_step(
             is_root_step=is_root_step,
             step_name=name,
             inference_pipeline_id=inference_pipeline_id,
+            on_flush_failure=on_flush_failure,
         )
 
 
@@ -186,6 +425,7 @@ def trace(
     inference_pipeline_id: Optional[str] = None,
     context_kwarg: Optional[str] = None,
     guardrails: Optional[List[Any]] = None,
+    on_flush_failure: Optional[OnFlushFailureCallback] = None,
     **step_kwargs,
 ):
     """Decorator to trace a function with optional guardrails.
@@ -257,14 +497,12 @@ def trace(
                         # Initialize tracing on first iteration only
                         if not self._trace_initialized:
                             self._original_gen = func(*func_args, **func_kwargs)
-                            self._step, self._is_root_step, self._token = (
-                                _create_and_initialize_step(
-                                    step_name=step_name,
-                                    step_type=enums.StepType.USER_CALL,
-                                    inputs=None,
-                                    output=None,
-                                    metadata=None,
-                                )
+                            self._step, self._is_root_step, self._token = _create_and_initialize_step(
+                                step_name=step_name,
+                                step_type=enums.StepType.USER_CALL,
+                                inputs=None,
+                                output=None,
+                                metadata=None,
                             )
                             self._inputs = _extract_function_inputs(
                                 func_signature=func_signature,
@@ -289,6 +527,7 @@ def trace(
                                 inputs=self._inputs,
                                 output=output,
                                 inference_pipeline_id=inference_pipeline_id,
+                                on_flush_failure=on_flush_failure,
                             )
                             raise
                         except Exception as exc:
@@ -304,6 +543,7 @@ def trace(
                                     inputs=self._inputs,
                                     output=output,
                                     inference_pipeline_id=inference_pipeline_id,
+                                    on_flush_failure=on_flush_failure,
                                 )
                             raise
 
@@ -337,19 +577,16 @@ def trace(
                         )
 
                         # Apply input guardrails
-                        modified_inputs, input_guardrail_metadata = (
-                            _apply_input_guardrails(
-                                guardrails or [],
-                                original_inputs,
-                            )
+                        modified_inputs, input_guardrail_metadata = _apply_input_guardrails(
+                            guardrails or [],
+                            original_inputs,
                         )
                         guardrail_metadata.update(input_guardrail_metadata)
 
                         # Check if function execution should be skipped
                         if (
                             hasattr(modified_inputs, "__class__")
-                            and modified_inputs.__class__.__name__
-                            == "SkipFunctionExecution"
+                            and modified_inputs.__class__.__name__ == "SkipFunctionExecution"
                         ):
                             # Function execution was blocked with SKIP_FUNCTION strategy
                             output = None
@@ -379,20 +616,17 @@ def trace(
                         # Apply output guardrails (skip if function was skipped)
                         if (
                             hasattr(modified_inputs, "__class__")
-                            and modified_inputs.__class__.__name__
-                            == "SkipFunctionExecution"
+                            and modified_inputs.__class__.__name__ == "SkipFunctionExecution"
                         ):
                             final_output, output_guardrail_metadata = output, {}
                             # Use original inputs for logging since modified_inputs
                             # is a special marker
                             modified_inputs = original_inputs
                         else:
-                            final_output, output_guardrail_metadata = (
-                                _apply_output_guardrails(
-                                    guardrails or [],
-                                    output,
-                                    modified_inputs or original_inputs,
-                                )
+                            final_output, output_guardrail_metadata = _apply_output_guardrails(
+                                guardrails or [],
+                                output,
+                                modified_inputs or original_inputs,
                             )
                         guardrail_metadata.update(output_guardrail_metadata)
 
@@ -436,6 +670,7 @@ def trace_async(
     inference_pipeline_id: Optional[str] = None,
     context_kwarg: Optional[str] = None,
     guardrails: Optional[List[Any]] = None,
+    on_flush_failure: Optional[OnFlushFailureCallback] = None,
     **step_kwargs,
 ):
     """Decorator to trace async functions and async generators.
@@ -493,14 +728,12 @@ def trace_async(
                             # Initialize tracing on first iteration only
                             if not self._trace_initialized:
                                 self._original_gen = func(*func_args, **func_kwargs)
-                                self._step, self._is_root_step, self._token = (
-                                    _create_and_initialize_step(
-                                        step_name=step_name,
-                                        step_type=enums.StepType.USER_CALL,
-                                        inputs=None,
-                                        output=None,
-                                        metadata=None,
-                                    )
+                                self._step, self._is_root_step, self._token = _create_and_initialize_step(
+                                    step_name=step_name,
+                                    step_type=enums.StepType.USER_CALL,
+                                    inputs=None,
+                                    output=None,
+                                    metadata=None,
                                 )
                                 self._inputs = _extract_function_inputs(
                                     func_signature=func_signature,
@@ -525,6 +758,7 @@ def trace_async(
                                     inputs=self._inputs,
                                     output=output,
                                     inference_pipeline_id=inference_pipeline_id,
+                                    on_flush_failure=on_flush_failure,
                                 )
                                 raise
                             except Exception as exc:
@@ -540,6 +774,7 @@ def trace_async(
                                         inputs=self._inputs,
                                         output=output,
                                         inference_pipeline_id=inference_pipeline_id,
+                                        on_flush_failure=on_flush_failure,
                                     )
                                 raise
 
@@ -570,20 +805,16 @@ def trace_async(
                                     )
 
                                     # Process inputs through guardrails
-                                    modified_inputs, input_metadata = (
-                                        _apply_input_guardrails(
-                                            guardrails,
-                                            inputs,
-                                        )
+                                    modified_inputs, input_metadata = _apply_input_guardrails(
+                                        guardrails,
+                                        inputs,
                                     )
                                     guardrail_metadata.update(input_metadata)
 
                                     # Execute function with potentially modified inputs
                                     if modified_inputs != inputs:
                                         # Reconstruct function arguments from modified inputs
-                                        bound = func_signature.bind(
-                                            *func_args, **func_kwargs
-                                        )
+                                        bound = func_signature.bind(*func_args, **func_kwargs)
                                         bound.apply_defaults()
 
                                         # Update bound arguments with modified values
@@ -592,9 +823,7 @@ def trace_async(
                                             modified_value,
                                         ) in modified_inputs.items():
                                             if param_name in bound.arguments:
-                                                bound.arguments[param_name] = (
-                                                    modified_value
-                                                )
+                                                bound.arguments[param_name] = modified_value
 
                                         output = await func(*bound.args, **bound.kwargs)
                                     else:
@@ -613,17 +842,15 @@ def trace_async(
                         # Apply output guardrails if provided
                         if guardrails and output is not None:
                             try:
-                                final_output, output_metadata = (
-                                    _apply_output_guardrails(
-                                        guardrails,
-                                        output,
-                                        _extract_function_inputs(
-                                            func_signature=func_signature,
-                                            func_args=func_args,
-                                            func_kwargs=func_kwargs,
-                                            context_kwarg=context_kwarg,
-                                        ),
-                                    )
+                                final_output, output_metadata = _apply_output_guardrails(
+                                    guardrails,
+                                    output,
+                                    _extract_function_inputs(
+                                        func_signature=func_signature,
+                                        func_args=func_args,
+                                        func_kwargs=func_kwargs,
+                                        context_kwarg=context_kwarg,
+                                    ),
                                 )
                                 guardrail_metadata.update(output_metadata)
 
@@ -670,20 +897,16 @@ def trace_async(
                                 )
 
                                 # Process inputs through guardrails
-                                modified_inputs, input_metadata = (
-                                    _apply_input_guardrails(
-                                        guardrails,
-                                        inputs,
-                                    )
+                                modified_inputs, input_metadata = _apply_input_guardrails(
+                                    guardrails,
+                                    inputs,
                                 )
                                 guardrail_metadata.update(input_metadata)
 
                                 # Execute function with potentially modified inputs
                                 if modified_inputs != inputs:
                                     # Reconstruct function arguments from modified inputs
-                                    bound = func_signature.bind(
-                                        *func_args, **func_kwargs
-                                    )
+                                    bound = func_signature.bind(*func_args, **func_kwargs)
                                     bound.apply_defaults()
 
                                     # Update bound arguments with modified values
@@ -792,7 +1015,7 @@ def update_current_trace(**kwargs) -> None:
         >>>
         >>> @trace()
         >>> def my_function():
-        >>>     # Update trace with user context
+        >>> # Update trace with user context
         >>>     update_current_trace(
         >>>         inferenceId="custom_inference_id",
         >>>         user_id="user123",
@@ -832,7 +1055,7 @@ def update_current_step(
         >>>
         >>> @trace()
         >>> def my_function():
-        >>>     # Update current step with additional context
+        >>> # Update current step with additional context
         >>>     update_current_step(
         >>>         metadata={"model_version": "v1.2.3"}
         >>>     )
@@ -876,6 +1099,195 @@ def run_async_func(coroutine: Awaitable[Any]) -> Any:
     return result
 
 
+def replay_buffered_traces(
+    max_retries: int = 3,
+    on_replay_success: Optional[OnReplaySuccessCallback] = None,
+    on_replay_failure: Optional[OnReplayFailureCallback] = None,
+) -> Dict[str, Any]:
+    """Replay all buffered traces to the Openlayer platform.
+
+    This function attempts to send all traces stored in the offline buffer
+    to Openlayer. Successfully sent traces are removed from the buffer.
+
+    Args:
+        max_retries: Maximum number of retries per trace. Defaults to 3.
+        on_replay_success: Optional callback called when a trace is successfully replayed.
+            Should accept (trace_data, config) as arguments.
+        on_replay_failure: Optional callback called when a trace fails to replay.
+            Should accept (trace_data, config, error) as arguments.
+
+    Returns:
+        Dictionary with replay statistics including success/failure counts.
+
+    Examples:
+        >>> import openlayer.lib.tracing.tracer as tracer
+        >>> def on_success(trace_data, config):
+        ...     print(f"Successfully replayed trace: {trace_data['inferenceId']}")
+        >>> def on_failure(trace_data, config, error):
+        ...     print(f"Failed to replay trace: {error}")
+        >>> result = tracer.replay_buffered_traces(
+        ...     max_retries=3, on_replay_success=on_success, on_replay_failure=on_failure
+        ... )
+        >>> print(f"Replayed {result['success_count']} traces successfully")
+    """
+    offline_buffer = _get_offline_buffer()
+    if not offline_buffer:
+        logger.warning("Offline buffer not enabled - nothing to replay")
+        return {
+            "total_traces": 0,
+            "success_count": 0,
+            "failure_count": 0,
+            "error": "Offline buffer not enabled",
+        }
+
+    client = _get_client()
+    if not client:
+        logger.error("No Openlayer client available for replay")
+        return {
+            "total_traces": 0,
+            "success_count": 0,
+            "failure_count": 0,
+            "error": "No Openlayer client available",
+        }
+
+    buffered_traces = offline_buffer.get_buffered_traces()
+    total_traces = len(buffered_traces)
+    success_count = 0
+    failure_count = 0
+    failed_traces = []
+
+    logger.info("Starting replay of %d buffered traces", total_traces)
+
+    for trace_payload in buffered_traces:
+        trace_data = trace_payload["trace_data"]
+        config = trace_payload["config"]
+        inference_pipeline_id = trace_payload["inference_pipeline_id"]
+        file_path = trace_payload["_file_path"]
+
+        success = False
+        last_error = None
+
+        # Retry logic
+        for attempt in range(max_retries):
+            try:
+                response = client.inference_pipelines.data.stream(
+                    inference_pipeline_id=inference_pipeline_id,
+                    rows=[trace_data],
+                    config=config,
+                )
+
+                # Success - remove from buffer and count it
+                offline_buffer.remove_trace(file_path)
+                success_count += 1
+                success = True
+
+                logger.debug(
+                    "Successfully replayed trace %s (attempt %d)",
+                    trace_data.get("inferenceId", "unknown"),
+                    attempt + 1,
+                )
+
+                # Call success callback if provided
+                if on_replay_success:
+                    try:
+                        on_replay_success(trace_data, config)
+                    except Exception as callback_err:
+                        logger.error("Error in replay success callback: %s", callback_err)
+
+                break
+
+            except Exception as err:
+                last_error = err
+                logger.debug(
+                    "Failed to replay trace %s (attempt %d): %s",
+                    trace_data.get("inferenceId", "unknown"),
+                    attempt + 1,
+                    err,
+                )
+
+                # If this is the last attempt, mark as failed
+                if attempt == max_retries - 1:
+                    failure_count += 1
+                    failed_traces.append(
+                        {
+                            "trace_id": trace_data.get("inferenceId", "unknown"),
+                            "error": str(err),
+                            "file_path": file_path,
+                        }
+                    )
+
+                    # Call failure callback if provided
+                    if on_replay_failure:
+                        try:
+                            on_replay_failure(trace_data, config, err)
+                        except Exception as callback_err:
+                            logger.error("Error in replay failure callback: %s", callback_err)
+
+    result = {
+        "total_traces": total_traces,
+        "success_count": success_count,
+        "failure_count": failure_count,
+        "failed_traces": failed_traces,
+    }
+
+    logger.info(
+        "Replay completed: %d/%d traces successfully sent",
+        success_count,
+        total_traces,
+    )
+
+    return result
+
+
+def get_buffer_status() -> Dict[str, Any]:
+    """Get the current status of the offline buffer.
+
+    Returns:
+        Dictionary with buffer statistics including trace count, size, and path.
+
+    Examples:
+        >>> import openlayer.lib.tracing.tracer as tracer
+        >>> status = tracer.get_buffer_status()
+        >>> print(f"Buffer contains {status['total_traces']} traces")
+        >>> print(f"Buffer size: {status['total_size_bytes']} bytes")
+    """
+    offline_buffer = _get_offline_buffer()
+    if not offline_buffer:
+        return {
+            "enabled": False,
+            "error": "Offline buffer not enabled",
+        }
+
+    status = offline_buffer.get_buffer_status()
+    status["enabled"] = True
+    return status
+
+
+def clear_offline_buffer() -> Dict[str, Any]:
+    """Clear all traces from the offline buffer.
+
+    This permanently removes all buffered traces from disk.
+    Use with caution as this operation cannot be undone.
+
+    Returns:
+        Dictionary with the number of traces removed.
+
+    Examples:
+        >>> import openlayer.lib.tracing.tracer as tracer
+        >>> result = tracer.clear_offline_buffer()
+        >>> print(f"Removed {result['traces_removed']} buffered traces")
+    """
+    offline_buffer = _get_offline_buffer()
+    if not offline_buffer:
+        return {
+            "traces_removed": 0,
+            "error": "Offline buffer not enabled",
+        }
+
+    traces_removed = offline_buffer.clear_buffer()
+    return {"traces_removed": traces_removed}
+
+
 # ----------------------------- Helper functions for create_step ----------------------------- #
 
 
@@ -909,6 +1321,7 @@ def _create_and_initialize_step(
         _current_trace.set(current_trace)
         _rag_context.set(None)
         current_trace.add_step(new_step)
+
     else:
         logger.debug("Adding step %s to parent step %s", step_name, parent_step.name)
         current_trace = get_current_trace()
@@ -919,12 +1332,16 @@ def _create_and_initialize_step(
 
 
 def _handle_trace_completion(
-    is_root_step: bool, step_name: str, inference_pipeline_id: Optional[str] = None
+    is_root_step: bool,
+    step_name: str,
+    inference_pipeline_id: Optional[str] = None,
+    on_flush_failure: Optional[OnFlushFailureCallback] = None,
 ) -> None:
     """Handle trace completion and data streaming."""
     if is_root_step:
         logger.debug("Ending the trace...")
         current_trace = get_current_trace()
+
         trace_data, input_variable_names = post_process_trace(current_trace)
 
         config = dict(
@@ -938,7 +1355,7 @@ def _handle_trace_completion(
                 num_of_token_column_name="tokens",
             )
         )
-        
+
         # Add reserved column configurations for user context
         if "user_id" in trace_data:
             config.update({"user_id_column_name": "user_id"})
@@ -956,16 +1373,17 @@ def _handle_trace_completion(
                 }
             )
         if _publish:
-            try:
-                # Use provided pipeline_id, or fall back to configured default,
-                # or finally to environment variable
-                inference_pipeline_id = (
-                    inference_pipeline_id
-                    or _configured_pipeline_id
-                    or utils.get_env_variable("OPENLAYER_INFERENCE_PIPELINE_ID")
-                )
-                client = _get_client()
-                if client:
+            # Use provided pipeline_id, or fall back to configured default,
+            # or finally to environment variable
+            inference_pipeline_id = (
+                inference_pipeline_id
+                or _configured_pipeline_id
+                or utils.get_env_variable("OPENLAYER_INFERENCE_PIPELINE_ID")
+            )
+            client = _get_client()
+
+            if client:
+                try:
                     response = client.inference_pipelines.data.stream(
                         inference_pipeline_id=inference_pipeline_id,
                         rows=[trace_data],
@@ -975,16 +1393,68 @@ def _handle_trace_completion(
                         "Successfully streamed data to Openlayer. Response:",
                         response.to_json(),
                     )
-            except Exception as err:  # pylint: disable=broad-except
-                logger.error(traceback.format_exc())
-                logger.error(
-                    "Could not stream data to Openlayer (pipeline_id: %s, base_url: %s) Error: %s",
-                    inference_pipeline_id,
-                    client.base_url,
-                    err,
-                )
+
+                except Exception as err:  # pylint: disable=broad-except
+                    logger.error(traceback.format_exc())
+                    logger.error(
+                        "Could not stream data to Openlayer (pipeline_id: %s, base_url: %s) Error: %s",
+                        inference_pipeline_id,
+                        client.base_url if client else "N/A",
+                        err,
+                    )
+
+                    # Handle failure callback and offline buffering
+                    _handle_streaming_failure(
+                        trace_data=trace_data,
+                        config=config,
+                        inference_pipeline_id=inference_pipeline_id,
+                        error=err,
+                        on_flush_failure=on_flush_failure,
+                    )
     else:
         logger.debug("Ending step %s", step_name)
+
+
+def _handle_streaming_failure(
+    trace_data: Dict[str, Any],
+    config: Dict[str, Any],
+    inference_pipeline_id: str,
+    error: Exception,
+    on_flush_failure: Optional[OnFlushFailureCallback] = None,
+) -> None:
+    """Handle streaming failure by calling callback and/or storing to buffer.
+
+    Args:
+        trace_data: The trace data that failed to send
+        config: The configuration used for streaming
+        inference_pipeline_id: The pipeline ID used
+        error: The exception that occurred
+    """
+    try:
+        # Call the failure callback if configured (per-trace takes priority over global)
+        failure_callback = on_flush_failure or _configured_on_flush_failure
+        if failure_callback:
+            try:
+                failure_callback(trace_data, config, error)
+                logger.debug("Called on_flush_failure callback")
+            except Exception as callback_err:
+                logger.error("Error in on_flush_failure callback: %s", callback_err)
+
+        # Store to offline buffer if enabled
+        offline_buffer = _get_offline_buffer()
+        if offline_buffer:
+            success = offline_buffer.store_trace(
+                trace_data=trace_data,
+                config=config,
+                inference_pipeline_id=inference_pipeline_id,
+            )
+            if success:
+                logger.info("Stored failed trace to offline buffer for later replay")
+            else:
+                logger.error("Failed to store trace to offline buffer")
+
+    except Exception as handler_err:
+        logger.error("Error handling streaming failure: %s", handler_err)
 
 
 # ----------------------------- Helper functions for trace decorators ----------------------------- #
@@ -1075,20 +1545,15 @@ def _finalize_step_logging(
 
         # Add summary fields for easy filtering
         step_metadata["has_guardrails"] = True
-        step_metadata["guardrail_actions"] = [
-            metadata.get("action") for metadata in guardrail_metadata.values()
-        ]
+        step_metadata["guardrail_actions"] = [metadata.get("action") for metadata in guardrail_metadata.values()]
         step_metadata["guardrail_names"] = [
-            key.replace("input_", "").replace("output_", "")
-            for key in guardrail_metadata.keys()
+            key.replace("input_", "").replace("output_", "") for key in guardrail_metadata.keys()
         ]
 
         # Add flags for specific actions for easy filtering
         actions = step_metadata["guardrail_actions"]
         step_metadata["guardrail_blocked"] = "blocked" in actions
-        step_metadata["guardrail_modified"] = (
-            "redacted" in actions or "modified" in actions
-        )
+        step_metadata["guardrail_modified"] = "redacted" in actions or "modified" in actions
         step_metadata["guardrail_allowed"] = "allow" in actions
     else:
         step_metadata["has_guardrails"] = False
@@ -1112,6 +1577,7 @@ def _finalize_sync_generator_step(
     inputs: dict,
     output: Any,
     inference_pipeline_id: Optional[str] = None,
+    on_flush_failure: Optional[OnFlushFailureCallback] = None,
 ) -> None:
     """Finalize sync generator step - called when generator is consumed."""
     try:
@@ -1120,18 +1586,15 @@ def _finalize_sync_generator_step(
         # Context variable was created in a different context (e.g., different thread)
         # This can happen in async/multi-threaded environments like FastAPI/OpenWebUI
         # We can safely ignore this as the step finalization will still complete
-        logger.debug(
-            "Context variable reset failed - generator consumed in different context"
-        )
+        logger.debug("Context variable reset failed - generator consumed in different context")
 
-    _finalize_step_logging(
-        step=step, inputs=inputs, output=output, start_time=step.start_time
-    )
+    _finalize_step_logging(step=step, inputs=inputs, output=output, start_time=step.start_time)
 
     _handle_trace_completion(
         is_root_step=is_root_step,
         step_name=step_name,
         inference_pipeline_id=inference_pipeline_id,
+        on_flush_failure=on_flush_failure,
     )
 
 
@@ -1143,16 +1606,16 @@ def _finalize_async_generator_step(
     inputs: dict,
     output: Any,
     inference_pipeline_id: Optional[str] = None,
+    on_flush_failure: Optional[OnFlushFailureCallback] = None,
 ) -> None:
     """Finalize async generator step - called when generator is consumed."""
     _current_step.reset(token)
-    _finalize_step_logging(
-        step=step, inputs=inputs, output=output, start_time=step.start_time
-    )
+    _finalize_step_logging(step=step, inputs=inputs, output=output, start_time=step.start_time)
     _handle_trace_completion(
         is_root_step=is_root_step,
         step_name=step_name,
         inference_pipeline_id=inference_pipeline_id,
+        on_flush_failure=on_flush_failure,
     )
 
 
@@ -1205,16 +1668,16 @@ def post_process_trace(
     if trace_obj.metadata is not None:
         # Add each trace metadata key directly to the row/record level
         trace_data.update(trace_obj.metadata)
-    
+
     # Add reserved columns for user and session context
     user_id = UserSessionContext.get_user_id()
     if user_id is not None:
         trace_data["user_id"] = user_id
-    
+
     session_id = UserSessionContext.get_session_id()
     if session_id is not None:
         trace_data["session_id"] = session_id
-    
+
     if root_step.ground_truth:
         trace_data["groundTruth"] = root_step.ground_truth
     if input_variables:
@@ -1305,10 +1768,7 @@ def _apply_input_guardrails(
                         guardrail_step.log(**step_log_data)
                         return final_inputs, overall_metadata
 
-                    elif (
-                        result.action.value == "modify"
-                        and result.modified_data is not None
-                    ):
+                    elif result.action.value == "modify" and result.modified_data is not None:
                         step_log_data["output"] = result.modified_data
                         modified_inputs = result.modified_data
                         logger.debug("Guardrail %s modified inputs", guardrail.name)
@@ -1336,12 +1796,8 @@ def _apply_input_guardrails(
                         raise
                     else:
                         # Log other exceptions but don't fail the trace
-                        logger.error(
-                            "Error applying input guardrail %s: %s", guardrail.name, e
-                        )
-                        guardrail_key = (
-                            f"input_{guardrail.name.lower().replace(' ', '_')}"
-                        )
+                        logger.error("Error applying input guardrail %s: %s", guardrail.name, e)
+                        guardrail_key = f"input_{guardrail.name.lower().replace(' ', '_')}"
                         overall_metadata[guardrail_key] = {
                             "action": "error",
                             "reason": str(e),
@@ -1363,9 +1819,7 @@ def _apply_input_guardrails(
     return modified_inputs, overall_metadata
 
 
-def _apply_output_guardrails(
-    guardrails: List[Any], output: Any, inputs: Dict[str, Any]
-) -> Tuple[Any, Dict[str, Any]]:
+def _apply_output_guardrails(guardrails: List[Any], output: Any, inputs: Dict[str, Any]) -> Tuple[Any, Dict[str, Any]]:
     """Apply guardrails to function output, creating guardrail steps.
 
     Args:
@@ -1438,10 +1892,7 @@ def _apply_output_guardrails(
                         guardrail_step.log(**step_log_data)
                         return final_output, overall_metadata
 
-                    elif (
-                        result.action.value == "modify"
-                        and result.modified_data is not None
-                    ):
+                    elif result.action.value == "modify" and result.modified_data is not None:
                         step_log_data["output"] = result.modified_data
                         modified_output = result.modified_data
                         logger.debug("Guardrail %s modified output", guardrail.name)
@@ -1469,12 +1920,8 @@ def _apply_output_guardrails(
                         raise
                     else:
                         # Log other exceptions but don't fail the trace
-                        logger.error(
-                            "Error applying output guardrail %s: %s", guardrail.name, e
-                        )
-                        guardrail_key = (
-                            f"output_{guardrail.name.lower().replace(' ', '_')}"
-                        )
+                        logger.error("Error applying output guardrail %s: %s", guardrail.name, e)
+                        guardrail_key = f"output_{guardrail.name.lower().replace(' ', '_')}"
                         overall_metadata[guardrail_key] = {
                             "action": "error",
                             "reason": str(e),
@@ -1538,8 +1985,7 @@ def _handle_guardrail_block(
         # Original behavior - raise exception (breaks pipeline)
         raise GuardrailBlockedException(
             guardrail_name=guardrail.name,
-            reason=result.reason
-            or f"{'Input' if is_input else 'Output'} blocked by guardrail",
+            reason=result.reason or f"{'Input' if is_input else 'Output'} blocked by guardrail",
             metadata=result.metadata,
         )
 
@@ -1548,9 +1994,7 @@ def _handle_guardrail_block(
         if is_input:
             # For input blocking, return empty inputs
             empty_inputs = {key: "" for key in (modified_inputs or {})}
-            logger.info(
-                "Guardrail %s blocked input, returning empty inputs", guardrail.name
-            )
+            logger.info("Guardrail %s blocked input, returning empty inputs", guardrail.name)
             return empty_inputs, guardrail_metadata or {}
         else:
             # For output blocking, return None
@@ -1559,9 +2003,7 @@ def _handle_guardrail_block(
 
     elif strategy == BlockStrategy.RETURN_ERROR_MESSAGE:
         # Return error message (graceful)
-        error_msg = getattr(
-            result, "error_message", "Request blocked due to policy violation"
-        )
+        error_msg = getattr(result, "error_message", "Request blocked due to policy violation")
         logger.info(
             "Guardrail %s blocked %s, returning error message",
             guardrail.name,
@@ -1597,12 +2039,9 @@ def _handle_guardrail_block(
 
     else:
         # Fallback to raising exception
-        logger.warning(
-            "Unknown block strategy %s, falling back to raising exception", strategy
-        )
+        logger.warning("Unknown block strategy %s, falling back to raising exception", strategy)
         raise GuardrailBlockedException(
             guardrail_name=guardrail.name,
-            reason=result.reason
-            or f"{'Input' if is_input else 'Output'} blocked by guardrail",
+            reason=result.reason or f"{'Input' if is_input else 'Output'} blocked by guardrail",
             metadata=result.metadata,
         )
