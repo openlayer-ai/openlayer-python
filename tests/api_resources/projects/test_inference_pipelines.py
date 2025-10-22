@@ -35,6 +35,21 @@ class TestInferencePipelines:
             project_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
             description="This pipeline is used for production.",
             name="production",
+            data_backend={
+                "backend_type": "bigquery",
+                "bigquery_connection_id": "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+                "config": {
+                    "ground_truth_column_name": "ground_truth",
+                    "human_feedback_column_name": "human_feedback",
+                    "inference_id_column_name": "id",
+                    "latency_column_name": "latency",
+                    "timestamp_column_name": "timestamp",
+                },
+                "dataset_id": "my-dataset",
+                "project_id": "my-project",
+                "table_id": "my-table",
+                "partition_type": "DAY",
+            },
             project={
                 "name": "My Project",
                 "task_type": "llm-base",
@@ -156,6 +171,21 @@ class TestAsyncInferencePipelines:
             project_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
             description="This pipeline is used for production.",
             name="production",
+            data_backend={
+                "backend_type": "bigquery",
+                "bigquery_connection_id": "182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+                "config": {
+                    "ground_truth_column_name": "ground_truth",
+                    "human_feedback_column_name": "human_feedback",
+                    "inference_id_column_name": "id",
+                    "latency_column_name": "latency",
+                    "timestamp_column_name": "timestamp",
+                },
+                "dataset_id": "my-dataset",
+                "project_id": "my-project",
+                "table_id": "my-table",
+                "partition_type": "DAY",
+            },
             project={
                 "name": "My Project",
                 "task_type": "llm-base",
