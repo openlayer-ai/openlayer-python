@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.4.0 (2025-10-22)
+
+Full Changelog: [v0.3.1...v0.4.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.3.1...v0.4.0)
+
+### Features
+
+* **closes OPEN-7559:** add callbacks and offline buffering for platform tracing ([482621e](https://github.com/openlayer-ai/openlayer-python/commit/482621e050b913e68d06b890fb06eed1ecf45438))
+
 ## 0.3.1 (2025-09-25)
 
 Full Changelog: [v0.3.0...v0.3.1](https://github.com/openlayer-ai/openlayer-python/compare/v0.3.0...v0.3.1)
