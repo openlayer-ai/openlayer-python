@@ -50,6 +50,7 @@ class InferencePipelinesResource(SyncAPIResource):
         *,
         description: Optional[str],
         name: str,
+        data_backend: Optional[inference_pipeline_create_params.DataBackend] | Omit = omit,
         project: Optional[inference_pipeline_create_params.Project] | Omit = omit,
         workspace: Optional[inference_pipeline_create_params.Workspace] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
@@ -83,6 +84,7 @@ class InferencePipelinesResource(SyncAPIResource):
                 {
                     "description": description,
                     "name": name,
+                    "data_backend": data_backend,
                     "project": project,
                     "workspace": workspace,
                 },
@@ -174,6 +176,7 @@ class AsyncInferencePipelinesResource(AsyncAPIResource):
         *,
         description: Optional[str],
         name: str,
+        data_backend: Optional[inference_pipeline_create_params.DataBackend] | Omit = omit,
         project: Optional[inference_pipeline_create_params.Project] | Omit = omit,
         workspace: Optional[inference_pipeline_create_params.Workspace] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
@@ -207,6 +210,7 @@ class AsyncInferencePipelinesResource(AsyncAPIResource):
                 {
                     "description": description,
                     "name": name,
+                    "data_backend": data_backend,
                     "project": project,
                     "workspace": workspace,
                 },
