@@ -7,7 +7,7 @@ from typing_extensions import Literal
 
 import httpx
 
-from ..._types import Body, Omit, Query, Headers, NotGiven, omit, not_given
+from ..._types import Body, Omit, Query, Headers, NotGiven, SequenceNotStr, omit, not_given
 from ..._utils import maybe_transform, async_maybe_transform
 from ..._compat import cached_property
 from ..._resource import SyncAPIResource, AsyncAPIResource
@@ -100,8 +100,12 @@ class TestsResource(SyncAPIResource):
         thresholds: Iterable[test_create_params.Threshold],
         type: Literal["integrity", "consistency", "performance"],
         archived: bool | Omit = omit,
+        default_to_all_pipelines: Optional[bool] | Omit = omit,
         delay_window: Optional[float] | Omit = omit,
         evaluation_window: Optional[float] | Omit = omit,
+        exclude_pipelines: Optional[SequenceNotStr[str]] | Omit = omit,
+        include_historical_data: Optional[bool] | Omit = omit,
+        include_pipelines: Optional[SequenceNotStr[str]] | Omit = omit,
         uses_ml_model: bool | Omit = omit,
         uses_production_data: bool | Omit = omit,
         uses_reference_dataset: bool | Omit = omit,
@@ -128,10 +132,22 @@ class TestsResource(SyncAPIResource):
 
           archived: Whether the test is archived.
 
+          default_to_all_pipelines: Whether to apply the test to all pipelines (data sources) or to a specific set
+              of pipelines. Only applies to tests that use production data.
+
           delay_window: The delay window in seconds. Only applies to tests that use production data.
 
           evaluation_window: The evaluation window in seconds. Only applies to tests that use production
               data.
+
+          exclude_pipelines: Array of pipelines (data sources) to which the test should not be applied. Only
+              applies to tests that use production data.
+
+          include_historical_data: Whether to include historical data in the test result. Only applies to tests
+              that use production data.
+
+          include_pipelines: Array of pipelines (data sources) to which the test should be applied. Only
+              applies to tests that use production data.
 
           uses_ml_model: Whether the test uses an ML model.
 
@@ -163,8 +179,12 @@ class TestsResource(SyncAPIResource):
                     "thresholds": thresholds,
                     "type": type,
                     "archived": archived,
+                    "default_to_all_pipelines": default_to_all_pipelines,
                     "delay_window": delay_window,
                     "evaluation_window": evaluation_window,
+                    "exclude_pipelines": exclude_pipelines,
+                    "include_historical_data": include_historical_data,
+                    "include_pipelines": include_pipelines,
                     "uses_ml_model": uses_ml_model,
                     "uses_production_data": uses_production_data,
                     "uses_reference_dataset": uses_reference_dataset,
@@ -357,8 +377,12 @@ class AsyncTestsResource(AsyncAPIResource):
         thresholds: Iterable[test_create_params.Threshold],
         type: Literal["integrity", "consistency", "performance"],
         archived: bool | Omit = omit,
+        default_to_all_pipelines: Optional[bool] | Omit = omit,
         delay_window: Optional[float] | Omit = omit,
         evaluation_window: Optional[float] | Omit = omit,
+        exclude_pipelines: Optional[SequenceNotStr[str]] | Omit = omit,
+        include_historical_data: Optional[bool] | Omit = omit,
+        include_pipelines: Optional[SequenceNotStr[str]] | Omit = omit,
         uses_ml_model: bool | Omit = omit,
         uses_production_data: bool | Omit = omit,
         uses_reference_dataset: bool | Omit = omit,
@@ -385,10 +409,22 @@ class AsyncTestsResource(AsyncAPIResource):
 
           archived: Whether the test is archived.
 
+          default_to_all_pipelines: Whether to apply the test to all pipelines (data sources) or to a specific set
+              of pipelines. Only applies to tests that use production data.
+
           delay_window: The delay window in seconds. Only applies to tests that use production data.
 
           evaluation_window: The evaluation window in seconds. Only applies to tests that use production
               data.
+
+          exclude_pipelines: Array of pipelines (data sources) to which the test should not be applied. Only
+              applies to tests that use production data.
+
+          include_historical_data: Whether to include historical data in the test result. Only applies to tests
+              that use production data.
+
+          include_pipelines: Array of pipelines (data sources) to which the test should be applied. Only
+              applies to tests that use production data.
 
           uses_ml_model: Whether the test uses an ML model.
 
@@ -420,8 +456,12 @@ class AsyncTestsResource(AsyncAPIResource):
                     "thresholds": thresholds,
                     "type": type,
                     "archived": archived,
+                    "default_to_all_pipelines": default_to_all_pipelines,
                     "delay_window": delay_window,
                     "evaluation_window": evaluation_window,
+                    "exclude_pipelines": exclude_pipelines,
+                    "include_historical_data": include_historical_data,
+                    "include_pipelines": include_pipelines,
                     "uses_ml_model": uses_ml_model,
                     "uses_production_data": uses_production_data,
                     "uses_reference_dataset": uses_reference_dataset,
