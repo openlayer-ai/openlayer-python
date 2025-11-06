@@ -14,6 +14,8 @@ __all__ = [
     "trace_oci_genai",
     "trace_oci",  # Alias for backward compatibility
     "trace_litellm",
+    "trace_google_adk",
+    "unpatch_google_adk",
     "update_current_trace",
     "update_current_step",
     # Offline buffer management functions
@@ -188,3 +190,48 @@ def trace_litellm():
     from .integrations import litellm_tracer
 
     return litellm_tracer.trace_litellm()
+
+
+# ------------------------------ Google ADK ---------------------------------- #
+def trace_google_adk():
+    """Enable tracing for Google Agent Development Kit (ADK).
+
+    This function patches Google ADK to automatically trace agent execution,
+    LLM calls, and tool calls made through the ADK framework.
+
+    Requirements:
+        Google ADK and wrapt must be installed:
+        pip install google-adk wrapt
+
+    Example:
+        >>> import os
+        >>> os.environ["OPENLAYER_API_KEY"] = "your-api-key"
+        >>> os.environ["OPENLAYER_INFERENCE_PIPELINE_ID"] = "your-pipeline-id"
+        >>> from openlayer.lib import trace_google_adk
+        >>> # Enable tracing (must be called before creating agents)
+        >>> trace_google_adk()
+        >>> # Now create and run your ADK agents
+        >>> from google.adk.agents import Agent
+        >>> agent = Agent(name="Assistant", model="gemini-2.0-flash-exp")
+        >>> result = await agent.run_async(...)
+    """
+    # pylint: disable=import-outside-toplevel
+    from .integrations import google_adk_tracer
+
+    return google_adk_tracer.trace_google_adk()
+
+
+def unpatch_google_adk():
+    """Remove Google ADK tracing patches.
+
+    This function restores Google ADK's original behavior by removing all
+    Openlayer instrumentation.
+
+    Example:
+        >>> from openlayer.lib import unpatch_google_adk
+        >>> unpatch_google_adk()
+    """
+    # pylint: disable=import-outside-toplevel
+    from .integrations import google_adk_tracer
+
+    return google_adk_tracer.unpatch_google_adk()
