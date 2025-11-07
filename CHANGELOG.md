@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.5.0 (2025-11-07)
+
+Full Changelog: [v0.4.0...v0.5.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.4.0...v0.5.0)
+
+### Features
+
+* add examples for creating and managing LLM projects and tests ([#543](https://github.com/openlayer-ai/openlayer-python/issues/543)) ([86b9e2d](https://github.com/openlayer-ai/openlayer-python/commit/86b9e2d566e0d4e72de14ed43369ebcc6a089d27))
+
 ## 0.4.0 (2025-10-22)
 
 Full Changelog: [v0.3.1...v0.4.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.3.1...v0.4.0)
