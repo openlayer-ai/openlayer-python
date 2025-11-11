@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.6.0 (2025-11-11)
+
+Full Changelog: [v0.5.0...v0.6.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.5.0...v0.6.0)
+
+### Features
+
+* **closes OPEN-7543:** update trace openai to support responses api ([4969d03](https://github.com/openlayer-ai/openlayer-python/commit/4969d034bbb5484dbac94f160a1fb95cc6c8fc39))
+
 ## 0.5.0 (2025-11-07)
 
 Full Changelog: [v0.4.0...v0.5.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.4.0...v0.5.0)
