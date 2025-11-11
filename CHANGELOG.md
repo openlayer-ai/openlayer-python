@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.7.0 (2025-11-11)
+
+Full Changelog: [v0.6.0...v0.7.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.6.0...v0.7.0)
+
+### Features
+
+* **closes OPEN-7119:** add Google ADK tracing integration with Openlayer ([b7a0706](https://github.com/openlayer-ai/openlayer-python/commit/b7a0706979fde2bf1226b122bcab889e08c7b127))
+
+
+### Documentation
+
+* add Colab badge to Google ADK tracing notebook for easier access ([89916a8](https://github.com/openlayer-ai/openlayer-python/commit/89916a8db2f2525f1941664cb5480a0e41a82f90))
+
 ## 0.6.0 (2025-11-11)
 
 Full Changelog: [v0.5.0...v0.6.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.5.0...v0.6.0)
