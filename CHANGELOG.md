@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.8.0 (2025-11-11)
+
+Full Changelog: [v0.7.0...v0.8.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.7.0...v0.8.0)
+
+### Features
+
+* **closes OPEN-7550:** add tracing for openai chat completions parse method ([47c4487](https://github.com/openlayer-ai/openlayer-python/commit/47c44873375faf333191e92751ba22eda7b7cd6f))
+
 ## 0.7.0 (2025-11-11)
 
 Full Changelog: [v0.6.0...v0.7.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.6.0...v0.7.0)
