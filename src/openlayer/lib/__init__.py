@@ -14,6 +14,7 @@ __all__ = [
     "trace_oci_genai",
     "trace_oci",  # Alias for backward compatibility
     "trace_litellm",
+    "trace_portkey",
     "update_current_trace",
     "update_current_step",
     # Offline buffer management functions
@@ -188,3 +189,21 @@ def trace_litellm():
     from .integrations import litellm_tracer
 
     return litellm_tracer.trace_litellm()
+
+
+# ---------------------------------- Portkey ---------------------------------- #
+def trace_portkey():
+    """Enable tracing for Portkey completions.
+
+    This function patches Portkey's chat.completions.create to automatically trace
+    all OpenAI-compatible completions routed via the Portkey AI Gateway.
+    """
+    # pylint: disable=import-outside-toplevel
+    try:
+        from portkey_ai import Portkey  # noqa: F401
+    except ImportError:
+        raise ImportError("portkey-ai is required for Portkey tracing. Install with: pip install portkey-ai")
+
+    from .integrations import portkey_tracer
+
+    return portkey_tracer.trace_portkey()
