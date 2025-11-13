@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.8.1 (2025-11-13)
+
+Full Changelog: [v0.8.0...v0.8.1](https://github.com/openlayer-ai/openlayer-python/compare/v0.8.0...v0.8.1)
+
+### Bug Fixes
+
+* **closes OPEN-8001:** handle ValueError in _current_step.reset to manage context variable mismatches ([5649f17](https://github.com/openlayer-ai/openlayer-python/commit/5649f172dd4892a92bea5bc5220b79511f13afd4))
+
 ## 0.8.0 (2025-11-11)
 
 Full Changelog: [v0.7.0...v0.8.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.7.0...v0.8.0)
