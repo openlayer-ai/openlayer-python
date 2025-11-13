@@ -194,7 +194,7 @@ def stream_chunks(
             if any(v is not None for v in chunk_usage.values()):
                 latest_usage_data = chunk_usage
 
-            # Update metadata from latest chunk (headers/cost/etc.)
+            # Update metadata from latest chunk (headers/etc.)
             chunk_metadata = extract_portkey_unit_metadata(chunk, model_name)
             if chunk_metadata:
                 latest_chunk_metadata.update(chunk_metadata)
@@ -487,7 +487,7 @@ def extract_portkey_metadata(client: "Portkey") -> Dict[str, Any]:
 
 
 def extract_portkey_unit_metadata(unit: Any, model_name: str) -> Dict[str, Any]:
-    """Extract metadata from a response or chunk unit (headers, cost, ids)."""
+    """Extract metadata from a response or chunk unit (headers, ids)."""
     metadata: Dict[str, Any] = {}
     try:
         # Extract system fingerprint if available (OpenAI-compatible)
@@ -512,16 +512,12 @@ def extract_portkey_unit_metadata(unit: Any, model_name: str) -> Dict[str, Any]:
             lower = {k.lower(): v for k, v in headers.items()}
             if "x-portkey-trace-id" in lower:
                 metadata["portkey_trace_id"] = lower["x-portkey-trace-id"]
-            if "x-portkey-provider" in lower:
-                metadata["provider"] = lower["x-portkey-provider"]
             if "x-portkey-cache-status" in lower:
                 metadata["portkey_cache_status"] = lower["x-portkey-cache-status"]
-            # Cost if surfaced by gateway
-            if "x-portkey-cost" in lower:
-                try:
-                    metadata["cost"] = float(lower["x-portkey-cost"])
-                except Exception:
-                    pass
+            if "x-portkey-retry-attempt-count" in lower:
+                metadata["portkey_retry_attempt_count"] = lower["x-portkey-retry-attempt-count"]
+            if "x-portkey-last-used-option-index" in lower:
+                metadata["portkey_last_used_option_index"] = lower["x-portkey-last-used-option-index"]
     except Exception:
         pass
     # Attach model for convenience
@@ -662,7 +658,7 @@ def calculate_streaming_usage_and_cost(
 
         total_tokens = (prompt_tokens or 0) + (completion_tokens or 0)
 
-        # Cost from headers if present; otherwise simple heuristic for some models
+        # Cost from metadata if present; otherwise simple heuristic for some models
         cost = latest_chunk_metadata.get("cost")
         if cost is None and total_tokens and model_name:
             ml = model_name.lower()
@@ -678,7 +674,7 @@ def calculate_streaming_usage_and_cost(
 def _extract_provider_from_object(obj: Any) -> Optional[str]:
     """Extract provider from a response or chunk object.
     
-    Checks response_metadata and _response_headers for provider information.
+    Checks response_metadata for provider information.
     Returns None if no provider is found.
     """
     try:
@@ -686,13 +682,6 @@ def _extract_provider_from_object(obj: Any) -> Optional[str]:
         if hasattr(obj, "response_metadata") and _is_dict_like(obj.response_metadata):
             if "provider" in obj.response_metadata:
                 return obj.response_metadata["provider"]
-        # Check _response_headers
-        if hasattr(obj, "_response_headers"):
-            headers = getattr(obj, "_response_headers")
-            if _is_dict_like(headers):
-                for k, v in headers.items():
-                    if isinstance(k, str) and k.lower() == "x-portkey-provider" and v:
-                        return str(v)
     except Exception:
         pass
     return None

@@ -145,16 +145,16 @@ class TestPortkeyIntegration:
         assert "Authorization" not in metadata["portkeyHeaders"]
 
     def test_extract_portkey_unit_metadata(self) -> None:
-        """Unit metadata should capture headers, cost, and provider hints."""
+        """Unit metadata should capture headers and retry/option index hints."""
         from openlayer.lib.integrations.portkey_tracer import extract_portkey_unit_metadata
 
         unit = SimpleNamespace(
             system_fingerprint="fingerprint-123",
             _response_headers={
                 "x-portkey-trace-id": "trace-1",
-                "x-portkey-provider": "anthropic",
                 "x-portkey-cache-status": "HIT",
-                "x-portkey-cost": "0.45",
+                "x-portkey-retry-attempt-count": "2",
+                "x-portkey-last-used-option-index": "config.targets[1]",
                 "content-type": "application/json",
             },
         )
@@ -163,9 +163,9 @@ class TestPortkeyIntegration:
 
         assert metadata["system_fingerprint"] == "fingerprint-123"
         assert metadata["portkey_trace_id"] == "trace-1"
-        assert metadata["provider"] == "anthropic"
         assert metadata["portkey_cache_status"] == "HIT"
-        assert metadata["cost"] == pytest.approx(0.45)
+        assert metadata["portkey_retry_attempt_count"] == "2"
+        assert metadata["portkey_last_used_option_index"] == "config.targets[1]"
         assert metadata["portkey_model"] == "claude-3-opus"
         assert metadata["response_headers"]["content-type"] == "application/json"
 
@@ -178,8 +178,9 @@ class TestPortkeyIntegration:
             def __init__(self):
                 self._data = {
                     "x-portkey-trace-id": "trace-2",
-                    "x-portkey-provider": "openai",
                     "x-portkey-cache-status": "MISS",
+                    "x-portkey-retry-attempt-count": "3",
+                    "x-portkey-last-used-option-index": "config.targets[1]",
                 }
 
             def items(self):
@@ -192,8 +193,9 @@ class TestPortkeyIntegration:
         metadata = extract_portkey_unit_metadata(unit, "gpt-4")
 
         assert metadata["portkey_trace_id"] == "trace-2"
-        assert metadata["provider"] == "openai"
         assert metadata["portkey_cache_status"] == "MISS"
+        assert metadata["portkey_retry_attempt_count"] == "3"
+        assert metadata["portkey_last_used_option_index"] == "config.targets[1]"
 
     def test_extract_usage_from_response(self) -> None:
         """Usage extraction should read OpenAI-style usage objects."""
@@ -318,9 +320,8 @@ class TestPortkeyIntegration:
         """Provider detection should fall back to response metadata or model name."""
         from openlayer.lib.integrations.portkey_tracer import detect_provider
 
-        client = SimpleNamespace(headers={"x-portkey-provider": "openai"})
+        client = SimpleNamespace()
         response = SimpleNamespace(
-            _response_headers={"X-Portkey-Provider": "anthropic"},
             response_metadata={"provider": "anthropic"},
         )
 
@@ -335,7 +336,6 @@ class TestPortkeyIntegration:
 
         chunk = SimpleNamespace(
             response_metadata={"provider": "cohere"},
-            _response_headers={"X-Portkey-Provider": "cohere"},
         )
         client = SimpleNamespace()
 
