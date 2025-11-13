@@ -4,13 +4,16 @@ import json
 import logging
 import time
 from functools import wraps
-from typing import Any, Dict, Iterator, Optional, Union
+from typing import Any, Dict, Iterator, Optional, Union, TYPE_CHECKING
 
 try:
     from portkey_ai import Portkey
     HAVE_PORTKEY = True
 except ImportError:
     HAVE_PORTKEY = False
+
+if TYPE_CHECKING:
+    from portkey_ai import Portkey
 
 from ..tracing import tracer
 
@@ -92,16 +95,16 @@ def trace_portkey() -> None:
                     return handle_streaming_create(
                         self,
                         *c_args,
-                        **c_kwargs,
                         create_func=original_create,
                         inference_id=inference_id,
+                        **c_kwargs,
                     )
                 return handle_non_streaming_create(
                     self,
                     *c_args,
-                    **c_kwargs,
                     create_func=original_create,
                     inference_id=inference_id,
+                    **c_kwargs,
                 )
 
             self.chat.completions.create = traced_create
@@ -419,12 +422,12 @@ def extract_portkey_metadata(client: "Portkey") -> Dict[str, Any]:
             continue
 
     # Headers
-    possible_header_attrs = ("default_headers", "headers", "_default_headers", "_headers")
+    possible_header_attrs = ("default_headers", "headers", "_default_headers", "_headers", "custom_headers", "allHeaders")
     redacted: Dict[str, Any] = {}
     for attr in possible_header_attrs:
         try:
             headers = getattr(client, attr, None)
-            if isinstance(headers, dict):
+            if _is_dict_like(headers):
                 for k, v in headers.items():
                     if isinstance(k, str) and k.lower().startswith("x-portkey-"):
                         if k.lower() in {"x-portkey-api-key", "x-portkey-virtual-key"}:
@@ -449,6 +452,8 @@ def extract_portkey_unit_metadata(unit: Any, model_name: str) -> Dict[str, Any]:
         # Extract system fingerprint if available (OpenAI-compatible)
         if hasattr(unit, "system_fingerprint"):
             metadata["system_fingerprint"] = unit.system_fingerprint
+        if hasattr(unit, "service_tier"):
+            metadata["service_tier"] = unit.service_tier
         
         # Response headers may be present on the object
         headers_obj = None
@@ -456,19 +461,20 @@ def extract_portkey_unit_metadata(unit: Any, model_name: str) -> Dict[str, Any]:
             headers_obj = getattr(unit, "_response_headers")
         elif hasattr(unit, "response_headers"):
             headers_obj = getattr(unit, "response_headers")
-        if isinstance(headers_obj, dict):
+        elif hasattr(unit, "_headers"):
+            headers_obj = getattr(unit, "_headers")
+
+        if _is_dict_like(headers_obj):
             headers = {str(k): v for k, v in headers_obj.items()}
             metadata["response_headers"] = headers
             # Known Portkey header hints (names are lower-cased defensively)
             lower = {k.lower(): v for k, v in headers.items()}
-            if "x-portkey-request-id" in lower:
-                metadata["portkey_request_id"] = lower["x-portkey-request-id"]
-            if "x-portkey-route" in lower:
-                metadata["portkey_route"] = lower["x-portkey-route"]
-            if "x-portkey-config" in lower:
-                metadata["portkey_config"] = lower["x-portkey-config"]
+            if "x-portkey-trace-id" in lower:
+                metadata["portkey_trace_id"] = lower["x-portkey-trace-id"]
             if "x-portkey-provider" in lower:
                 metadata["provider"] = lower["x-portkey-provider"]
+            if "x-portkey-cache-status" in lower:
+                metadata["portkey_cache_status"] = lower["x-portkey-cache-status"]
             # Cost if surfaced by gateway
             if "x-portkey-cost" in lower:
                 try:
@@ -522,7 +528,7 @@ def extract_usage_from_chunk(chunk: Any) -> Dict[str, Optional[int]]:
                     "completion_tokens": getattr(usage, "completion_tokens", None),
                 }
             # Check if usage is a dictionary key
-            elif isinstance(hidden_params, dict) and "usage" in hidden_params:
+            elif _supports_membership_check(hidden_params) and "usage" in hidden_params:
                 usage = hidden_params["usage"]
                 if usage:
                     return {
@@ -534,7 +540,7 @@ def extract_usage_from_chunk(chunk: Any) -> Dict[str, Optional[int]]:
         # Check if chunk model dump has usage
         if hasattr(chunk, "model_dump"):
             chunk_dict = chunk.model_dump()
-            if isinstance(chunk_dict, dict) and "usage" in chunk_dict and chunk_dict["usage"]:
+            if _supports_membership_check(chunk_dict) and "usage" in chunk_dict and chunk_dict["usage"]:
                 usage = chunk_dict["usage"]
                 return {
                     "total_tokens": usage.get("total_tokens", None),
@@ -568,7 +574,7 @@ def calculate_streaming_usage_and_cost(
         # Priority 2: Look for usage embedded in final chunk dicts (if raw dicts)
         if isinstance(chunks, list):
             for chunk_data in reversed(chunks):
-                if isinstance(chunk_data, dict) and "usage" in chunk_data and chunk_data["usage"]:
+                if _supports_membership_check(chunk_data) and "usage" in chunk_data and chunk_data["usage"]:
                     usage = chunk_data["usage"]
                     if usage.get("total_tokens", 0) > 0:
                         return (
@@ -587,7 +593,7 @@ def calculate_streaming_usage_and_cost(
         # Estimate completion tokens
         if isinstance(output_content, str):
             completion_tokens = max(1, len(output_content) // 4)
-        elif isinstance(output_content, dict):
+        elif _is_dict_like(output_content):
             json_str = json.dumps(output_content) if output_content else "{}"
             completion_tokens = max(1, len(json_str) // 4)
         else:
@@ -602,7 +608,7 @@ def calculate_streaming_usage_and_cost(
             total_chars = 0
             try:
                 for message in messages:
-                    if isinstance(message, dict) and "content" in message:
+                    if _supports_membership_check(message) and "content" in message:
                         total_chars += len(str(message["content"]))
             except Exception:
                 total_chars = 0
@@ -618,12 +624,10 @@ def calculate_streaming_usage_and_cost(
             ml = model_name.lower()
             if "gpt-3.5-turbo" in ml:
                 cost = (prompt_tokens * 0.0005 / 1000.0) + (completion_tokens * 0.0015 / 1000.0)
-            elif "gpt-4" in ml:
-                # very rough heuristic, not guaranteed
-                cost = (prompt_tokens * 0.03 / 1_000_000.0) + (completion_tokens * 0.06 / 1_000_000.0)
 
         return completion_tokens, prompt_tokens, total_tokens, cost
-    except Exception:
+    except Exception as e:
+        logger.error("Error calculating streaming usage: %s", e)
         return None, None, None, None
 
 
@@ -636,12 +640,12 @@ def detect_provider_from_response(response: Any, client: "Portkey", model_name: 
     # Next: check response metadata if any
     try:
         # Some SDKs attach response headers/metadata
-        if hasattr(response, "response_metadata") and isinstance(response.response_metadata, dict):
+        if hasattr(response, "response_metadata") and _is_dict_like(response.response_metadata):
             if "provider" in response.response_metadata:
                 return response.response_metadata["provider"]
         if hasattr(response, "_response_headers"):
             headers = getattr(response, "_response_headers")
-            if isinstance(headers, dict):
+            if _is_dict_like(headers):
                 for k, v in headers.items():
                     if isinstance(k, str) and k.lower() == "x-portkey-provider" and v:
                         return str(v)
@@ -659,12 +663,12 @@ def detect_provider_from_chunk(chunk: Any, client: "Portkey", model_name: str) -
         return provider
     # Next: see if chunk exposes any metadata
     try:
-        if hasattr(chunk, "response_metadata") and isinstance(chunk.response_metadata, dict):
+        if hasattr(chunk, "response_metadata") and _is_dict_like(chunk.response_metadata):
             if "provider" in chunk.response_metadata:
                 return chunk.response_metadata["provider"]
         if hasattr(chunk, "_response_headers"):
             headers = getattr(chunk, "_response_headers")
-            if isinstance(headers, dict):
+            if _is_dict_like(headers):
                 for k, v in headers.items():
                     if isinstance(k, str) and k.lower() == "x-portkey-provider" and v:
                         return str(v)
@@ -710,7 +714,7 @@ def _provider_from_portkey_headers(client: "Portkey") -> Optional[str]:
     for attr in header_sources:
         try:
             headers = getattr(client, attr, None)
-            if isinstance(headers, dict):
+            if _is_dict_like(headers):
                 for k, v in headers.items():
                     if isinstance(k, str) and k.lower() == "x-portkey-provider" and v:
                         return str(v)
@@ -718,3 +722,19 @@ def _provider_from_portkey_headers(client: "Portkey") -> Optional[str]:
             continue
     return None
 
+
+def _is_dict_like(obj: Any) -> bool:
+    """Check if an object is dict-like (has .items() method).
+    
+    This is more robust than isinstance(obj, dict) as it handles
+    custom dict-like objects (e.g., CaseInsensitiveDict, custom headers).
+    """
+    return hasattr(obj, "items") and callable(getattr(obj, "items", None))
+
+
+def _supports_membership_check(obj: Any) -> bool:
+    """Check if an object supports membership testing (e.g., 'key in obj').
+    
+    This checks for __contains__ method or if it's dict-like.
+    """
+    return hasattr(obj, "__contains__") or _is_dict_like(obj)
