@@ -532,7 +532,6 @@ def extract_usage(obj: Any) -> Dict[str, Optional[int]]:
     This function attempts to extract token usage information from various
     locations where it might be stored, including:
     - Direct `usage` attribute
-    - `_hidden_params` (for streaming chunks)
     - `model_dump()` dictionary (for streaming chunks)
     
     Parameters
@@ -555,27 +554,6 @@ def extract_usage(obj: Any) -> Dict[str, Optional[int]]:
                 "prompt_tokens": getattr(usage, "prompt_tokens", None),
                 "completion_tokens": getattr(usage, "completion_tokens", None),
             }
-        
-        # Check for usage in _hidden_params (primarily for streaming chunks)
-        if hasattr(obj, "_hidden_params"):
-            hidden_params = obj._hidden_params
-            # Check if usage is a direct attribute
-            if hasattr(hidden_params, "usage") and hidden_params.usage is not None:
-                usage = hidden_params.usage
-                return {
-                    "total_tokens": getattr(usage, "total_tokens", None),
-                    "prompt_tokens": getattr(usage, "prompt_tokens", None),
-                    "completion_tokens": getattr(usage, "completion_tokens", None),
-                }
-            # Check if usage is a dictionary key
-            elif _supports_membership_check(hidden_params) and "usage" in hidden_params:
-                usage = hidden_params["usage"]
-                if usage:
-                    return {
-                        "total_tokens": usage.get("total_tokens", None),
-                        "prompt_tokens": usage.get("prompt_tokens", None),
-                        "completion_tokens": usage.get("completion_tokens", None),
-                    }
         
         # Check if object model dump has usage (primarily for streaming chunks)
         if hasattr(obj, "model_dump"):

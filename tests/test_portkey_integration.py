@@ -230,15 +230,6 @@ class TestPortkeyIntegration:
             "completion_tokens": 80,
         }
 
-        chunk_hidden = SimpleNamespace(
-            _hidden_params={"usage": {"total_tokens": 30, "prompt_tokens": 10, "completion_tokens": 20}}
-        )
-        assert extract_usage(chunk_hidden) == {
-            "total_tokens": 30,
-            "prompt_tokens": 10,
-            "completion_tokens": 20,
-        }
-
         class ChunkWithModelDump:  # pylint: disable=too-few-public-methods
             def model_dump(self) -> Dict[str, Any]:
                 return {"usage": {"total_tokens": 12, "prompt_tokens": 5, "completion_tokens": 7}}
