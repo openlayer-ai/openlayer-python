@@ -46,6 +46,7 @@ def trace_portkey() -> None:
     >>> from portkey_ai import Portkey
     >>> from openlayer.lib import trace_portkey
     >>>
+    >>> # Enable tracing
     >>> trace_portkey()
     >>> 
     >>> # Use Portkey normally - tracing happens automatically
@@ -124,7 +125,27 @@ def handle_streaming_create(
     inference_id: Optional[str] = None,
     **kwargs,
 ) -> Iterator[Any]:
-    """Handles streaming chat.completions.create routed via Portkey."""
+    """
+    Handles streaming chat.completions.create routed via Portkey.
+
+    Parameters
+    ----------
+    client : Portkey
+        The Portkey client instance making the request.
+    *args :
+        Positional arguments passed to the create function.
+    create_func : callable
+        The create function to call (typically chat.completions.create).
+    inference_id : Optional[str], default None
+        Optional inference ID for tracking this request.
+    **kwargs :
+        Additional keyword arguments forwarded to create_func.
+
+    Returns
+    -------
+    Iterator[Any]
+        A generator that yields the chunks of the completion.
+    """
     # Portkey is OpenAI-compatible; request and chunks follow OpenAI spec
     # create_func is a bound method; do not pass client again
     chunks = create_func(*args, **kwargs)
@@ -265,7 +286,27 @@ def handle_non_streaming_create(
     inference_id: Optional[str] = None,
     **kwargs,
 ) -> Any:
-    """Handles non-streaming chat.completions.create routed via Portkey."""
+    """
+    Handles non-streaming chat.completions.create routed via Portkey.
+
+    Parameters
+    ----------
+    client : Portkey
+        The Portkey client instance used for routing the request.
+    *args :
+        Positional arguments for the create function.
+    create_func : callable
+        The function used to create the chat completion. This is a bound method, so do not pass client again.
+    inference_id : Optional[str], optional
+        A unique identifier for the inference or trace, by default None.
+    **kwargs :
+        Additional keyword arguments passed to the create function (e.g., "messages", "model", etc.).
+
+    Returns
+    -------
+    Any
+        The completion response as returned by the create function.
+    """
     start_time = time.time()
     # create_func is a bound method; do not pass client again
     response = create_func(*args, **kwargs)
@@ -560,7 +601,7 @@ def calculate_streaming_usage_and_cost(
     latest_usage_data: Dict[str, Optional[int]],
     latest_chunk_metadata: Dict[str, Any],
 ):
-    """Calculate usage and cost at the end of streaming (LiteLLM-style logic)."""
+    """Calculate usage and cost at the end of streaming."""
     try:
         # Priority 1: Actual usage provided in chunks
         if latest_usage_data and latest_usage_data.get("total_tokens") and latest_usage_data.get("total_tokens") > 0:
@@ -679,7 +720,7 @@ def detect_provider_from_chunk(chunk: Any, client: "Portkey", model_name: str) -
 
 
 def detect_provider_from_model_name(model_name: str) -> str:
-    """Detect provider from model name patterns (similar to LiteLLM tracer)."""
+    """Detect provider from model name patterns."""
     model_lower = (model_name or "").lower()
     if model_lower.startswith(("gpt-", "o1-", "text-davinci", "text-curie", "text-babbage", "text-ada")):
         return "OpenAI"
