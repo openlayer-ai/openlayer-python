@@ -197,6 +197,25 @@ def trace_portkey():
 
     This function patches Portkey's chat.completions.create to automatically trace
     all OpenAI-compatible completions routed via the Portkey AI Gateway.
+
+    Example:
+        >>> from portkey_ai import Portkey
+        >>> from openlayer.lib import trace_portkey
+        >>> # Enable openlayer tracing for all Portkey completions
+        >>> trace_portkey()
+        >>> # Basic portkey client initialization    
+        >>> portkey = Portkey(
+        >>>     api_key = os.environ['PORTKEY_API_KEY'],
+        >>>     config = "YOUR_PORTKEY_CONFIG_ID", # optional your portkey config id
+        >>> )
+        >>> # use portkey normally - tracing happens automatically
+        >>> response = portkey.chat.completions.create(
+        >>>     #model = "@YOUR_PORTKEY_SLUG/YOUR_MODEL_NAME", # optional if giving config
+        >>>     messages = [
+        >>>         {"role": "system", "content": "You are a helpful assistant."},
+        >>>         {"role": "user", "content": "Write a poem on Argentina, least 100 words."}
+        >>>     ]
+        >>> )
     """
     # pylint: disable=import-outside-toplevel
     try:
