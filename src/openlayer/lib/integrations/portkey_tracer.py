@@ -185,12 +185,12 @@ def stream_chunks(
             if i == 0:
                 first_token_time = time.time()
                 # Try to detect provider at first chunk
-                provider = detect_provider_from_chunk(chunk, client, model_name)
+                provider = detect_provider(chunk, client, model_name)
             if i > 0:
                 num_of_completion_tokens = i + 1
 
             # Extract usage from chunk if available
-            chunk_usage = extract_usage_from_chunk(chunk)
+            chunk_usage = extract_usage(chunk)
             if any(v is not None for v in chunk_usage.values()):
                 latest_usage_data = chunk_usage
 
@@ -317,9 +317,9 @@ def handle_non_streaming_create(
         output_data = parse_non_streaming_output_data(response)
 
         # Usage (if provided by upstream provider via Portkey)
-        usage_data = extract_usage_from_response(response)
+        usage_data = extract_usage(response)
         model_name = getattr(response, "model", kwargs.get("model", "unknown"))
-        provider = detect_provider_from_response(response, client, model_name)
+        provider = detect_provider(response, client, model_name)
         extra_metadata = extract_portkey_unit_metadata(response, model_name)
         cost = extra_metadata.get("cost", None)
 
@@ -530,36 +530,39 @@ def extract_portkey_unit_metadata(unit: Any, model_name: str) -> Dict[str, Any]:
     return metadata
 
 
-def extract_usage_from_response(response: Any) -> Dict[str, Optional[int]]:
-    """Extract usage from a non-streaming response."""
+def extract_usage(obj: Any) -> Dict[str, Optional[int]]:
+    """Extract usage from a response or chunk object.
+    
+    This function attempts to extract token usage information from various
+    locations where it might be stored, including:
+    - Direct `usage` attribute
+    - `_hidden_params` (for streaming chunks)
+    - `model_dump()` dictionary (for streaming chunks)
+    
+    Parameters
+    ----------
+    obj : Any
+        The response or chunk object to extract usage from.
+    
+    Returns
+    -------
+    Dict[str, Optional[int]]
+        Dictionary with keys: total_tokens, prompt_tokens, completion_tokens.
+        Values are None if usage information is not found.
+    """
     try:
-        if hasattr(response, "usage") and response.usage is not None:
-            usage = response.usage
-            return {
-                "total_tokens": getattr(usage, "total_tokens", None),
-                "prompt_tokens": getattr(usage, "prompt_tokens", None),
-                "completion_tokens": getattr(usage, "completion_tokens", None),
-            }
-    except Exception:
-        pass
-    return {"total_tokens": None, "prompt_tokens": None, "completion_tokens": None}
-
-
-def extract_usage_from_chunk(chunk: Any) -> Dict[str, Optional[int]]:
-    """Extract usage from a streaming chunk if present."""
-    try:
-        # Check for usage attribute
-        if hasattr(chunk, "usage") and chunk.usage is not None:
-            usage = chunk.usage
+        # Check for direct usage attribute (works for both response and chunk)
+        if hasattr(obj, "usage") and obj.usage is not None:
+            usage = obj.usage
             return {
                 "total_tokens": getattr(usage, "total_tokens", None),
                 "prompt_tokens": getattr(usage, "prompt_tokens", None),
                 "completion_tokens": getattr(usage, "completion_tokens", None),
             }
         
-        # Check for usage in _hidden_params (if SDK stores it there)
-        if hasattr(chunk, "_hidden_params"):
-            hidden_params = chunk._hidden_params
+        # Check for usage in _hidden_params (primarily for streaming chunks)
+        if hasattr(obj, "_hidden_params"):
+            hidden_params = obj._hidden_params
             # Check if usage is a direct attribute
             if hasattr(hidden_params, "usage") and hidden_params.usage is not None:
                 usage = hidden_params.usage
@@ -578,11 +581,11 @@ def extract_usage_from_chunk(chunk: Any) -> Dict[str, Optional[int]]:
                         "completion_tokens": usage.get("completion_tokens", None),
                     }
         
-        # Check if chunk model dump has usage
-        if hasattr(chunk, "model_dump"):
-            chunk_dict = chunk.model_dump()
-            if _supports_membership_check(chunk_dict) and "usage" in chunk_dict and chunk_dict["usage"]:
-                usage = chunk_dict["usage"]
+        # Check if object model dump has usage (primarily for streaming chunks)
+        if hasattr(obj, "model_dump"):
+            obj_dict = obj.model_dump()
+            if _supports_membership_check(obj_dict) and "usage" in obj_dict and obj_dict["usage"]:
+                usage = obj_dict["usage"]
                 return {
                     "total_tokens": usage.get("total_tokens", None),
                     "prompt_tokens": usage.get("prompt_tokens", None),
@@ -672,49 +675,54 @@ def calculate_streaming_usage_and_cost(
         return None, None, None, None
 
 
-def detect_provider_from_response(response: Any, client: "Portkey", model_name: str) -> str:
-    """Detect provider for non-streaming responses."""
+def _extract_provider_from_object(obj: Any) -> Optional[str]:
+    """Extract provider from a response or chunk object.
+    
+    Checks response_metadata and _response_headers for provider information.
+    Returns None if no provider is found.
+    """
+    try:
+        # Check response_metadata
+        if hasattr(obj, "response_metadata") and _is_dict_like(obj.response_metadata):
+            if "provider" in obj.response_metadata:
+                return obj.response_metadata["provider"]
+        # Check _response_headers
+        if hasattr(obj, "_response_headers"):
+            headers = getattr(obj, "_response_headers")
+            if _is_dict_like(headers):
+                for k, v in headers.items():
+                    if isinstance(k, str) and k.lower() == "x-portkey-provider" and v:
+                        return str(v)
+    except Exception:
+        pass
+    return None
+
+
+def detect_provider(obj: Any, client: "Portkey", model_name: str) -> str:
+    """Detect provider from a response or chunk object.
+    
+    Parameters
+    ----------
+    obj : Any
+        The response or chunk object to extract provider information from.
+    client : Portkey
+        The Portkey client instance.
+    model_name : str
+        The model name to use as a fallback for provider detection.
+    
+    Returns
+    -------
+    str
+        The detected provider name.
+    """
     # First: check Portkey headers on the client (authoritative)
     provider = _provider_from_portkey_headers(client)
     if provider:
         return provider
-    # Next: check response metadata if any
-    try:
-        # Some SDKs attach response headers/metadata
-        if hasattr(response, "response_metadata") and _is_dict_like(response.response_metadata):
-            if "provider" in response.response_metadata:
-                return response.response_metadata["provider"]
-        if hasattr(response, "_response_headers"):
-            headers = getattr(response, "_response_headers")
-            if _is_dict_like(headers):
-                for k, v in headers.items():
-                    if isinstance(k, str) and k.lower() == "x-portkey-provider" and v:
-                        return str(v)
-    except Exception:
-        pass
-    # Fallback to model name heuristics
-    return detect_provider_from_model_name(model_name)
-
-
-def detect_provider_from_chunk(chunk: Any, client: "Portkey", model_name: str) -> str:
-    """Detect provider for streaming chunks."""
-    # First: check Portkey headers on the client
-    provider = _provider_from_portkey_headers(client)
+    # Next: check object metadata if any
+    provider = _extract_provider_from_object(obj)
     if provider:
         return provider
-    # Next: see if chunk exposes any metadata
-    try:
-        if hasattr(chunk, "response_metadata") and _is_dict_like(chunk.response_metadata):
-            if "provider" in chunk.response_metadata:
-                return chunk.response_metadata["provider"]
-        if hasattr(chunk, "_response_headers"):
-            headers = getattr(chunk, "_response_headers")
-            if _is_dict_like(headers):
-                for k, v in headers.items():
-                    if isinstance(k, str) and k.lower() == "x-portkey-provider" and v:
-                        return str(v)
-    except Exception:
-        pass
     # Fallback to model name heuristics
     return detect_provider_from_model_name(model_name)
 

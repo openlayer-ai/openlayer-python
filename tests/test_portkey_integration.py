@@ -197,19 +197,19 @@ class TestPortkeyIntegration:
 
     def test_extract_usage_from_response(self) -> None:
         """Usage extraction should read OpenAI-style usage objects."""
-        from openlayer.lib.integrations.portkey_tracer import extract_usage_from_response
+        from openlayer.lib.integrations.portkey_tracer import extract_usage
 
         usage = SimpleNamespace(total_tokens=50, prompt_tokens=20, completion_tokens=30)
         response = SimpleNamespace(usage=usage)
 
-        assert extract_usage_from_response(response) == {
+        assert extract_usage(response) == {
             "total_tokens": 50,
             "prompt_tokens": 20,
             "completion_tokens": 30,
         }
 
         response_no_usage = SimpleNamespace()
-        assert extract_usage_from_response(response_no_usage) == {
+        assert extract_usage(response_no_usage) == {
             "total_tokens": None,
             "prompt_tokens": None,
             "completion_tokens": None,
@@ -217,12 +217,12 @@ class TestPortkeyIntegration:
 
     def test_extract_usage_from_chunk(self) -> None:
         """Usage data should be derived from multiple potential chunk attributes."""
-        from openlayer.lib.integrations.portkey_tracer import extract_usage_from_chunk
+        from openlayer.lib.integrations.portkey_tracer import extract_usage
 
         chunk_direct = SimpleNamespace(
             usage=SimpleNamespace(total_tokens=120, prompt_tokens=40, completion_tokens=80)
         )
-        assert extract_usage_from_chunk(chunk_direct) == {
+        assert extract_usage(chunk_direct) == {
             "total_tokens": 120,
             "prompt_tokens": 40,
             "completion_tokens": 80,
@@ -231,7 +231,7 @@ class TestPortkeyIntegration:
         chunk_hidden = SimpleNamespace(
             _hidden_params={"usage": {"total_tokens": 30, "prompt_tokens": 10, "completion_tokens": 20}}
         )
-        assert extract_usage_from_chunk(chunk_hidden) == {
+        assert extract_usage(chunk_hidden) == {
             "total_tokens": 30,
             "prompt_tokens": 10,
             "completion_tokens": 20,
@@ -241,7 +241,7 @@ class TestPortkeyIntegration:
             def model_dump(self) -> Dict[str, Any]:
                 return {"usage": {"total_tokens": 12, "prompt_tokens": 5, "completion_tokens": 7}}
 
-        assert extract_usage_from_chunk(ChunkWithModelDump()) == {
+        assert extract_usage(ChunkWithModelDump()) == {
             "total_tokens": 12,
             "prompt_tokens": 5,
             "completion_tokens": 7,
@@ -292,7 +292,7 @@ class TestPortkeyIntegration:
 
     def test_detect_provider_from_response_prefers_headers(self) -> None:
         """Provider detection should prioritize Portkey headers."""
-        from openlayer.lib.integrations.portkey_tracer import detect_provider_from_response
+        from openlayer.lib.integrations.portkey_tracer import detect_provider
 
         client = SimpleNamespace()
         response = SimpleNamespace()
@@ -300,11 +300,11 @@ class TestPortkeyIntegration:
         with patch(
             "openlayer.lib.integrations.portkey_tracer._provider_from_portkey_headers", return_value="header-provider"
         ):
-            assert detect_provider_from_response(response, client, "gpt-4") == "header-provider"
+            assert detect_provider(response, client, "gpt-4") == "header-provider"
 
     def test_detect_provider_from_chunk_prefers_headers(self) -> None:
         """Provider detection from chunk should prioritize header-derived values."""
-        from openlayer.lib.integrations.portkey_tracer import detect_provider_from_chunk
+        from openlayer.lib.integrations.portkey_tracer import detect_provider
 
         client = SimpleNamespace()
         chunk = SimpleNamespace()
@@ -312,11 +312,11 @@ class TestPortkeyIntegration:
         with patch(
             "openlayer.lib.integrations.portkey_tracer._provider_from_portkey_headers", return_value="header-provider"
         ):
-            assert detect_provider_from_chunk(chunk, client, "gpt-4") == "header-provider"
+            assert detect_provider(chunk, client, "gpt-4") == "header-provider"
 
     def test_detect_provider_from_response_fallback(self) -> None:
         """Provider detection should fall back to response metadata or model name."""
-        from openlayer.lib.integrations.portkey_tracer import detect_provider_from_response
+        from openlayer.lib.integrations.portkey_tracer import detect_provider
 
         client = SimpleNamespace(headers={"x-portkey-provider": "openai"})
         response = SimpleNamespace(
@@ -327,11 +327,11 @@ class TestPortkeyIntegration:
         with patch(
             "openlayer.lib.integrations.portkey_tracer._provider_from_portkey_headers", return_value=None
         ):
-            assert detect_provider_from_response(response, client, "mistral-7b") == "anthropic"
+            assert detect_provider(response, client, "mistral-7b") == "anthropic"
 
     def test_detect_provider_from_chunk_fallback(self) -> None:
         """Chunk provider detection should fall back gracefully."""
-        from openlayer.lib.integrations.portkey_tracer import detect_provider_from_chunk
+        from openlayer.lib.integrations.portkey_tracer import detect_provider
 
         chunk = SimpleNamespace(
             response_metadata={"provider": "cohere"},
@@ -342,7 +342,7 @@ class TestPortkeyIntegration:
         with patch(
             "openlayer.lib.integrations.portkey_tracer._provider_from_portkey_headers", return_value=None
         ):
-            assert detect_provider_from_chunk(chunk, client, "command-r") == "cohere"
+            assert detect_provider(chunk, client, "command-r") == "cohere"
 
     def test_provider_from_portkey_headers(self) -> None:
         """Header helper should identify provider values on the client."""
@@ -496,11 +496,11 @@ class TestPortkeyIntegration:
         with patch(
             "openlayer.lib.integrations.portkey_tracer.add_to_trace", autospec=True
         ) as mock_add_to_trace, patch(
-            "openlayer.lib.integrations.portkey_tracer.extract_usage_from_chunk", autospec=True
+            "openlayer.lib.integrations.portkey_tracer.extract_usage", autospec=True
         ) as mock_usage, patch(
             "openlayer.lib.integrations.portkey_tracer.extract_portkey_unit_metadata", autospec=True
         ) as mock_unit_metadata, patch(
-            "openlayer.lib.integrations.portkey_tracer.detect_provider_from_chunk", autospec=True
+            "openlayer.lib.integrations.portkey_tracer.detect_provider", autospec=True
         ) as mock_detect_provider, patch(
             "openlayer.lib.integrations.portkey_tracer.get_delta_from_chunk", autospec=True
         ) as mock_delta, patch(
@@ -552,10 +552,10 @@ class TestPortkeyIntegration:
         with patch(
             "openlayer.lib.integrations.portkey_tracer.parse_non_streaming_output_data", return_value="output"
         ), patch(
-            "openlayer.lib.integrations.portkey_tracer.extract_usage_from_response",
+            "openlayer.lib.integrations.portkey_tracer.extract_usage",
             return_value={"total_tokens": 10, "prompt_tokens": 4, "completion_tokens": 6},
         ), patch(
-            "openlayer.lib.integrations.portkey_tracer.detect_provider_from_response", return_value="OpenAI"
+            "openlayer.lib.integrations.portkey_tracer.detect_provider", return_value="OpenAI"
         ), patch(
             "openlayer.lib.integrations.portkey_tracer.extract_portkey_unit_metadata",
             return_value={"cost": 0.25},
