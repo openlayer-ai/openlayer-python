@@ -1045,6 +1045,10 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
         self._ignore_agent = ignore_agent
         # For async: manage our own trace mapping since context vars are unreliable
         self._traces_by_root: Dict[UUID, traces.Trace] = {}
+        # Detect if an external trace context exists at initialization time
+        # If true, we'll create standalone traces for external system integration
+        # instead of uploading them independently
+        self._has_external_trace: bool = tracer.get_current_trace() is not None
 
     @property
     def ignore_llm(self) -> bool:
@@ -1108,9 +1112,17 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
                 # We're inside an existing step context - add as nested
                 current_step.add_nested_step(step)
             elif current_trace is not None:
-                # Existing trace but no current step - add to trace
-                current_trace.add_step(step)
-                # Don't track in _traces_by_root since we're using external trace
+                # Have trace but no current step
+                # If it's an external trace, we should NOT add at root - external system will integrate
+                # If it's a ContextVar trace with no current step, add to trace
+                if not self._has_external_trace:
+                    # ContextVar-detected trace - add directly
+                    current_trace.add_step(step)
+                else:
+                    # External trace without current step - create temp standalone for later integration
+                    trace = traces.Trace()
+                    trace.add_step(step)
+                    self._traces_by_root[run_id] = trace
             else:
                 # No existing context - create standalone trace
                 trace = traces.Trace()
@@ -1163,8 +1175,10 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
                 setattr(step, key, value)
 
         # Only upload if this is a standalone trace (not integrated with external trace)
-        # If current_step is set, we're part of a larger trace and shouldn't upload
-        if is_root_step and run_id in self._traces_by_root and tracer.get_current_step() is None:
+        has_standalone_trace = run_id in self._traces_by_root
+        
+        # Only upload if: root step + has standalone trace + not part of external trace
+        if is_root_step and has_standalone_trace and not self._has_external_trace:
             trace = self._traces_by_root.pop(run_id)
             self._process_and_upload_async_trace(trace)
 
