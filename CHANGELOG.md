@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.9.0 (2025-11-24)
+
+Full Changelog: [v0.8.1...v0.9.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.8.1...v0.9.0)
+
+### Features
+
+* enhance LangFlow integration with improved context detection ([5c1d3a5](https://github.com/openlayer-ai/openlayer-python/commit/5c1d3a559f5a3380d804ead9bbef4bb9b0ebc30c))
+* improve async trace handling in AsyncOpenlayerHandler ([01fa425](https://github.com/openlayer-ai/openlayer-python/commit/01fa42594c98507e718c065fdcec732c3a9c8181))
+
 ## 0.8.1 (2025-11-13)
 
 Full Changelog: [v0.8.0...v0.8.1](https://github.com/openlayer-ai/openlayer-python/compare/v0.8.0...v0.8.1)
