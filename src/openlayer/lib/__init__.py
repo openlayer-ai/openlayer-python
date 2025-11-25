@@ -16,6 +16,7 @@ __all__ = [
     "trace_litellm",
     "trace_google_adk",
     "unpatch_google_adk",
+    "trace_gemini",
     "update_current_trace",
     "update_current_step",
     # Offline buffer management functions
@@ -235,3 +236,21 @@ def unpatch_google_adk():
     from .integrations import google_adk_tracer
 
     return google_adk_tracer.unpatch_google_adk()
+
+
+# -------------------------------- Google Gemini --------------------------------- #
+def trace_gemini(client):
+    """Trace Google Gemini chat completions."""
+    # pylint: disable=import-outside-toplevel
+    try:
+        import google.generativeai as genai
+    except ImportError:
+        raise ImportError(
+            "google-generativeai is required for Gemini tracing. Install with: pip install google-generativeai"
+        )
+
+    from .integrations import gemini_tracer
+
+    if not isinstance(client, genai.GenerativeModel):
+        raise ValueError("Invalid client. Please provide a google.generativeai.GenerativeModel instance.")
+    return gemini_tracer.trace_gemini(client)
