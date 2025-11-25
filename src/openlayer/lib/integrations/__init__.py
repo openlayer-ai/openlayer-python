@@ -31,3 +31,10 @@ try:
     __all__.extend(["trace_google_adk", "unpatch_google_adk"])
 except ImportError:
     pass
+
+try:
+    from .gemini_tracer import trace_gemini
+
+    __all__.extend(["trace_gemini"])
+except ImportError:
+    pass
