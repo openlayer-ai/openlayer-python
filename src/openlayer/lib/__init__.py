@@ -240,33 +240,7 @@ def unpatch_google_adk():
 
 # -------------------------------- Google Gemini --------------------------------- #
 def trace_gemini(client):
-    """Trace Google Gemini chat completions.
-
-    This function patches a Google GenerativeModel client to automatically trace
-    all generate_content calls, including both streaming and non-streaming requests.
-
-    Parameters
-    ----------
-    client : google.generativeai.GenerativeModel
-        The Gemini GenerativeModel to patch.
-
-    Returns
-    -------
-    google.generativeai.GenerativeModel
-        The patched Gemini client.
-
-    Example
-    -------
-        >>> import google.generativeai as genai
-        >>> from openlayer.lib import trace_gemini
-        >>> # Configure Gemini
-        >>> genai.configure(api_key="your-api-key")
-        >>> model = genai.GenerativeModel("gemini-pro")
-        >>> # Enable tracing
-        >>> traced_model = trace_gemini(model)
-        >>> # Use normally - tracing happens automatically
-        >>> response = traced_model.generate_content("Hello!")
-    """
+    """Trace Google Gemini chat completions."""
     # pylint: disable=import-outside-toplevel
     try:
         import google.generativeai as genai
