@@ -1,6 +1,6 @@
 [project]
 name = "openlayer"
-version = "0.4.0"
+version = "0.9.0"
 description = "The official Python library for the openlayer API"
 dynamic = ["readme"]
 license = "Apache-2.0"
@@ -19,7 +19,8 @@ dependencies = [
     "pyarrow>=18.0.0; python_version >= '3.9'",
     "pyyaml>=6.0",
     "requests_toolbelt>=1.0.0",
-    "tqdm"
+    "tqdm",
+    "wrapt>=1.14.0"
 ]
 requires-python = ">= 3.8"
 classifiers = [

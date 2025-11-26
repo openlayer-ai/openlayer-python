@@ -24,3 +24,10 @@ try:
     __all__.extend(["trace_oci_genai"])
 except ImportError:
     pass
+
+try:
+    from .google_adk_tracer import trace_google_adk, unpatch_google_adk
+
+    __all__.extend(["trace_google_adk", "unpatch_google_adk"])
+except ImportError:
+    pass

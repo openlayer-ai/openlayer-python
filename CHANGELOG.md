@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.9.0 (2025-11-24)
+
+Full Changelog: [v0.8.1...v0.9.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.8.1...v0.9.0)
+
+### Features
+
+* enhance LangFlow integration with improved context detection ([5c1d3a5](https://github.com/openlayer-ai/openlayer-python/commit/5c1d3a559f5a3380d804ead9bbef4bb9b0ebc30c))
+* improve async trace handling in AsyncOpenlayerHandler ([01fa425](https://github.com/openlayer-ai/openlayer-python/commit/01fa42594c98507e718c065fdcec732c3a9c8181))
+
+## 0.8.1 (2025-11-13)
+
+Full Changelog: [v0.8.0...v0.8.1](https://github.com/openlayer-ai/openlayer-python/compare/v0.8.0...v0.8.1)
+
+### Bug Fixes
+
+* **closes OPEN-8001:** handle ValueError in _current_step.reset to manage context variable mismatches ([5649f17](https://github.com/openlayer-ai/openlayer-python/commit/5649f172dd4892a92bea5bc5220b79511f13afd4))
+
+## 0.8.0 (2025-11-11)
+
+Full Changelog: [v0.7.0...v0.8.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.7.0...v0.8.0)
+
+### Features
+
+* **closes OPEN-7550:** add tracing for openai chat completions parse method ([47c4487](https://github.com/openlayer-ai/openlayer-python/commit/47c44873375faf333191e92751ba22eda7b7cd6f))
+
+## 0.7.0 (2025-11-11)
+
+Full Changelog: [v0.6.0...v0.7.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.6.0...v0.7.0)
+
+### Features
+
+* **closes OPEN-7119:** add Google ADK tracing integration with Openlayer ([b7a0706](https://github.com/openlayer-ai/openlayer-python/commit/b7a0706979fde2bf1226b122bcab889e08c7b127))
+
+
+### Documentation
+
+* add Colab badge to Google ADK tracing notebook for easier access ([89916a8](https://github.com/openlayer-ai/openlayer-python/commit/89916a8db2f2525f1941664cb5480a0e41a82f90))
+
+## 0.6.0 (2025-11-11)
+
+Full Changelog: [v0.5.0...v0.6.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.5.0...v0.6.0)
+
+### Features
+
+* **closes OPEN-7543:** update trace openai to support responses api ([4969d03](https://github.com/openlayer-ai/openlayer-python/commit/4969d034bbb5484dbac94f160a1fb95cc6c8fc39))
+
+## 0.5.0 (2025-11-07)
+
+Full Changelog: [v0.4.0...v0.5.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.4.0...v0.5.0)
+
+### Features
+
+* add examples for creating and managing LLM projects and tests ([#543](https://github.com/openlayer-ai/openlayer-python/issues/543)) ([86b9e2d](https://github.com/openlayer-ai/openlayer-python/commit/86b9e2d566e0d4e72de14ed43369ebcc6a089d27))
+
 ## 0.4.0 (2025-10-22)
 
 Full Changelog: [v0.3.1...v0.4.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.3.1...v0.4.0)

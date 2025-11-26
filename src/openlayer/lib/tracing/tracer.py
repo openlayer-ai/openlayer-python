@@ -402,7 +402,14 @@ def create_step(
             latency = (new_step.end_time - new_step.start_time) * 1000  # in ms
             new_step.latency = latency
 
-        _current_step.reset(token)
+        try:
+            _current_step.reset(token)
+        except ValueError as e:
+            # Handle context variable mismatch gracefully
+            # This can occur when async generators cross context boundaries
+            if "was created in a different Context" not in str(e):
+                raise
+        
         _handle_trace_completion(
             is_root_step=is_root_step,
             step_name=name,
