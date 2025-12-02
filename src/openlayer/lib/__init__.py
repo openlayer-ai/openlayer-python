@@ -229,11 +229,20 @@ def trace_portkey():
 
     return portkey_tracer.trace_portkey()
 # ------------------------------ Google ADK ---------------------------------- #
-def trace_google_adk():
+def trace_google_adk(disable_adk_otel: bool = False):
     """Enable tracing for Google Agent Development Kit (ADK).
 
     This function patches Google ADK to automatically trace agent execution,
     LLM calls, and tool calls made through the ADK framework.
+
+    By default, ADK's built-in OpenTelemetry tracing remains active, allowing
+    you to send telemetry to both Google Cloud and Openlayer simultaneously.
+
+    Args:
+        disable_adk_otel: If True, disables ADK's built-in OpenTelemetry tracing.
+            When False (default), ADK's OTel tracing works alongside Openlayer,
+            allowing data to be sent to both Google Cloud (Cloud Trace, etc.)
+            and Openlayer. Set to True only if you want Openlayer exclusively.
 
     Requirements:
         Google ADK and wrapt must be installed:
@@ -244,17 +253,22 @@ def trace_google_adk():
         >>> os.environ["OPENLAYER_API_KEY"] = "your-api-key"
         >>> os.environ["OPENLAYER_INFERENCE_PIPELINE_ID"] = "your-pipeline-id"
         >>> from openlayer.lib import trace_google_adk
-        >>> # Enable tracing (must be called before creating agents)
+        >>>
+        >>> # Enable tracing with both Google Cloud OTel and Openlayer (default)
         >>> trace_google_adk()
+        >>>
+        >>> # OR: Enable tracing with Openlayer only (disable ADK's OTel)
+        >>> # trace_google_adk(disable_adk_otel=True)
+        >>>
         >>> # Now create and run your ADK agents
         >>> from google.adk.agents import Agent
-        >>> agent = Agent(name="Assistant", model="gemini-2.0-flash-exp")
+        >>> agent = Agent(name="Assistant", model="gemini-2.5-flash")
         >>> result = await agent.run_async(...)
     """
     # pylint: disable=import-outside-toplevel
     from .integrations import google_adk_tracer
 
-    return google_adk_tracer.trace_google_adk()
+    return google_adk_tracer.trace_google_adk(disable_adk_otel=disable_adk_otel)
 
 
 def unpatch_google_adk():
