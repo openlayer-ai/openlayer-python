@@ -1,15 +1,28 @@
 """Module with methods used to trace Google Agent Development Kit (ADK).
 
 This module provides instrumentation for Google's Agent Development Kit (ADK),
-capturing agent execution, LLM calls, tool calls, and other ADK-specific events.
+capturing agent execution, LLM calls, tool calls, callbacks, and other 
+ADK-specific events.
+
+The following callbacks are traced as Function Call steps:
+- before_agent_callback: Called before the agent starts processing a request
+- after_agent_callback: Called after the agent finishes processing a request
+- before_model_callback: Called before each LLM model invocation
+- after_model_callback: Called after each LLM model invocation
+- before_tool_callback: Called before each tool execution
+- after_tool_callback: Called after each tool execution
+
+Reference:
+    https://google.github.io/adk-docs/callbacks/#the-callback-mechanism-interception-and-control
 """
 
+import asyncio
 import contextvars
 import json
 import logging
 import sys
 import time
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
 
 try:
     import wrapt
@@ -31,8 +44,12 @@ except ImportError:
     HAVE_GOOGLE_ADK = False
 
 from ..tracing import tracer, steps, enums
+from ..tracing.tracer import _current_step as _tracer_current_step
 
 logger = logging.getLogger(__name__)
+
+# Store original callbacks for restoration
+_original_callbacks: Dict[str, Any] = {}
 
 
 # Track wrapped methods for cleanup
@@ -49,12 +66,34 @@ _agent_transfer_parent_step: contextvars.ContextVar[Optional[Any]] = contextvars
     'google_adk_transfer_parent', default=None
 )
 
+# Context variable to store the current LLM step for updating with response data
+_current_llm_step: contextvars.ContextVar[Optional[Any]] = contextvars.ContextVar(
+    'google_adk_llm_step', default=None
+)
+
+# Context variable to store the current LLM request for callbacks
+_current_llm_request: contextvars.ContextVar[Optional[Any]] = contextvars.ContextVar(
+    'google_adk_llm_request', default=None
+)
+
+# Context variable to store the agent step for proper callback hierarchy
+# Callbacks should be siblings of LLM calls, not children
+_current_agent_step: contextvars.ContextVar[Optional[Any]] = contextvars.ContextVar(
+    'google_adk_agent_step', default=None
+)
+
+
+# Configuration for whether to disable ADK's built-in OpenTelemetry tracing
+# When False (default), ADK's OTel tracing works alongside Openlayer tracing
+# When True, ADK's tracing is replaced with no-ops (legacy behavior)
+_disable_adk_otel_tracing: bool = False
+
 
 class NoOpSpan:
     """A no-op span that does nothing.
     
-    This is used to prevent ADK from creating its own telemetry spans
-    while we create Openlayer steps instead.
+    This is used when users want to disable ADK's OpenTelemetry tracing
+    and only use Openlayer's tracing.
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -103,10 +142,10 @@ class NoOpSpan:
 
 
 class NoOpTracer:
-    """A tracer that creates no-op spans to prevent ADK from creating real spans.
+    """A tracer that creates no-op spans.
     
-    ADK has built-in OpenTelemetry tracing. We replace it with this no-op tracer
-    to prevent duplicate spans and use Openlayer's tracing instead.
+    This is only used when users explicitly want to disable ADK's 
+    OpenTelemetry tracing via disable_adk_otel=True.
     """
 
     def start_as_current_span(self, *args: Any, **kwargs: Any) -> NoOpSpan:
@@ -122,7 +161,7 @@ class NoOpTracer:
         return NoOpSpan()
 
 
-def trace_google_adk() -> None:
+def trace_google_adk(disable_adk_otel: bool = False) -> None:
     """Enable tracing for Google Agent Development Kit (ADK).
     
     This function patches Google ADK to trace agent execution, LLM calls,
@@ -130,11 +169,25 @@ def trace_google_adk() -> None:
     automatically instruments all ADK agents created after this function
     is called.
     
+    By default, ADK's built-in OpenTelemetry tracing remains active, allowing
+    you to send telemetry to both Google Cloud (via ADK's OTel integration)
+    and Openlayer simultaneously. This is useful when you want to use Google
+    Cloud's tracing features (Cloud Trace, Cloud Monitoring, Cloud Logging)
+    alongside Openlayer's observability platform.
+    
     The following information is collected for each operation:
     - Agent execution: agent name, tools, handoffs, sub-agents
     - LLM calls: model, tokens (prompt, completion, total), messages, config
     - Tool calls: tool name, arguments, results
+    - All 6 ADK callbacks: before_agent, after_agent, before_model, after_model, 
+      before_tool, after_tool
     - Start/end times and latency for all operations
+    
+    Args:
+        disable_adk_otel: If True, disables ADK's built-in OpenTelemetry tracing.
+            When False (default), ADK's OTel tracing works alongside Openlayer,
+            allowing you to send data to both Google Cloud and Openlayer.
+            Set to True only if you want Openlayer as your sole observability tool.
     
     Note:
         Agent transfers (handoffs via ``transfer_to_agent``) do not create 
@@ -157,20 +210,26 @@ def trace_google_adk() -> None:
             
             from openlayer.lib.integrations import trace_google_adk
             
-            # Enable tracing (must be called before creating agents)
+            # Enable tracing with ADK's OTel also active (default)
+            # Data goes to both Google Cloud (if configured) and Openlayer
             trace_google_adk()
+            
+            # OR: Enable tracing with ONLY Openlayer (disable ADK's OTel)
+            # trace_google_adk(disable_adk_otel=True)
             
             # Now create and run your ADK agents
             from google.adk.agents import Agent
             
             agent = Agent(
                 name="Assistant",
-                model="gemini-2.0-flash-exp",
+                model="gemini-2.5-flash",
                 instructions="You are a helpful assistant"
             )
             
             result = await agent.run_async(...)
     """
+    global _disable_adk_otel_tracing
+    
     if not HAVE_GOOGLE_ADK:
         raise ImportError(
             "google-adk library is not installed. "
@@ -183,7 +242,19 @@ def trace_google_adk() -> None:
             "Please install it with: pip install wrapt"
         )
     
-    logger.info("Enabling Google ADK tracing for Openlayer")
+    _disable_adk_otel_tracing = disable_adk_otel
+    
+    if disable_adk_otel:
+        logger.info(
+            "Enabling Google ADK tracing for Openlayer "
+            "(ADK's OpenTelemetry tracing will be disabled)"
+        )
+    else:
+        logger.info(
+            "Enabling Google ADK tracing for Openlayer "
+            "(ADK's OpenTelemetry tracing remains active for Google Cloud)"
+        )
+    
     _patch_google_adk()
 
 
@@ -202,6 +273,28 @@ def unpatch_google_adk() -> None:
 
 
 # ----------------------------- Helper Functions ----------------------------- #
+
+
+def _sort_steps_by_time(step: Any, recursive: bool = True) -> None:
+    """Sort nested steps by start_time for correct chronological order.
+    
+    This ensures that steps appear in the order they were executed,
+    not the order they were created/added to the parent.
+    
+    Args:
+        step: The step whose nested steps should be sorted.
+        recursive: If True, also sort nested steps within children.
+    """
+    if not hasattr(step, 'steps') or not step.steps:
+        return
+    
+    # Sort by start_time
+    step.steps.sort(key=lambda s: getattr(s, 'start_time', 0) or 0)
+    
+    # Recursively sort children if requested
+    if recursive:
+        for child_step in step.steps:
+            _sort_steps_by_time(child_step, recursive=True)
 
 
 def _build_llm_request_for_trace(llm_request: Any) -> Dict[str, Any]:
@@ -426,12 +519,20 @@ def extract_agent_attributes(instance: Any) -> Dict[str, Any]:
 def _base_agent_run_async_wrapper() -> Any:
     """Wrapper for BaseAgent.run_async to create agent execution steps.
     
+    This wrapper:
+    - Creates a AgentCallStep for the agent execution
+    - Automatically wraps agent callbacks for tracing
+    - Captures the final response and user query
+    
     Returns:
         Decorator function that wraps the original method.
     """
     def actual_decorator(wrapped: Any, instance: Any, args: tuple, kwargs: dict) -> Any:
         async def new_function():
             agent_name = instance.name if hasattr(instance, "name") else "Unknown Agent"
+            
+            # Wrap agent callbacks for tracing (if not already wrapped)
+            _wrap_agent_callbacks(instance)
             
             # Check if this is a sub-agent being called via transfer
             transfer_parent = _agent_transfer_parent_step.get()
@@ -445,6 +546,23 @@ def _base_agent_run_async_wrapper() -> Any:
             
             # Build metadata with session info
             metadata = {"agent_type": "google_adk"}
+            
+            # Add callback info to metadata (all 6 ADK callback types)
+            has_callbacks = []
+            callback_attrs = [
+                ("before_agent_callback", "before_agent"),
+                ("after_agent_callback", "after_agent"),
+                ("before_model_callback", "before_model"),
+                ("after_model_callback", "after_model"),
+                ("before_tool_callback", "before_tool"),
+                ("after_tool_callback", "after_tool"),
+            ]
+            for attr, name in callback_attrs:
+                if hasattr(instance, attr) and getattr(instance, attr):
+                    has_callbacks.append(name)
+            if has_callbacks:
+                metadata["callbacks"] = has_callbacks
+            
             if invocation_context:
                 if hasattr(invocation_context, "invocation_id"):
                     metadata["invocation_id"] = invocation_context.invocation_id
@@ -465,28 +583,28 @@ def _base_agent_run_async_wrapper() -> Any:
             
             # If we're in a transfer, create the step as a child of the transfer parent
             # Otherwise, use normal context (child of current step)
+            transfer_token = None
             if transfer_parent is not None:
                 logger.debug(f"Creating sub-agent step as sibling: {agent_name}")
-                # Temporarily set the parent step, create our step, then restore
-                step_cm = tracer.create_step(
-                    name=f"Agent: {agent_name}",
-                    step_type=enums.StepType.USER_CALL,
-                    inputs=inputs,
-                    metadata=metadata,
-                    parent_step=transfer_parent
-                )
+                # Temporarily set current step to transfer parent so new step becomes its child
+                transfer_token = _tracer_current_step.set(transfer_parent)
                 # Clear the transfer parent so nested steps work normally
                 _agent_transfer_parent_step.set(None)
-            else:
-                step_cm = tracer.create_step(
-                    name=f"Agent: {agent_name}",
-                    step_type=enums.StepType.USER_CALL,
-                    inputs=inputs,
-                    metadata=metadata
-                )
+            
+            step_cm = tracer.create_step(
+                name=f"Agent: {agent_name}",
+                step_type=enums.StepType.AGENT,
+                inputs=inputs,
+                metadata=metadata
+            )
             
             # Use the step as a context manager and capture the actual step object
+            # Note: The step is created when entering the with block with the correct parent
             with step_cm as step:
+                # Store the agent step so callbacks can use it as parent
+                # This ensures callbacks are siblings of LLM calls, not children
+                _current_agent_step.set(step)
+                
                 try:
                     # Execute the agent
                     async_gen = wrapped(*args, **kwargs)
@@ -520,14 +638,137 @@ def _base_agent_run_async_wrapper() -> Any:
                     step.output = f"Error: {str(e)}"
                     logger.error(f"Error in agent execution: {e}")
                     raise
+                finally:
+                    # Sort all nested steps recursively by start_time to ensure chronological order
+                    # This fixes the issue where callbacks appear after LLM calls/tools
+                    # even though they executed before/after them
+                    _sort_steps_by_time(step, recursive=True)
+                    logger.debug(f"Sorted nested steps by start_time (recursive)")
+                    
+                    # Clear the agent step context
+                    _current_agent_step.set(None)
+            
+            # Restore the current step context if we changed it for transfer
+            # This must be done AFTER the with block exits
+            if transfer_token is not None:
+                _tracer_current_step.reset(transfer_token)
         
         return new_function()
     
     return actual_decorator
 
 
+def _extract_usage_from_response(response: Any) -> Dict[str, int]:
+    """Extract token usage from an LLM response object.
+    
+    Args:
+        response: The LLM response object (can be various types).
+        
+    Returns:
+        Dictionary with prompt_tokens, completion_tokens, total_tokens.
+    """
+    usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    
+    try:
+        # Check if response has usage_metadata attribute directly
+        if hasattr(response, "usage_metadata"):
+            usage_metadata = response.usage_metadata
+            if usage_metadata:
+                usage["prompt_tokens"] = getattr(usage_metadata, "prompt_token_count", 0) or 0
+                usage["completion_tokens"] = getattr(usage_metadata, "candidates_token_count", 0) or 0
+                usage["total_tokens"] = getattr(usage_metadata, "total_token_count", 0) or 0
+        
+        # Check for dict-based response
+        elif isinstance(response, dict):
+            if "usage_metadata" in response:
+                um = response["usage_metadata"]
+                usage["prompt_tokens"] = um.get("prompt_token_count", 0) or 0
+                usage["completion_tokens"] = um.get("candidates_token_count", 0) or 0
+                usage["total_tokens"] = um.get("total_token_count", 0) or 0
+        
+        # Try to get from model_dump if available (Pydantic model)
+        elif hasattr(response, "model_dump"):
+            try:
+                resp_dict = response.model_dump()
+                if "usage_metadata" in resp_dict:
+                    um = resp_dict["usage_metadata"]
+                    usage["prompt_tokens"] = um.get("prompt_token_count", 0) or 0
+                    usage["completion_tokens"] = um.get("candidates_token_count", 0) or 0
+                    usage["total_tokens"] = um.get("total_token_count", 0) or 0
+            except Exception:
+                pass
+    except Exception as e:
+        logger.debug(f"Failed to extract usage metadata: {e}")
+    
+    return usage
+
+
+def _extract_output_from_response(response: Any) -> Optional[str]:
+    """Extract text output from an LLM response.
+    
+    Args:
+        response: The LLM response object.
+        
+    Returns:
+        Extracted text content or None.
+    """
+    try:
+        # Check for content attribute with parts
+        if hasattr(response, "content") and response.content:
+            content = response.content
+            if hasattr(content, "parts") and content.parts:
+                text_parts = []
+                for part in content.parts:
+                    if hasattr(part, "text") and part.text:
+                        text_parts.append(str(part.text))
+                if text_parts:
+                    return "\n".join(text_parts)
+        
+        # Check for dict-based response
+        if isinstance(response, dict):
+            if "content" in response and "parts" in response.get("content", {}):
+                parts = response["content"]["parts"]
+                text_parts = []
+                for part in parts:
+                    if "text" in part and part.get("text") is not None:
+                        text_parts.append(str(part["text"]))
+                if text_parts:
+                    return "\n".join(text_parts)
+        
+        # Try model_dump
+        if hasattr(response, "model_dump"):
+            try:
+                resp_dict = response.model_dump()
+                if "content" in resp_dict and resp_dict["content"]:
+                    content = resp_dict["content"]
+                    if "parts" in content:
+                        text_parts = []
+                        for part in content["parts"]:
+                            if "text" in part and part.get("text") is not None:
+                                text_parts.append(str(part["text"]))
+                        if text_parts:
+                            return "\n".join(text_parts)
+            except Exception:
+                pass
+        
+        # Fallback to text attribute
+        if hasattr(response, "text") and response.text:
+            return str(response.text)
+            
+    except Exception as e:
+        logger.debug(f"Failed to extract output from response: {e}")
+    
+    return None
+
+
 def _base_llm_flow_call_llm_async_wrapper() -> Any:
     """Wrapper for BaseLlmFlow._call_llm_async to create LLM call steps.
+    
+    This wrapper:
+    - Creates a ChatCompletionStep for the LLM call
+    - Captures input messages and model parameters
+    - Extracts usage metadata (tokens) from the response
+    - Stores the step in context for callback access
     
     Returns:
         Decorator function that wraps the original method.
@@ -554,6 +795,9 @@ def _base_llm_flow_call_llm_async_wrapper() -> Any:
             
             if llm_request and hasattr(llm_request, "model"):
                 model_name = llm_request.model
+            
+            # Store request in context for callbacks
+            _current_llm_request.set(llm_request)
             
             # Build request dict
             llm_request_dict = None
@@ -595,21 +839,60 @@ def _base_llm_flow_call_llm_async_wrapper() -> Any:
                 step.provider = "Google"
                 step.model_parameters = model_parameters
                 
+                # Store step in context for later updates (e.g., by callbacks)
+                _current_llm_step.set(step)
+                
                 try:
                     # Execute LLM call
                     async_gen = wrapped(*args, **kwargs)
                     collected_responses = []
+                    last_response = None
                     
                     async for item in async_gen:
                         collected_responses.append(item)
+                        last_response = item
                         yield item
                     
-                    # The response will be finalized by _finalize_model_response_event_wrapper
+                    # Extract usage metadata from the last response
+                    if last_response is not None:
+                        usage = _extract_usage_from_response(last_response)
+                        if usage["total_tokens"] > 0 or usage["prompt_tokens"] > 0:
+                            step.prompt_tokens = usage["prompt_tokens"]
+                            step.completion_tokens = usage["completion_tokens"]
+                            step.tokens = usage["total_tokens"]
+                            logger.debug(
+                                f"Captured token usage: prompt={usage['prompt_tokens']}, "
+                                f"completion={usage['completion_tokens']}, "
+                                f"total={usage['total_tokens']}"
+                            )
+                        
+                        # Extract output text
+                        output_text = _extract_output_from_response(last_response)
+                        if output_text:
+                            step.output = output_text
+                        
+                        # Store raw response for debugging
+                        try:
+                            if hasattr(last_response, "model_dump"):
+                                step.raw_output = json.dumps(
+                                    last_response.model_dump(exclude_none=True)
+                                )
+                            elif isinstance(last_response, dict):
+                                step.raw_output = json.dumps(last_response)
+                        except Exception:
+                            pass
                     
                 except Exception as e:
                     step.output = f"Error: {str(e)}"
                     logger.error(f"Error in LLM call: {e}")
                     raise
+                finally:
+                    # Sort nested steps by start_time for correct chronological order
+                    _sort_steps_by_time(step, recursive=True)
+                    
+                    # Clear context variables
+                    _current_llm_step.set(None)
+                    _current_llm_request.set(None)
         
         return new_function()
     
@@ -705,6 +988,9 @@ def _call_tool_async_wrapper() -> Any:
                     step.output = f"Error: {str(e)}"
                     logger.error(f"Error in tool execution: {e}")
                     raise
+                finally:
+                    # Sort nested steps by start_time for correct chronological order
+                    _sort_steps_by_time(step, recursive=True)
         
         return new_function()
     
@@ -724,17 +1010,419 @@ def _finalize_model_response_event_wrapper() -> Any:
         # Call the original method
         result = wrapped(*args, **kwargs)
         
-        # Extract response data
-        llm_request = args[0] if len(args) > 0 else kwargs.get("llm_request")
+        # Extract response data and update step if we have one
         llm_response = args[1] if len(args) > 1 else kwargs.get("llm_response")
+        current_step = _current_llm_step.get()
         
-        # Note: In a real implementation, we would update the current step here
-        # For now, we just pass through since step management is handled in the
-        # LLM wrapper itself
+        if current_step is not None and llm_response is not None:
+            try:
+                # Extract and update usage metadata
+                usage = _extract_usage_from_response(llm_response)
+                if usage["total_tokens"] > 0 or usage["prompt_tokens"] > 0:
+                    current_step.prompt_tokens = usage["prompt_tokens"]
+                    current_step.completion_tokens = usage["completion_tokens"]
+                    current_step.tokens = usage["total_tokens"]
+                
+                # Extract and update output if not already set
+                if not current_step.output:
+                    output_text = _extract_output_from_response(llm_response)
+                    if output_text:
+                        current_step.output = output_text
+            except Exception as e:
+                logger.debug(f"Error updating step from finalize: {e}")
         
         return result
     
     return actual_decorator
+
+
+# ----------------------------- Callback Wrappers ----------------------------- #
+
+
+def _extract_callback_inputs(callback_type: str, args: tuple, kwargs: dict) -> Dict[str, Any]:
+    """Extract inputs for a callback based on its type.
+    
+    Args:
+        callback_type: Type of callback (before_agent, after_agent, before_model, 
+            after_model, before_tool, after_tool).
+        args: Positional arguments passed to the callback.
+        kwargs: Keyword arguments passed to the callback.
+        
+    Returns:
+        Dictionary of inputs for tracing.
+    """
+    inputs: Dict[str, Any] = {}
+    
+    # Extract callback_context (first arg for most callbacks)
+    callback_context = args[0] if args else kwargs.get("callback_context")
+    if callback_context:
+        if hasattr(callback_context, "agent_name"):
+            inputs["agent_name"] = callback_context.agent_name
+        if hasattr(callback_context, "invocation_id"):
+            inputs["invocation_id"] = callback_context.invocation_id
+        if hasattr(callback_context, "state") and callback_context.state:
+            # Include a subset of state keys for debugging
+            try:
+                state_keys = list(callback_context.state.keys())[:10]
+                inputs["state_keys"] = state_keys
+            except Exception:
+                pass
+    
+    # Type-specific extraction
+    if callback_type == "before_agent":
+        # before_agent_callback(callback_context: CallbackContext) -> Optional[types.Content]
+        pass  # callback_context already extracted above
+        
+    elif callback_type == "after_agent":
+        # after_agent_callback(callback_context: CallbackContext) -> Optional[types.Content]
+        pass  # callback_context already extracted above
+        
+    elif callback_type == "before_model":
+        # before_model_callback(callback_context: CallbackContext, llm_request: LlmRequest) 
+        #   -> Optional[LlmResponse]
+        llm_request = args[1] if len(args) > 1 else kwargs.get("llm_request")
+        if llm_request:
+            if hasattr(llm_request, "model"):
+                inputs["model"] = llm_request.model
+            if hasattr(llm_request, "config"):
+                try:
+                    inputs["config"] = llm_request.config.model_dump(
+                        exclude_none=True, exclude="response_schema"
+                    )
+                except Exception:
+                    pass
+                    
+    elif callback_type == "after_model":
+        # after_model_callback(callback_context: CallbackContext, llm_response: LlmResponse)
+        #   -> Optional[LlmResponse]
+        llm_response = args[1] if len(args) > 1 else kwargs.get("llm_response")
+        if llm_response:
+            # Extract usage from response
+            usage = _extract_usage_from_response(llm_response)
+            if usage["total_tokens"] > 0:
+                inputs["usage"] = usage
+            # Extract output text
+            output_text = _extract_output_from_response(llm_response)
+            if output_text:
+                inputs["response_preview"] = output_text[:200] + "..." if len(output_text) > 200 else output_text
+                
+    elif callback_type == "before_tool":
+        # before_tool_callback(tool: BaseTool, args: dict, tool_context: ToolContext)
+        #   -> Optional[dict]
+        tool = args[0] if args else kwargs.get("tool")
+        tool_args = args[1] if len(args) > 1 else kwargs.get("args", {})
+        tool_context = args[2] if len(args) > 2 else kwargs.get("tool_context")
+        
+        if tool:
+            if hasattr(tool, "name"):
+                inputs["tool_name"] = tool.name
+            if hasattr(tool, "description"):
+                inputs["tool_description"] = tool.description
+        if tool_args:
+            inputs["tool_args"] = tool_args
+        if tool_context and hasattr(tool_context, "function_call_id"):
+            inputs["function_call_id"] = tool_context.function_call_id
+            
+    elif callback_type == "after_tool":
+        # after_tool_callback(tool: BaseTool, args: dict, tool_context: ToolContext, 
+        #   tool_response: dict) -> Optional[dict]
+        tool = args[0] if args else kwargs.get("tool")
+        tool_args = args[1] if len(args) > 1 else kwargs.get("args", {})
+        tool_context = args[2] if len(args) > 2 else kwargs.get("tool_context")
+        tool_response = args[3] if len(args) > 3 else kwargs.get("tool_response")
+        
+        if tool and hasattr(tool, "name"):
+            inputs["tool_name"] = tool.name
+        if tool_args:
+            inputs["tool_args"] = tool_args
+        if tool_response:
+            # Include a preview of the response
+            try:
+                if isinstance(tool_response, dict):
+                    inputs["tool_response"] = tool_response
+                else:
+                    response_str = str(tool_response)
+                    inputs["tool_response_preview"] = (
+                        response_str[:200] + "..." if len(response_str) > 200 else response_str
+                    )
+            except Exception:
+                pass
+    
+    return inputs
+
+
+def _create_callback_wrapper(
+    callback_name: str,
+    callback_type: str
+) -> Callable:
+    """Create a wrapper function for ADK callbacks.
+    
+    This creates a wrapper that traces callback execution as a Function Call step.
+    
+    Callback hierarchy and timing:
+    - Model callbacks (before_model, after_model) are placed at the Agent level
+      as siblings of LLM calls
+    - Tool callbacks (before_tool, after_tool) are placed at the LLM level
+      as siblings of Tool steps
+    - "before_*" callbacks have their start_time adjusted to appear before
+      their associated operation when sorted
+    
+    Supported callback types:
+    - before_agent: Called before the agent starts processing
+    - after_agent: Called after the agent finishes processing
+    - before_model: Called before each LLM model invocation
+    - after_model: Called after each LLM model invocation
+    - before_tool: Called before each tool execution
+    - after_tool: Called after each tool execution
+    
+    Reference:
+        https://google.github.io/adk-docs/callbacks/#the-callback-mechanism-interception-and-control
+    
+    Args:
+        callback_name: Human-readable name for the callback.
+        callback_type: Type of callback.
+        
+    Returns:
+        A wrapper function that traces the callback.
+    """
+    # Determine the parent step for this callback:
+    # - Model callbacks (before_model, after_model) → Agent step (siblings of LLM calls)
+    # - Tool callbacks (before_tool, after_tool) → LLM step (siblings of Tool steps)
+    use_agent_parent = callback_type in ("before_model", "after_model")
+    use_llm_parent = callback_type in ("before_tool", "after_tool")
+    
+    # "before_*" callbacks need their start_time adjusted to appear before
+    # their associated operation (since they're actually called after the operation starts)
+    is_before_callback = callback_type.startswith("before_")
+    
+    def wrapper(original_callback: Callable) -> Callable:
+        """Wrap the original callback with tracing."""
+        if original_callback is None:
+            return None
+        
+        # Handle async callbacks
+        if asyncio.iscoroutinefunction(original_callback):
+            async def async_traced_callback(*args, **kwargs):
+                # Extract inputs based on callback type
+                inputs = _extract_callback_inputs(callback_type, args, kwargs)
+                
+                # Determine the parent step and get reference time for ordering
+                saved_token = None
+                reference_step = None
+                
+                if use_agent_parent:
+                    # Model callbacks → Agent step (siblings of LLM calls)
+                    agent_step = _current_agent_step.get()
+                    if agent_step is not None:
+                        saved_token = _tracer_current_step.set(agent_step)
+                    # Reference for timing is the current LLM step
+                    reference_step = _current_llm_step.get()
+                elif use_llm_parent:
+                    # Tool callbacks → LLM step (siblings of Tool steps)
+                    llm_step = _current_llm_step.get()
+                    if llm_step is not None:
+                        saved_token = _tracer_current_step.set(llm_step)
+                        reference_step = llm_step
+                
+                try:
+                    # Create a step for the callback
+                    with tracer.create_step(
+                        name=f"Callback: {callback_name}",
+                        step_type=enums.StepType.USER_CALL,
+                        inputs=inputs,
+                        metadata={"callback_type": callback_type, "is_callback": True}
+                    ) as step:
+                        # Adjust start_time for "before_*" callbacks to appear before
+                        # their associated operation when sorted by time
+                        if is_before_callback and reference_step is not None:
+                            ref_start = getattr(reference_step, 'start_time', None)
+                            if ref_start is not None:
+                                # Set start_time to be 1ms before the reference operation
+                                step.start_time = ref_start - 0.001
+                        
+                        try:
+                            result = await original_callback(*args, **kwargs)
+                            
+                            # Set output based on result
+                            if result is not None:
+                                if hasattr(result, "model_dump"):
+                                    try:
+                                        step.output = result.model_dump(exclude_none=True)
+                                    except Exception:
+                                        step.output = str(result)
+                                elif isinstance(result, dict):
+                                    step.output = result
+                                else:
+                                    step.output = str(result)
+                            else:
+                                step.output = "Callback completed (no modification)"
+                            
+                            return result
+                        except Exception as e:
+                            step.output = f"Error: {str(e)}"
+                            raise
+                finally:
+                    # Restore the previous current step
+                    if saved_token is not None:
+                        _tracer_current_step.reset(saved_token)
+            
+            return async_traced_callback
+        else:
+            # Handle sync callbacks
+            def sync_traced_callback(*args, **kwargs):
+                # Extract inputs based on callback type
+                inputs = _extract_callback_inputs(callback_type, args, kwargs)
+                
+                # Determine the parent step and get reference time for ordering
+                saved_token = None
+                reference_step = None
+                
+                if use_agent_parent:
+                    # Model callbacks → Agent step (siblings of LLM calls)
+                    agent_step = _current_agent_step.get()
+                    if agent_step is not None:
+                        saved_token = _tracer_current_step.set(agent_step)
+                    # Reference for timing is the current LLM step
+                    reference_step = _current_llm_step.get()
+                elif use_llm_parent:
+                    # Tool callbacks → LLM step (siblings of Tool steps)
+                    llm_step = _current_llm_step.get()
+                    if llm_step is not None:
+                        saved_token = _tracer_current_step.set(llm_step)
+                        reference_step = llm_step
+                
+                try:
+                    # Create a step for the callback
+                    with tracer.create_step(
+                        name=f"Callback: {callback_name}",
+                        step_type=enums.StepType.USER_CALL,
+                        inputs=inputs,
+                        metadata={"callback_type": callback_type, "is_callback": True}
+                    ) as step:
+                        # Adjust start_time for "before_*" callbacks to appear before
+                        # their associated operation when sorted by time
+                        if is_before_callback and reference_step is not None:
+                            ref_start = getattr(reference_step, 'start_time', None)
+                            if ref_start is not None:
+                                # Set start_time to be 1ms before the reference operation
+                                step.start_time = ref_start - 0.001
+                        
+                        try:
+                            result = original_callback(*args, **kwargs)
+                            
+                            # Set output based on result
+                            if result is not None:
+                                if hasattr(result, "model_dump"):
+                                    try:
+                                        step.output = result.model_dump(exclude_none=True)
+                                    except Exception:
+                                        step.output = str(result)
+                                elif isinstance(result, dict):
+                                    step.output = result
+                                else:
+                                    step.output = str(result)
+                            else:
+                                step.output = "Callback completed (no modification)"
+                            
+                            return result
+                        except Exception as e:
+                            step.output = f"Error: {str(e)}"
+                            raise
+                finally:
+                    # Restore the previous current step
+                    if saved_token is not None:
+                        _tracer_current_step.reset(saved_token)
+            
+            return sync_traced_callback
+    
+    return wrapper
+
+
+def _wrap_agent_callbacks(agent: Any) -> None:
+    """Wrap an agent's callbacks with tracing wrappers.
+    
+    This function wraps all 6 ADK callback types on an agent instance:
+    - before_agent_callback: Called before the agent starts processing
+    - after_agent_callback: Called after the agent finishes processing
+    - before_model_callback: Called before each LLM model invocation
+    - after_model_callback: Called after each LLM model invocation
+    - before_tool_callback: Called before each tool execution
+    - after_tool_callback: Called after each tool execution
+    
+    Reference:
+        https://google.github.io/adk-docs/callbacks/#the-callback-mechanism-interception-and-control
+    
+    Args:
+        agent: The ADK agent instance to wrap callbacks for.
+    """
+    agent_name = getattr(agent, "name", "unknown")
+    agent_id = id(agent)
+    
+    # Define all callback types to wrap
+    callback_configs = [
+        ("before_agent_callback", "before_agent"),
+        ("after_agent_callback", "after_agent"),
+        ("before_model_callback", "before_model"),
+        ("after_model_callback", "after_model"),
+        ("before_tool_callback", "before_tool"),
+        ("after_tool_callback", "after_tool"),
+    ]
+    
+    for callback_attr, callback_type in callback_configs:
+        if hasattr(agent, callback_attr):
+            original = getattr(agent, callback_attr)
+            if original is not None and not getattr(original, "_openlayer_wrapped", False):
+                wrapper = _create_callback_wrapper(
+                    f"{callback_type.replace('_', ' ')} ({agent_name})", 
+                    callback_type
+                )
+                wrapped = wrapper(original)
+                wrapped._openlayer_wrapped = True
+                wrapped._openlayer_original = original
+                setattr(agent, callback_attr, wrapped)
+                _original_callbacks[f"{agent_id}_{callback_type}"] = original
+                logger.debug(f"Wrapped {callback_attr} for agent: {agent_name}")
+    
+    # Recursively wrap sub-agents
+    if hasattr(agent, "sub_agents") and agent.sub_agents:
+        for sub_agent in agent.sub_agents:
+            _wrap_agent_callbacks(sub_agent)
+
+
+def _unwrap_agent_callbacks(agent: Any) -> None:
+    """Remove callback wrappers from an agent.
+    
+    Args:
+        agent: The ADK agent instance to unwrap callbacks for.
+    """
+    agent_id = id(agent)
+    
+    # All callback attribute names
+    callback_attrs = [
+        "before_agent_callback",
+        "after_agent_callback",
+        "before_model_callback",
+        "after_model_callback",
+        "before_tool_callback",
+        "after_tool_callback",
+    ]
+    
+    # Restore original callbacks
+    for callback_name in callback_attrs:
+        if hasattr(agent, callback_name):
+            callback = getattr(agent, callback_name)
+            if callback and hasattr(callback, "_openlayer_original"):
+                setattr(agent, callback_name, callback._openlayer_original)
+    
+    # Clean up stored originals
+    for key in list(_original_callbacks.keys()):
+        if key.startswith(f"{agent_id}_"):
+            del _original_callbacks[key]
+    
+    # Recursively unwrap sub-agents
+    if hasattr(agent, "sub_agents") and agent.sub_agents:
+        for sub_agent in agent.sub_agents:
+            _unwrap_agent_callbacks(sub_agent)
 
 
 # ----------------------------- Patching Functions --------------------------- #
@@ -786,35 +1474,61 @@ def _patch_module_function(
 
 
 def _patch_google_adk() -> None:
-    """Apply all patches to Google ADK modules."""
+    """Apply all patches to Google ADK modules.
+    
+    This function:
+    - Optionally disables ADK's built-in OpenTelemetry tracing (if configured)
+    - Patches agent execution (run_async)
+    - Patches LLM calls (_call_llm_async)
+    - Patches LLM response finalization
+    - Patches tool execution
+    
+    By default, ADK's OpenTelemetry tracing remains active, allowing users
+    to send telemetry to both Google Cloud and Openlayer. ADK uses OTel
+    exporters configured via google.adk.telemetry.get_gcp_exporters() or
+    standard OTEL_EXPORTER_OTLP_* environment variables.
+    
+    Callbacks (before_model, after_model, before_tool) are wrapped
+    dynamically when agents run, not through static patching.
+    
+    Reference:
+        ADK Telemetry: https://github.com/google/adk-python/tree/main/src/google/adk/telemetry
+    """
     logger.debug("Applying Google ADK patches for Openlayer instrumentation")
     
-    # First, disable ADK's own tracer by replacing it with our NoOpTracer
-    noop_tracer = NoOpTracer()
-    try:
-        import google.adk.telemetry as adk_telemetry
-        adk_telemetry.tracer = noop_tracer
-        logger.debug("Replaced ADK's tracer with NoOpTracer")
-    except Exception as e:
-        logger.warning(f"Failed to replace ADK tracer: {e}")
-    
-    # Also replace the tracer in modules that have already imported it
-    modules_to_patch = [
-        "google.adk.runners",
-        "google.adk.agents.base_agent",
-        "google.adk.flows.llm_flows.base_llm_flow",
-        "google.adk.flows.llm_flows.functions",
-    ]
-    
-    for module_name in modules_to_patch:
-        if module_name in sys.modules:
-            try:
-                module = sys.modules[module_name]
-                if hasattr(module, "tracer"):
-                    module.tracer = noop_tracer
-                    logger.debug(f"Replaced tracer in {module_name}")
-            except Exception as e:
-                logger.warning(f"Failed to replace tracer in {module_name}: {e}")
+    # Only disable ADK's tracer if explicitly requested
+    # By default, keep ADK's OTel tracing active for Google Cloud integration
+    if _disable_adk_otel_tracing:
+        noop_tracer = NoOpTracer()
+        try:
+            import google.adk.telemetry as adk_telemetry
+            adk_telemetry.tracer = noop_tracer
+            logger.debug("Replaced ADK's tracer with NoOpTracer")
+        except Exception as e:
+            logger.warning(f"Failed to replace ADK tracer: {e}")
+        
+        # Also replace the tracer in modules that have already imported it
+        modules_to_patch = [
+            "google.adk.runners",
+            "google.adk.agents.base_agent",
+            "google.adk.flows.llm_flows.base_llm_flow",
+            "google.adk.flows.llm_flows.functions",
+        ]
+        
+        for module_name in modules_to_patch:
+            if module_name in sys.modules:
+                try:
+                    module = sys.modules[module_name]
+                    if hasattr(module, "tracer"):
+                        module.tracer = noop_tracer
+                        logger.debug(f"Replaced tracer in {module_name}")
+                except Exception as e:
+                    logger.warning(f"Failed to replace tracer in {module_name}: {e}")
+    else:
+        logger.debug(
+            "Keeping ADK's OpenTelemetry tracing active. "
+            "Telemetry will be sent to both Google Cloud (if configured) and Openlayer."
+        )
     
     # Patch agent execution
     _patch(
@@ -847,22 +1561,40 @@ def _patch_google_adk() -> None:
         _call_tool_async_wrapper
     )
     
-    logger.info("Google ADK patching complete")
+    if _disable_adk_otel_tracing:
+        logger.info(
+            "Google ADK patching complete. "
+            "ADK's OTel tracing disabled, using Openlayer only."
+        )
+    else:
+        logger.info(
+            "Google ADK patching complete. "
+            "ADK's OTel tracing active (Google Cloud) + Openlayer tracing enabled."
+        )
 
 
 def _unpatch_google_adk() -> None:
-    """Remove all patches from Google ADK modules."""
+    """Remove all patches from Google ADK modules.
+    
+    This function:
+    - Restores ADK's built-in OpenTelemetry tracing (if it was disabled)
+    - Removes all method patches
+    - Clears stored original callbacks
+    """
+    global _disable_adk_otel_tracing
+    
     logger.debug("Removing Google ADK patches")
     
-    # Restore ADK's tracer
-    try:
-        import google.adk.telemetry as adk_telemetry
-        from opentelemetry import trace
-        
-        adk_telemetry.tracer = trace.get_tracer("gcp.vertex.agent")
-        logger.debug("Restored ADK's built-in tracer")
-    except Exception as e:
-        logger.warning(f"Failed to restore ADK tracer: {e}")
+    # Restore ADK's tracer only if we disabled it
+    if _disable_adk_otel_tracing:
+        try:
+            import google.adk.telemetry as adk_telemetry
+            from opentelemetry import trace
+            
+            adk_telemetry.tracer = trace.get_tracer("gcp.vertex.agent")
+            logger.debug("Restored ADK's built-in tracer")
+        except Exception as e:
+            logger.warning(f"Failed to restore ADK tracer: {e}")
     
     # Unwrap all methods
     for obj, method_name in _wrapped_methods:
@@ -875,5 +1607,12 @@ def _unpatch_google_adk() -> None:
             logger.warning(f"Failed to unwrap {obj}.{method_name}: {e}")
     
     _wrapped_methods.clear()
+    
+    # Clear stored original callbacks
+    _original_callbacks.clear()
+    
+    # Reset the flag
+    _disable_adk_otel_tracing = False
+    
     logger.info("Google ADK unpatching complete")
 
