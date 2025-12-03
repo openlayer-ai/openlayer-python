@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.10.0 (2025-12-03)
+
+Full Changelog: [v0.9.0...v0.10.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.9.0...v0.10.0)
+
+### Features
+
+* **CLOSES open-8261:** enhance Google ADK tracing with callback support ([cd601e6](https://github.com/openlayer-ai/openlayer-python/commit/cd601e60254c7b51e5f8d6c3a5f947d0e388d9ae))
+
 ## 0.9.0 (2025-11-24)
 
 Full Changelog: [v0.8.1...v0.9.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.8.1...v0.9.0)
