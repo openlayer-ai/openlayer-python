@@ -115,6 +115,7 @@ pip install openlayer[aiohttp]
 Then you can enable it by instantiating the client with `http_client=DefaultAioHttpClient()`:
 
 ```python
+import os
 import asyncio
 from openlayer import DefaultAioHttpClient
 from openlayer import AsyncOpenlayer
@@ -122,7 +123,7 @@ from openlayer import AsyncOpenlayer
 
 async def main() -> None:
     async with AsyncOpenlayer(
-        api_key="My API Key",
+        api_key=os.environ.get("OPENLAYER_API_KEY"),  # This is the default and can be omitted
         http_client=DefaultAioHttpClient(),
     ) as client:
         response = await client.inference_pipelines.data.stream(
