@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.11.0 (2025-12-08)
+
+Full Changelog: [v0.10.0...v0.11.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.10.0...v0.11.0)
+
+### Features
+
+* **closes OPEN-8244:** Adds Gemini API client tracing ([8227c31](https://github.com/openlayer-ai/openlayer-python/commit/8227c3104316fda400d612c4895b84e9e8a6bd12))
+
 ## 0.10.0 (2025-12-03)
 
 Full Changelog: [v0.9.0...v0.10.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.9.0...v0.10.0)
