@@ -12,6 +12,8 @@ __all__ = ["CommitRetrieveResponse", "Commit", "Links"]
 
 
 class Commit(BaseModel):
+    """The details of a commit (project version)."""
+
     id: str
     """The commit id."""
 
