@@ -12,6 +12,8 @@ __all__ = ["CommitListResponse", "Item", "ItemCommit", "ItemLinks"]
 
 
 class ItemCommit(BaseModel):
+    """The details of a commit (project version)."""
+
     id: str
     """The commit id."""
 
