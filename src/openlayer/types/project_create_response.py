@@ -12,6 +12,8 @@ __all__ = ["ProjectCreateResponse", "Links", "GitRepo"]
 
 
 class Links(BaseModel):
+    """Links to the project."""
+
     app: str
 
 

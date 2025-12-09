@@ -198,6 +198,8 @@ ItemDataBackend: TypeAlias = Union[
 
 
 class ItemProjectLinks(BaseModel):
+    """Links to the project."""
+
     app: str
 
 

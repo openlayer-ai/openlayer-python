@@ -25,5 +25,7 @@ class CommitCreateParams(TypedDict, total=False):
 
 
 class Commit(TypedDict, total=False):
+    """The details of a commit (project version)."""
+
     message: Required[str]
     """The commit message."""
