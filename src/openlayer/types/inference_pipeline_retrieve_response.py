@@ -197,6 +197,8 @@ DataBackend: TypeAlias = Union[
 
 
 class ProjectLinks(BaseModel):
+    """Links to the project."""
+
     app: str
 
 
