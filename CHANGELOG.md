@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.11.1 (2025-12-10)
+
+Full Changelog: [v0.11.0...v0.11.1](https://github.com/openlayer-ai/openlayer-python/compare/v0.11.0...v0.11.1)
+
+### Bug Fixes
+
+* **closes OPEN-8223:** enhance Google ADK tracing with improved user query handling and output management ([d19a8f6](https://github.com/openlayer-ai/openlayer-python/commit/d19a8f6305aa43b696e1a3f6998634c01f7917d7))
+
+
+### Refactors
+
+* clean up outputs in Google ADK tracing notebook to remove unnecessary warnings and streamline execution ([9b926ac](https://github.com/openlayer-ai/openlayer-python/commit/9b926ac7722f657906a790b9413b841bee97c4f1))
+
 ## 0.11.0 (2025-12-08)
 
 Full Changelog: [v0.10.0...v0.11.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.10.0...v0.11.0)
