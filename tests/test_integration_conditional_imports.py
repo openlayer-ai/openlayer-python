@@ -34,6 +34,7 @@ INTEGRATION_DEPENDENCIES = {
     "oci_tracer": ["oci"],
     "langchain_callback": ["langchain", "langchain_core", "langchain_community"],
     "litellm_tracer": ["litellm"],
+    "portkey_tracer": ["portkey_ai"],
 }
 
 # Expected patterns for integration modules
