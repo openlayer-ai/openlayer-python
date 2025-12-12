@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.11.3 (2025-12-12)
+
+Full Changelog: [v0.11.2...v0.11.3](https://github.com/openlayer-ai/openlayer-python/compare/v0.11.2...v0.11.3)
+
+### Chores
+
+* **closes OPEN-8441:** tokens not captured for Bedrock traced via the LangChain callback handler ([ef57b1f](https://github.com/openlayer-ai/openlayer-python/commit/ef57b1f447fd54f38d3f2aab805735bb43a4fe73))
+
 ## 0.11.2 (2025-12-12)
 
 Full Changelog: [v0.11.1...v0.11.2](https://github.com/openlayer-ai/openlayer-python/compare/v0.11.1...v0.11.2)
