@@ -29,6 +29,7 @@ LANGCHAIN_TO_OPENLAYER_PROVIDER_MAP = {
     "openai-chat": "OpenAI",
     "chat-ollama": "Ollama",
     "vertexai": "Google",
+    "amazon_bedrock_converse_chat": "Bedrock",
 }
 
 
@@ -398,7 +399,8 @@ class OpenlayerHandlerMixin:
 
         # Fallback to generation info for providers like Ollama/Google
         if not token_usage and response.generations:
-            generation_info = response.generations[0][0].generation_info or {}
+            gen = response.generations[0][0]
+            generation_info = gen.generation_info or {}
 
             # Ollama style
             if "prompt_eval_count" in generation_info:
@@ -417,6 +419,15 @@ class OpenlayerHandlerMixin:
                     "completion_tokens": usage.get("candidates_token_count", 0),
                     "total_tokens": usage.get("total_token_count", 0),
                 }
+            # AWS Bedrock / newer LangChain style - usage_metadata on the message
+            elif hasattr(gen, "message") and hasattr(gen.message, "usage_metadata"):
+                usage = gen.message.usage_metadata
+                if usage:
+                    token_usage = {
+                        "prompt_tokens": usage.get("input_tokens", 0),
+                        "completion_tokens": usage.get("output_tokens", 0),
+                        "total_tokens": usage.get("total_tokens", 0),
+                    }
 
         return {
             "prompt_tokens": token_usage.get("prompt_tokens", 0),
