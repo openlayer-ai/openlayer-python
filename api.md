@@ -138,3 +138,15 @@ from openlayer.types.storage import PresignedURLCreateResponse
 Methods:
 
 - <code title="post /storage/presigned-url">client.storage.presigned_url.<a href="./src/openlayer/resources/storage/presigned_url.py">create</a>(\*\*<a href="src/openlayer/types/storage/presigned_url_create_params.py">params</a>) -> <a href="./src/openlayer/types/storage/presigned_url_create_response.py">PresignedURLCreateResponse</a></code>
+
+# Tests
+
+Types:
+
+```python
+from openlayer.types import TestEvaluateResponse
+```
+
+Methods:
+
+- <code title="post /tests/{testId}/evaluate">client.tests.<a href="./src/openlayer/resources/tests.py">evaluate</a>(test_id, \*\*<a href="src/openlayer/types/test_evaluate_params.py">params</a>) -> <a href="./src/openlayer/types/test_evaluate_response.py">TestEvaluateResponse</a></code>
