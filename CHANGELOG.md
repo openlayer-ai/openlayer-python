@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.11.4 (2025-12-17)
+
+Full Changelog: [v0.11.3...v0.11.4](https://github.com/openlayer-ai/openlayer-python/compare/v0.11.3...v0.11.4)
+
+### Documentation
+
+* **closes OPEN-8401:** strands Agents integration ([0b3a4d4](https://github.com/openlayer-ai/openlayer-python/commit/0b3a4d47e927444887cf22c766f047bab45ec949))
+
 ## 0.11.3 (2025-12-12)
 
 Full Changelog: [v0.11.2...v0.11.3](https://github.com/openlayer-ai/openlayer-python/compare/v0.11.2...v0.11.3)
