@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.12.0 (2025-12-17)
+
+Full Changelog: [v0.11.4...v0.12.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.11.4...v0.12.0)
+
+### Features
+
+* **api:** api update ([f53fab3](https://github.com/openlayer-ai/openlayer-python/commit/f53fab30c1d6404e144e2c862a66f9e08086480a))
+* **api:** api update ([7a554fd](https://github.com/openlayer-ai/openlayer-python/commit/7a554fd1301aba3f8c58039780414b86f835d06a))
+
+
+### Bug Fixes
+
+* **client:** close streams without requiring full consumption ([178a48f](https://github.com/openlayer-ai/openlayer-python/commit/178a48fc44b1bc35d11ffb72f81e5b6a2c761c89))
+* compat with Python 3.14 ([9a18d6e](https://github.com/openlayer-ai/openlayer-python/commit/9a18d6ee1df7d00210243b81643d05a509d94a96))
+
+
+### Chores
+
+* bump `httpx-aiohttp` version to 0.1.9 ([a8d04ae](https://github.com/openlayer-ai/openlayer-python/commit/a8d04ae6242bdaad9651ffbaa537b217f4eeaba8))
+* do not install brew dependencies in ./scripts/bootstrap by default ([053b9e4](https://github.com/openlayer-ai/openlayer-python/commit/053b9e409d5bb48aafb1641d292d4105eccd0e76))
+* **internal/tests:** avoid race condition with implicit client cleanup ([41ae1b6](https://github.com/openlayer-ai/openlayer-python/commit/41ae1b64f85a1ff8878e43bb872904b93acfd23d))
+* **internal:** detect missing future annotations with ruff ([b778406](https://github.com/openlayer-ai/openlayer-python/commit/b778406f38812d00cd770717fdf518725c935582))
+* **internal:** grammar fix (it's -&gt; its) ([65edc47](https://github.com/openlayer-ai/openlayer-python/commit/65edc47c162f3e545c463f24ce5bb75769a69aae))
+* **internal:** update pydantic dependency ([9e14c8a](https://github.com/openlayer-ai/openlayer-python/commit/9e14c8a69c179bc43c417856455db3854065ccdf))
+* **internal:** version bump ([c10fa5d](https://github.com/openlayer-ai/openlayer-python/commit/c10fa5d7d549b2c23865e1c22ff08760ceab6324))
+* **internal:** version bump ([ff91ea8](https://github.com/openlayer-ai/openlayer-python/commit/ff91ea81a82a9ffb96946ecfe78c7177783dbaa7))
+* **package:** drop Python 3.8 support ([d3d0f8f](https://github.com/openlayer-ai/openlayer-python/commit/d3d0f8fd5d001bac3c6db1cb87a02030049c7fec))
+* **types:** change optional parameter type from NotGiven to Omit ([acd07c4](https://github.com/openlayer-ai/openlayer-python/commit/acd07c48b6414194749c13fbe79162bd438c31e2))
+
 ## 0.11.4 (2025-12-17)
 
 Full Changelog: [v0.11.3...v0.11.4](https://github.com/openlayer-ai/openlayer-python/compare/v0.11.3...v0.11.4)
