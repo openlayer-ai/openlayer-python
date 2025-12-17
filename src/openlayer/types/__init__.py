@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from .project_list_params import ProjectListParams as ProjectListParams
+from .test_evaluate_params import TestEvaluateParams as TestEvaluateParams
 from .project_create_params import ProjectCreateParams as ProjectCreateParams
 from .project_list_response import ProjectListResponse as ProjectListResponse
+from .test_evaluate_response import TestEvaluateResponse as TestEvaluateResponse
 from .project_create_response import ProjectCreateResponse as ProjectCreateResponse
 from .commit_retrieve_response import CommitRetrieveResponse as CommitRetrieveResponse
 from .inference_pipeline_update_params import InferencePipelineUpdateParams as InferencePipelineUpdateParams
