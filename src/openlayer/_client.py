@@ -32,7 +32,8 @@ from ._base_client import (
 )
 
 if TYPE_CHECKING:
-    from .resources import commits, storage, projects, inference_pipelines
+    from .resources import tests, commits, storage, projects, inference_pipelines
+    from .resources.tests import TestsResource, AsyncTestsResource
     from .resources.commits.commits import CommitsResource, AsyncCommitsResource
     from .resources.storage.storage import StorageResource, AsyncStorageResource
     from .resources.projects.projects import ProjectsResource, AsyncProjectsResource
@@ -127,6 +128,12 @@ class Openlayer(SyncAPIClient):
         from .resources.storage import StorageResource
 
         return StorageResource(self)
+
+    @cached_property
+    def tests(self) -> TestsResource:
+        from .resources.tests import TestsResource
+
+        return TestsResource(self)
 
     @cached_property
     def with_raw_response(self) -> OpenlayerWithRawResponse:
@@ -330,6 +337,12 @@ class AsyncOpenlayer(AsyncAPIClient):
         return AsyncStorageResource(self)
 
     @cached_property
+    def tests(self) -> AsyncTestsResource:
+        from .resources.tests import AsyncTestsResource
+
+        return AsyncTestsResource(self)
+
+    @cached_property
     def with_raw_response(self) -> AsyncOpenlayerWithRawResponse:
         return AsyncOpenlayerWithRawResponse(self)
 
@@ -485,6 +498,12 @@ class OpenlayerWithRawResponse:
 
         return StorageResourceWithRawResponse(self._client.storage)
 
+    @cached_property
+    def tests(self) -> tests.TestsResourceWithRawResponse:
+        from .resources.tests import TestsResourceWithRawResponse
+
+        return TestsResourceWithRawResponse(self._client.tests)
+
 
 class AsyncOpenlayerWithRawResponse:
     _client: AsyncOpenlayer
@@ -515,6 +534,12 @@ class AsyncOpenlayerWithRawResponse:
         from .resources.storage import AsyncStorageResourceWithRawResponse
 
         return AsyncStorageResourceWithRawResponse(self._client.storage)
+
+    @cached_property
+    def tests(self) -> tests.AsyncTestsResourceWithRawResponse:
+        from .resources.tests import AsyncTestsResourceWithRawResponse
+
+        return AsyncTestsResourceWithRawResponse(self._client.tests)
 
 
 class OpenlayerWithStreamedResponse:
@@ -547,6 +572,12 @@ class OpenlayerWithStreamedResponse:
 
         return StorageResourceWithStreamingResponse(self._client.storage)
 
+    @cached_property
+    def tests(self) -> tests.TestsResourceWithStreamingResponse:
+        from .resources.tests import TestsResourceWithStreamingResponse
+
+        return TestsResourceWithStreamingResponse(self._client.tests)
+
 
 class AsyncOpenlayerWithStreamedResponse:
     _client: AsyncOpenlayer
@@ -577,6 +608,12 @@ class AsyncOpenlayerWithStreamedResponse:
         from .resources.storage import AsyncStorageResourceWithStreamingResponse
 
         return AsyncStorageResourceWithStreamingResponse(self._client.storage)
+
+    @cached_property
+    def tests(self) -> tests.AsyncTestsResourceWithStreamingResponse:
+        from .resources.tests import AsyncTestsResourceWithStreamingResponse
+
+        return AsyncTestsResourceWithStreamingResponse(self._client.tests)
 
 
 Client = Openlayer
