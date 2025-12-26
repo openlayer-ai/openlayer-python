@@ -6,7 +6,7 @@ from typing import Optional
 
 import httpx
 
-from ..._types import NOT_GIVEN, Body, Query, Headers, NotGiven
+from ..._types import Body, Omit, Query, Headers, NotGiven, omit, not_given
 from ..._utils import maybe_transform, async_maybe_transform
 from ..._compat import cached_property
 from ..._resource import SyncAPIResource, AsyncAPIResource
@@ -50,14 +50,15 @@ class InferencePipelinesResource(SyncAPIResource):
         *,
         description: Optional[str],
         name: str,
-        project: Optional[inference_pipeline_create_params.Project] | NotGiven = NOT_GIVEN,
-        workspace: Optional[inference_pipeline_create_params.Workspace] | NotGiven = NOT_GIVEN,
+        data_backend: Optional[inference_pipeline_create_params.DataBackend] | Omit = omit,
+        project: Optional[inference_pipeline_create_params.Project] | Omit = omit,
+        workspace: Optional[inference_pipeline_create_params.Workspace] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
         extra_query: Query | None = None,
         extra_body: Body | None = None,
-        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> InferencePipelineCreateResponse:
         """
         Create an inference pipeline in a project.
@@ -83,6 +84,7 @@ class InferencePipelinesResource(SyncAPIResource):
                 {
                     "description": description,
                     "name": name,
+                    "data_backend": data_backend,
                     "project": project,
                     "workspace": workspace,
                 },
@@ -98,15 +100,15 @@ class InferencePipelinesResource(SyncAPIResource):
         self,
         project_id: str,
         *,
-        name: str | NotGiven = NOT_GIVEN,
-        page: int | NotGiven = NOT_GIVEN,
-        per_page: int | NotGiven = NOT_GIVEN,
+        name: str | Omit = omit,
+        page: int | Omit = omit,
+        per_page: int | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
         extra_query: Query | None = None,
         extra_body: Body | None = None,
-        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> InferencePipelineListResponse:
         """
         List the inference pipelines in a project.
@@ -174,14 +176,15 @@ class AsyncInferencePipelinesResource(AsyncAPIResource):
         *,
         description: Optional[str],
         name: str,
-        project: Optional[inference_pipeline_create_params.Project] | NotGiven = NOT_GIVEN,
-        workspace: Optional[inference_pipeline_create_params.Workspace] | NotGiven = NOT_GIVEN,
+        data_backend: Optional[inference_pipeline_create_params.DataBackend] | Omit = omit,
+        project: Optional[inference_pipeline_create_params.Project] | Omit = omit,
+        workspace: Optional[inference_pipeline_create_params.Workspace] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
         extra_query: Query | None = None,
         extra_body: Body | None = None,
-        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> InferencePipelineCreateResponse:
         """
         Create an inference pipeline in a project.
@@ -207,6 +210,7 @@ class AsyncInferencePipelinesResource(AsyncAPIResource):
                 {
                     "description": description,
                     "name": name,
+                    "data_backend": data_backend,
                     "project": project,
                     "workspace": workspace,
                 },
@@ -222,15 +226,15 @@ class AsyncInferencePipelinesResource(AsyncAPIResource):
         self,
         project_id: str,
         *,
-        name: str | NotGiven = NOT_GIVEN,
-        page: int | NotGiven = NOT_GIVEN,
-        per_page: int | NotGiven = NOT_GIVEN,
+        name: str | Omit = omit,
+        page: int | Omit = omit,
+        per_page: int | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
         extra_query: Query | None = None,
         extra_body: Body | None = None,
-        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> InferencePipelineListResponse:
         """
         List the inference pipelines in a project.

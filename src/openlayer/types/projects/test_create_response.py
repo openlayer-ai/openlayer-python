@@ -168,11 +168,35 @@ class TestCreateResponse(BaseModel):
     archived: Optional[bool] = None
     """Whether the test is archived."""
 
+    default_to_all_pipelines: Optional[bool] = FieldInfo(alias="defaultToAllPipelines", default=None)
+    """
+    Whether to apply the test to all pipelines (data sources) or to a specific set
+    of pipelines. Only applies to tests that use production data.
+    """
+
     delay_window: Optional[float] = FieldInfo(alias="delayWindow", default=None)
     """The delay window in seconds. Only applies to tests that use production data."""
 
     evaluation_window: Optional[float] = FieldInfo(alias="evaluationWindow", default=None)
     """The evaluation window in seconds.
+
+    Only applies to tests that use production data.
+    """
+
+    exclude_pipelines: Optional[List[str]] = FieldInfo(alias="excludePipelines", default=None)
+    """Array of pipelines (data sources) to which the test should not be applied.
+
+    Only applies to tests that use production data.
+    """
+
+    include_historical_data: Optional[bool] = FieldInfo(alias="includeHistoricalData", default=None)
+    """Whether to include historical data in the test result.
+
+    Only applies to tests that use production data.
+    """
+
+    include_pipelines: Optional[List[str]] = FieldInfo(alias="includePipelines", default=None)
+    """Array of pipelines (data sources) to which the test should be applied.
 
     Only applies to tests that use production data.
     """

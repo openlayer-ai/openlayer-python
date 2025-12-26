@@ -7,7 +7,7 @@ from typing_extensions import Literal
 
 import httpx
 
-from ..._types import NOT_GIVEN, Body, Query, Headers, NotGiven
+from ..._types import Body, Omit, Query, Headers, NotGiven, SequenceNotStr, omit, not_given
 from ..._utils import maybe_transform, async_maybe_transform
 from ..._compat import cached_property
 from ..._resource import SyncAPIResource, AsyncAPIResource
@@ -99,20 +99,24 @@ class TestsResource(SyncAPIResource):
         ],
         thresholds: Iterable[test_create_params.Threshold],
         type: Literal["integrity", "consistency", "performance"],
-        archived: bool | NotGiven = NOT_GIVEN,
-        delay_window: Optional[float] | NotGiven = NOT_GIVEN,
-        evaluation_window: Optional[float] | NotGiven = NOT_GIVEN,
-        uses_ml_model: bool | NotGiven = NOT_GIVEN,
-        uses_production_data: bool | NotGiven = NOT_GIVEN,
-        uses_reference_dataset: bool | NotGiven = NOT_GIVEN,
-        uses_training_dataset: bool | NotGiven = NOT_GIVEN,
-        uses_validation_dataset: bool | NotGiven = NOT_GIVEN,
+        archived: bool | Omit = omit,
+        default_to_all_pipelines: Optional[bool] | Omit = omit,
+        delay_window: Optional[float] | Omit = omit,
+        evaluation_window: Optional[float] | Omit = omit,
+        exclude_pipelines: Optional[SequenceNotStr[str]] | Omit = omit,
+        include_historical_data: Optional[bool] | Omit = omit,
+        include_pipelines: Optional[SequenceNotStr[str]] | Omit = omit,
+        uses_ml_model: bool | Omit = omit,
+        uses_production_data: bool | Omit = omit,
+        uses_reference_dataset: bool | Omit = omit,
+        uses_training_dataset: bool | Omit = omit,
+        uses_validation_dataset: bool | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
         extra_query: Query | None = None,
         extra_body: Body | None = None,
-        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> TestCreateResponse:
         """
         Create a test.
@@ -128,10 +132,22 @@ class TestsResource(SyncAPIResource):
 
           archived: Whether the test is archived.
 
+          default_to_all_pipelines: Whether to apply the test to all pipelines (data sources) or to a specific set
+              of pipelines. Only applies to tests that use production data.
+
           delay_window: The delay window in seconds. Only applies to tests that use production data.
 
           evaluation_window: The evaluation window in seconds. Only applies to tests that use production
               data.
+
+          exclude_pipelines: Array of pipelines (data sources) to which the test should not be applied. Only
+              applies to tests that use production data.
+
+          include_historical_data: Whether to include historical data in the test result. Only applies to tests
+              that use production data.
+
+          include_pipelines: Array of pipelines (data sources) to which the test should be applied. Only
+              applies to tests that use production data.
 
           uses_ml_model: Whether the test uses an ML model.
 
@@ -163,8 +179,12 @@ class TestsResource(SyncAPIResource):
                     "thresholds": thresholds,
                     "type": type,
                     "archived": archived,
+                    "default_to_all_pipelines": default_to_all_pipelines,
                     "delay_window": delay_window,
                     "evaluation_window": evaluation_window,
+                    "exclude_pipelines": exclude_pipelines,
+                    "include_historical_data": include_historical_data,
+                    "include_pipelines": include_pipelines,
                     "uses_ml_model": uses_ml_model,
                     "uses_production_data": uses_production_data,
                     "uses_reference_dataset": uses_reference_dataset,
@@ -189,7 +209,7 @@ class TestsResource(SyncAPIResource):
         extra_headers: Headers | None = None,
         extra_query: Query | None = None,
         extra_body: Body | None = None,
-        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> TestUpdateResponse:
         """
         Update tests.
@@ -218,19 +238,19 @@ class TestsResource(SyncAPIResource):
         self,
         project_id: str,
         *,
-        include_archived: bool | NotGiven = NOT_GIVEN,
-        origin_version_id: Optional[str] | NotGiven = NOT_GIVEN,
-        page: int | NotGiven = NOT_GIVEN,
-        per_page: int | NotGiven = NOT_GIVEN,
-        suggested: bool | NotGiven = NOT_GIVEN,
-        type: Literal["integrity", "consistency", "performance", "fairness", "robustness"] | NotGiven = NOT_GIVEN,
-        uses_production_data: Optional[bool] | NotGiven = NOT_GIVEN,
+        include_archived: bool | Omit = omit,
+        origin_version_id: Optional[str] | Omit = omit,
+        page: int | Omit = omit,
+        per_page: int | Omit = omit,
+        suggested: bool | Omit = omit,
+        type: Literal["integrity", "consistency", "performance", "fairness", "robustness"] | Omit = omit,
+        uses_production_data: Optional[bool] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
         extra_query: Query | None = None,
         extra_body: Body | None = None,
-        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> TestListResponse:
         """
         List tests under a project.
@@ -356,20 +376,24 @@ class AsyncTestsResource(AsyncAPIResource):
         ],
         thresholds: Iterable[test_create_params.Threshold],
         type: Literal["integrity", "consistency", "performance"],
-        archived: bool | NotGiven = NOT_GIVEN,
-        delay_window: Optional[float] | NotGiven = NOT_GIVEN,
-        evaluation_window: Optional[float] | NotGiven = NOT_GIVEN,
-        uses_ml_model: bool | NotGiven = NOT_GIVEN,
-        uses_production_data: bool | NotGiven = NOT_GIVEN,
-        uses_reference_dataset: bool | NotGiven = NOT_GIVEN,
-        uses_training_dataset: bool | NotGiven = NOT_GIVEN,
-        uses_validation_dataset: bool | NotGiven = NOT_GIVEN,
+        archived: bool | Omit = omit,
+        default_to_all_pipelines: Optional[bool] | Omit = omit,
+        delay_window: Optional[float] | Omit = omit,
+        evaluation_window: Optional[float] | Omit = omit,
+        exclude_pipelines: Optional[SequenceNotStr[str]] | Omit = omit,
+        include_historical_data: Optional[bool] | Omit = omit,
+        include_pipelines: Optional[SequenceNotStr[str]] | Omit = omit,
+        uses_ml_model: bool | Omit = omit,
+        uses_production_data: bool | Omit = omit,
+        uses_reference_dataset: bool | Omit = omit,
+        uses_training_dataset: bool | Omit = omit,
+        uses_validation_dataset: bool | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
         extra_query: Query | None = None,
         extra_body: Body | None = None,
-        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> TestCreateResponse:
         """
         Create a test.
@@ -385,10 +409,22 @@ class AsyncTestsResource(AsyncAPIResource):
 
           archived: Whether the test is archived.
 
+          default_to_all_pipelines: Whether to apply the test to all pipelines (data sources) or to a specific set
+              of pipelines. Only applies to tests that use production data.
+
           delay_window: The delay window in seconds. Only applies to tests that use production data.
 
           evaluation_window: The evaluation window in seconds. Only applies to tests that use production
               data.
+
+          exclude_pipelines: Array of pipelines (data sources) to which the test should not be applied. Only
+              applies to tests that use production data.
+
+          include_historical_data: Whether to include historical data in the test result. Only applies to tests
+              that use production data.
+
+          include_pipelines: Array of pipelines (data sources) to which the test should be applied. Only
+              applies to tests that use production data.
 
           uses_ml_model: Whether the test uses an ML model.
 
@@ -420,8 +456,12 @@ class AsyncTestsResource(AsyncAPIResource):
                     "thresholds": thresholds,
                     "type": type,
                     "archived": archived,
+                    "default_to_all_pipelines": default_to_all_pipelines,
                     "delay_window": delay_window,
                     "evaluation_window": evaluation_window,
+                    "exclude_pipelines": exclude_pipelines,
+                    "include_historical_data": include_historical_data,
+                    "include_pipelines": include_pipelines,
                     "uses_ml_model": uses_ml_model,
                     "uses_production_data": uses_production_data,
                     "uses_reference_dataset": uses_reference_dataset,
@@ -446,7 +486,7 @@ class AsyncTestsResource(AsyncAPIResource):
         extra_headers: Headers | None = None,
         extra_query: Query | None = None,
         extra_body: Body | None = None,
-        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> TestUpdateResponse:
         """
         Update tests.
@@ -475,19 +515,19 @@ class AsyncTestsResource(AsyncAPIResource):
         self,
         project_id: str,
         *,
-        include_archived: bool | NotGiven = NOT_GIVEN,
-        origin_version_id: Optional[str] | NotGiven = NOT_GIVEN,
-        page: int | NotGiven = NOT_GIVEN,
-        per_page: int | NotGiven = NOT_GIVEN,
-        suggested: bool | NotGiven = NOT_GIVEN,
-        type: Literal["integrity", "consistency", "performance", "fairness", "robustness"] | NotGiven = NOT_GIVEN,
-        uses_production_data: Optional[bool] | NotGiven = NOT_GIVEN,
+        include_archived: bool | Omit = omit,
+        origin_version_id: Optional[str] | Omit = omit,
+        page: int | Omit = omit,
+        per_page: int | Omit = omit,
+        suggested: bool | Omit = omit,
+        type: Literal["integrity", "consistency", "performance", "fairness", "robustness"] | Omit = omit,
+        uses_production_data: Optional[bool] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
         extra_query: Query | None = None,
         extra_body: Body | None = None,
-        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> TestListResponse:
         """
         List tests under a project.

@@ -24,7 +24,7 @@ from .rows import (
     AsyncRowsResourceWithStreamingResponse,
 )
 from ...types import inference_pipeline_update_params, inference_pipeline_retrieve_params
-from ..._types import NOT_GIVEN, Body, Query, Headers, NoneType, NotGiven
+from ..._types import Body, Omit, Query, Headers, NoneType, NotGiven, omit, not_given
 from ..._utils import maybe_transform, async_maybe_transform
 from ..._compat import cached_property
 from ..._resource import SyncAPIResource, AsyncAPIResource
@@ -85,13 +85,13 @@ class InferencePipelinesResource(SyncAPIResource):
         self,
         inference_pipeline_id: str,
         *,
-        expand: List[Literal["project", "workspace"]] | NotGiven = NOT_GIVEN,
+        expand: List[Literal["project", "workspace"]] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
         extra_query: Query | None = None,
         extra_body: Body | None = None,
-        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> InferencePipelineRetrieveResponse:
         """
         Retrieve inference pipeline.
@@ -129,15 +129,15 @@ class InferencePipelinesResource(SyncAPIResource):
         self,
         inference_pipeline_id: str,
         *,
-        description: Optional[str] | NotGiven = NOT_GIVEN,
-        name: str | NotGiven = NOT_GIVEN,
-        reference_dataset_uri: Optional[str] | NotGiven = NOT_GIVEN,
+        description: Optional[str] | Omit = omit,
+        name: str | Omit = omit,
+        reference_dataset_uri: Optional[str] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
         extra_query: Query | None = None,
         extra_body: Body | None = None,
-        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> InferencePipelineUpdateResponse:
         """
         Update inference pipeline.
@@ -187,7 +187,7 @@ class InferencePipelinesResource(SyncAPIResource):
         extra_headers: Headers | None = None,
         extra_query: Query | None = None,
         extra_body: Body | None = None,
-        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> None:
         """
         Delete inference pipeline.
@@ -251,13 +251,13 @@ class AsyncInferencePipelinesResource(AsyncAPIResource):
         self,
         inference_pipeline_id: str,
         *,
-        expand: List[Literal["project", "workspace"]] | NotGiven = NOT_GIVEN,
+        expand: List[Literal["project", "workspace"]] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
         extra_query: Query | None = None,
         extra_body: Body | None = None,
-        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> InferencePipelineRetrieveResponse:
         """
         Retrieve inference pipeline.
@@ -295,15 +295,15 @@ class AsyncInferencePipelinesResource(AsyncAPIResource):
         self,
         inference_pipeline_id: str,
         *,
-        description: Optional[str] | NotGiven = NOT_GIVEN,
-        name: str | NotGiven = NOT_GIVEN,
-        reference_dataset_uri: Optional[str] | NotGiven = NOT_GIVEN,
+        description: Optional[str] | Omit = omit,
+        name: str | Omit = omit,
+        reference_dataset_uri: Optional[str] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
         extra_query: Query | None = None,
         extra_body: Body | None = None,
-        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> InferencePipelineUpdateResponse:
         """
         Update inference pipeline.
@@ -353,7 +353,7 @@ class AsyncInferencePipelinesResource(AsyncAPIResource):
         extra_headers: Headers | None = None,
         extra_query: Query | None = None,
         extra_body: Body | None = None,
-        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> None:
         """
         Delete inference pipeline.
