@@ -19,6 +19,9 @@ from ..tracing import tracer
 
 logger = logging.getLogger(__name__)
 
+# Flag to prevent multiple patching
+_litellm_traced = False
+
 
 def trace_litellm() -> None:
     """Patch the litellm.completion function to trace completions.
@@ -57,10 +60,17 @@ def trace_litellm() -> None:
     ...     inference_id="custom-id-123"  # Optional Openlayer parameter
     ... )
     """
+    global _litellm_traced
+    
     if not HAVE_LITELLM:
         raise ImportError(
             "LiteLLM library is not installed. Please install it with: pip install litellm"
         )
+    
+    # Prevent multiple patching - this avoids duplicate traces
+    if _litellm_traced:
+        logger.debug("trace_litellm() already called - skipping to prevent duplicate traces")
+        return
     
     original_completion = litellm.completion
 
@@ -84,6 +94,8 @@ def trace_litellm() -> None:
         )
 
     litellm.completion = traced_completion
+    _litellm_traced = True
+    logger.debug("litellm.completion has been patched for Openlayer tracing")
 
 
 def handle_streaming_completion(
@@ -661,6 +673,7 @@ def extract_usage_from_chunk(chunk: Any) -> Dict[str, Optional[int]]:
 def extract_litellm_metadata(response: Any, model_name: str) -> Dict[str, Any]:
     """Extract LiteLLM-specific metadata from response."""
     metadata = {}
+    response_headers = {}
     
     try:
         # Extract hidden parameters
@@ -689,6 +702,7 @@ def extract_litellm_metadata(response: Any, model_name: str) -> Dict[str, Any]:
             if 'additional_headers' in hidden_params:
                 headers = hidden_params['additional_headers']
                 if headers:
+                    response_headers = headers
                     metadata['response_headers'] = headers
         
         # Extract system fingerprint if available
@@ -697,9 +711,48 @@ def extract_litellm_metadata(response: Any, model_name: str) -> Dict[str, Any]:
             
         # Extract response headers if available
         if hasattr(response, '_response_headers'):
-            metadata['response_headers'] = dict(response._response_headers)
+            response_headers = dict(response._response_headers)
+            metadata['response_headers'] = response_headers
+        
+        # Fallback: Extract cost from x-litellm-response-cost header if cost is missing or zero
+        if not metadata.get('cost') and response_headers:
+            cost_from_header = _extract_cost_from_headers(response_headers)
+            if cost_from_header is not None:
+                metadata['cost'] = cost_from_header
             
     except Exception as e:
         logger.debug("Error extracting LiteLLM metadata: %s", e)
     
     return metadata
+
+
+def _extract_cost_from_headers(headers: Dict[str, Any]) -> Optional[float]:
+    """Extract cost from LiteLLM response headers."""
+    try:
+        # Try to get cost from x-litellm-response-cost header
+        cost_str = headers.get('x-litellm-response-cost')
+        if cost_str is not None:
+            # Handle string values (headers are often strings)
+            if isinstance(cost_str, str):
+                cost = float(cost_str)
+            else:
+                cost = float(cost_str)
+            
+            if cost > 0:
+                return cost
+        
+        # Fallback to x-litellm-response-cost-original if primary is zero/missing
+        cost_original_str = headers.get('x-litellm-response-cost-original')
+        if cost_original_str is not None:
+            if isinstance(cost_original_str, str):
+                cost = float(cost_original_str)
+            else:
+                cost = float(cost_original_str)
+            
+            if cost > 0:
+                return cost
+                
+    except (ValueError, TypeError) as e:
+        logger.debug("Error parsing cost from headers: %s", e)
+    
+    return None
