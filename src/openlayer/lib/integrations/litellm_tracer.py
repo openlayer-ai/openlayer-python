@@ -19,6 +19,9 @@ from ..tracing import tracer
 
 logger = logging.getLogger(__name__)
 
+# Flag to prevent multiple patching
+_litellm_traced = False
+
 
 def trace_litellm() -> None:
     """Patch the litellm.completion function to trace completions.
@@ -57,10 +60,17 @@ def trace_litellm() -> None:
     ...     inference_id="custom-id-123"  # Optional Openlayer parameter
     ... )
     """
+    global _litellm_traced
+    
     if not HAVE_LITELLM:
         raise ImportError(
             "LiteLLM library is not installed. Please install it with: pip install litellm"
         )
+    
+    # Prevent multiple patching - this avoids duplicate traces
+    if _litellm_traced:
+        logger.debug("trace_litellm() already called - skipping to prevent duplicate traces")
+        return
     
     original_completion = litellm.completion
 
@@ -84,6 +94,8 @@ def trace_litellm() -> None:
         )
 
     litellm.completion = traced_completion
+    _litellm_traced = True
+    logger.debug("litellm.completion has been patched for Openlayer tracing")
 
 
 def handle_streaming_completion(
