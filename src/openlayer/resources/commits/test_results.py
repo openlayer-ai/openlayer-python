@@ -6,7 +6,7 @@ from typing_extensions import Literal
 
 import httpx
 
-from ..._types import NOT_GIVEN, Body, Query, Headers, NotGiven
+from ..._types import Body, Omit, Query, Headers, NotGiven, omit, not_given
 from ..._utils import maybe_transform, async_maybe_transform
 from ..._compat import cached_property
 from ..._resource import SyncAPIResource, AsyncAPIResource
@@ -49,17 +49,17 @@ class TestResultsResource(SyncAPIResource):
         self,
         project_version_id: str,
         *,
-        include_archived: bool | NotGiven = NOT_GIVEN,
-        page: int | NotGiven = NOT_GIVEN,
-        per_page: int | NotGiven = NOT_GIVEN,
-        status: Literal["running", "passing", "failing", "skipped", "error"] | NotGiven = NOT_GIVEN,
-        type: Literal["integrity", "consistency", "performance", "fairness", "robustness"] | NotGiven = NOT_GIVEN,
+        include_archived: bool | Omit = omit,
+        page: int | Omit = omit,
+        per_page: int | Omit = omit,
+        status: Literal["running", "passing", "failing", "skipped", "error"] | Omit = omit,
+        type: Literal["integrity", "consistency", "performance", "fairness", "robustness"] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
         extra_query: Query | None = None,
         extra_body: Body | None = None,
-        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> TestResultListResponse:
         """
         List the test results for a project commit (project version).
@@ -133,17 +133,17 @@ class AsyncTestResultsResource(AsyncAPIResource):
         self,
         project_version_id: str,
         *,
-        include_archived: bool | NotGiven = NOT_GIVEN,
-        page: int | NotGiven = NOT_GIVEN,
-        per_page: int | NotGiven = NOT_GIVEN,
-        status: Literal["running", "passing", "failing", "skipped", "error"] | NotGiven = NOT_GIVEN,
-        type: Literal["integrity", "consistency", "performance", "fairness", "robustness"] | NotGiven = NOT_GIVEN,
+        include_archived: bool | Omit = omit,
+        page: int | Omit = omit,
+        per_page: int | Omit = omit,
+        status: Literal["running", "passing", "failing", "skipped", "error"] | Omit = omit,
+        type: Literal["integrity", "consistency", "performance", "fairness", "robustness"] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
         extra_query: Query | None = None,
         extra_body: Body | None = None,
-        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> TestResultListResponse:
         """
         List the test results for a project commit (project version).

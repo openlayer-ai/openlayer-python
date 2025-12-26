@@ -57,7 +57,7 @@ httpx==0.28.1
     # via httpx-aiohttp
     # via openlayer
     # via respx
-httpx-aiohttp==0.1.8
+httpx-aiohttp==0.1.9
     # via openlayer
 idna==3.4
     # via anyio
@@ -96,11 +96,9 @@ pluggy==1.5.0
 propcache==0.3.2
     # via aiohttp
     # via yarl
-pyarrow==15.0.2
+pydantic==2.11.9
     # via openlayer
-pydantic==2.10.3
-    # via openlayer
-pydantic-core==2.27.1
+pydantic-core==2.33.2
     # via pydantic
 pygments==2.18.0
     # via rich
@@ -146,6 +144,9 @@ typing-extensions==4.12.2
     # via pydantic
     # via pydantic-core
     # via pyright
+    # via typing-inspection
+typing-inspection==0.4.1
+    # via pydantic
 tzdata==2024.1
     # via pandas
 urllib3==2.2.3

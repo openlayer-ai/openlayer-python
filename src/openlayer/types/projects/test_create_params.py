@@ -73,11 +73,35 @@ class TestCreateParams(TypedDict, total=False):
     archived: bool
     """Whether the test is archived."""
 
+    default_to_all_pipelines: Annotated[Optional[bool], PropertyInfo(alias="defaultToAllPipelines")]
+    """
+    Whether to apply the test to all pipelines (data sources) or to a specific set
+    of pipelines. Only applies to tests that use production data.
+    """
+
     delay_window: Annotated[Optional[float], PropertyInfo(alias="delayWindow")]
     """The delay window in seconds. Only applies to tests that use production data."""
 
     evaluation_window: Annotated[Optional[float], PropertyInfo(alias="evaluationWindow")]
     """The evaluation window in seconds.
+
+    Only applies to tests that use production data.
+    """
+
+    exclude_pipelines: Annotated[Optional[SequenceNotStr[str]], PropertyInfo(alias="excludePipelines")]
+    """Array of pipelines (data sources) to which the test should not be applied.
+
+    Only applies to tests that use production data.
+    """
+
+    include_historical_data: Annotated[Optional[bool], PropertyInfo(alias="includeHistoricalData")]
+    """Whether to include historical data in the test result.
+
+    Only applies to tests that use production data.
+    """
+
+    include_pipelines: Annotated[Optional[SequenceNotStr[str]], PropertyInfo(alias="includePipelines")]
+    """Array of pipelines (data sources) to which the test should be applied.
 
     Only applies to tests that use production data.
     """

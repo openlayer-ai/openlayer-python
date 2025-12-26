@@ -1,8 +1,8 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import List, Optional
+from typing import List, Union, Optional
 from datetime import date, datetime
-from typing_extensions import Literal
+from typing_extensions import Literal, TypeAlias
 
 from pydantic import Field as FieldInfo
 
@@ -11,6 +11,18 @@ from .._models import BaseModel
 __all__ = [
     "InferencePipelineRetrieveResponse",
     "Links",
+    "DataBackend",
+    "DataBackendUnionMember0",
+    "DataBackendUnionMember0Config",
+    "DataBackendBackendType",
+    "DataBackendUnionMember2",
+    "DataBackendUnionMember2Config",
+    "DataBackendUnionMember3",
+    "DataBackendUnionMember3Config",
+    "DataBackendUnionMember4",
+    "DataBackendUnionMember4Config",
+    "DataBackendUnionMember5",
+    "DataBackendUnionMember5Config",
     "Project",
     "ProjectLinks",
     "ProjectGitRepo",
@@ -21,6 +33,167 @@ __all__ = [
 
 class Links(BaseModel):
     app: str
+
+
+class DataBackendUnionMember0Config(BaseModel):
+    ground_truth_column_name: Optional[str] = FieldInfo(alias="groundTruthColumnName", default=None)
+    """Name of the column with the ground truths."""
+
+    human_feedback_column_name: Optional[str] = FieldInfo(alias="humanFeedbackColumnName", default=None)
+    """Name of the column with human feedback."""
+
+    latency_column_name: Optional[str] = FieldInfo(alias="latencyColumnName", default=None)
+    """Name of the column with the latencies."""
+
+    timestamp_column_name: Optional[str] = FieldInfo(alias="timestampColumnName", default=None)
+    """Name of the column with the timestamps.
+
+    Timestamps must be in UNIX sec format. If not provided, the upload timestamp is
+    used.
+    """
+
+
+class DataBackendUnionMember0(BaseModel):
+    backend_type: Literal["bigquery"] = FieldInfo(alias="backendType")
+
+    bigquery_connection_id: Optional[str] = FieldInfo(alias="bigqueryConnectionId", default=None)
+
+    dataset_id: str = FieldInfo(alias="datasetId")
+
+    project_id: str = FieldInfo(alias="projectId")
+
+    table_id: Optional[str] = FieldInfo(alias="tableId", default=None)
+
+    partition_type: Optional[Literal["DAY", "MONTH", "YEAR"]] = FieldInfo(alias="partitionType", default=None)
+
+
+class DataBackendBackendType(BaseModel):
+    backend_type: Literal["default"] = FieldInfo(alias="backendType")
+
+
+class DataBackendUnionMember2Config(BaseModel):
+    ground_truth_column_name: Optional[str] = FieldInfo(alias="groundTruthColumnName", default=None)
+    """Name of the column with the ground truths."""
+
+    human_feedback_column_name: Optional[str] = FieldInfo(alias="humanFeedbackColumnName", default=None)
+    """Name of the column with human feedback."""
+
+    latency_column_name: Optional[str] = FieldInfo(alias="latencyColumnName", default=None)
+    """Name of the column with the latencies."""
+
+    timestamp_column_name: Optional[str] = FieldInfo(alias="timestampColumnName", default=None)
+    """Name of the column with the timestamps.
+
+    Timestamps must be in UNIX sec format. If not provided, the upload timestamp is
+    used.
+    """
+
+
+class DataBackendUnionMember2(BaseModel):
+    backend_type: Literal["snowflake"] = FieldInfo(alias="backendType")
+
+    database: str
+
+    schema_: str = FieldInfo(alias="schema")
+
+    snowflake_connection_id: Optional[str] = FieldInfo(alias="snowflakeConnectionId", default=None)
+
+    table: Optional[str] = None
+
+
+class DataBackendUnionMember3Config(BaseModel):
+    ground_truth_column_name: Optional[str] = FieldInfo(alias="groundTruthColumnName", default=None)
+    """Name of the column with the ground truths."""
+
+    human_feedback_column_name: Optional[str] = FieldInfo(alias="humanFeedbackColumnName", default=None)
+    """Name of the column with human feedback."""
+
+    latency_column_name: Optional[str] = FieldInfo(alias="latencyColumnName", default=None)
+    """Name of the column with the latencies."""
+
+    timestamp_column_name: Optional[str] = FieldInfo(alias="timestampColumnName", default=None)
+    """Name of the column with the timestamps.
+
+    Timestamps must be in UNIX sec format. If not provided, the upload timestamp is
+    used.
+    """
+
+
+class DataBackendUnionMember3(BaseModel):
+    backend_type: Literal["databricks_dtl"] = FieldInfo(alias="backendType")
+
+    databricks_dtl_connection_id: Optional[str] = FieldInfo(alias="databricksDtlConnectionId", default=None)
+
+    table_id: Optional[str] = FieldInfo(alias="tableId", default=None)
+
+
+class DataBackendUnionMember4Config(BaseModel):
+    ground_truth_column_name: Optional[str] = FieldInfo(alias="groundTruthColumnName", default=None)
+    """Name of the column with the ground truths."""
+
+    human_feedback_column_name: Optional[str] = FieldInfo(alias="humanFeedbackColumnName", default=None)
+    """Name of the column with human feedback."""
+
+    latency_column_name: Optional[str] = FieldInfo(alias="latencyColumnName", default=None)
+    """Name of the column with the latencies."""
+
+    timestamp_column_name: Optional[str] = FieldInfo(alias="timestampColumnName", default=None)
+    """Name of the column with the timestamps.
+
+    Timestamps must be in UNIX sec format. If not provided, the upload timestamp is
+    used.
+    """
+
+
+class DataBackendUnionMember4(BaseModel):
+    backend_type: Literal["redshift"] = FieldInfo(alias="backendType")
+
+    redshift_connection_id: Optional[str] = FieldInfo(alias="redshiftConnectionId", default=None)
+
+    schema_name: str = FieldInfo(alias="schemaName")
+
+    table_name: str = FieldInfo(alias="tableName")
+
+
+class DataBackendUnionMember5Config(BaseModel):
+    ground_truth_column_name: Optional[str] = FieldInfo(alias="groundTruthColumnName", default=None)
+    """Name of the column with the ground truths."""
+
+    human_feedback_column_name: Optional[str] = FieldInfo(alias="humanFeedbackColumnName", default=None)
+    """Name of the column with human feedback."""
+
+    latency_column_name: Optional[str] = FieldInfo(alias="latencyColumnName", default=None)
+    """Name of the column with the latencies."""
+
+    timestamp_column_name: Optional[str] = FieldInfo(alias="timestampColumnName", default=None)
+    """Name of the column with the timestamps.
+
+    Timestamps must be in UNIX sec format. If not provided, the upload timestamp is
+    used.
+    """
+
+
+class DataBackendUnionMember5(BaseModel):
+    backend_type: Literal["postgres"] = FieldInfo(alias="backendType")
+
+    database: str
+
+    postgres_connection_id: Optional[str] = FieldInfo(alias="postgresConnectionId", default=None)
+
+    schema_: str = FieldInfo(alias="schema")
+
+    table: Optional[str] = None
+
+
+DataBackend: TypeAlias = Union[
+    DataBackendUnionMember0,
+    DataBackendBackendType,
+    DataBackendUnionMember2,
+    DataBackendUnionMember3,
+    DataBackendUnionMember4,
+    DataBackendUnionMember5,
+    None,
+]
 
 
 class ProjectLinks(BaseModel):
@@ -203,7 +376,15 @@ class InferencePipelineRetrieveResponse(BaseModel):
     total_goal_count: int = FieldInfo(alias="totalGoalCount")
     """The total number of tests."""
 
+    data_backend: Optional[DataBackend] = FieldInfo(alias="dataBackend", default=None)
+
+    date_last_polled: Optional[datetime] = FieldInfo(alias="dateLastPolled", default=None)
+    """The last time the data was polled."""
+
     project: Optional[Project] = None
+
+    total_records_count: Optional[int] = FieldInfo(alias="totalRecordsCount", default=None)
+    """The total number of records in the data backend."""
 
     workspace: Optional[Workspace] = None
 
