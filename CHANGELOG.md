@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.12.0 (2025-12-26)
+
+Full Changelog: [v0.11.4...v0.12.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.11.4...v0.12.0)
+
+### Features
+
+* **api:** api update ([f117723](https://github.com/openlayer-ai/openlayer-python/commit/f11772338f2da872ca49f0a658c45109b9507800))
+* **api:** api update ([9f22b46](https://github.com/openlayer-ai/openlayer-python/commit/9f22b4660e4b37a786a6ff3999847936577c8a23))
+* enhance LiteLLM metadata extraction by adding cost retrieval from response headers ([43a7d2e](https://github.com/openlayer-ai/openlayer-python/commit/43a7d2e44b788586a3e4e3e484e9a7967f3631af))
+* prevent multiple patching in trace_litellm function to avoid duplicate traces ([#568](https://github.com/openlayer-ai/openlayer-python/issues/568)) ([a1619e7](https://github.com/openlayer-ai/openlayer-python/commit/a1619e793878720b5719ca7e2a580e9990b88f96))
+
+
+### Bug Fixes
+
+* **client:** close streams without requiring full consumption ([c1458b7](https://github.com/openlayer-ai/openlayer-python/commit/c1458b7487946db5d4a2037852ee0acd31cc5672))
+* compat with Python 3.14 ([c2d9681](https://github.com/openlayer-ai/openlayer-python/commit/c2d9681e556118e9f6f91de46f1662b7a794ee2c))
+
+
+### Chores
+
+* bump `httpx-aiohttp` version to 0.1.9 ([3f895de](https://github.com/openlayer-ai/openlayer-python/commit/3f895ded9e56ca11c4aafc093502726a14afedf6))
+* do not install brew dependencies in ./scripts/bootstrap by default ([45badc5](https://github.com/openlayer-ai/openlayer-python/commit/45badc57d4e30a195407e5b733a7327356685c69))
+* **internal/tests:** avoid race condition with implicit client cleanup ([3d05ccc](https://github.com/openlayer-ai/openlayer-python/commit/3d05ccc4ee73fe8f5c3de50d4a7dcbdcb3551674))
+* **internal:** detect missing future annotations with ruff ([d2887ba](https://github.com/openlayer-ai/openlayer-python/commit/d2887ba77f441518ca7e8ae1b690cee42794596a))
+* **internal:** grammar fix (it's -&gt; its) ([4af20e1](https://github.com/openlayer-ai/openlayer-python/commit/4af20e1d560be01fb7eaa9dd050398fe23f1e4bb))
+* **internal:** update pydantic dependency ([0af11ac](https://github.com/openlayer-ai/openlayer-python/commit/0af11ac1a28176380247bf3e3b5db00fe6349593))
+* **internal:** version bump ([55f6ab0](https://github.com/openlayer-ai/openlayer-python/commit/55f6ab040221d31a154ef21c71a1957b77043f79))
+* **internal:** version bump ([3a5c286](https://github.com/openlayer-ai/openlayer-python/commit/3a5c2869c16c0f00e871042af29da29063a70c07))
+* **internal:** version bump ([d5dc8c0](https://github.com/openlayer-ai/openlayer-python/commit/d5dc8c0fd5b792e4a81f6445df0091f1cf9f8e36))
+* **internal:** version bump ([61324d6](https://github.com/openlayer-ai/openlayer-python/commit/61324d655921bbe613cd2542feba4a758d591293))
+* **internal:** version bump ([9db5997](https://github.com/openlayer-ai/openlayer-python/commit/9db5997e6d7648e00c37277ea87b2d5f7e79aa4f))
+* **internal:** version bump ([4659537](https://github.com/openlayer-ai/openlayer-python/commit/465953753d902fd2345cac72e0ed87131668b0f4))
+* **internal:** version bump ([199356c](https://github.com/openlayer-ai/openlayer-python/commit/199356ca1ce8eae57a6557c17d8c173486132fc2))
+* **internal:** version bump ([e63dee5](https://github.com/openlayer-ai/openlayer-python/commit/e63dee5ac27bfc396ec709188a54c3045e1e3698))
+* **package:** drop Python 3.8 support ([4c48617](https://github.com/openlayer-ai/openlayer-python/commit/4c48617ef7c34e0db601617a3b30d3bb540eeea5))
+* **types:** change optional parameter type from NotGiven to Omit ([54c1533](https://github.com/openlayer-ai/openlayer-python/commit/54c1533b6810fcf9323c23f39dc008405fd0a36e))
+
 ## 0.11.4 (2025-12-17)
 
 Full Changelog: [v0.11.3...v0.11.4](https://github.com/openlayer-ai/openlayer-python/compare/v0.11.3...v0.11.4)
