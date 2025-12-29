@@ -1,5 +1,6 @@
 """Module with methods used to trace LiteLLM completions."""
 
+import contextvars
 import json
 import logging
 import time
@@ -16,6 +17,7 @@ if TYPE_CHECKING:
     import litellm
 
 from ..tracing import tracer
+from ..tracing import enums as tracer_enums
 
 logger = logging.getLogger(__name__)
 
@@ -154,113 +156,119 @@ def stream_chunks(
     provider = "unknown"
     latest_chunk_metadata = {}
     
-    try:
-        i = 0
-        for i, chunk in enumerate(chunks):
-            raw_outputs.append(chunk.model_dump() if hasattr(chunk, 'model_dump') else str(chunk))
-            
-            if i == 0:
-                first_token_time = time.time()
-                # Try to detect provider from the first chunk
-                provider = detect_provider_from_chunk(chunk, model_name)
-            
-            # Extract usage data from this chunk if available (usually in final chunks)
-            chunk_usage = extract_usage_from_chunk(chunk)
-            if any(v is not None for v in chunk_usage.values()):
-                latest_usage_data = chunk_usage
-                
-            # Always update metadata from latest chunk (for cost, headers, etc.)
-            chunk_metadata = extract_litellm_metadata(chunk, model_name)
-            if chunk_metadata:
-                latest_chunk_metadata.update(chunk_metadata)
-                
-            if i > 0:
-                num_of_completion_tokens = i + 1
-
-            # Handle different chunk formats based on provider
-            delta = get_delta_from_chunk(chunk)
-
-            if delta and hasattr(delta, 'content') and delta.content:
-                collected_output_data.append(delta.content)
-            elif delta and hasattr(delta, 'function_call') and delta.function_call:
-                if delta.function_call.name:
-                    collected_function_call["name"] += delta.function_call.name
-                if delta.function_call.arguments:
-                    collected_function_call["arguments"] += delta.function_call.arguments
-            elif delta and hasattr(delta, 'tool_calls') and delta.tool_calls:
-                if delta.tool_calls[0].function.name:
-                    collected_function_call["name"] += delta.tool_calls[0].function.name
-                if delta.tool_calls[0].function.arguments:
-                    collected_function_call["arguments"] += delta.tool_calls[0].function.arguments
-
-            yield chunk
-            
-        end_time = time.time()
-        latency = (end_time - start_time) * 1000
-        
-    # pylint: disable=broad-except
-    except Exception as e:
-        logger.error("Failed to yield chunk. %s", e)
-    finally:
-        # Try to add step to the trace
+    # Create step immediately so it's added to parent trace before parent publishes
+    with tracer.create_step(
+        name="LiteLLM Chat Completion",
+        step_type=tracer_enums.StepType.CHAT_COMPLETION,
+        inputs={"prompt": kwargs.get("messages", [])},
+    ) as step:
         try:
-            collected_output_data = [message for message in collected_output_data if message is not None]
-            if collected_output_data:
-                output_data = "".join(collected_output_data)
-            else:
-                if collected_function_call["arguments"]:
-                    try:
-                        collected_function_call["arguments"] = json.loads(collected_function_call["arguments"])
-                    except json.JSONDecodeError:
-                        pass
-                output_data = collected_function_call
+            i = 0
+            for i, chunk in enumerate(chunks):
+                raw_outputs.append(chunk.model_dump() if hasattr(chunk, 'model_dump') else str(chunk))
+                
+                if i == 0:
+                    first_token_time = time.time()
+                    # Try to detect provider from the first chunk
+                    provider = detect_provider_from_chunk(chunk, model_name)
+                
+                # Extract usage data from this chunk if available (usually in final chunks)
+                chunk_usage = extract_usage_from_chunk(chunk)
+                if any(v is not None for v in chunk_usage.values()):
+                    latest_usage_data = chunk_usage
+                    
+                # Always update metadata from latest chunk (for cost, headers, etc.)
+                chunk_metadata = extract_litellm_metadata(chunk, model_name)
+                if chunk_metadata:
+                    latest_chunk_metadata.update(chunk_metadata)
+                    
+                if i > 0:
+                    num_of_completion_tokens = i + 1
 
-            # Post-streaming calculations (after streaming is finished)
-            completion_tokens_calculated, prompt_tokens_calculated, total_tokens_calculated, cost_calculated = calculate_streaming_usage_and_cost(
-                chunks=raw_outputs,
-                messages=kwargs.get("messages", []),
-                output_content=output_data,
-                model_name=model_name,
-                latest_usage_data=latest_usage_data,
-                latest_chunk_metadata=latest_chunk_metadata
-            )
-            
-            # Use calculated values (fall back to extracted data if calculation fails)
-            usage_data = latest_usage_data if any(v is not None for v in latest_usage_data.values()) else {}
-            
-            final_prompt_tokens = prompt_tokens_calculated if prompt_tokens_calculated is not None else usage_data.get("prompt_tokens", 0)
-            final_completion_tokens = completion_tokens_calculated if completion_tokens_calculated is not None else usage_data.get("completion_tokens", num_of_completion_tokens)
-            final_total_tokens = total_tokens_calculated if total_tokens_calculated is not None else usage_data.get("total_tokens", final_prompt_tokens + final_completion_tokens)
-            final_cost = cost_calculated if cost_calculated is not None else latest_chunk_metadata.get('cost', None)
-            
-            trace_args = create_trace_args(
-                end_time=end_time,
-                inputs={"prompt": kwargs.get("messages", [])},
-                output=output_data,
-                latency=latency,
-                tokens=final_total_tokens,
-                prompt_tokens=final_prompt_tokens,
-                completion_tokens=final_completion_tokens,
-                model=model_name,
-                model_parameters=get_model_parameters(kwargs),
-                raw_output=raw_outputs,
-                id=inference_id,
-                cost=final_cost,  # Use calculated cost
-                metadata={
-                    "timeToFirstToken": ((first_token_time - start_time) * 1000 if first_token_time else None),
-                    "provider": provider,
-                    "litellm_model": model_name,
-                    **latest_chunk_metadata,  # Add all LiteLLM-specific metadata
-                },
-            )
-            add_to_trace(**trace_args)
+                # Handle different chunk formats based on provider
+                delta = get_delta_from_chunk(chunk)
 
+                if delta and hasattr(delta, 'content') and delta.content:
+                    collected_output_data.append(delta.content)
+                elif delta and hasattr(delta, 'function_call') and delta.function_call:
+                    if delta.function_call.name:
+                        collected_function_call["name"] += delta.function_call.name
+                    if delta.function_call.arguments:
+                        collected_function_call["arguments"] += delta.function_call.arguments
+                elif delta and hasattr(delta, 'tool_calls') and delta.tool_calls:
+                    if delta.tool_calls[0].function.name:
+                        collected_function_call["name"] += delta.tool_calls[0].function.name
+                    if delta.tool_calls[0].function.arguments:
+                        collected_function_call["arguments"] += delta.tool_calls[0].function.arguments
+
+                yield chunk
+                
+            end_time = time.time()
+            latency = (end_time - start_time) * 1000
+            
         # pylint: disable=broad-except
         except Exception as e:
-            logger.error(
-                "Failed to trace the LiteLLM completion request with Openlayer. %s",
-                e,
-            )
+            logger.error("Failed to yield chunk. %s", e)
+        finally:
+            # Update step with final data before context manager exits
+            try:
+                collected_output_data = [message for message in collected_output_data if message is not None]
+                if collected_output_data:
+                    output_data = "".join(collected_output_data)
+                else:
+                    if collected_function_call["arguments"]:
+                        try:
+                            collected_function_call["arguments"] = json.loads(collected_function_call["arguments"])
+                        except json.JSONDecodeError:
+                            pass
+                    output_data = collected_function_call
+
+                # Post-streaming calculations (after streaming is finished)
+                completion_tokens_calculated, prompt_tokens_calculated, total_tokens_calculated, cost_calculated = calculate_streaming_usage_and_cost(
+                    chunks=raw_outputs,
+                    messages=kwargs.get("messages", []),
+                    output_content=output_data,
+                    model_name=model_name,
+                    latest_usage_data=latest_usage_data,
+                    latest_chunk_metadata=latest_chunk_metadata
+                )
+                
+                # Use calculated values (fall back to extracted data if calculation fails)
+                usage_data = latest_usage_data if any(v is not None for v in latest_usage_data.values()) else {}
+                
+                final_prompt_tokens = prompt_tokens_calculated if prompt_tokens_calculated is not None else usage_data.get("prompt_tokens", 0)
+                final_completion_tokens = completion_tokens_calculated if completion_tokens_calculated is not None else usage_data.get("completion_tokens", num_of_completion_tokens)
+                final_total_tokens = total_tokens_calculated if total_tokens_calculated is not None else usage_data.get("total_tokens", final_prompt_tokens + final_completion_tokens)
+                final_cost = cost_calculated if cost_calculated is not None else latest_chunk_metadata.get('cost', None)
+                
+                # Update the step with final trace data
+                step.log(
+                    output=output_data,
+                    latency=latency,
+                    tokens=final_total_tokens,
+                    prompt_tokens=final_prompt_tokens,
+                    completion_tokens=final_completion_tokens,
+                    model=model_name,
+                    model_parameters=get_model_parameters(kwargs),
+                    raw_output=raw_outputs,
+                    id=inference_id,
+                    cost=final_cost,
+                    provider=provider,
+                    metadata={
+                        "timeToFirstToken": ((first_token_time - start_time) * 1000 if first_token_time else None),
+                        "provider": provider,
+                        "litellm_model": model_name,
+                        **latest_chunk_metadata,
+                    },
+                )
+
+            # pylint: disable=broad-except
+            except Exception as e:
+                if logger is not None:
+                    logger.error(
+                        "Failed to trace the LiteLLM completion request with Openlayer. %s",
+                        e,
+                    )
 
 
 def handle_non_streaming_completion(

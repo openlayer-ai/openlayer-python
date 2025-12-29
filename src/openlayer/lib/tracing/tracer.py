@@ -496,6 +496,7 @@ def trace(
                         self._token = None
                         self._output_chunks = []
                         self._trace_initialized = False
+                        self._captured_context = None  # Capture context for ASGI compatibility
 
                     def __iter__(self):
                         return self
@@ -522,26 +523,26 @@ def trace(
                         try:
                             chunk = next(self._original_gen)
                             self._output_chunks.append(chunk)
+                            if self._captured_context is None:
+                                self._captured_context = contextvars.copy_context()
                             return chunk
                         except StopIteration:
                             # Finalize trace when generator is exhausted
+                            # Use captured context to ensure we have access to the trace
                             output = _join_output_chunks(self._output_chunks)
-                            _finalize_sync_generator_step(
-                                step=self._step,
-                                token=self._token,
-                                is_root_step=self._is_root_step,
-                                step_name=step_name,
-                                inputs=self._inputs,
-                                output=output,
-                                inference_pipeline_id=inference_pipeline_id,
-                                on_flush_failure=on_flush_failure,
-                            )
-                            raise
-                        except Exception as exc:
-                            # Handle exceptions
-                            if self._step:
-                                _log_step_exception(self._step, exc)
-                                output = _join_output_chunks(self._output_chunks)
+                            if self._captured_context:
+                                self._captured_context.run(
+                                    _finalize_sync_generator_step,
+                                    step=self._step,
+                                    token=self._token,
+                                    is_root_step=self._is_root_step,
+                                    step_name=step_name,
+                                    inputs=self._inputs,
+                                    output=output,
+                                    inference_pipeline_id=inference_pipeline_id,
+                                    on_flush_failure=on_flush_failure,
+                                )
+                            else:
                                 _finalize_sync_generator_step(
                                     step=self._step,
                                     token=self._token,
@@ -552,6 +553,35 @@ def trace(
                                     inference_pipeline_id=inference_pipeline_id,
                                     on_flush_failure=on_flush_failure,
                                 )
+                            raise
+                        except Exception as exc:
+                            # Handle exceptions
+                            if self._step:
+                                _log_step_exception(self._step, exc)
+                                output = _join_output_chunks(self._output_chunks)
+                                if self._captured_context:
+                                    self._captured_context.run(
+                                        _finalize_sync_generator_step,
+                                        step=self._step,
+                                        token=self._token,
+                                        is_root_step=self._is_root_step,
+                                        step_name=step_name,
+                                        inputs=self._inputs,
+                                        output=output,
+                                        inference_pipeline_id=inference_pipeline_id,
+                                        on_flush_failure=on_flush_failure,
+                                    )
+                                else:
+                                    _finalize_sync_generator_step(
+                                        step=self._step,
+                                        token=self._token,
+                                        is_root_step=self._is_root_step,
+                                        step_name=step_name,
+                                        inputs=self._inputs,
+                                        output=output,
+                                        inference_pipeline_id=inference_pipeline_id,
+                                        on_flush_failure=on_flush_failure,
+                                    )
                             raise
 
                 return TracedSyncGenerator()
@@ -1349,6 +1379,14 @@ def _handle_trace_completion(
         logger.debug("Ending the trace...")
         current_trace = get_current_trace()
 
+        if current_trace is None:
+            logger.warning(
+                "Cannot complete trace for step '%s': no active trace found. "
+                "This can happen when OPENLAYER_DISABLE_PUBLISH=true or trace context was lost.",
+                step_name,
+            )
+            return
+
         trace_data, input_variable_names = post_process_trace(current_trace)
 
         config = dict(
@@ -1644,7 +1682,7 @@ async def _invoke_with_context(
 
 
 def post_process_trace(
-    trace_obj: traces.Trace,
+    trace_obj: Optional[traces.Trace],
 ) -> Tuple[Dict[str, Any], List[str]]:
     """Post processing of the trace data before uploading to Openlayer.
 
