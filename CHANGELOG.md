@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.12.2 (2026-01-06)
+
+Full Changelog: [v0.12.1...v0.12.2](https://github.com/openlayer-ai/openlayer-python/compare/v0.12.1...v0.12.2)
+
+### Bug Fixes
+
+* **compat:** update signatures of `model_dump` and `model_dump_json` for Pydantic v1 ([5c510a6](https://github.com/openlayer-ai/openlayer-python/commit/5c510a673c65b7bc8f8f852ab7f5bea48ac7851d))
+
+
+### Chores
+
+* add Python 3.14 classifier and testing ([3b23f0f](https://github.com/openlayer-ai/openlayer-python/commit/3b23f0f94eaa935c2b8643cdb865173700c22000))
+* **internal:** version bump ([8599d01](https://github.com/openlayer-ai/openlayer-python/commit/8599d0169c986380b65ae0cc6287a869627c59bc))
+* **internal:** version bump ([d0d8cf2](https://github.com/openlayer-ai/openlayer-python/commit/d0d8cf220c235cf3d020b1a7fb716dc551905c34))
+
 ## 0.12.1 (2025-12-29)
 
 Full Changelog: [v0.12.0...v0.12.1](https://github.com/openlayer-ai/openlayer-python/compare/v0.12.0...v0.12.1)
