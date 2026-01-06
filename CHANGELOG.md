@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.12.3 (2026-01-06)
+
+Full Changelog: [v0.12.2...v0.12.3](https://github.com/openlayer-ai/openlayer-python/compare/v0.12.2...v0.12.3)
+
+### Bug Fixes
+
+* ensure streams are always closed ([d5fffe3](https://github.com/openlayer-ai/openlayer-python/commit/d5fffe39133f8462599063898c9f30f3771a1299))
+
+
+### Chores
+
+* **deps:** mypy 1.18.1 has a regression, pin to 1.17 ([222f10f](https://github.com/openlayer-ai/openlayer-python/commit/222f10f42cbcf6dd4fbec30763e254ae5a54f5ca))
+* **internal:** version bump ([a47ede3](https://github.com/openlayer-ai/openlayer-python/commit/a47ede3204f87f368031b80bab0b6752a21a62a1))
+* update lockfile ([b50033b](https://github.com/openlayer-ai/openlayer-python/commit/b50033b859ea09391e6f06615308a527c2d58312))
+
 ## 0.12.2 (2026-01-06)
 
 Full Changelog: [v0.12.1...v0.12.2](https://github.com/openlayer-ai/openlayer-python/compare/v0.12.1...v0.12.2)
