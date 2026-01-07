@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.12.4 (2026-01-07)
+
+Full Changelog: [v0.12.3...v0.12.4](https://github.com/openlayer-ai/openlayer-python/compare/v0.12.3...v0.12.4)
+
+### Chores
+
+* **docs:** use environment variables for authentication in code snippets ([be3611a](https://github.com/openlayer-ai/openlayer-python/commit/be3611a6ae14e83a5180ea32d3df2ce15bb4e3df))
+* update lockfile ([8532ac5](https://github.com/openlayer-ai/openlayer-python/commit/8532ac5f1192e16eafe3e8ab85c50aa8cda3b4ee))
+
 ## 0.12.3 (2026-01-06)
 
 Full Changelog: [v0.12.2...v0.12.3](https://github.com/openlayer-ai/openlayer-python/compare/v0.12.2...v0.12.3)
