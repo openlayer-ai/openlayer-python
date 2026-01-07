@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.12.5 (2026-01-07)
+
+Full Changelog: [v0.11.3...v0.12.5](https://github.com/openlayer-ai/openlayer-python/compare/v0.11.3...v0.12.5)
+
+### Features
+
+* **api:** add test evaluation method ([f3fce3e](https://github.com/openlayer-ai/openlayer-python/commit/f3fce3e0b36bc0c63c4614e1126d3db945098286))
+
+
+### Bug Fixes
+
+* **types:** allow pyright to infer TypedDict types within SequenceNotStr ([4a7dfcf](https://github.com/openlayer-ai/openlayer-python/commit/4a7dfcf63820c98b0eecb5a54bbed5d90f228367))
+* use async_to_httpx_files in patch method ([4e797de](https://github.com/openlayer-ai/openlayer-python/commit/4e797de882db7c737cd67f1ffa95875207df63f4))
+
+
+### Chores
+
+* add missing docstrings ([255589a](https://github.com/openlayer-ai/openlayer-python/commit/255589a3756a12b85ab48d9994a548f0159422a3))
+* **internal:** add `--fix` argument to lint script ([bd35326](https://github.com/openlayer-ai/openlayer-python/commit/bd35326366a5e6945c4d6f81014f7bf8cb1f11e2))
+* **internal:** add missing files argument to base client ([fbda07e](https://github.com/openlayer-ai/openlayer-python/commit/fbda07ebcaa37c5b071c069c24189a5660b8ed87))
+* **internal:** codegen related update ([1808e75](https://github.com/openlayer-ai/openlayer-python/commit/1808e75c54b21b2ca8c77b420942e05f9ecee8a9))
+* **internal:** version bump ([36be7a3](https://github.com/openlayer-ai/openlayer-python/commit/36be7a3bce6c84b63de36a778a771a81c0e3adec))
+* **internal:** version bump ([753d12c](https://github.com/openlayer-ai/openlayer-python/commit/753d12ca2e0ed12b8619acc84fdea0c8e0dd26bc))
+* speedup initial import ([d64be67](https://github.com/openlayer-ai/openlayer-python/commit/d64be67892c8d32476c12a7a4f7777ab3f8ae0ae))
+
 ## 0.12.4 (2026-01-07)
 
 Full Changelog: [v0.12.3...v0.12.4](https://github.com/openlayer-ai/openlayer-python/compare/v0.12.3...v0.12.4)
