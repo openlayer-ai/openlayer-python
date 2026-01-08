@@ -12,17 +12,17 @@ __all__ = [
     "InferencePipelineUpdateResponse",
     "Links",
     "DataBackend",
-    "DataBackendUnionMember0",
-    "DataBackendUnionMember0Config",
-    "DataBackendBackendType",
-    "DataBackendUnionMember2",
-    "DataBackendUnionMember2Config",
-    "DataBackendUnionMember3",
-    "DataBackendUnionMember3Config",
-    "DataBackendUnionMember4",
-    "DataBackendUnionMember4Config",
-    "DataBackendUnionMember5",
-    "DataBackendUnionMember5Config",
+    "DataBackendBigQueryDataBackend",
+    "DataBackendBigQueryDataBackendConfig",
+    "DataBackendDefaultDataBackend",
+    "DataBackendSnowflakeDataBackend",
+    "DataBackendSnowflakeDataBackendConfig",
+    "DataBackendDatabricksDtlDataBackend",
+    "DataBackendDatabricksDtlDataBackendConfig",
+    "DataBackendRedshiftDataBackend",
+    "DataBackendRedshiftDataBackendConfig",
+    "DataBackendPostgresDataBackend",
+    "DataBackendPostgresDataBackendConfig",
     "Project",
     "ProjectLinks",
     "ProjectGitRepo",
@@ -35,7 +35,7 @@ class Links(BaseModel):
     app: str
 
 
-class DataBackendUnionMember0Config(BaseModel):
+class DataBackendBigQueryDataBackendConfig(BaseModel):
     ground_truth_column_name: Optional[str] = FieldInfo(alias="groundTruthColumnName", default=None)
     """Name of the column with the ground truths."""
 
@@ -53,7 +53,7 @@ class DataBackendUnionMember0Config(BaseModel):
     """
 
 
-class DataBackendUnionMember0(BaseModel):
+class DataBackendBigQueryDataBackend(BaseModel):
     backend_type: Literal["bigquery"] = FieldInfo(alias="backendType")
 
     bigquery_connection_id: Optional[str] = FieldInfo(alias="bigqueryConnectionId", default=None)
@@ -67,11 +67,11 @@ class DataBackendUnionMember0(BaseModel):
     partition_type: Optional[Literal["DAY", "MONTH", "YEAR"]] = FieldInfo(alias="partitionType", default=None)
 
 
-class DataBackendBackendType(BaseModel):
+class DataBackendDefaultDataBackend(BaseModel):
     backend_type: Literal["default"] = FieldInfo(alias="backendType")
 
 
-class DataBackendUnionMember2Config(BaseModel):
+class DataBackendSnowflakeDataBackendConfig(BaseModel):
     ground_truth_column_name: Optional[str] = FieldInfo(alias="groundTruthColumnName", default=None)
     """Name of the column with the ground truths."""
 
@@ -89,7 +89,7 @@ class DataBackendUnionMember2Config(BaseModel):
     """
 
 
-class DataBackendUnionMember2(BaseModel):
+class DataBackendSnowflakeDataBackend(BaseModel):
     backend_type: Literal["snowflake"] = FieldInfo(alias="backendType")
 
     database: str
@@ -101,7 +101,7 @@ class DataBackendUnionMember2(BaseModel):
     table: Optional[str] = None
 
 
-class DataBackendUnionMember3Config(BaseModel):
+class DataBackendDatabricksDtlDataBackendConfig(BaseModel):
     ground_truth_column_name: Optional[str] = FieldInfo(alias="groundTruthColumnName", default=None)
     """Name of the column with the ground truths."""
 
@@ -119,7 +119,7 @@ class DataBackendUnionMember3Config(BaseModel):
     """
 
 
-class DataBackendUnionMember3(BaseModel):
+class DataBackendDatabricksDtlDataBackend(BaseModel):
     backend_type: Literal["databricks_dtl"] = FieldInfo(alias="backendType")
 
     databricks_dtl_connection_id: Optional[str] = FieldInfo(alias="databricksDtlConnectionId", default=None)
@@ -127,7 +127,7 @@ class DataBackendUnionMember3(BaseModel):
     table_id: Optional[str] = FieldInfo(alias="tableId", default=None)
 
 
-class DataBackendUnionMember4Config(BaseModel):
+class DataBackendRedshiftDataBackendConfig(BaseModel):
     ground_truth_column_name: Optional[str] = FieldInfo(alias="groundTruthColumnName", default=None)
     """Name of the column with the ground truths."""
 
@@ -145,7 +145,7 @@ class DataBackendUnionMember4Config(BaseModel):
     """
 
 
-class DataBackendUnionMember4(BaseModel):
+class DataBackendRedshiftDataBackend(BaseModel):
     backend_type: Literal["redshift"] = FieldInfo(alias="backendType")
 
     redshift_connection_id: Optional[str] = FieldInfo(alias="redshiftConnectionId", default=None)
@@ -155,7 +155,7 @@ class DataBackendUnionMember4(BaseModel):
     table_name: str = FieldInfo(alias="tableName")
 
 
-class DataBackendUnionMember5Config(BaseModel):
+class DataBackendPostgresDataBackendConfig(BaseModel):
     ground_truth_column_name: Optional[str] = FieldInfo(alias="groundTruthColumnName", default=None)
     """Name of the column with the ground truths."""
 
@@ -173,7 +173,7 @@ class DataBackendUnionMember5Config(BaseModel):
     """
 
 
-class DataBackendUnionMember5(BaseModel):
+class DataBackendPostgresDataBackend(BaseModel):
     backend_type: Literal["postgres"] = FieldInfo(alias="backendType")
 
     database: str
@@ -186,12 +186,12 @@ class DataBackendUnionMember5(BaseModel):
 
 
 DataBackend: TypeAlias = Union[
-    DataBackendUnionMember0,
-    DataBackendBackendType,
-    DataBackendUnionMember2,
-    DataBackendUnionMember3,
-    DataBackendUnionMember4,
-    DataBackendUnionMember5,
+    DataBackendBigQueryDataBackend,
+    DataBackendDefaultDataBackend,
+    DataBackendSnowflakeDataBackend,
+    DataBackendDatabricksDtlDataBackend,
+    DataBackendRedshiftDataBackend,
+    DataBackendPostgresDataBackend,
     None,
 ]
 
