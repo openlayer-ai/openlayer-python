@@ -32,11 +32,12 @@ from ._base_client import (
 )
 
 if TYPE_CHECKING:
-    from .resources import tests, commits, storage, projects, inference_pipelines
+    from .resources import tests, commits, storage, projects, workspaces, inference_pipelines
     from .resources.tests import TestsResource, AsyncTestsResource
     from .resources.commits.commits import CommitsResource, AsyncCommitsResource
     from .resources.storage.storage import StorageResource, AsyncStorageResource
     from .resources.projects.projects import ProjectsResource, AsyncProjectsResource
+    from .resources.workspaces.workspaces import WorkspacesResource, AsyncWorkspacesResource
     from .resources.inference_pipelines.inference_pipelines import (
         InferencePipelinesResource,
         AsyncInferencePipelinesResource,
@@ -110,6 +111,12 @@ class Openlayer(SyncAPIClient):
         from .resources.projects import ProjectsResource
 
         return ProjectsResource(self)
+
+    @cached_property
+    def workspaces(self) -> WorkspacesResource:
+        from .resources.workspaces import WorkspacesResource
+
+        return WorkspacesResource(self)
 
     @cached_property
     def commits(self) -> CommitsResource:
@@ -317,6 +324,12 @@ class AsyncOpenlayer(AsyncAPIClient):
         return AsyncProjectsResource(self)
 
     @cached_property
+    def workspaces(self) -> AsyncWorkspacesResource:
+        from .resources.workspaces import AsyncWorkspacesResource
+
+        return AsyncWorkspacesResource(self)
+
+    @cached_property
     def commits(self) -> AsyncCommitsResource:
         from .resources.commits import AsyncCommitsResource
 
@@ -477,6 +490,12 @@ class OpenlayerWithRawResponse:
         return ProjectsResourceWithRawResponse(self._client.projects)
 
     @cached_property
+    def workspaces(self) -> workspaces.WorkspacesResourceWithRawResponse:
+        from .resources.workspaces import WorkspacesResourceWithRawResponse
+
+        return WorkspacesResourceWithRawResponse(self._client.workspaces)
+
+    @cached_property
     def commits(self) -> commits.CommitsResourceWithRawResponse:
         from .resources.commits import CommitsResourceWithRawResponse
 
@@ -512,6 +531,12 @@ class AsyncOpenlayerWithRawResponse:
         from .resources.projects import AsyncProjectsResourceWithRawResponse
 
         return AsyncProjectsResourceWithRawResponse(self._client.projects)
+
+    @cached_property
+    def workspaces(self) -> workspaces.AsyncWorkspacesResourceWithRawResponse:
+        from .resources.workspaces import AsyncWorkspacesResourceWithRawResponse
+
+        return AsyncWorkspacesResourceWithRawResponse(self._client.workspaces)
 
     @cached_property
     def commits(self) -> commits.AsyncCommitsResourceWithRawResponse:
@@ -551,6 +576,12 @@ class OpenlayerWithStreamedResponse:
         return ProjectsResourceWithStreamingResponse(self._client.projects)
 
     @cached_property
+    def workspaces(self) -> workspaces.WorkspacesResourceWithStreamingResponse:
+        from .resources.workspaces import WorkspacesResourceWithStreamingResponse
+
+        return WorkspacesResourceWithStreamingResponse(self._client.workspaces)
+
+    @cached_property
     def commits(self) -> commits.CommitsResourceWithStreamingResponse:
         from .resources.commits import CommitsResourceWithStreamingResponse
 
@@ -586,6 +617,12 @@ class AsyncOpenlayerWithStreamedResponse:
         from .resources.projects import AsyncProjectsResourceWithStreamingResponse
 
         return AsyncProjectsResourceWithStreamingResponse(self._client.projects)
+
+    @cached_property
+    def workspaces(self) -> workspaces.AsyncWorkspacesResourceWithStreamingResponse:
+        from .resources.workspaces import AsyncWorkspacesResourceWithStreamingResponse
+
+        return AsyncWorkspacesResourceWithStreamingResponse(self._client.workspaces)
 
     @cached_property
     def commits(self) -> commits.AsyncCommitsResourceWithStreamingResponse:
