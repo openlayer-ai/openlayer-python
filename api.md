@@ -51,6 +51,44 @@ Methods:
 - <code title="put /projects/{projectId}/tests">client.projects.tests.<a href="./src/openlayer/resources/projects/tests.py">update</a>(project_id, \*\*<a href="src/openlayer/types/projects/test_update_params.py">params</a>) -> <a href="./src/openlayer/types/projects/test_update_response.py">TestUpdateResponse</a></code>
 - <code title="get /projects/{projectId}/tests">client.projects.tests.<a href="./src/openlayer/resources/projects/tests.py">list</a>(project_id, \*\*<a href="src/openlayer/types/projects/test_list_params.py">params</a>) -> <a href="./src/openlayer/types/projects/test_list_response.py">TestListResponse</a></code>
 
+# Workspaces
+
+Types:
+
+```python
+from openlayer.types import WorkspaceRetrieveResponse, WorkspaceUpdateResponse
+```
+
+Methods:
+
+- <code title="get /workspaces/{workspaceId}">client.workspaces.<a href="./src/openlayer/resources/workspaces/workspaces.py">retrieve</a>(workspace_id) -> <a href="./src/openlayer/types/workspace_retrieve_response.py">WorkspaceRetrieveResponse</a></code>
+- <code title="put /workspaces/{workspaceId}">client.workspaces.<a href="./src/openlayer/resources/workspaces/workspaces.py">update</a>(workspace_id, \*\*<a href="src/openlayer/types/workspace_update_params.py">params</a>) -> <a href="./src/openlayer/types/workspace_update_response.py">WorkspaceUpdateResponse</a></code>
+
+## Invites
+
+Types:
+
+```python
+from openlayer.types.workspaces import InviteCreateResponse, InviteListResponse
+```
+
+Methods:
+
+- <code title="post /workspaces/{workspaceId}/invites">client.workspaces.invites.<a href="./src/openlayer/resources/workspaces/invites.py">create</a>(workspace_id, \*\*<a href="src/openlayer/types/workspaces/invite_create_params.py">params</a>) -> <a href="./src/openlayer/types/workspaces/invite_create_response.py">InviteCreateResponse</a></code>
+- <code title="get /workspaces/{workspaceId}/invites">client.workspaces.invites.<a href="./src/openlayer/resources/workspaces/invites.py">list</a>(workspace_id, \*\*<a href="src/openlayer/types/workspaces/invite_list_params.py">params</a>) -> <a href="./src/openlayer/types/workspaces/invite_list_response.py">InviteListResponse</a></code>
+
+## APIKeys
+
+Types:
+
+```python
+from openlayer.types.workspaces import APIKeyCreateResponse
+```
+
+Methods:
+
+- <code title="post /workspaces/{workspaceId}/api-keys">client.workspaces.api_keys.<a href="./src/openlayer/resources/workspaces/api_keys.py">create</a>(workspace_id, \*\*<a href="src/openlayer/types/workspaces/api_key_create_params.py">params</a>) -> <a href="./src/openlayer/types/workspaces/api_key_create_response.py">APIKeyCreateResponse</a></code>
+
 # Commits
 
 Types:
