@@ -1,0 +1,75 @@
+# File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
+
+from typing import List, Optional
+from datetime import datetime
+from typing_extensions import Literal
+
+from pydantic import Field as FieldInfo
+
+from ..._models import BaseModel
+
+__all__ = ["InviteListResponse", "_Meta", "Item", "ItemCreator", "ItemWorkspace"]
+
+
+class _Meta(BaseModel):
+    page: int
+    """The current page."""
+
+    per_page: int = FieldInfo(alias="perPage")
+    """The number of items per page."""
+
+    total_items: int = FieldInfo(alias="totalItems")
+    """The total number of items."""
+
+    total_pages: int = FieldInfo(alias="totalPages")
+    """The total number of pages."""
+
+
+class ItemCreator(BaseModel):
+    id: Optional[str] = None
+    """The invite creator id."""
+
+    name: Optional[str] = None
+    """The invite creator name."""
+
+    username: Optional[str] = None
+    """The invite creator username."""
+
+
+class ItemWorkspace(BaseModel):
+    id: str
+
+    date_created: datetime = FieldInfo(alias="dateCreated")
+
+    member_count: int = FieldInfo(alias="memberCount")
+
+    name: str
+
+    slug: str
+
+
+class Item(BaseModel):
+    id: str
+    """The invite id."""
+
+    creator: ItemCreator
+
+    date_created: datetime = FieldInfo(alias="dateCreated")
+    """The invite creation date."""
+
+    email: str
+    """The invite email."""
+
+    role: Literal["ADMIN", "MEMBER", "VIEWER"]
+    """The invite role."""
+
+    status: Literal["accepted", "pending"]
+    """The invite status."""
+
+    workspace: ItemWorkspace
+
+
+class InviteListResponse(BaseModel):
+    api_meta: _Meta = FieldInfo(alias="_meta")
+
+    items: List[Item]

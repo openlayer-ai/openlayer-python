@@ -32,6 +32,14 @@ from .projects import (
     ProjectsResourceWithStreamingResponse,
     AsyncProjectsResourceWithStreamingResponse,
 )
+from .workspaces import (
+    WorkspacesResource,
+    AsyncWorkspacesResource,
+    WorkspacesResourceWithRawResponse,
+    AsyncWorkspacesResourceWithRawResponse,
+    WorkspacesResourceWithStreamingResponse,
+    AsyncWorkspacesResourceWithStreamingResponse,
+)
 from .inference_pipelines import (
     InferencePipelinesResource,
     AsyncInferencePipelinesResource,
@@ -48,6 +56,12 @@ __all__ = [
     "AsyncProjectsResourceWithRawResponse",
     "ProjectsResourceWithStreamingResponse",
     "AsyncProjectsResourceWithStreamingResponse",
+    "WorkspacesResource",
+    "AsyncWorkspacesResource",
+    "WorkspacesResourceWithRawResponse",
+    "AsyncWorkspacesResourceWithRawResponse",
+    "WorkspacesResourceWithStreamingResponse",
+    "AsyncWorkspacesResourceWithStreamingResponse",
     "CommitsResource",
     "AsyncCommitsResource",
     "CommitsResourceWithRawResponse",
