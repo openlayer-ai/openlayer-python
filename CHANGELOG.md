@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.13.0 (2026-01-08)
+
+Full Changelog: [v0.12.6...v0.13.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.12.6...v0.13.0)
+
+### Features
+
+* **api:** add missing endpoints ([cfc7059](https://github.com/openlayer-ai/openlayer-python/commit/cfc7059cce8056367a8e78ea1a978addf9bbefd5))
+
 ## 0.12.6 (2026-01-08)
 
 Full Changelog: [v0.12.5...v0.12.6](https://github.com/openlayer-ai/openlayer-python/compare/v0.12.5...v0.12.6)
