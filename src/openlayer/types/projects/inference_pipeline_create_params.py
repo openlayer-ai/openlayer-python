@@ -11,17 +11,17 @@ from ..._utils import PropertyInfo
 __all__ = [
     "InferencePipelineCreateParams",
     "DataBackend",
-    "DataBackendUnionMember0",
-    "DataBackendUnionMember0Config",
-    "DataBackendBackendType",
-    "DataBackendUnionMember2",
-    "DataBackendUnionMember2Config",
-    "DataBackendUnionMember3",
-    "DataBackendUnionMember3Config",
-    "DataBackendUnionMember4",
-    "DataBackendUnionMember4Config",
-    "DataBackendUnionMember5",
-    "DataBackendUnionMember5Config",
+    "DataBackendBigQueryDataBackend",
+    "DataBackendBigQueryDataBackendConfig",
+    "DataBackendDefaultDataBackend",
+    "DataBackendSnowflakeDataBackend",
+    "DataBackendSnowflakeDataBackendConfig",
+    "DataBackendDatabricksDtlDataBackend",
+    "DataBackendDatabricksDtlDataBackendConfig",
+    "DataBackendRedshiftDataBackend",
+    "DataBackendRedshiftDataBackendConfig",
+    "DataBackendPostgresDataBackend",
+    "DataBackendPostgresDataBackendConfig",
     "Project",
     "Workspace",
 ]
@@ -41,7 +41,7 @@ class InferencePipelineCreateParams(TypedDict, total=False):
     workspace: Optional[Workspace]
 
 
-class DataBackendUnionMember0Config(TypedDict, total=False):
+class DataBackendBigQueryDataBackendConfig(TypedDict, total=False):
     ground_truth_column_name: Annotated[Optional[str], PropertyInfo(alias="groundTruthColumnName")]
     """Name of the column with the ground truths."""
 
@@ -66,12 +66,12 @@ class DataBackendUnionMember0Config(TypedDict, total=False):
     """
 
 
-class DataBackendUnionMember0(TypedDict, total=False):
+class DataBackendBigQueryDataBackend(TypedDict, total=False):
     backend_type: Required[Annotated[Literal["bigquery"], PropertyInfo(alias="backendType")]]
 
     bigquery_connection_id: Required[Annotated[Optional[str], PropertyInfo(alias="bigqueryConnectionId")]]
 
-    config: Required[DataBackendUnionMember0Config]
+    config: Required[DataBackendBigQueryDataBackendConfig]
 
     dataset_id: Required[Annotated[str, PropertyInfo(alias="datasetId")]]
 
@@ -82,11 +82,11 @@ class DataBackendUnionMember0(TypedDict, total=False):
     partition_type: Annotated[Optional[Literal["DAY", "MONTH", "YEAR"]], PropertyInfo(alias="partitionType")]
 
 
-class DataBackendBackendType(TypedDict, total=False):
+class DataBackendDefaultDataBackend(TypedDict, total=False):
     backend_type: Required[Annotated[Literal["default"], PropertyInfo(alias="backendType")]]
 
 
-class DataBackendUnionMember2Config(TypedDict, total=False):
+class DataBackendSnowflakeDataBackendConfig(TypedDict, total=False):
     ground_truth_column_name: Annotated[Optional[str], PropertyInfo(alias="groundTruthColumnName")]
     """Name of the column with the ground truths."""
 
@@ -111,10 +111,10 @@ class DataBackendUnionMember2Config(TypedDict, total=False):
     """
 
 
-class DataBackendUnionMember2(TypedDict, total=False):
+class DataBackendSnowflakeDataBackend(TypedDict, total=False):
     backend_type: Required[Annotated[Literal["snowflake"], PropertyInfo(alias="backendType")]]
 
-    config: Required[DataBackendUnionMember2Config]
+    config: Required[DataBackendSnowflakeDataBackendConfig]
 
     database: Required[str]
 
@@ -125,7 +125,7 @@ class DataBackendUnionMember2(TypedDict, total=False):
     table: Required[Optional[str]]
 
 
-class DataBackendUnionMember3Config(TypedDict, total=False):
+class DataBackendDatabricksDtlDataBackendConfig(TypedDict, total=False):
     ground_truth_column_name: Annotated[Optional[str], PropertyInfo(alias="groundTruthColumnName")]
     """Name of the column with the ground truths."""
 
@@ -150,17 +150,17 @@ class DataBackendUnionMember3Config(TypedDict, total=False):
     """
 
 
-class DataBackendUnionMember3(TypedDict, total=False):
+class DataBackendDatabricksDtlDataBackend(TypedDict, total=False):
     backend_type: Required[Annotated[Literal["databricks_dtl"], PropertyInfo(alias="backendType")]]
 
-    config: Required[DataBackendUnionMember3Config]
+    config: Required[DataBackendDatabricksDtlDataBackendConfig]
 
     databricks_dtl_connection_id: Required[Annotated[Optional[str], PropertyInfo(alias="databricksDtlConnectionId")]]
 
     table_id: Required[Annotated[Optional[str], PropertyInfo(alias="tableId")]]
 
 
-class DataBackendUnionMember4Config(TypedDict, total=False):
+class DataBackendRedshiftDataBackendConfig(TypedDict, total=False):
     ground_truth_column_name: Annotated[Optional[str], PropertyInfo(alias="groundTruthColumnName")]
     """Name of the column with the ground truths."""
 
@@ -185,10 +185,10 @@ class DataBackendUnionMember4Config(TypedDict, total=False):
     """
 
 
-class DataBackendUnionMember4(TypedDict, total=False):
+class DataBackendRedshiftDataBackend(TypedDict, total=False):
     backend_type: Required[Annotated[Literal["redshift"], PropertyInfo(alias="backendType")]]
 
-    config: Required[DataBackendUnionMember4Config]
+    config: Required[DataBackendRedshiftDataBackendConfig]
 
     redshift_connection_id: Required[Annotated[Optional[str], PropertyInfo(alias="redshiftConnectionId")]]
 
@@ -197,7 +197,7 @@ class DataBackendUnionMember4(TypedDict, total=False):
     table_name: Required[Annotated[str, PropertyInfo(alias="tableName")]]
 
 
-class DataBackendUnionMember5Config(TypedDict, total=False):
+class DataBackendPostgresDataBackendConfig(TypedDict, total=False):
     ground_truth_column_name: Annotated[Optional[str], PropertyInfo(alias="groundTruthColumnName")]
     """Name of the column with the ground truths."""
 
@@ -222,10 +222,10 @@ class DataBackendUnionMember5Config(TypedDict, total=False):
     """
 
 
-class DataBackendUnionMember5(TypedDict, total=False):
+class DataBackendPostgresDataBackend(TypedDict, total=False):
     backend_type: Required[Annotated[Literal["postgres"], PropertyInfo(alias="backendType")]]
 
-    config: Required[DataBackendUnionMember5Config]
+    config: Required[DataBackendPostgresDataBackendConfig]
 
     database: Required[str]
 
@@ -237,12 +237,12 @@ class DataBackendUnionMember5(TypedDict, total=False):
 
 
 DataBackend: TypeAlias = Union[
-    DataBackendUnionMember0,
-    DataBackendBackendType,
-    DataBackendUnionMember2,
-    DataBackendUnionMember3,
-    DataBackendUnionMember4,
-    DataBackendUnionMember5,
+    DataBackendBigQueryDataBackend,
+    DataBackendDefaultDataBackend,
+    DataBackendSnowflakeDataBackend,
+    DataBackendDatabricksDtlDataBackend,
+    DataBackendRedshiftDataBackend,
+    DataBackendPostgresDataBackend,
 ]
 
 
