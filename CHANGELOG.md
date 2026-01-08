@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.12.6 (2026-01-08)
+
+Full Changelog: [v0.12.5...v0.12.6](https://github.com/openlayer-ai/openlayer-python/compare/v0.12.5...v0.12.6)
+
+### Bug Fixes
+
+* **client:** loosen auth header validation ([0d31697](https://github.com/openlayer-ai/openlayer-python/commit/0d3169703d4c9c35ad54803b8112d2c412537ebd))
+
 ## 0.12.5 (2026-01-07)
 
 Full Changelog: [v0.11.3...v0.12.5](https://github.com/openlayer-ai/openlayer-python/compare/v0.11.3...v0.12.5)
