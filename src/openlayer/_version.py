@@ -1,4 +1,4 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 __title__ = "openlayer"
-__version__ = "0.12.5"  # x-release-please-version
+__version__ = "0.12.6"  # x-release-please-version
