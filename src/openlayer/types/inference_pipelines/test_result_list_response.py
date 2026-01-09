@@ -2,13 +2,36 @@
 
 from typing import List, Union, Optional
 from datetime import datetime
-from typing_extensions import Literal
+from typing_extensions import Literal, TypeAlias
 
 from pydantic import Field as FieldInfo
 
 from ..._models import BaseModel
 
-__all__ = ["TestResultListResponse", "Item", "ItemGoal", "ItemGoalThreshold", "ItemGoalThresholdInsightParameter"]
+__all__ = [
+    "TestResultListResponse",
+    "Item",
+    "ItemExpectedValue",
+    "ItemGoal",
+    "ItemGoalThreshold",
+    "ItemGoalThresholdInsightParameter",
+    "ItemRowsBody",
+    "ItemRowsBodyColumnFilter",
+    "ItemRowsBodyColumnFilterSetColumnFilter",
+    "ItemRowsBodyColumnFilterNumericColumnFilter",
+    "ItemRowsBodyColumnFilterStringColumnFilter",
+]
+
+
+class ItemExpectedValue(BaseModel):
+    lower_threshold: Optional[float] = FieldInfo(alias="lowerThreshold", default=None)
+    """the lower threshold for the expected value"""
+
+    measurement: Optional[str] = None
+    """One of the `measurement` values in the test's thresholds"""
+
+    upper_threshold: Optional[float] = FieldInfo(alias="upperThreshold", default=None)
+    """The upper threshold for the expected value"""
 
 
 class ItemGoalThresholdInsightParameter(BaseModel):
@@ -194,6 +217,58 @@ class ItemGoal(BaseModel):
     """Whether the test uses a validation dataset."""
 
 
+class ItemRowsBodyColumnFilterSetColumnFilter(BaseModel):
+    measurement: str
+    """The name of the column."""
+
+    operator: Literal["contains_none", "contains_any", "contains_all", "one_of", "none_of"]
+
+    value: List[Union[str, float]]
+
+
+class ItemRowsBodyColumnFilterNumericColumnFilter(BaseModel):
+    measurement: str
+    """The name of the column."""
+
+    operator: Literal[">", ">=", "is", "<", "<=", "!="]
+
+    value: Optional[float] = None
+
+
+class ItemRowsBodyColumnFilterStringColumnFilter(BaseModel):
+    measurement: str
+    """The name of the column."""
+
+    operator: Literal["is", "!="]
+
+    value: Union[str, bool]
+
+
+ItemRowsBodyColumnFilter: TypeAlias = Union[
+    ItemRowsBodyColumnFilterSetColumnFilter,
+    ItemRowsBodyColumnFilterNumericColumnFilter,
+    ItemRowsBodyColumnFilterStringColumnFilter,
+]
+
+
+class ItemRowsBody(BaseModel):
+    """The body of the rows request."""
+
+    column_filters: Optional[List[ItemRowsBodyColumnFilter]] = FieldInfo(alias="columnFilters", default=None)
+
+    exclude_row_id_list: Optional[List[int]] = FieldInfo(alias="excludeRowIdList", default=None)
+
+    not_search_query_and: Optional[List[str]] = FieldInfo(alias="notSearchQueryAnd", default=None)
+
+    not_search_query_or: Optional[List[str]] = FieldInfo(alias="notSearchQueryOr", default=None)
+
+    row_id_list: Optional[List[int]] = FieldInfo(alias="rowIdList", default=None)
+
+    search_query_and: Optional[List[str]] = FieldInfo(alias="searchQueryAnd", default=None)
+
+    search_query_or: Optional[List[str]] = FieldInfo(alias="searchQueryOr", default=None)
+
+
 class Item(BaseModel):
     id: str
     """Project version (commit) id."""
@@ -222,10 +297,18 @@ class Item(BaseModel):
     status_message: Optional[str] = FieldInfo(alias="statusMessage", default=None)
     """The status message."""
 
+    expected_values: Optional[List[ItemExpectedValue]] = FieldInfo(alias="expectedValues", default=None)
+
     goal: Optional[ItemGoal] = None
 
     goal_id: Optional[str] = FieldInfo(alias="goalId", default=None)
     """The test id."""
+
+    rows: Optional[str] = None
+    """The URL to the rows of the test result."""
+
+    rows_body: Optional[ItemRowsBody] = FieldInfo(alias="rowsBody", default=None)
+    """The body of the rows request."""
 
 
 class TestResultListResponse(BaseModel):
