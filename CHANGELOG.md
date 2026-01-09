@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.14.0 (2026-01-09)
+
+Full Changelog: [v0.13.1...v0.14.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.13.1...v0.14.0)
+
+### Features
+
+* **closes OPEN-8532:** expose 'tests/{id}/results' endpoint ([208192c](https://github.com/openlayer-ai/openlayer-python/commit/208192c0d5ffa9e1b7eddc992762dea377c21dd1))
+
 ## 0.13.1 (2026-01-08)
 
 Full Changelog: [v0.13.0...v0.13.1](https://github.com/openlayer-ai/openlayer-python/compare/v0.13.0...v0.13.1)
