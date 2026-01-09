@@ -182,9 +182,10 @@ Methods:
 Types:
 
 ```python
-from openlayer.types import TestEvaluateResponse
+from openlayer.types import TestEvaluateResponse, TestListResultsResponse
 ```
 
 Methods:
 
 - <code title="post /tests/{testId}/evaluate">client.tests.<a href="./src/openlayer/resources/tests.py">evaluate</a>(test_id, \*\*<a href="src/openlayer/types/test_evaluate_params.py">params</a>) -> <a href="./src/openlayer/types/test_evaluate_response.py">TestEvaluateResponse</a></code>
+- <code title="get /tests/{testId}/results">client.tests.<a href="./src/openlayer/resources/tests.py">list_results</a>(test_id, \*\*<a href="src/openlayer/types/test_list_results_params.py">params</a>) -> <a href="./src/openlayer/types/test_list_results_response.py">TestListResultsResponse</a></code>
