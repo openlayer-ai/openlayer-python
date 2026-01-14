@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.15.0 (2026-01-14)
+
+Full Changelog: [v0.14.1...v0.15.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.14.1...v0.15.0)
+
+### Features
+
+* **client:** add support for binary request streaming ([e0b9289](https://github.com/openlayer-ai/openlayer-python/commit/e0b928978706cfdf624b8b8cf7ea806501c2655a))
+
 ## 0.14.1 (2026-01-12)
 
 Full Changelog: [v0.14.0...v0.14.1](https://github.com/openlayer-ai/openlayer-python/compare/v0.14.0...v0.14.1)
