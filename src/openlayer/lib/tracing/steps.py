@@ -2,10 +2,12 @@
 
 import time
 import uuid
-from typing import Any, Dict, Optional, List
+from pathlib import Path
+from typing import Any, BinaryIO, Dict, List, Optional, Union
 
 from .. import utils
 from . import enums
+from .attachments import Attachment
 
 
 class Step:
@@ -37,9 +39,75 @@ class Step:
 
         self.steps = []
 
+        # Attachments: unstructured data (images, audio, PDFs, etc.)
+        self.attachments: List["Attachment"] = []
+
     def add_nested_step(self, nested_step: "Step") -> None:
         """Adds a nested step to the current step."""
         self.steps.append(nested_step)
+
+    def attach(
+        self,
+        data: Union[bytes, str, Path, BinaryIO, "Attachment"],
+        name: Optional[str] = None,
+        media_type: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> "Attachment":
+        """Attach unstructured data to this step.
+
+        This method allows attaching binary content (images, audio, documents, etc.)
+        to a trace step. The attachment will be uploaded to Openlayer storage
+        when the trace is completed (if upload is enabled).
+
+        Args:
+            data: The data to attach. Can be:
+                - bytes: Raw binary data
+                - str/Path: File path to read from
+                - File-like object: Will be read
+                - Attachment: An existing Attachment object
+            name: Display name for the attachment. If not provided, will be
+                  inferred from the file path or set to "attachment".
+            media_type: MIME type (e.g., "image/png", "audio/wav").
+                        Auto-detected for file paths if not provided.
+            metadata: Additional metadata dict (e.g., duration, dimensions).
+
+        Returns:
+            The created or added Attachment.
+
+        Examples:
+            >>> step.attach("/path/to/audio.wav")
+            >>> step.attach(image_bytes, name="screenshot.png", media_type="image/png")
+            >>> step.attach(pdf_file, name="document.pdf", media_type="application/pdf")
+        """
+        if isinstance(data, Attachment):
+            attachment = data
+        elif isinstance(data, bytes):
+            attachment = Attachment.from_bytes(
+                data=data,
+                name=name or "attachment",
+                media_type=media_type or "application/octet-stream",
+            )
+        elif isinstance(data, (str, Path)):
+            attachment = Attachment.from_file(
+                file_path=data,
+                name=name,
+                media_type=media_type,
+            )
+        else:
+            # File-like object
+            file_bytes = data.read()
+            inferred_name = name or getattr(data, "name", None) or "attachment"
+            attachment = Attachment.from_bytes(
+                data=file_bytes,
+                name=inferred_name,
+                media_type=media_type or "application/octet-stream",
+            )
+
+        if metadata:
+            attachment.metadata.update(metadata)
+
+        self.attachments.append(attachment)
+        return attachment
 
     def log(self, **kwargs: Any) -> None:
         """Logs step data."""
@@ -50,7 +118,7 @@ class Step:
 
     def to_dict(self) -> Dict[str, Any]:
         """Dictionary representation of the Step."""
-        return {
+        result = {
             "name": self.name,
             "id": str(self.id),
             "type": self.step_type.value,
@@ -63,6 +131,18 @@ class Step:
             "startTime": self.start_time,
             "endTime": self.end_time,
         }
+
+        # Include valid attachments only (filter out ones with no data/reference)
+        if self.attachments:
+            valid_attachments = [
+                attachment.to_dict()
+                for attachment in self.attachments
+                if attachment.is_valid()
+            ]
+            if valid_attachments:
+                result["attachments"] = valid_attachments
+
+        return result
 
 
 class UserCallStep(Step):

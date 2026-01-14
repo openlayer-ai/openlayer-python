@@ -51,6 +51,12 @@ def json_serialize(data):
     elif isinstance(data, type):
         # Handle model classes/metaclasses
         return str(data.__name__ if hasattr(data, "__name__") else data)
+    elif hasattr(data, "to_dict") and callable(getattr(data, "to_dict")):
+        # Handle objects with to_dict method (e.g., Attachment)
+        try:
+            return json_serialize(data.to_dict())
+        except Exception:
+            return str(data)
     elif hasattr(data, "model_dump") and callable(getattr(data, "model_dump")):
         # Handle Pydantic model instances
         try:
