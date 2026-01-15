@@ -2,9 +2,11 @@
 
 import json
 import logging
+import mimetypes
+import re
 import time
 from functools import wraps
-from typing import Any, Dict, Iterator, List, Optional, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Union
 
 try:
     import openai
@@ -17,6 +19,14 @@ if TYPE_CHECKING:
     import openai
 
 from ..tracing import tracer
+from ..tracing.attachments import Attachment
+from ..tracing.content import (
+    AudioContent,
+    ContentItem,
+    FileContent,
+    ImageContent,
+    TextContent,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +65,9 @@ def trace_openai(
         The patched OpenAI client.
     """
     if not HAVE_OPENAI:
-        raise ImportError("OpenAI library is not installed. Please install it with: pip install openai")
+        raise ImportError(
+            "OpenAI library is not installed. Please install it with: pip install openai"
+        )
 
     is_azure_openai = isinstance(client, openai.AzureOpenAI)
 
@@ -74,7 +86,6 @@ def trace_openai(
                 create_func=chat_create_func,
                 inference_id=inference_id,
                 is_azure_openai=is_azure_openai,
-                api_type="chat_completions",
             )
         return handle_non_streaming_create(
             *args,
@@ -82,13 +93,12 @@ def trace_openai(
             create_func=chat_create_func,
             inference_id=inference_id,
             is_azure_openai=is_azure_openai,
-            api_type="chat_completions",
         )
 
     client.chat.completions.create = traced_chat_create_func
 
     # Patch parse method if it exists
-    if hasattr(client.chat.completions, 'parse'):
+    if hasattr(client.chat.completions, "parse"):
         parse_func = client.chat.completions.parse
 
         @wraps(parse_func)
@@ -151,7 +161,6 @@ def handle_streaming_create(
     *args,
     is_azure_openai: bool = False,
     inference_id: Optional[str] = None,
-    api_type: str = "chat_completions",
     **kwargs,
 ) -> Iterator[Any]:
     """Handles the create method when streaming is enabled.
@@ -214,12 +223,16 @@ def stream_chunks(
                 if delta.function_call.name:
                     collected_function_call["name"] += delta.function_call.name
                 if delta.function_call.arguments:
-                    collected_function_call["arguments"] += delta.function_call.arguments
+                    collected_function_call[
+                        "arguments"
+                    ] += delta.function_call.arguments
             elif delta.tool_calls:
                 if delta.tool_calls[0].function.name:
                     collected_function_call["name"] += delta.tool_calls[0].function.name
                 if delta.tool_calls[0].function.arguments:
-                    collected_function_call["arguments"] += delta.tool_calls[0].function.arguments
+                    collected_function_call["arguments"] += delta.tool_calls[
+                        0
+                    ].function.arguments
 
             yield chunk
         end_time = time.time()
@@ -230,16 +243,21 @@ def stream_chunks(
     finally:
         # Try to add step to the trace
         try:
-            collected_output_data = [message for message in collected_output_data if message is not None]
+            collected_output_data = [
+                message for message in collected_output_data if message is not None
+            ]
             if collected_output_data:
                 output_data = "".join(collected_output_data)
             else:
-                collected_function_call["arguments"] = json.loads(collected_function_call["arguments"])
+                collected_function_call["arguments"] = json.loads(
+                    collected_function_call["arguments"]
+                )
                 output_data = collected_function_call
 
+            processed_messages = extract_chat_completion_messages(kwargs["messages"])
             trace_args = create_trace_args(
                 end_time=end_time,
-                inputs={"prompt": kwargs["messages"]},
+                inputs={"prompt": processed_messages},
                 output=output_data,
                 latency=latency,
                 tokens=num_of_completion_tokens,
@@ -249,7 +267,13 @@ def stream_chunks(
                 model_parameters=get_model_parameters(kwargs),
                 raw_output=raw_outputs,
                 id=inference_id,
-                metadata={"timeToFirstToken": ((first_token_time - start_time) * 1000 if first_token_time else None)},
+                metadata={
+                    "timeToFirstToken": (
+                        (first_token_time - start_time) * 1000
+                        if first_token_time
+                        else None
+                    )
+                },
             )
             add_to_trace(
                 **trace_args,
@@ -314,7 +338,9 @@ def create_trace_args(
     return trace_args
 
 
-def add_to_trace(is_azure_openai: bool = False, api_type: str = "chat_completions", **kwargs) -> None:
+def add_to_trace(
+    is_azure_openai: bool = False, api_type: str = "chat_completions", **kwargs
+) -> None:
     """Add a chat completion or responses step to the trace."""
     # Remove api_type from kwargs to avoid passing it to the tracer
     kwargs.pop("api_type", None)
@@ -322,15 +348,23 @@ def add_to_trace(is_azure_openai: bool = False, api_type: str = "chat_completion
     if api_type == "responses":
         # Handle Responses API tracing
         if is_azure_openai:
-            tracer.add_chat_completion_step_to_trace(**kwargs, name="Azure OpenAI Response", provider="Azure")
+            tracer.add_chat_completion_step_to_trace(
+                **kwargs, name="Azure OpenAI Response", provider="Azure"
+            )
         else:
-            tracer.add_chat_completion_step_to_trace(**kwargs, name="OpenAI Response", provider="OpenAI")
+            tracer.add_chat_completion_step_to_trace(
+                **kwargs, name="OpenAI Response", provider="OpenAI"
+            )
     else:
         # Handle Chat Completions API tracing (default behavior)
         if is_azure_openai:
-            tracer.add_chat_completion_step_to_trace(**kwargs, name="Azure OpenAI Chat Completion", provider="Azure")
+            tracer.add_chat_completion_step_to_trace(
+                **kwargs, name="Azure OpenAI Chat Completion", provider="Azure"
+            )
         else:
-            tracer.add_chat_completion_step_to_trace(**kwargs, name="OpenAI Chat Completion", provider="OpenAI")
+            tracer.add_chat_completion_step_to_trace(
+                **kwargs, name="OpenAI Chat Completion", provider="OpenAI"
+            )
 
 
 def handle_non_streaming_create(
@@ -338,7 +372,6 @@ def handle_non_streaming_create(
     *args,
     is_azure_openai: bool = False,
     inference_id: Optional[str] = None,
-    api_type: str = "chat_completions",
     **kwargs,
 ) -> Union["openai.types.chat.chat_completion.ChatCompletion", Any]:
     """Handles the create method when streaming is disabled.
@@ -364,9 +397,10 @@ def handle_non_streaming_create(
     # Try to add step to the trace
     try:
         output_data = parse_non_streaming_output_data(response)
+        processed_messages = extract_chat_completion_messages(kwargs["messages"])
         trace_args = create_trace_args(
             end_time=end_time,
-            inputs={"prompt": kwargs["messages"]},
+            inputs={"prompt": processed_messages},
             output=output_data,
             latency=(end_time - start_time) * 1000,
             tokens=response.usage.total_tokens,
@@ -384,9 +418,240 @@ def handle_non_streaming_create(
         )
     # pylint: disable=broad-except
     except Exception as e:
-        logger.error("Failed to trace the create chat completion request with Openlayer. %s", e)
+        logger.error(
+            "Failed to trace the create chat completion request with Openlayer. %s", e
+        )
 
     return response
+
+
+def extract_chat_completion_messages(
+    messages: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Extract and normalize messages from Chat Completions API format.
+
+    Converts OpenAI message format to Openlayer format, extracting media content
+    (images, audio, files) into Attachment objects wrapped in Content classes.
+
+    OpenAI content types supported:
+    - "text" -> TextContent
+    - "image_url" -> ImageContent (URL or base64 data URL)
+    - "input_audio" -> AudioContent (base64 encoded)
+    - "file" -> FileContent
+
+    Args:
+        messages: List of messages in OpenAI Chat Completions format
+
+    Returns:
+        List of messages with content normalized to Openlayer format.
+        String content is preserved as-is for backwards compatibility.
+        List content is converted to ContentItem objects.
+    """
+    processed_messages: List[Dict[str, Any]] = []
+
+    for message in messages:
+        role = message.get("role", "user")
+        content = message.get("content")
+        name = message.get("name")  # For function/tool messages
+
+        # If content is a string, keep it as-is (backwards compatible)
+        if isinstance(content, str):
+            processed_msg: Dict[str, Any] = {"role": role, "content": content}
+            if name:
+                processed_msg["name"] = name
+            processed_messages.append(processed_msg)
+            continue
+
+        # If content is None (e.g., assistant message with tool_calls only)
+        if content is None:
+            processed_messages.append(message)
+            continue
+
+        # If content is a list, process each item
+        if isinstance(content, list):
+            normalized_content: List[ContentItem] = []
+            for item in content:
+                content_item = _normalize_content_item(item)
+                normalized_content.append(content_item)
+
+            processed_msg = {"role": role, "content": normalized_content}
+            if name:
+                processed_msg["name"] = name
+            processed_messages.append(processed_msg)
+        else:
+            # Unknown content type, keep as-is
+            processed_messages.append(message)
+
+    return processed_messages
+
+
+def _normalize_content_item(item: Dict[str, Any]) -> ContentItem:
+    """Normalize a single content item from OpenAI format to Openlayer format.
+
+    Supports both Chat Completions API and Responses API formats.
+
+    Chat Completions API types:
+    - "text" -> TextContent
+    - "image_url" -> ImageContent (URL or base64 data URL)
+    - "input_audio" -> AudioContent (base64 encoded)
+    - "file" -> FileContent
+
+    Responses API types:
+    - "input_text" -> TextContent
+    - "input_image" -> ImageContent (URL, base64 data URL, or file_id)
+
+    Args:
+        item: A content item dict from OpenAI message content array
+
+    Returns:
+        A ContentItem object (TextContent, ImageContent, etc.) or the original item
+    """
+    item_type = item.get("type", "")
+
+    # Text content (both APIs)
+    if item_type in ("text", "input_text"):
+        text = item.get("text", "")
+        return TextContent(text=text)
+
+    # Image content (both APIs - different structures)
+    elif item_type in ("image_url", "input_image"):
+        return _normalize_image_content(item, item_type)
+
+    # Audio content (Chat Completions only)
+    elif item_type == "input_audio":
+        audio_data = item.get("input_audio", {})
+        data = audio_data.get("data", "")
+        audio_format = audio_data.get("format", "wav")
+
+        media_type = f"audio/{audio_format}"
+        attachment = Attachment.from_base64(
+            data_base64=data,
+            name=f"audio.{audio_format}",
+            media_type=media_type,
+        )
+        return AudioContent(attachment=attachment)
+
+    # File content (Chat Completions only)
+    elif item_type == "file":
+        file_data = item.get("file", {})
+        file_id = file_data.get("file_id")
+        file_data_b64 = file_data.get("file_data")
+        filename = file_data.get("filename", "file")
+
+        if file_data_b64:
+            attachment = Attachment.from_base64(
+                data_base64=file_data_b64,
+                name=filename,
+                media_type="application/octet-stream",
+            )
+        elif file_id:
+            # Just reference the file ID (can't download without API call)
+            attachment = Attachment(name=filename)
+            attachment.metadata["openai_file_id"] = file_id
+        else:
+            attachment = Attachment(name=filename)
+
+        return FileContent(attachment=attachment)
+
+    else:
+        # Unknown type, return as TextContent with string representation
+        logger.debug("Unknown content item type: %s", item_type)
+        return TextContent(text=str(item))
+
+
+def _normalize_image_content(item: Dict[str, Any], item_type: str) -> ImageContent:
+    """Normalize image content from both Chat Completions and Responses API.
+
+    Chat Completions: {"type": "image_url", "image_url": {"url": "..."}}
+    Responses API:    {"type": "input_image", "image_url": "..."} or
+                      {"type": "input_image", "file_id": "..."}
+
+    Args:
+        item: The content item dict
+        item_type: The type string ("image_url" or "input_image")
+
+    Returns:
+        An ImageContent object with the appropriate attachment
+    """
+    if item_type == "input_image":
+        # Responses API format - flat structure
+        image_url = item.get("image_url")
+        file_id = item.get("file_id")
+
+        if file_id:
+            # File ID reference - just store the reference
+            attachment = Attachment(name="image")
+            attachment.metadata["openai_file_id"] = file_id
+        elif image_url:
+            attachment = _create_image_attachment_from_url(image_url)
+        else:
+            # Fallback - empty attachment
+            attachment = Attachment(name="image")
+    else:
+        # Chat Completions API format - nested structure
+        image_url_data = item.get("image_url", {})
+        url = image_url_data.get("url", "")
+        attachment = _create_image_attachment_from_url(url)
+
+    return ImageContent(attachment=attachment)
+
+
+def _create_image_attachment_from_url(url: str) -> Attachment:
+    """Create an Attachment from a URL (handles both regular URLs and data URLs).
+
+    Args:
+        url: The image URL (can be a regular URL or a data: URL with base64 content)
+
+    Returns:
+        An Attachment object
+    """
+    if url.startswith("data:"):
+        # Base64 data URL
+        return _parse_data_url_to_attachment(url, default_type="image")
+    else:
+        # External URL - infer media type from URL or default to image/jpeg
+        media_type = mimetypes.guess_type(url)[0]
+        if media_type is None or not media_type.startswith("image/"):
+            media_type = "image/jpeg"
+        return Attachment.from_url(url, name="image", media_type=media_type)
+
+
+def _parse_data_url_to_attachment(
+    data_url: str, default_type: str = "image"
+) -> Attachment:
+    """Parse a data URL (data:image/jpeg;base64,...) into an Attachment.
+
+    Args:
+        data_url: The data URL string (e.g., "data:image/png;base64,iVBORw0KGgo...")
+        default_type: Default type if parsing fails ("image", "audio", "file")
+
+    Returns:
+        An Attachment object
+    """
+    # Format: data:image/png;base64,iVBORw0KGgo...
+    match = re.match(r"data:([^;]+);base64,(.+)", data_url, re.DOTALL)
+    if match:
+        media_type = match.group(1)
+        base64_data = match.group(2)
+
+        # Infer extension from media type
+        extension = media_type.split("/")[-1]
+        extension_map = {"jpeg": "jpg", "x-wav": "wav", "mpeg": "mp3"}
+        extension = extension_map.get(extension, extension)
+
+        return Attachment.from_base64(
+            data_base64=base64_data,
+            name=f"{default_type}.{extension}",
+            media_type=media_type,
+        )
+
+    # Fallback - couldn't parse, treat as plain base64
+    logger.warning("Could not parse data URL format, treating as raw base64")
+    return Attachment.from_base64(
+        data_base64=data_url,
+        name=default_type,
+        media_type=f"{default_type}/unknown",
+    )
 
 
 # -------------------------------- Responses API Handlers -------------------------------- #
@@ -446,7 +711,9 @@ def stream_responses_chunks(
     try:
         i = 0
         for i, chunk in enumerate(chunks):
-            raw_outputs.append(chunk.model_dump() if hasattr(chunk, "model_dump") else str(chunk))
+            raw_outputs.append(
+                chunk.model_dump() if hasattr(chunk, "model_dump") else str(chunk)
+            )
             if i == 0:
                 first_token_time = time.time()
             if i > 0:
@@ -474,13 +741,17 @@ def stream_responses_chunks(
     finally:
         # Try to add step to the trace
         try:
-            collected_output_data = [message for message in collected_output_data if message is not None]
+            collected_output_data = [
+                message for message in collected_output_data if message is not None
+            ]
             if collected_output_data:
                 output_data = "".join(collected_output_data)
             else:
                 if collected_function_call["arguments"]:
                     try:
-                        collected_function_call["arguments"] = json.loads(collected_function_call["arguments"])
+                        collected_function_call["arguments"] = json.loads(
+                            collected_function_call["arguments"]
+                        )
                     except json.JSONDecodeError:
                         # Keep as string if not valid JSON
                         pass
@@ -499,7 +770,11 @@ def stream_responses_chunks(
                 raw_output=raw_outputs,
                 id=inference_id,
                 metadata={
-                    "timeToFirstToken": ((first_token_time - start_time) * 1000 if first_token_time else None)
+                    "timeToFirstToken": (
+                        (first_token_time - start_time) * 1000
+                        if first_token_time
+                        else None
+                    )
                 },
             )
             add_to_trace(
@@ -558,7 +833,11 @@ def handle_responses_non_streaming_create(
             completion_tokens=usage_data.get("completion_tokens", 0),
             model=getattr(response, "model", kwargs.get("model", "unknown")),
             model_parameters=get_responses_model_parameters(kwargs),
-            raw_output=response.model_dump() if hasattr(response, "model_dump") else str(response),
+            raw_output=(
+                response.model_dump()
+                if hasattr(response, "model_dump")
+                else str(response)
+            ),
             id=inference_id,
         )
 
@@ -613,9 +892,15 @@ def extract_responses_chunk_data(chunk: Any) -> Dict[str, Any]:
                     result["content"] = delta.content
                 elif hasattr(delta, "function_call"):
                     func_call = {}
-                    if hasattr(delta.function_call, "name") and delta.function_call.name:
+                    if (
+                        hasattr(delta.function_call, "name")
+                        and delta.function_call.name
+                    ):
                         func_call["name"] = delta.function_call.name
-                    if hasattr(delta.function_call, "arguments") and delta.function_call.arguments:
+                    if (
+                        hasattr(delta.function_call, "arguments")
+                        and delta.function_call.arguments
+                    ):
                         func_call["arguments"] = delta.function_call.arguments
                     if func_call:
                         result["function_call"] = func_call
@@ -632,105 +917,186 @@ def extract_responses_inputs(kwargs: Dict[str, Any]) -> Dict[str, Any]:
     Formats the input as a messages array similar to Chat Completions API format:
     {"prompt": [{"role": "user", "content": "..."}]}
 
+    Handles multimodal inputs (text + images) by normalizing content items
+    using the same ContentItem format as Chat Completions API.
+
+    Responses API input formats supported:
+    - Simple string: input="What is 2+2?"
+    - List of messages: input=[{"role": "user", "content": "..."}]
+    - Multimodal content: input=[{"role": "user", "content": [
+        {"type": "input_text", "text": "What's in this image?"},
+        {"type": "input_image", "image_url": "https://..."}
+      ]}]
+
     Args:
         kwargs: The parameters passed to the Responses API
 
     Returns:
         Dictionary with prompt as a messages array
     """
-    messages = []
+    messages: List[Dict[str, Any]] = []
 
     # Handle different input formats for Responses API
-    if "conversation" in kwargs:
-        # Conversation is already in messages format
-        conversation = kwargs["conversation"]
-        if isinstance(conversation, list):
-            messages = conversation
-        else:
-            # Single message, wrap it
-            messages = [{"role": "user", "content": str(conversation)}]
-    else:
-        # Build messages array from available parameters
-        if "instructions" in kwargs:
-            messages.append({"role": "system", "content": kwargs["instructions"]})
-        
-        if "input" in kwargs:
-            messages.append({"role": "user", "content": kwargs["input"]})
-        elif "prompt" in kwargs:
+    if "input" in kwargs:
+        input_value = kwargs["input"]
+
+        if isinstance(input_value, str):
+            # Simple string input
+            messages.append({"role": "user", "content": input_value})
+        elif isinstance(input_value, list):
+            # List of messages - process each one for multimodal content
+            for msg in input_value:
+                if isinstance(msg, dict):
+                    processed_msg = _process_responses_message(msg)
+                    messages.append(processed_msg)
+                else:
+                    # Non-dict item, wrap as user message
+                    messages.append({"role": "user", "content": str(msg)})
+
+    # Add instructions as system message (if present)
+    if "instructions" in kwargs:
+        messages.insert(0, {"role": "system", "content": kwargs["instructions"]})
+
+    # Handle legacy/alternative input parameters
+    if not messages:
+        if "prompt" in kwargs:
             messages.append({"role": "user", "content": kwargs["prompt"]})
-        
-        # If no user message was added, create a fallback
-        if not any(msg.get("role") == "user" for msg in messages):
-            if messages:
-                # Only system message, add empty user message
-                messages.append({"role": "user", "content": ""})
-            else:
-                # No messages at all, add placeholder
-                messages.append({"role": "user", "content": "No input provided"})
+
+    # If no user message was added, create a fallback
+    if not any(msg.get("role") == "user" for msg in messages):
+        if messages:
+            # Only system message, add empty user message
+            messages.append({"role": "user", "content": ""})
+        else:
+            # No messages at all, add placeholder
+            messages.append({"role": "user", "content": "No input provided"})
 
     return {"prompt": messages}
 
 
-def parse_responses_output_data(response: Any) -> Union[str, Dict[str, Any], None]:
+def _process_responses_message(message: Dict[str, Any]) -> Dict[str, Any]:
+    """Process a single message from Responses API input.
+
+    Normalizes multimodal content items (text, images) to Openlayer format.
+    String content is preserved as-is for backwards compatibility.
+
+    Args:
+        message: A message dict with 'role' and 'content' keys
+
+    Returns:
+        Processed message with normalized content
+    """
+    role = message.get("role", "user")
+    content = message.get("content")
+
+    # String content - keep as-is (backwards compatible)
+    if isinstance(content, str):
+        return {"role": role, "content": content}
+
+    # List content - normalize each item
+    if isinstance(content, list):
+        normalized_content: List[ContentItem] = []
+        for item in content:
+            if isinstance(item, dict):
+                content_item = _normalize_content_item(item)
+                normalized_content.append(content_item)
+            else:
+                # Non-dict item, convert to TextContent
+                normalized_content.append(TextContent(text=str(item)))
+        return {"role": role, "content": normalized_content}
+
+    # None or other type - return as-is
+    return message
+
+
+def parse_responses_output_data(
+    response: Any,
+) -> Union[str, List[ContentItem], Dict[str, Any], None]:
     """Parses the output data from a Responses API response.
+
+    Handles text and image generation outputs. For multimodal outputs
+    (e.g., text + generated images), returns a list of ContentItem objects.
 
     Args:
         response: The Response object from the Responses API
 
     Returns:
-        The parsed output data
+        The parsed output data:
+        - str: For text-only responses (backwards compatible)
+        - List[ContentItem]: For multimodal responses (text + images)
+        - Dict: For function/tool call responses
+        - None: If no output data
     """
     try:
-        # Handle Response object structure - check for output first (Responses API structure)
-        if hasattr(response, "output") and response.output:
-            if isinstance(response.output, list) and response.output:
-                # Handle list of output messages
-                first_output = response.output[0]
-                if hasattr(first_output, "content") and first_output.content:
-                    # Extract text from content list
-                    if isinstance(first_output.content, list) and first_output.content:
-                        text_content = first_output.content[0]
-                        if hasattr(text_content, "text"):
-                            return text_content.text.strip()
-                    elif hasattr(first_output.content, "text"):
-                        return first_output.content.text.strip()
-                    else:
-                        return str(first_output.content).strip()
-                elif hasattr(first_output, "text"):
-                    return first_output.text.strip()
-            elif hasattr(response.output, "text"):
+        if not hasattr(response, "output") or not response.output:
+            return None
+
+        if not isinstance(response.output, list):
+            # Handle non-list output
+            if hasattr(response.output, "text"):
                 return response.output.text.strip()
-            elif hasattr(response.output, "content"):
-                return str(response.output.content).strip()
+            return str(response.output).strip()
 
-        # Handle Chat Completions style structure (fallback)
-        if hasattr(response, "choices") and response.choices:
-            choice = response.choices[0]
-            if hasattr(choice, "message"):
-                message = choice.message
-                if hasattr(message, "content") and message.content:
-                    return message.content.strip()
-                elif hasattr(message, "function_call"):
-                    return {
-                        "name": message.function_call.name,
-                        "arguments": json.loads(message.function_call.arguments)
-                        if message.function_call.arguments
-                        else {},
-                    }
-                elif hasattr(message, "tool_calls") and message.tool_calls:
-                    tool_call = message.tool_calls[0]
-                    return {
-                        "name": tool_call.function.name,
-                        "arguments": json.loads(tool_call.function.arguments) if tool_call.function.arguments else {},
-                    }
+        content_items: List[ContentItem] = []
+        text_content: Optional[str] = None
 
-        # Handle direct text response
-        if hasattr(response, "text") and response.text:
-            return response.text.strip()
+        for output_item in response.output:
+            output_type = getattr(output_item, "type", None)
+
+            if output_type == "message":
+                # Text message output
+                extracted_text = _extract_text_from_message_output(output_item)
+                if extracted_text:
+                    text_content = extracted_text
+                    content_items.append(TextContent(text=extracted_text))
+
+            elif output_type == "image_generation_call":
+                # Image generation output - result contains base64 image
+                image_data = getattr(output_item, "result", None)
+                if image_data:
+                    attachment = Attachment.from_base64(
+                        data_base64=image_data,
+                        name="generated_image.png",
+                        media_type="image/png",
+                    )
+                    content_items.append(ImageContent(attachment=attachment))
+
+        # Return appropriate format based on content
+        if len(content_items) > 1:
+            # Multimodal output - return list of ContentItems
+            return content_items
+        elif len(content_items) == 1:
+            if isinstance(content_items[0], TextContent):
+                # Text-only output - return string (backwards compatible)
+                return text_content
+            else:
+                # Single non-text content item - return as list
+                return content_items
 
     except Exception as e:
         logger.debug("Could not parse Responses API output data: %s", e)
 
+    return None
+
+
+def _extract_text_from_message_output(output_item: Any) -> Optional[str]:
+    """Extract text content from a message output item.
+
+    Args:
+        output_item: A ResponseOutputMessage object
+
+    Returns:
+        The extracted text or None
+    """
+    if hasattr(output_item, "content") and output_item.content:
+        if isinstance(output_item.content, list) and output_item.content:
+            first_content = output_item.content[0]
+            if hasattr(first_content, "text"):
+                return first_content.text.strip()
+        elif hasattr(output_item.content, "text"):
+            return output_item.content.text.strip()
+    elif hasattr(output_item, "text"):
+        return output_item.text.strip()
     return None
 
 
@@ -751,15 +1117,23 @@ def extract_responses_usage(response: Any) -> Dict[str, int]:
             # Handle ResponseUsage object with different attribute names
             usage["total_tokens"] = getattr(usage_obj, "total_tokens", 0)
             # ResponseUsage uses 'input_tokens' instead of 'prompt_tokens'
-            usage["prompt_tokens"] = getattr(usage_obj, "input_tokens", getattr(usage_obj, "prompt_tokens", 0))
+            usage["prompt_tokens"] = getattr(
+                usage_obj, "input_tokens", getattr(usage_obj, "prompt_tokens", 0)
+            )
             # ResponseUsage uses 'output_tokens' instead of 'completion_tokens'
-            usage["completion_tokens"] = getattr(usage_obj, "output_tokens", getattr(usage_obj, "completion_tokens", 0))
+            usage["completion_tokens"] = getattr(
+                usage_obj, "output_tokens", getattr(usage_obj, "completion_tokens", 0)
+            )
         elif hasattr(response, "token_usage"):
             # Alternative usage attribute name
             usage_obj = response.token_usage
             usage["total_tokens"] = getattr(usage_obj, "total_tokens", 0)
-            usage["prompt_tokens"] = getattr(usage_obj, "input_tokens", getattr(usage_obj, "prompt_tokens", 0))
-            usage["completion_tokens"] = getattr(usage_obj, "output_tokens", getattr(usage_obj, "completion_tokens", 0))
+            usage["prompt_tokens"] = getattr(
+                usage_obj, "input_tokens", getattr(usage_obj, "prompt_tokens", 0)
+            )
+            usage["completion_tokens"] = getattr(
+                usage_obj, "output_tokens", getattr(usage_obj, "completion_tokens", 0)
+            )
     except Exception as e:
         logger.debug("Could not extract token usage from Responses API response: %s", e)
 
@@ -783,38 +1157,81 @@ def get_responses_model_parameters(kwargs: Dict[str, Any]) -> Dict[str, Any]:
 
 def parse_non_streaming_output_data(
     response: "openai.types.chat.chat_completion.ChatCompletion",
-) -> Union[str, Dict[str, Any], None]:
+) -> Union[str, List[ContentItem], Dict[str, Any], None]:
     """Parses the output data from a non-streaming completion.
+
+    Handles text, audio, and function call outputs. For multimodal outputs
+    (e.g., audio responses), returns a list of ContentItem objects.
 
     Parameters
     ----------
     response : openai.types.chat.chat_completion.ChatCompletion
         The chat completion response.
+
     Returns
     -------
-    Union[str, Dict[str, Any], None]
-        The parsed output data.
+    Union[str, List[ContentItem], Dict[str, Any], None]
+        The parsed output data:
+        - str: For text-only responses (backwards compatible)
+        - List[ContentItem]: For multimodal responses (text + audio)
+        - Dict: For function/tool call responses
+        - None: If no output data
     """
-    output_content = response.choices[0].message.content
-    output_function_call = response.choices[0].message.function_call
-    output_tool_calls = response.choices[0].message.tool_calls
+    message = response.choices[0].message
+    output_content = message.content
+    output_audio = getattr(message, "audio", None)
+    output_function_call = message.function_call
+    output_tool_calls = message.tool_calls
+
+    # Check for audio output (multimodal response)
+    if output_audio is not None:
+        content_items: List[ContentItem] = []
+
+        # Add text content (transcript) if available
+        transcript = getattr(output_audio, "transcript", None)
+        if transcript:
+            content_items.append(TextContent(text=transcript))
+
+        # Add audio content
+        audio_data = getattr(output_audio, "data", None)
+        if audio_data:
+            # Create attachment from base64 audio data
+            attachment = Attachment.from_base64(
+                data_base64=audio_data,
+                name="output_audio.wav",
+                media_type="audio/wav",
+            )
+            # Store additional audio metadata
+            audio_id = getattr(output_audio, "id", None)
+            if audio_id:
+                attachment.metadata["openai_audio_id"] = audio_id
+            expires_at = getattr(output_audio, "expires_at", None)
+            if expires_at:
+                attachment.metadata["expires_at"] = expires_at
+
+            content_items.append(AudioContent(attachment=attachment))
+
+        if content_items:
+            return content_items
+
+    # Text-only response (backwards compatible)
     if output_content:
-        output_data = output_content.strip()
-    elif output_function_call or output_tool_calls:
+        return output_content.strip()
+
+    # Function/tool call response
+    if output_function_call or output_tool_calls:
         if output_function_call:
-            function_call = {
+            return {
                 "name": output_function_call.name,
                 "arguments": json.loads(output_function_call.arguments),
             }
         else:
-            function_call = {
+            return {
                 "name": output_tool_calls[0].function.name,
                 "arguments": json.loads(output_tool_calls[0].function.arguments),
             }
-        output_data = function_call
-    else:
-        output_data = None
-    return output_data
+
+    return None
 
 
 def handle_streaming_parse(
@@ -915,9 +1332,10 @@ def stream_parse_chunks(
                 )
                 output_data = collected_function_call
 
+            processed_messages = extract_chat_completion_messages(kwargs["messages"])
             trace_args = create_trace_args(
                 end_time=end_time,
-                inputs={"prompt": kwargs["messages"]},
+                inputs={"prompt": processed_messages},
                 output=output_data,
                 latency=latency,
                 tokens=num_of_completion_tokens,
@@ -980,9 +1398,10 @@ def handle_non_streaming_parse(
     # Try to add step to the trace
     try:
         output_data = parse_structured_output_data(response)
+        processed_messages = extract_chat_completion_messages(kwargs["messages"])
         trace_args = create_trace_args(
             end_time=end_time,
-            inputs={"prompt": kwargs["messages"]},
+            inputs={"prompt": processed_messages},
             output=output_data,
             latency=(end_time - start_time) * 1000,
             tokens=response.usage.total_tokens,
@@ -1018,7 +1437,7 @@ def parse_structured_output_data(response: Any) -> Union[str, Dict[str, Any], No
     ----------
     response : Any
         The parse method completion response.
-        
+
     Returns
     -------
     Union[str, Dict[str, Any], None]
@@ -1026,20 +1445,20 @@ def parse_structured_output_data(response: Any) -> Union[str, Dict[str, Any], No
     """
     try:
         # Check if response has parsed structured data
-        if hasattr(response, 'parsed') and response.parsed is not None:
+        if hasattr(response, "parsed") and response.parsed is not None:
             # Handle Pydantic models
-            if hasattr(response.parsed, 'model_dump'):
+            if hasattr(response.parsed, "model_dump"):
                 return response.parsed.model_dump()
-            # Handle dict-like objects  
-            elif hasattr(response.parsed, '__dict__'):
+            # Handle dict-like objects
+            elif hasattr(response.parsed, "__dict__"):
                 return response.parsed.__dict__
             # Handle other structured formats
             else:
                 return response.parsed
-        
+
         # Fallback to regular message content parsing
         return parse_non_streaming_output_data(response)
-        
+
     except Exception as e:
         logger.error("Failed to parse structured output data: %s", e)
         # Final fallback to regular parsing
@@ -1047,13 +1466,17 @@ def parse_structured_output_data(response: Any) -> Union[str, Dict[str, Any], No
 
 
 # --------------------------- OpenAI Assistants API -------------------------- #
-def trace_openai_assistant_thread_run(client: "openai.OpenAI", run: "openai.types.beta.threads.run.Run") -> None:
+def trace_openai_assistant_thread_run(
+    client: "openai.OpenAI", run: "openai.types.beta.threads.run.Run"
+) -> None:
     """Trace a run from an OpenAI assistant.
 
     Once the run is completed, the thread data is published to Openlayer,
     along with the latency, and number of tokens used."""
     if not HAVE_OPENAI:
-        raise ImportError("OpenAI library is not installed. Please install it with: pip install openai")
+        raise ImportError(
+            "OpenAI library is not installed. Please install it with: pip install openai"
+        )
 
     _type_check_run(run)
 
@@ -1067,7 +1490,9 @@ def trace_openai_assistant_thread_run(client: "openai.OpenAI", run: "openai.type
         metadata = _extract_run_metadata(run)
 
         # Convert thread to prompt
-        messages = client.beta.threads.messages.list(thread_id=run.thread_id, order="asc")
+        messages = client.beta.threads.messages.list(
+            thread_id=run.thread_id, order="asc"
+        )
         prompt = _thread_messages_to_prompt(messages)
 
         # Add step to the trace
