@@ -1822,19 +1822,20 @@ def post_process_trace(
     This is done to ensure backward compatibility with data on Openlayer.
     """
     root_step = trace_obj.steps[0]
+    processed_steps = trace_obj.to_dict()
 
-    input_variables = root_step.inputs
-    if input_variables:
-        input_variable_names = list(input_variables.keys())
+    # Get input variable names from raw inputs, but use serialized values
+    raw_inputs = root_step.inputs
+    serialized_inputs = processed_steps[0].get("inputs", {})
+    if raw_inputs:
+        input_variable_names = list(raw_inputs.keys())
     else:
         input_variable_names = []
-
-    processed_steps = trace_obj.to_dict()
 
     trace_data = {
         "inferenceTimestamp": root_step.start_time,
         "inferenceId": trace_obj.inference_id or str(root_step.id),
-        "output": root_step.output,
+        "output": processed_steps[0].get("output"),
         "latency": root_step.latency,
         "cost": processed_steps[0].get("cost", 0),
         "tokens": processed_steps[0].get("tokens", 0),
@@ -1858,8 +1859,8 @@ def post_process_trace(
 
     if root_step.ground_truth:
         trace_data["groundTruth"] = root_step.ground_truth
-    if input_variables:
-        trace_data.update(input_variables)
+    if serialized_inputs:
+        trace_data.update(serialized_inputs)
 
     context = get_rag_context()
     if context:

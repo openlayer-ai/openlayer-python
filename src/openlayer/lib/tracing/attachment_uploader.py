@@ -22,8 +22,8 @@ logger = logging.getLogger(__name__)
 def find_attachments(data: Any) -> List[Attachment]:
     """Recursively find all Attachment objects in a data structure.
 
-    This function traverses dicts, lists, and tuples to find any
-    Attachment objects embedded within.
+    This function traverses dicts, lists, tuples, and objects with
+    'attachment' attributes to find any Attachment objects embedded within.
 
     Args:
         data: Any data structure that may contain Attachment objects.
@@ -43,6 +43,11 @@ def find_attachments(data: Any) -> List[Attachment]:
         for item in data:
             result.extend(find_attachments(item))
         return result
+    elif hasattr(data, "attachment"):
+        # Handle ContentItem objects (ImageContent, AudioContent, etc.)
+        attachment = getattr(data, "attachment")
+        if isinstance(attachment, Attachment):
+            return [attachment]
     return []
 
 
@@ -143,8 +148,9 @@ class AttachmentUploader:
             if attachment.checksum_md5:
                 self._upload_cache[attachment.checksum_md5] = attachment.storage_uri
 
-            # Clear pending bytes (no longer needed after upload)
+            # Clear data after upload (no longer needed, avoid duplicating in JSON)
             attachment._pending_bytes = None
+            attachment.data_base64 = None
 
             logger.debug(
                 "Uploaded attachment %s to %s",
