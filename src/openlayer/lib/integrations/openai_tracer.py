@@ -398,6 +398,18 @@ def handle_non_streaming_create(
     try:
         output_data = parse_non_streaming_output_data(response)
         processed_messages = extract_chat_completion_messages(kwargs["messages"])
+
+        # Check if response contains audio (to sanitize raw_output)
+        has_audio = (
+            hasattr(response.choices[0].message, "audio")
+            and response.choices[0].message.audio is not None
+        )
+
+        # Sanitize raw_output to remove heavy base64 data already uploaded as attachments
+        raw_output = response.model_dump()
+        if has_audio:
+            raw_output = _sanitize_raw_output(raw_output, has_audio=True)
+
         trace_args = create_trace_args(
             end_time=end_time,
             inputs={"prompt": processed_messages},
@@ -408,7 +420,7 @@ def handle_non_streaming_create(
             completion_tokens=response.usage.completion_tokens,
             model=response.model,
             model_parameters=get_model_parameters(kwargs),
-            raw_output=response.model_dump(),
+            raw_output=raw_output,
             id=inference_id,
         )
 
@@ -823,6 +835,24 @@ def handle_responses_non_streaming_create(
         output_data = parse_responses_output_data(response)
         usage_data = extract_responses_usage(response)
 
+        # Check if response contains generated images (to sanitize raw_output)
+        has_generated_images = False
+        if hasattr(response, "output") and isinstance(response.output, list):
+            has_generated_images = any(
+                getattr(item, "type", None) == "image_generation_call"
+                for item in response.output
+            )
+
+        # Sanitize raw_output to remove heavy base64 data already uploaded as attachments
+        if hasattr(response, "model_dump"):
+            raw_output = response.model_dump()
+            if has_generated_images:
+                raw_output = _sanitize_raw_output(
+                    raw_output, has_generated_images=True
+                )
+        else:
+            raw_output = str(response)
+
         trace_args = create_trace_args(
             end_time=end_time,
             inputs=extract_responses_inputs(kwargs),
@@ -833,11 +863,7 @@ def handle_responses_non_streaming_create(
             completion_tokens=usage_data.get("completion_tokens", 0),
             model=getattr(response, "model", kwargs.get("model", "unknown")),
             model_parameters=get_responses_model_parameters(kwargs),
-            raw_output=(
-                response.model_dump()
-                if hasattr(response, "model_dump")
-                else str(response)
-            ),
+            raw_output=raw_output,
             id=inference_id,
         )
 
@@ -1153,6 +1179,52 @@ def get_responses_model_parameters(kwargs: Dict[str, Any]) -> Dict[str, Any]:
         "truncation": kwargs.get("truncation"),
         "include": kwargs.get("include"),
     }
+
+
+def _sanitize_raw_output(
+    raw_output: Dict[str, Any],
+    has_audio: bool = False,
+    has_generated_images: bool = False,
+) -> Dict[str, Any]:
+    """Remove heavy base64 data from raw_output that's already uploaded as attachments.
+
+    This prevents duplicating large binary data in the trace - the data is already
+    stored in blob storage via attachments, so we replace it with a placeholder.
+
+    Args:
+        raw_output: The raw model output dict (from response.model_dump())
+        has_audio: Whether the response contains audio data (Chat Completions API)
+        has_generated_images: Whether the response contains generated images (Responses API)
+
+    Returns:
+        A sanitized copy of raw_output with heavy data replaced by placeholders
+    """
+    import copy
+
+    sanitized = copy.deepcopy(raw_output)
+
+    # Clear audio data from Chat Completions response
+    if has_audio:
+        try:
+            for choice in sanitized.get("choices", []):
+                message = choice.get("message", {})
+                if message and "audio" in message and message["audio"]:
+                    if "data" in message["audio"]:
+                        message["audio"]["data"] = "[UPLOADED_TO_STORAGE]"
+        except Exception as e:
+            logger.debug("Could not sanitize audio data from raw_output: %s", e)
+
+    # Clear image data from Responses API
+    if has_generated_images:
+        try:
+            for output_item in sanitized.get("output", []):
+                if output_item.get("type") == "image_generation_call":
+                    if "result" in output_item:
+                        output_item["result"] = "[UPLOADED_TO_STORAGE]"
+        except Exception as e:
+            logger.debug("Could not sanitize image data from raw_output: %s", e)
+
+    return sanitized
 
 
 def parse_non_streaming_output_data(
