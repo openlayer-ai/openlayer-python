@@ -1,6 +1,7 @@
 """Module with the logic to create and manage traces and steps."""
 
 import asyncio
+import atexit
 import contextvars
 import inspect
 import json
@@ -10,6 +11,7 @@ import threading
 import time
 import traceback
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
@@ -66,6 +68,34 @@ _configured_max_buffer_size: Optional[int] = None
 # Attachment upload configuration
 _configured_attachment_upload_enabled: bool = False
 
+# Background publishing configuration
+_configured_background_publish_enabled: bool = True
+
+# Background executor for async trace publishing
+_background_executor: Optional[ThreadPoolExecutor] = None
+
+
+def _get_background_executor() -> ThreadPoolExecutor:
+    """Get or create the background executor for trace publishing."""
+    global _background_executor
+    if _background_executor is None:
+        _background_executor = ThreadPoolExecutor(
+            max_workers=4, thread_name_prefix="openlayer-tracer"
+        )
+        # Register cleanup on exit
+        atexit.register(_shutdown_background_executor)
+    return _background_executor
+
+
+def _shutdown_background_executor() -> None:
+    """Shutdown the background executor gracefully."""
+    global _background_executor
+    if _background_executor is not None:
+        logger.debug("Shutting down background executor, waiting for pending tasks...")
+        _background_executor.shutdown(wait=True)
+        _background_executor = None
+        logger.debug("Background executor shutdown complete")
+
 
 def configure(
     api_key: Optional[str] = None,
@@ -78,6 +108,7 @@ def configure(
     offline_buffer_path: Optional[str] = None,
     max_buffer_size: Optional[int] = None,
     attachment_upload_enabled: bool = False,
+    background_publish_enabled: bool = True,
 ) -> None:
     """Configure the Openlayer tracer with custom settings.
 
@@ -101,6 +132,10 @@ def configure(
         attachment_upload_enabled: Enable uploading of attachments (images, audio, etc.) to
             Openlayer storage. When enabled, attachments on steps will be uploaded during
             trace completion. Defaults to False.
+        background_publish_enabled: Enable background publishing of traces. When enabled,
+            attachment uploads and trace publishing happen in a background thread, allowing
+            the main thread to return immediately. When disabled, tracing is synchronous.
+            Defaults to True.
 
     Examples:
         >>> import openlayer.lib.tracing.tracer as tracer
@@ -131,7 +166,7 @@ def configure(
     """
     global _configured_api_key, _configured_pipeline_id, _configured_base_url, _configured_timeout, _configured_max_retries, _client
     global _configured_on_flush_failure, _configured_offline_buffer_enabled, _configured_offline_buffer_path, _configured_max_buffer_size, _offline_buffer
-    global _configured_attachment_upload_enabled
+    global _configured_attachment_upload_enabled, _configured_background_publish_enabled
 
     _configured_api_key = api_key
     _configured_pipeline_id = inference_pipeline_id
@@ -143,6 +178,7 @@ def configure(
     _configured_offline_buffer_path = offline_buffer_path
     _configured_max_buffer_size = max_buffer_size
     _configured_attachment_upload_enabled = attachment_upload_enabled
+    _configured_background_publish_enabled = background_publish_enabled
 
     # Reset the client and buffer so they get recreated with new configuration
     _client = None
@@ -1498,18 +1534,73 @@ def _handle_trace_completion(
             )
             return
 
+        # Get current step prompt before potentially losing context
+        current_step = get_current_step()
+        prompt = None
+        if isinstance(current_step, steps.ChatCompletionStep):
+            prompt = current_step.inputs.get("prompt")
+
+        # Resolve inference_pipeline_id now (while we have access to config)
+        resolved_pipeline_id = (
+            inference_pipeline_id
+            or _configured_pipeline_id
+            or utils.get_env_variable("OPENLAYER_INFERENCE_PIPELINE_ID")
+        )
+
+        if _publish:
+            if _configured_background_publish_enabled:
+                # Submit to background thread pool
+                executor = _get_background_executor()
+                executor.submit(
+                    _upload_and_publish_trace,
+                    current_trace,
+                    resolved_pipeline_id,
+                    prompt,
+                    on_flush_failure,
+                )
+                logger.debug("Trace submitted to background executor for publishing")
+            else:
+                # Run synchronously
+                _upload_and_publish_trace(
+                    current_trace,
+                    resolved_pipeline_id,
+                    prompt,
+                    on_flush_failure,
+                )
+    else:
+        logger.debug("Ending step %s", step_name)
+
+
+def _upload_and_publish_trace(
+    trace: "traces.Trace",
+    inference_pipeline_id: Optional[str],
+    prompt: Optional[Any],
+    on_flush_failure: Optional[OnFlushFailureCallback],
+) -> None:
+    """Upload attachments and publish trace data to Openlayer.
+
+    This function can run either synchronously or in a background thread,
+    depending on the background_publish_enabled configuration.
+
+    Args:
+        trace: The trace to upload and publish.
+        inference_pipeline_id: The pipeline ID to publish to.
+        prompt: The prompt from the ChatCompletionStep, if applicable.
+        on_flush_failure: Optional callback for handling failures.
+    """
+    try:
         # Upload attachments before processing trace data
         if _configured_attachment_upload_enabled:
             try:
                 from .attachment_uploader import upload_trace_attachments
 
-                upload_count = upload_trace_attachments(current_trace)
+                upload_count = upload_trace_attachments(trace)
                 if upload_count > 0:
                     logger.debug("Uploaded %d attachments for trace", upload_count)
             except Exception as e:
                 logger.error("Failed to upload trace attachments: %s", e)
 
-        trace_data, input_variable_names = post_process_trace(current_trace)
+        trace_data, input_variable_names = post_process_trace(trace)
 
         config = dict(
             ConfigLlmData(
@@ -1533,53 +1624,44 @@ def _handle_trace_completion(
         if "context" in trace_data:
             config.update({"context_column_name": "context"})
 
-        if isinstance(get_current_step(), steps.ChatCompletionStep):
-            config.update(
-                {
-                    "prompt": get_current_step().inputs.get("prompt"),
-                }
-            )
-        if _publish:
-            # Use provided pipeline_id, or fall back to configured default,
-            # or finally to environment variable
-            inference_pipeline_id = (
-                inference_pipeline_id
-                or _configured_pipeline_id
-                or utils.get_env_variable("OPENLAYER_INFERENCE_PIPELINE_ID")
-            )
-            client = _get_client()
+        if prompt is not None:
+            config.update({"prompt": prompt})
 
-            if client:
-                try:
-                    response = client.inference_pipelines.data.stream(
-                        inference_pipeline_id=inference_pipeline_id,
-                        rows=[trace_data],
-                        config=config,
-                    )
-                    print(
-                        "Successfully streamed data to Openlayer. Response:",
-                        response.to_json(),
-                    )
+        client = _get_client()
 
-                except Exception as err:  # pylint: disable=broad-except
-                    logger.error(traceback.format_exc())
-                    logger.error(
-                        "Could not stream data to Openlayer (pipeline_id: %s, base_url: %s) Error: %s",
-                        inference_pipeline_id,
-                        client.base_url if client else "N/A",
-                        err,
-                    )
+        if client:
+            try:
+                response = client.inference_pipelines.data.stream(
+                    inference_pipeline_id=inference_pipeline_id,
+                    rows=[trace_data],
+                    config=config,
+                )
+                logger.info(
+                    "Successfully streamed data to Openlayer. Response: %s",
+                    response.to_json(),
+                )
 
-                    # Handle failure callback and offline buffering
-                    _handle_streaming_failure(
-                        trace_data=trace_data,
-                        config=config,
-                        inference_pipeline_id=inference_pipeline_id,
-                        error=err,
-                        on_flush_failure=on_flush_failure,
-                    )
-    else:
-        logger.debug("Ending step %s", step_name)
+            except Exception as err:  # pylint: disable=broad-except
+                logger.error(traceback.format_exc())
+                logger.error(
+                    "Could not stream data to Openlayer (pipeline_id: %s, base_url: %s) Error: %s",
+                    inference_pipeline_id,
+                    client.base_url if client else "N/A",
+                    err,
+                )
+
+                # Handle failure callback and offline buffering
+                _handle_streaming_failure(
+                    trace_data=trace_data,
+                    config=config,
+                    inference_pipeline_id=inference_pipeline_id,
+                    error=err,
+                    on_flush_failure=on_flush_failure,
+                )
+
+    except Exception as e:
+        logger.error("Error in background trace publishing: %s", e)
+        logger.error(traceback.format_exc())
 
 
 def _handle_streaming_failure(
