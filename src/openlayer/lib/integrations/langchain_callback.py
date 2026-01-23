@@ -191,6 +191,11 @@ class OpenlayerHandlerMixin:
             )
         )
 
+        # Add reserved column configurations for user context
+        if "user_id" in trace_data:
+            config.update({"user_id_column_name": "user_id"})
+        if "session_id" in trace_data:
+            config.update({"session_id_column_name": "session_id"})
         if "groundTruth" in trace_data:
             config.update({"ground_truth_column_name": "groundTruth"})
         if "context" in trace_data:
@@ -1225,6 +1230,11 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
             )
         )
 
+        # Add reserved column configurations for user context
+        if "user_id" in trace_data:
+            config.update({"user_id_column_name": "user_id"})
+        if "session_id" in trace_data:
+            config.update({"session_id_column_name": "session_id"})
         if "groundTruth" in trace_data:
             config.update({"ground_truth_column_name": "groundTruth"})
         if "context" in trace_data:
