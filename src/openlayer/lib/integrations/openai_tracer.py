@@ -543,21 +543,48 @@ def _normalize_content_item(item: Dict[str, Any]) -> ContentItem:
         )
         return AudioContent(attachment=attachment)
 
-    # File content (Chat Completions only)
+    # File content (Chat Completions API)
     elif item_type == "file":
         file_data = item.get("file", {})
         file_id = file_data.get("file_id")
-        file_data_b64 = file_data.get("file_data")
+        file_data_content = file_data.get("file_data")
         filename = file_data.get("filename", "file")
 
-        if file_data_b64:
-            attachment = Attachment.from_base64(
-                data_base64=file_data_b64,
-                name=filename,
-                media_type="application/octet-stream",
-            )
+        if file_data_content:
+            if file_data_content.startswith("data:"):
+                # Parse data URL: data:application/pdf;base64,{base64_data}
+                attachment = _parse_data_url_to_attachment(
+                    file_data_content, default_type="file"
+                )
+                attachment.name = filename
+            else:
+                # Raw base64 data
+                attachment = Attachment.from_base64(
+                    data_base64=file_data_content,
+                    name=filename,
+                    media_type="application/octet-stream",
+                )
         elif file_id:
             # Just reference the file ID (can't download without API call)
+            attachment = Attachment(name=filename)
+            attachment.metadata["openai_file_id"] = file_id
+        else:
+            attachment = Attachment(name=filename)
+
+        return FileContent(attachment=attachment)
+
+    # File content (Responses API) - different structure than Chat Completions
+    elif item_type == "input_file":
+        filename = item.get("filename", "file")
+        file_data = item.get("file_data", "")
+        file_id = item.get("file_id")
+
+        if file_data and file_data.startswith("data:"):
+            # Parse data URL: data:application/pdf;base64,{base64_data}
+            attachment = _parse_data_url_to_attachment(file_data, default_type="file")
+            attachment.name = filename
+        elif file_id:
+            # Just reference the file ID
             attachment = Attachment(name=filename)
             attachment.metadata["openai_file_id"] = file_id
         else:
