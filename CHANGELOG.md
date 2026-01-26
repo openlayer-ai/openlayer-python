@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.15.2 (2026-01-26)
+
+Full Changelog: [v0.15.1...v0.15.2](https://github.com/openlayer-ai/openlayer-python/compare/v0.15.1...v0.15.2)
+
+### Bug Fixes
+
+* **closes OPEN-8768:** langChain callback handler not using sessions and users ([e629fd3](https://github.com/openlayer-ai/openlayer-python/commit/e629fd317b02818c2440774ceeb91438447c9f1f))
+
+
+### Chores
+
+* **ci:** upgrade `actions/github-script` ([d798acb](https://github.com/openlayer-ai/openlayer-python/commit/d798acb6894849bf888f318ab15220d611855df4))
+
 ## 0.15.1 (2026-01-17)
 
 Full Changelog: [v0.15.0...v0.15.1](https://github.com/openlayer-ai/openlayer-python/compare/v0.15.0...v0.15.1)
