@@ -14,6 +14,7 @@ __all__ = [
     "trace_oci_genai",
     "trace_oci",  # Alias for backward compatibility
     "trace_litellm",
+    "trace_portkey",
     "trace_google_adk",
     "unpatch_google_adk",
     "trace_gemini",
@@ -191,6 +192,43 @@ def trace_litellm():
     from .integrations import litellm_tracer
 
     return litellm_tracer.trace_litellm()
+
+
+# ---------------------------------- Portkey ---------------------------------- #
+def trace_portkey():
+    """Enable tracing for Portkey completions.
+
+    This function patches Portkey's chat.completions.create to automatically trace
+    all OpenAI-compatible completions routed via the Portkey AI Gateway.
+
+    Example:
+        >>> from portkey_ai import Portkey
+        >>> from openlayer.lib import trace_portkey
+        >>> # Enable openlayer tracing for all Portkey completions
+        >>> trace_portkey()
+        >>> # Basic portkey client initialization    
+        >>> portkey = Portkey(
+        >>>     api_key = os.environ['PORTKEY_API_KEY'],
+        >>>     config = "YOUR_PORTKEY_CONFIG_ID", # optional your portkey config id
+        >>> )
+        >>> # use portkey normally - tracing happens automatically
+        >>> response = portkey.chat.completions.create(
+        >>>     #model = "@YOUR_PORTKEY_SLUG/YOUR_MODEL_NAME", # optional if giving config
+        >>>     messages = [
+        >>>         {"role": "system", "content": "You are a helpful assistant."},
+        >>>         {"role": "user", "content": "Write a poem on Argentina, least 100 words."}
+        >>>     ]
+        >>> )
+    """
+    # pylint: disable=import-outside-toplevel
+    try:
+        from portkey_ai import Portkey  # noqa: F401
+    except ImportError:
+        raise ImportError("portkey-ai is required for Portkey tracing. Install with: pip install portkey-ai")
+
+    from .integrations import portkey_tracer
+
+    return portkey_tracer.trace_portkey()
 
 
 # ------------------------------ Google ADK ---------------------------------- #
