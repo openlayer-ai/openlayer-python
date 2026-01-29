@@ -93,14 +93,19 @@ class Step:
                 name=name,
                 media_type=media_type,
             )
-        else:
-            # File-like object
+        elif hasattr(data, "read"):
+            # File-like object (BinaryIO, BufferedReader, etc.)
             file_bytes = data.read()
             inferred_name = name or getattr(data, "name", None) or "attachment"
             attachment = Attachment.from_bytes(
                 data=file_bytes,
                 name=inferred_name,
                 media_type=media_type or "application/octet-stream",
+            )
+        else:
+            raise TypeError(
+                f"Unsupported data type for attach(): {type(data).__name__}. "
+                "Expected bytes, str, Path, file-like object, or Attachment."
             )
 
         if metadata:
