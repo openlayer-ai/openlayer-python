@@ -400,10 +400,7 @@ def handle_non_streaming_create(
         processed_messages = extract_chat_completion_messages(kwargs["messages"])
 
         # Check if response contains audio (to sanitize raw_output)
-        has_audio = (
-            hasattr(response.choices[0].message, "audio")
-            and response.choices[0].message.audio is not None
-        )
+        has_audio = bool(getattr(response.choices[0].message, "audio", None))
 
         # Sanitize raw_output to remove heavy base64 data already uploaded as attachments
         raw_output = response.model_dump()
@@ -481,11 +478,9 @@ def extract_chat_completion_messages(
 
         # If content is a list, process each item
         if isinstance(content, list):
-            normalized_content: List[ContentItem] = []
-            for item in content:
-                content_item = _normalize_content_item(item)
-                normalized_content.append(content_item)
-
+            normalized_content: List[ContentItem] = [
+                _normalize_content_item(item) for item in content
+            ]
             processed_msg = {"role": role, "content": normalized_content}
             if name:
                 processed_msg["name"] = name
@@ -594,7 +589,8 @@ def _normalize_content_item(item: Dict[str, Any]) -> ContentItem:
 
     else:
         # Unknown type, return as TextContent with string representation
-        logger.debug("Unknown content item type: %s", item_type)
+        # Log as warning so we can learn about new OpenAI content types
+        logger.warning("Unknown content item type '%s', preserving as text", item_type)
         return TextContent(text=str(item))
 
 
@@ -874,9 +870,7 @@ def handle_responses_non_streaming_create(
         if hasattr(response, "model_dump"):
             raw_output = response.model_dump()
             if has_generated_images:
-                raw_output = _sanitize_raw_output(
-                    raw_output, has_generated_images=True
-                )
+                raw_output = _sanitize_raw_output(raw_output, has_generated_images=True)
         else:
             raw_output = str(response)
 
@@ -1114,6 +1108,10 @@ def parse_responses_output_data(
                     )
                     content_items.append(ImageContent(attachment=attachment))
 
+            else:
+                # Unknown output type - log for future support
+                logger.debug("Unknown Responses API output type: %s", output_type)
+
         # Return appropriate format based on content
         if len(content_items) > 1:
             # Multimodal output - return list of ContentItems
@@ -1127,7 +1125,7 @@ def parse_responses_output_data(
                 return content_items
 
     except Exception as e:
-        logger.debug("Could not parse Responses API output data: %s", e)
+        logger.warning("Could not parse Responses API output data: %s", e)
 
     return None
 
@@ -1230,28 +1228,44 @@ def _sanitize_raw_output(
 
     sanitized = copy.deepcopy(raw_output)
 
-    # Clear audio data from Chat Completions response
     if has_audio:
-        try:
-            for choice in sanitized.get("choices", []):
-                message = choice.get("message", {})
-                if message and "audio" in message and message["audio"]:
-                    if "data" in message["audio"]:
-                        message["audio"]["data"] = "[UPLOADED_TO_STORAGE]"
-        except Exception as e:
-            logger.debug("Could not sanitize audio data from raw_output: %s", e)
+        _sanitize_audio_data(sanitized)
 
-    # Clear image data from Responses API
     if has_generated_images:
-        try:
-            for output_item in sanitized.get("output", []):
-                if output_item.get("type") == "image_generation_call":
-                    if "result" in output_item:
-                        output_item["result"] = "[UPLOADED_TO_STORAGE]"
-        except Exception as e:
-            logger.debug("Could not sanitize image data from raw_output: %s", e)
+        _sanitize_image_data(sanitized)
 
     return sanitized
+
+
+def _sanitize_audio_data(sanitized: Dict[str, Any]) -> None:
+    """Remove audio base64 data from Chat Completions response.
+
+    Args:
+        sanitized: The raw output dict to sanitize (modified in place)
+    """
+    try:
+        for choice in sanitized.get("choices", []):
+            message = choice.get("message", {})
+            if message and "audio" in message and message["audio"]:
+                if "data" in message["audio"]:
+                    message["audio"]["data"] = "[UPLOADED_TO_STORAGE]"
+    except Exception as e:
+        logger.debug("Could not sanitize audio data from raw_output: %s", e)
+
+
+def _sanitize_image_data(sanitized: Dict[str, Any]) -> None:
+    """Remove generated image base64 data from Responses API output.
+
+    Args:
+        sanitized: The raw output dict to sanitize (modified in place)
+    """
+    try:
+        for output_item in sanitized.get("output", []):
+            if output_item.get("type") == "image_generation_call":
+                if "result" in output_item:
+                    output_item["result"] = "[UPLOADED_TO_STORAGE]"
+    except Exception as e:
+        logger.debug("Could not sanitize image data from raw_output: %s", e)
 
 
 def parse_non_streaming_output_data(

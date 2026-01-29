@@ -97,7 +97,7 @@ def upload_bytes_multipart(
     data: Union[bytes, BinaryIO],
     object_name: str,
     content_type: str,
-    fields: Optional[Dict] = None,
+    fields: Dict[str, str] = {},
 ) -> Response:
     """Upload data using multipart POST (for S3 and local storage).
 
@@ -115,8 +115,7 @@ def upload_bytes_multipart(
     if isinstance(data, bytes):
         data = io.BytesIO(data)
 
-    upload_fields = dict(fields) if fields else {}
-    upload_fields["file"] = (object_name, data, content_type)
+    upload_fields = {"file": (object_name, data, content_type), **fields}
 
     encoder = MultipartEncoder(fields=upload_fields)
     headers = {"Content-Type": encoder.content_type}
@@ -136,7 +135,7 @@ def upload_bytes_put(
     url: str,
     data: Union[bytes, BinaryIO],
     content_type: str,
-    extra_headers: Optional[Dict[str, str]] = None,
+    extra_headers: Dict[str, str] = {},
 ) -> Response:
     """Upload data using PUT request (for GCS and Azure).
 
@@ -149,9 +148,7 @@ def upload_bytes_put(
     Returns:
         The response from the upload request.
     """
-    headers = {"Content-Type": content_type}
-    if extra_headers:
-        headers.update(extra_headers)
+    headers = {"Content-Type": content_type, **extra_headers}
 
     response = requests.put(
         url,

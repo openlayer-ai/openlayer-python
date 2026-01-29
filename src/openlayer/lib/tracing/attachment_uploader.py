@@ -13,8 +13,8 @@ if TYPE_CHECKING:
     from .steps import Step
     from .traces import Trace
 
-from .attachments import Attachment
 from ..data._upload import STORAGE, StorageType, upload_bytes
+from .attachments import Attachment
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ class AttachmentUploader:
     S3, GCS, Azure, and local storage backends.
     """
 
-    def __init__(self, client: "Openlayer", storage: Optional[StorageType] = None):
+    def __init__(self, client: "Openlayer", storage: StorageType = STORAGE):
         """Initialize the attachment uploader.
 
         Args:
@@ -67,8 +67,8 @@ class AttachmentUploader:
             storage: Storage type override. Defaults to the global STORAGE setting.
         """
         self._client = client
-        self._storage = storage or STORAGE
-        self._upload_cache: Dict[str, str] = {}  # checksum -> storage_uri
+        self._storage = storage
+        self._storage_uri_cache: Dict[str, str] = {}  # checksum -> storage_uri
 
     def upload_attachment(self, attachment: "Attachment") -> "Attachment":
         """Upload a single attachment if needed.
@@ -104,8 +104,11 @@ class AttachmentUploader:
             return attachment
 
         # Check cache by checksum for deduplication
-        if attachment.checksum_md5 and attachment.checksum_md5 in self._upload_cache:
-            attachment.storage_uri = self._upload_cache[attachment.checksum_md5]
+        if (
+            attachment.checksum_md5
+            and attachment.checksum_md5 in self._storage_uri_cache
+        ):
+            attachment.storage_uri = self._storage_uri_cache[attachment.checksum_md5]
             logger.debug(
                 "Using cached storage_uri for attachment %s (checksum: %s)",
                 attachment.name,
@@ -146,7 +149,9 @@ class AttachmentUploader:
 
             # Cache for deduplication
             if attachment.checksum_md5:
-                self._upload_cache[attachment.checksum_md5] = attachment.storage_uri
+                self._storage_uri_cache[attachment.checksum_md5] = (
+                    attachment.storage_uri
+                )
 
             # Clear data after upload (no longer needed, avoid duplicating in JSON)
             attachment._pending_bytes = None
@@ -213,11 +218,11 @@ class AttachmentUploader:
         Returns:
             The number of attachments uploaded.
         """
-        upload_count = 0
         seen_ids: set = set()
 
-        def process_step(step: "Step") -> None:
-            nonlocal upload_count
+        def process_step(step: "Step") -> int:
+            """Process a step and return the number of attachments uploaded."""
+            step_upload_count = 0
 
             # Collect attachments from all sources
             all_attachments: List[Attachment] = list(step.attachments)
@@ -233,14 +238,15 @@ class AttachmentUploader:
                 if not attachment.is_uploaded() and attachment.has_data():
                     self.upload_attachment(attachment)
                     if attachment.is_uploaded():
-                        upload_count += 1
+                        step_upload_count += 1
 
             # Process nested steps recursively
             for nested_step in step.steps:
-                process_step(nested_step)
+                step_upload_count += process_step(nested_step)
 
-        for step in trace.steps:
-            process_step(step)
+            return step_upload_count
+
+        upload_count = sum(process_step(step) for step in trace.steps)
 
         if upload_count > 0:
             logger.info("Uploaded %d attachment(s) for trace", upload_count)
