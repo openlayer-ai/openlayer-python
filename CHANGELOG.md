@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.16.0 (2026-01-30)
+
+Full Changelog: [v0.15.2...v0.16.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.15.2...v0.16.0)
+
+### Features
+
+* **client:** add custom JSON encoder for extended type support ([b47689c](https://github.com/openlayer-ai/openlayer-python/commit/b47689c0a19a484ef279881e012131be2836e054))
+
 ## 0.15.2 (2026-01-26)
 
 Full Changelog: [v0.15.1...v0.15.2](https://github.com/openlayer-ai/openlayer-python/compare/v0.15.1...v0.15.2)
