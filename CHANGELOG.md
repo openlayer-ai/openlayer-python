@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.17.0 (2026-02-03)
+
+Full Changelog: [v0.16.0...v0.17.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.16.0...v0.17.0)
+
+### Features
+
+* **closes OPEN-8683:** multimodal attachment support for the Python SDK ([b50f891](https://github.com/openlayer-ai/openlayer-python/commit/b50f891714170ddcda5c4ae2fbb421e3fc8818bc))
+* **closes OPEN-8684:** enhance OpenAI tracer to support multimodal inputs/outputs ([0d8fadd](https://github.com/openlayer-ai/openlayer-python/commit/0d8faddf65c30c698e57ab33e5f958b8da806281))
+
+
+### Bug Fixes
+
+* **closes OPEN-8781:** files not being parsed correctly for OpenAI tracer ([f33de76](https://github.com/openlayer-ai/openlayer-python/commit/f33de762b8c5eef9b995e074c630775cda1bd2e1))
+
+
+### Chores
+
+* **closes OPEN-8686:** upload attachments in a non-blocking way ([5fb1ce5](https://github.com/openlayer-ai/openlayer-python/commit/5fb1ce53d99b4618216293ac62d757462c038508))
+* **closes OPEN-8725:** sanitize raw output when there are attachments ([471547b](https://github.com/openlayer-ai/openlayer-python/commit/471547bfbe9f7d273e3ac3041119a200460dc94b))
+
+
+### Refactors
+
+* various small improvements ([3a2bf2c](https://github.com/openlayer-ai/openlayer-python/commit/3a2bf2c761b3414044a0022811884ad13e3e970a))
+
 ## 0.16.0 (2026-01-30)
 
 Full Changelog: [v0.15.2...v0.16.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.15.2...v0.16.0)
