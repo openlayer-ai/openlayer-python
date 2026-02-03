@@ -215,6 +215,11 @@ def stream_chunks(
             if i > 0:
                 num_of_completion_tokens = i + 1
 
+            # Skip chunks with empty choices (e.g., Azure OpenAI heartbeat chunks)
+            if not chunk.choices:
+                yield chunk
+                continue
+
             delta = chunk.choices[0].delta
 
             if delta.content:
@@ -249,9 +254,14 @@ def stream_chunks(
             if collected_output_data:
                 output_data = "".join(collected_output_data)
             else:
-                collected_function_call["arguments"] = json.loads(
-                    collected_function_call["arguments"]
-                )
+                if collected_function_call["arguments"]:
+                    try:
+                        collected_function_call["arguments"] = json.loads(
+                            collected_function_call["arguments"]
+                        )
+                    except json.JSONDecodeError:
+                        # Keep as string if not valid JSON
+                        pass
                 output_data = collected_function_call
 
             processed_messages = extract_chat_completion_messages(kwargs["messages"])
@@ -1406,6 +1416,11 @@ def stream_parse_chunks(
             if i > 0:
                 num_of_completion_tokens = i + 1
 
+            # Skip chunks with empty choices (e.g., Azure OpenAI heartbeat chunks)
+            if not chunk.choices:
+                yield chunk
+                continue
+
             delta = chunk.choices[0].delta
 
             if delta.content:
@@ -1440,9 +1455,14 @@ def stream_parse_chunks(
             if collected_output_data:
                 output_data = "".join(collected_output_data)
             else:
-                collected_function_call["arguments"] = json.loads(
-                    collected_function_call["arguments"]
-                )
+                if collected_function_call["arguments"]:
+                    try:
+                        collected_function_call["arguments"] = json.loads(
+                            collected_function_call["arguments"]
+                        )
+                    except json.JSONDecodeError:
+                        # Keep as string if not valid JSON
+                        pass
                 output_data = collected_function_call
 
             processed_messages = extract_chat_completion_messages(kwargs["messages"])
