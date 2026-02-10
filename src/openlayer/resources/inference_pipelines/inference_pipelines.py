@@ -23,7 +23,11 @@ from .rows import (
     RowsResourceWithStreamingResponse,
     AsyncRowsResourceWithStreamingResponse,
 )
-from ...types import inference_pipeline_update_params, inference_pipeline_retrieve_params
+from ...types import (
+    inference_pipeline_update_params,
+    inference_pipeline_retrieve_params,
+    inference_pipeline_retrieve_users_params,
+)
 from ..._types import Body, Omit, Query, Headers, NoneType, NotGiven, omit, not_given
 from ..._utils import maybe_transform, async_maybe_transform
 from ..._compat import cached_property
@@ -45,6 +49,7 @@ from .test_results import (
 from ..._base_client import make_request_options
 from ...types.inference_pipeline_update_response import InferencePipelineUpdateResponse
 from ...types.inference_pipeline_retrieve_response import InferencePipelineRetrieveResponse
+from ...types.inference_pipeline_retrieve_users_response import InferencePipelineRetrieveUsersResponse
 
 __all__ = ["InferencePipelinesResource", "AsyncInferencePipelinesResource"]
 
@@ -214,6 +219,61 @@ class InferencePipelinesResource(SyncAPIResource):
             cast_to=NoneType,
         )
 
+    def retrieve_users(
+        self,
+        inference_pipeline_id: str,
+        *,
+        page: int | Omit = omit,
+        per_page: int | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> InferencePipelineRetrieveUsersResponse:
+        """
+        Get aggregated user data for an inference pipeline with pagination and metadata.
+
+        Returns a list of users who have interacted with the inference pipeline,
+        including their activity statistics such as session counts, record counts, token
+        usage, and costs.
+
+        Args:
+          page: The page to return in a paginated query.
+
+          per_page: Maximum number of items to return per page.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        if not inference_pipeline_id:
+            raise ValueError(
+                f"Expected a non-empty value for `inference_pipeline_id` but received {inference_pipeline_id!r}"
+            )
+        return self._get(
+            f"/inference-pipelines/{inference_pipeline_id}/users",
+            options=make_request_options(
+                extra_headers=extra_headers,
+                extra_query=extra_query,
+                extra_body=extra_body,
+                timeout=timeout,
+                query=maybe_transform(
+                    {
+                        "page": page,
+                        "per_page": per_page,
+                    },
+                    inference_pipeline_retrieve_users_params.InferencePipelineRetrieveUsersParams,
+                ),
+            ),
+            cast_to=InferencePipelineRetrieveUsersResponse,
+        )
+
 
 class AsyncInferencePipelinesResource(AsyncAPIResource):
     @cached_property
@@ -380,6 +440,61 @@ class AsyncInferencePipelinesResource(AsyncAPIResource):
             cast_to=NoneType,
         )
 
+    async def retrieve_users(
+        self,
+        inference_pipeline_id: str,
+        *,
+        page: int | Omit = omit,
+        per_page: int | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> InferencePipelineRetrieveUsersResponse:
+        """
+        Get aggregated user data for an inference pipeline with pagination and metadata.
+
+        Returns a list of users who have interacted with the inference pipeline,
+        including their activity statistics such as session counts, record counts, token
+        usage, and costs.
+
+        Args:
+          page: The page to return in a paginated query.
+
+          per_page: Maximum number of items to return per page.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        if not inference_pipeline_id:
+            raise ValueError(
+                f"Expected a non-empty value for `inference_pipeline_id` but received {inference_pipeline_id!r}"
+            )
+        return await self._get(
+            f"/inference-pipelines/{inference_pipeline_id}/users",
+            options=make_request_options(
+                extra_headers=extra_headers,
+                extra_query=extra_query,
+                extra_body=extra_body,
+                timeout=timeout,
+                query=await async_maybe_transform(
+                    {
+                        "page": page,
+                        "per_page": per_page,
+                    },
+                    inference_pipeline_retrieve_users_params.InferencePipelineRetrieveUsersParams,
+                ),
+            ),
+            cast_to=InferencePipelineRetrieveUsersResponse,
+        )
+
 
 class InferencePipelinesResourceWithRawResponse:
     def __init__(self, inference_pipelines: InferencePipelinesResource) -> None:
@@ -393,6 +508,9 @@ class InferencePipelinesResourceWithRawResponse:
         )
         self.delete = to_raw_response_wrapper(
             inference_pipelines.delete,
+        )
+        self.retrieve_users = to_raw_response_wrapper(
+            inference_pipelines.retrieve_users,
         )
 
     @cached_property
@@ -421,6 +539,9 @@ class AsyncInferencePipelinesResourceWithRawResponse:
         self.delete = async_to_raw_response_wrapper(
             inference_pipelines.delete,
         )
+        self.retrieve_users = async_to_raw_response_wrapper(
+            inference_pipelines.retrieve_users,
+        )
 
     @cached_property
     def data(self) -> AsyncDataResourceWithRawResponse:
@@ -448,6 +569,9 @@ class InferencePipelinesResourceWithStreamingResponse:
         self.delete = to_streamed_response_wrapper(
             inference_pipelines.delete,
         )
+        self.retrieve_users = to_streamed_response_wrapper(
+            inference_pipelines.retrieve_users,
+        )
 
     @cached_property
     def data(self) -> DataResourceWithStreamingResponse:
@@ -474,6 +598,9 @@ class AsyncInferencePipelinesResourceWithStreamingResponse:
         )
         self.delete = async_to_streamed_response_wrapper(
             inference_pipelines.delete,
+        )
+        self.retrieve_users = async_to_streamed_response_wrapper(
+            inference_pipelines.retrieve_users,
         )
 
     @cached_property
