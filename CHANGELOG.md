@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.17.1 (2026-02-10)
+
+Full Changelog: [v0.17.0...v0.17.1](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.0...v0.17.1)
+
+### Bug Fixes
+
+* **closes OPEN-8856:** azure OpenAI tracer not working when chunks have no 'choices' ([fcaeb8b](https://github.com/openlayer-ai/openlayer-python/commit/fcaeb8b631d5c046bb719ef9c47022fff59df1d1))
+
+
+### Chores
+
+* **closes OPEN-8647:** add endpoint to retrieve aggregated user data for inference pipelines ([fbddbaf](https://github.com/openlayer-ai/openlayer-python/commit/fbddbaf9cc47dc46287bbc703726053137e2d81a))
+* **internal:** bump dependencies ([67ea296](https://github.com/openlayer-ai/openlayer-python/commit/67ea296c0a534663ba2000035c8a03c7d5d7ab7f))
+
 ## 0.17.0 (2026-02-03)
 
 Full Changelog: [v0.16.0...v0.17.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.16.0...v0.17.0)
