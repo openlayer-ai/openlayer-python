@@ -18,3 +18,9 @@ from .inference_pipeline_update_params import InferencePipelineUpdateParams as I
 from .inference_pipeline_retrieve_params import InferencePipelineRetrieveParams as InferencePipelineRetrieveParams
 from .inference_pipeline_update_response import InferencePipelineUpdateResponse as InferencePipelineUpdateResponse
 from .inference_pipeline_retrieve_response import InferencePipelineRetrieveResponse as InferencePipelineRetrieveResponse
+from .inference_pipeline_retrieve_users_params import (
+    InferencePipelineRetrieveUsersParams as InferencePipelineRetrieveUsersParams,
+)
+from .inference_pipeline_retrieve_users_response import (
+    InferencePipelineRetrieveUsersResponse as InferencePipelineRetrieveUsersResponse,
+)
