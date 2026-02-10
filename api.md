@@ -119,7 +119,11 @@ Methods:
 Types:
 
 ```python
-from openlayer.types import InferencePipelineRetrieveResponse, InferencePipelineUpdateResponse
+from openlayer.types import (
+    InferencePipelineRetrieveResponse,
+    InferencePipelineUpdateResponse,
+    InferencePipelineRetrieveUsersResponse,
+)
 ```
 
 Methods:
@@ -127,6 +131,7 @@ Methods:
 - <code title="get /inference-pipelines/{inferencePipelineId}">client.inference_pipelines.<a href="./src/openlayer/resources/inference_pipelines/inference_pipelines.py">retrieve</a>(inference_pipeline_id, \*\*<a href="src/openlayer/types/inference_pipeline_retrieve_params.py">params</a>) -> <a href="./src/openlayer/types/inference_pipeline_retrieve_response.py">InferencePipelineRetrieveResponse</a></code>
 - <code title="put /inference-pipelines/{inferencePipelineId}">client.inference_pipelines.<a href="./src/openlayer/resources/inference_pipelines/inference_pipelines.py">update</a>(inference_pipeline_id, \*\*<a href="src/openlayer/types/inference_pipeline_update_params.py">params</a>) -> <a href="./src/openlayer/types/inference_pipeline_update_response.py">InferencePipelineUpdateResponse</a></code>
 - <code title="delete /inference-pipelines/{inferencePipelineId}">client.inference_pipelines.<a href="./src/openlayer/resources/inference_pipelines/inference_pipelines.py">delete</a>(inference_pipeline_id) -> None</code>
+- <code title="get /inference-pipelines/{inferencePipelineId}/users">client.inference_pipelines.<a href="./src/openlayer/resources/inference_pipelines/inference_pipelines.py">retrieve_users</a>(inference_pipeline_id, \*\*<a href="src/openlayer/types/inference_pipeline_retrieve_users_params.py">params</a>) -> <a href="./src/openlayer/types/inference_pipeline_retrieve_users_response.py">InferencePipelineRetrieveUsersResponse</a></code>
 
 ## Data
 
