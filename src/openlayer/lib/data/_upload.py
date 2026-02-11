@@ -67,7 +67,7 @@ def upload_bytes(
             data=data,
             object_name=object_name,
             content_type=content_type,
-            fields=fields,
+            fields=fields or {},
         )
     elif storage == StorageType.GCP:
         return upload_bytes_put(

@@ -59,15 +59,22 @@ class AttachmentUploader:
     S3, GCS, Azure, and local storage backends.
     """
 
-    def __init__(self, client: "Openlayer", storage: StorageType = STORAGE):
+    def __init__(
+        self,
+        client: "Openlayer",
+        storage: StorageType = STORAGE,
+        url_upload_enabled: bool = False,
+    ):
         """Initialize the attachment uploader.
 
         Args:
             client: The Openlayer client instance.
             storage: Storage type override. Defaults to the global STORAGE setting.
+            url_upload_enabled: Whether to download and re-upload URL attachments.
         """
         self._client = client
         self._storage = storage
+        self._url_upload_enabled = url_upload_enabled
         self._storage_uri_cache: Dict[str, str] = {}  # checksum -> storage_uri
 
     def upload_attachment(self, attachment: "Attachment") -> "Attachment":
@@ -88,12 +95,25 @@ class AttachmentUploader:
             logger.debug("Attachment %s already uploaded", attachment.name)
             return attachment
 
-        # Skip if it has an external URL (no upload needed)
+        # Handle external URL attachments
         if attachment.url:
-            logger.debug(
-                "Attachment %s has external URL, skipping upload", attachment.name
-            )
-            return attachment
+            if self._url_upload_enabled:
+                logger.debug(
+                    "Downloading attachment %s from external URL for upload",
+                    attachment.name,
+                )
+                if not attachment.download_url():
+                    logger.warning(
+                        "Failed to download attachment %s from URL, skipping upload",
+                        attachment.name,
+                    )
+                    return attachment
+            else:
+                logger.debug(
+                    "Attachment %s has external URL, skipping upload",
+                    attachment.name,
+                )
+                return attachment
 
         # Check if we have data to upload
         if not attachment.has_data():
@@ -235,7 +255,11 @@ class AttachmentUploader:
                     continue
                 seen_ids.add(attachment.id)
 
-                if not attachment.is_uploaded() and attachment.has_data():
+                needs_upload = not attachment.is_uploaded() and (
+                    attachment.has_data()
+                    or (self._url_upload_enabled and attachment.url)
+                )
+                if needs_upload:
                     self.upload_attachment(attachment)
                     if attachment.is_uploaded():
                         step_upload_count += 1
@@ -273,7 +297,10 @@ def get_uploader() -> Optional[AttachmentUploader]:
     if _uploader is None:
         client = tracer._get_client()
         if client:
-            _uploader = AttachmentUploader(client)
+            _uploader = AttachmentUploader(
+                client,
+                url_upload_enabled=tracer._configured_url_upload_enabled,
+            )
 
     return _uploader
 
