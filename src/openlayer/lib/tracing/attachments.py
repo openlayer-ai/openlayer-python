@@ -326,6 +326,31 @@ class Attachment:
             checksum_md5=checksum_md5,
         )
 
+    def download_url(self) -> bool:
+        """Download data from self.url and populate _pending_bytes, size_bytes, checksum_md5.
+
+        Returns:
+            True if download succeeded, False otherwise.
+        """
+        if not self.url:
+            return False
+
+        try:
+            import httpx
+
+            with httpx.Client(follow_redirects=True) as http_client:
+                response = http_client.get(self.url)
+                response.raise_for_status()
+
+            data = response.content
+            self._pending_bytes = data
+            self.size_bytes = len(data)
+            self.checksum_md5 = hashlib.md5(data).hexdigest()
+            return True
+        except Exception as e:
+            logger.error("Failed to download attachment from URL %s: %s", self.url, e)
+            return False
+
     def get_bytes(self) -> Optional[bytes]:
         """Get the binary data for this attachment.
 
