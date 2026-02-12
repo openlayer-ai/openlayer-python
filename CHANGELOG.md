@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.17.2 (2026-02-12)
+
+Full Changelog: [v0.17.1...v0.17.2](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.1...v0.17.2)
+
+### Chores
+
+* **internal:** fix lint error on Python 3.14 ([4f37194](https://github.com/openlayer-ai/openlayer-python/commit/4f37194fac395a9070c34f90ac35680ec2211026))
+
 ## 0.17.1 (2026-02-10)
 
 Full Changelog: [v0.17.0...v0.17.1](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.0...v0.17.1)
