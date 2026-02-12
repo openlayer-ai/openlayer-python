@@ -115,6 +115,8 @@ def upload_bytes_multipart(
     if isinstance(data, bytes):
         data = io.BytesIO(data)
 
+    # fields can be None when using local storage (presigned URL has no S3 policy fields)
+    fields = fields or {}
     upload_fields = {"file": (object_name, data, content_type), **fields}
 
     encoder = MultipartEncoder(fields=upload_fields)

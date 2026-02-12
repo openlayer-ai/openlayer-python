@@ -130,18 +130,24 @@ class AttachmentUploader:
             if file_bytes is None:
                 raise ValueError(f"No data available for attachment {attachment.name}")
 
-            # Upload using the shared upload function
+            # Upload using the shared upload function.
+            # presigned_response.fields is None for local storage (only S3 needs policy fields)
+            try:
+                fields = (
+                    dict(presigned_response.fields)
+                    if presigned_response.fields is not None
+                    else {}
+                )
+            except (TypeError, ValueError):
+                fields = {}
+
             upload_bytes(
                 storage=self._storage,
                 url=presigned_response.url,
                 data=file_bytes,
                 object_name=object_name,
                 content_type=attachment.media_type,
-                fields=(
-                    dict(presigned_response.fields)
-                    if presigned_response.fields
-                    else None
-                ),
+                fields=fields,
             )
 
             # Set the storage URI on the attachment
