@@ -67,6 +67,7 @@ _configured_max_buffer_size: Optional[int] = None
 
 # Attachment upload configuration
 _configured_attachment_upload_enabled: bool = False
+_configured_url_upload_enabled: bool = False
 
 # Background publishing configuration
 _configured_background_publish_enabled: bool = True
@@ -108,6 +109,7 @@ def configure(
     offline_buffer_path: Optional[str] = None,
     max_buffer_size: Optional[int] = None,
     attachment_upload_enabled: bool = False,
+    url_upload_enabled: bool = False,
     background_publish_enabled: bool = True,
 ) -> None:
     """Configure the Openlayer tracer with custom settings.
@@ -132,6 +134,10 @@ def configure(
         attachment_upload_enabled: Enable uploading of attachments (images, audio, etc.) to
             Openlayer storage. When enabled, attachments on steps will be uploaded during
             trace completion. Defaults to False.
+        url_upload_enabled: Enable downloading and re-uploading of external URL
+            attachments to Openlayer storage. When enabled, attachments that reference
+            external URLs will be fetched and uploaded so the platform has a durable copy.
+            Requires attachment_upload_enabled to also be True. Defaults to False.
         background_publish_enabled: Enable background publishing of traces. When enabled,
             attachment uploads and trace publishing happen in a background thread, allowing
             the main thread to return immediately. When disabled, tracing is synchronous.
@@ -166,7 +172,7 @@ def configure(
     """
     global _configured_api_key, _configured_pipeline_id, _configured_base_url, _configured_timeout, _configured_max_retries, _client
     global _configured_on_flush_failure, _configured_offline_buffer_enabled, _configured_offline_buffer_path, _configured_max_buffer_size, _offline_buffer
-    global _configured_attachment_upload_enabled, _configured_background_publish_enabled
+    global _configured_attachment_upload_enabled, _configured_url_upload_enabled, _configured_background_publish_enabled
 
     _configured_api_key = api_key
     _configured_pipeline_id = inference_pipeline_id
@@ -178,6 +184,7 @@ def configure(
     _configured_offline_buffer_path = offline_buffer_path
     _configured_max_buffer_size = max_buffer_size
     _configured_attachment_upload_enabled = attachment_upload_enabled
+    _configured_url_upload_enabled = url_upload_enabled
     _configured_background_publish_enabled = background_publish_enabled
 
     # Reset the client and buffer so they get recreated with new configuration
