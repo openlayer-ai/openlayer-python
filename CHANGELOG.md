@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.17.3 (2026-02-13)
+
+Full Changelog: [v0.17.2...v0.17.3](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.2...v0.17.3)
+
+### Bug Fixes
+
+* **upload.py:** fix upload for local ([2d6500f](https://github.com/openlayer-ai/openlayer-python/commit/2d6500f210fdf90635a678eca16b2ee3333587fd))
+
+
+### Chores
+
+* format all `api.md` files ([7591719](https://github.com/openlayer-ai/openlayer-python/commit/759171978575787e5de90da26a248e0f23285383))
+
 ## 0.17.2 (2026-02-12)
 
 Full Changelog: [v0.17.1...v0.17.2](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.1...v0.17.2)
