@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.17.4 (2026-02-13)
+
+Full Changelog: [v0.17.3...v0.17.4](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.3...v0.17.4)
+
+### Bug Fixes
+
+* **closes OPEN-9006:** multimodal feature not working in production with audio inputs ([fe2398d](https://github.com/openlayer-ai/openlayer-python/commit/fe2398d62c32c899c647bbec36b3df61d0ee1547))
+
 ## 0.17.3 (2026-02-13)
 
 Full Changelog: [v0.17.2...v0.17.3](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.2...v0.17.3)

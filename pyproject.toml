@@ -1,6 +1,6 @@
 [project]
 name = "openlayer"
-version = "0.17.3"
+version = "0.17.4"
 description = "The official Python library for the openlayer API"
 dynamic = ["readme"]
 license = "Apache-2.0"
