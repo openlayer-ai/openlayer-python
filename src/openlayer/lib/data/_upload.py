@@ -67,7 +67,7 @@ def upload_bytes(
             data=data,
             object_name=object_name,
             content_type=content_type,
-            fields=fields,
+            fields=fields or {},
         )
     elif storage == StorageType.GCP:
         return upload_bytes_put(
@@ -115,9 +115,10 @@ def upload_bytes_multipart(
     if isinstance(data, bytes):
         data = io.BytesIO(data)
 
-    # fields can be None when using local storage (presigned URL has no S3 policy fields)
+    # S3 requires the "file" field to be last in the multipart form.
+    # Policy fields (key, policy, x-amz-credential, etc.) must come first.
     fields = fields or {}
-    upload_fields = {"file": (object_name, data, content_type), **fields}
+    upload_fields = {**fields, "file": (object_name, data, content_type)}
 
     encoder = MultipartEncoder(fields=upload_fields)
     headers = {"Content-Type": encoder.content_type}
