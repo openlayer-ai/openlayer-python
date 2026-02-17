@@ -216,7 +216,8 @@ def stream_chunks(
                 num_of_completion_tokens = i + 1
 
             # Skip chunks with empty choices (e.g., Azure OpenAI heartbeat chunks)
-            if not chunk.choices:
+            choices = getattr(chunk, "choices", None)
+            if not choices:
                 yield chunk
                 continue
 
@@ -1344,14 +1345,25 @@ def parse_non_streaming_output_data(
     # Function/tool call response
     if output_function_call or output_tool_calls:
         if output_function_call:
+            args_str = getattr(output_function_call, "arguments", "") or ""
+            try:
+                arguments = json.loads(args_str) if args_str.strip() else {}
+            except json.JSONDecodeError:
+                arguments = args_str
             return {
                 "name": output_function_call.name,
-                "arguments": json.loads(output_function_call.arguments),
+                "arguments": arguments,
             }
         else:
+            func = output_tool_calls[0].function
+            args_str = getattr(func, "arguments", "") or ""
+            try:
+                arguments = json.loads(args_str) if args_str.strip() else {}
+            except json.JSONDecodeError:
+                arguments = args_str
             return {
-                "name": output_tool_calls[0].function.name,
-                "arguments": json.loads(output_tool_calls[0].function.arguments),
+                "name": func.name,
+                "arguments": arguments,
             }
 
     return None
@@ -1417,7 +1429,8 @@ def stream_parse_chunks(
                 num_of_completion_tokens = i + 1
 
             # Skip chunks with empty choices (e.g., Azure OpenAI heartbeat chunks)
-            if not chunk.choices:
+            choices = getattr(chunk, "choices", None)
+            if not choices:
                 yield chunk
                 continue
 

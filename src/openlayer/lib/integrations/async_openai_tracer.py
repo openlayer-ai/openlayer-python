@@ -206,6 +206,11 @@ async def handle_async_streaming_create(
                 num_of_completion_tokens = i + 1
             i += 1
 
+            choices = getattr(chunk, "choices", None)
+            if not choices:
+                yield chunk
+                continue
+
             delta = chunk.choices[0].delta
 
             if delta.content:
@@ -235,7 +240,13 @@ async def handle_async_streaming_create(
             if collected_output_data:
                 output_data = "".join(collected_output_data)
             else:
-                collected_function_call["arguments"] = json.loads(collected_function_call["arguments"])
+                if collected_function_call["arguments"]:
+                    try:
+                        collected_function_call["arguments"] = json.loads(
+                            collected_function_call["arguments"]
+                        )
+                    except json.JSONDecodeError:
+                        pass
                 output_data = collected_function_call
 
             trace_args = create_trace_args(
@@ -543,6 +554,12 @@ async def handle_async_streaming_parse(
                 num_of_completion_tokens = i + 1
             i += 1
 
+            # Skip chunks with empty choices (e.g., Azure OpenAI heartbeat chunks)
+            choices = getattr(chunk, "choices", None)
+            if not choices:
+                yield chunk
+                continue
+
             delta = chunk.choices[0].delta
 
             if delta.content:
@@ -578,9 +595,13 @@ async def handle_async_streaming_parse(
             if collected_output_data:
                 output_data = "".join(collected_output_data)
             else:
-                collected_function_call["arguments"] = json.loads(
-                    collected_function_call["arguments"]
-                )
+                if collected_function_call["arguments"]:
+                    try:
+                        collected_function_call["arguments"] = json.loads(
+                            collected_function_call["arguments"]
+                        )
+                    except json.JSONDecodeError:
+                        pass
                 output_data = collected_function_call
 
             trace_args = create_trace_args(
