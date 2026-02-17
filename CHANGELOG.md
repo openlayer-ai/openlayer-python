@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.17.5 (2026-02-17)
+
+Full Changelog: [v0.17.4...v0.17.5](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.4...v0.17.5)
+
+### Bug Fixes
+
+* **open-9027:** azure openai tracer fix for chunks ([5fa4e0d](https://github.com/openlayer-ai/openlayer-python/commit/5fa4e0d108011111b6d2abcbe2c759c933ef7571))
+
 ## 0.17.4 (2026-02-13)
 
 Full Changelog: [v0.17.3...v0.17.4](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.3...v0.17.4)
