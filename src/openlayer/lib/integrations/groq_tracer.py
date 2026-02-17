@@ -133,6 +133,11 @@ def stream_chunks(
             if i > 0:
                 num_of_completion_tokens = i + 1
 
+            choices = getattr(chunk, "choices", None)
+            if not choices:
+                yield chunk
+                continue
+
             delta = chunk.choices[0].delta
 
             if delta.content:
@@ -161,7 +166,13 @@ def stream_chunks(
             if collected_output_data:
                 output_data = "".join(collected_output_data)
             else:
-                collected_function_call["arguments"] = json.loads(collected_function_call["arguments"])
+                if collected_function_call["arguments"]:
+                    try:
+                        collected_function_call["arguments"] = json.loads(
+                            collected_function_call["arguments"]
+                        )
+                    except json.JSONDecodeError:
+                        pass
                 output_data = collected_function_call
 
             # Get usage data from the last chunk
@@ -321,14 +332,25 @@ def parse_non_streaming_output_data(
         output_data = output_content.strip()
     elif output_function_call or output_tool_calls:
         if output_function_call:
+            args_str = getattr(output_function_call, "arguments", "") or ""
+            try:
+                arguments = json.loads(args_str) if args_str.strip() else {}
+            except json.JSONDecodeError:
+                arguments = args_str
             function_call = {
                 "name": output_function_call.name,
-                "arguments": json.loads(output_function_call.arguments),
+                "arguments": arguments,
             }
         else:
+            func = output_tool_calls[0].function
+            args_str = getattr(func, "arguments", "") or ""
+            try:
+                arguments = json.loads(args_str) if args_str.strip() else {}
+            except json.JSONDecodeError:
+                arguments = args_str
             function_call = {
-                "name": output_tool_calls[0].function.name,
-                "arguments": json.loads(output_tool_calls[0].function.arguments),
+                "name": func.name,
+                "arguments": arguments,
             }
         output_data = function_call
     else:
