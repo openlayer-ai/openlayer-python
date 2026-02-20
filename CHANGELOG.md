@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.17.6 (2026-02-20)
+
+Full Changelog: [v0.17.5...v0.17.6](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.5...v0.17.6)
+
+### Chores
+
+* update mock server docs ([e5d4a3d](https://github.com/openlayer-ai/openlayer-python/commit/e5d4a3d7be61a4171fb29deef6e2d8040cfce910))
+
 ## 0.17.5 (2026-02-17)
 
 Full Changelog: [v0.17.4...v0.17.5](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.4...v0.17.5)
