@@ -1,8 +1,12 @@
 """Test Portkey tracer integration."""
 
+# openlayer.lib.integrations is in pyright's ignore list, so imports from portkey_tracer
+# get unknown/partially unknown types; disable these diagnostics for this test file only.
+# pyright: reportUnknownVariableType=false, reportUnknownMemberType=false
+
 import json
 from types import SimpleNamespace
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from unittest.mock import Mock, patch
 
 import pytest  # type: ignore
@@ -244,7 +248,11 @@ class TestPortkeyIntegration:
         """Actual usage data should be returned when available."""
         from openlayer.lib.integrations.portkey_tracer import calculate_streaming_usage_and_cost
 
-        latest_usage = {"total_tokens": 100, "prompt_tokens": 40, "completion_tokens": 60}
+        latest_usage: Dict[str, Optional[int]] = {
+            "total_tokens": 100,
+            "prompt_tokens": 40,
+            "completion_tokens": 60,
+        }
         latest_metadata = {"cost": 0.99}
 
         result = calculate_streaming_usage_and_cost(
