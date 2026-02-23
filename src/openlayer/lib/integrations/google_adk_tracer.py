@@ -444,6 +444,63 @@ def _extract_llm_attributes(llm_request_dict: Dict[str, Any], llm_response: Opti
     return attributes
 
 
+def _extract_tool_info(tool: Any) -> Optional[Dict[str, Any]]:
+    """Extract info from a single tool entry in an ADK agent's tools list.
+
+    ADK agents can have three kinds of tool entries:
+    1. Raw callables (Python functions) — have ``__name__`` but not ``name``
+    2. BaseTool subclass instances — have ``.name`` and ``.description``
+    3. AgentTool instances — BaseTool with an ``.agent`` attribute wrapping
+       another agent (the "agent-as-a-tool" pattern)
+
+    For AgentTool, we recursively extract the wrapped agent's own tools
+    so the trace shows the full tool hierarchy.
+
+    Args:
+        tool: A tool entry from an ADK agent's ``tools`` list.
+
+    Returns:
+        Dictionary with tool metadata, or None if the tool cannot be identified.
+    """
+    tool_info: Optional[Dict[str, Any]] = None
+
+    # Case 1: AgentTool (must check before generic BaseTool)
+    if hasattr(tool, "agent") and hasattr(tool, "name"):
+        tool_info = {
+            "name": tool.name,
+            "type": "agent_tool",
+        }
+        if hasattr(tool, "description") and tool.description:
+            tool_info["description"] = tool.description
+
+        # Recursively extract the wrapped agent's tools
+        wrapped_agent = tool.agent
+        if hasattr(wrapped_agent, "tools") and wrapped_agent.tools:
+            agent_tools = []
+            for inner_tool in wrapped_agent.tools:
+                inner_info = _extract_tool_info(inner_tool)
+                if inner_info:
+                    agent_tools.append(inner_info)
+            if agent_tools:
+                tool_info["agent_tools"] = agent_tools
+
+    # Case 2: BaseTool subclass (has .name attribute set by BaseTool.__init__)
+    elif hasattr(tool, "name") and tool.name:
+        tool_info = {"name": tool.name}
+        if hasattr(tool, "description") and tool.description:
+            tool_info["description"] = tool.description
+
+    # Case 3: Raw callable (plain Python function or lambda)
+    elif callable(tool):
+        name = getattr(tool, "__name__", None) or getattr(tool, "__qualname__", "unknown_tool")
+        tool_info = {"name": name}
+        doc = getattr(tool, "__doc__", None)
+        if doc:
+            tool_info["description"] = doc.strip().split("\n")[0]
+
+    return tool_info
+
+
 def extract_agent_attributes(instance: Any) -> Dict[str, Any]:
     """Extract agent metadata for tracing.
 
@@ -465,13 +522,13 @@ def extract_agent_attributes(instance: Any) -> Dict[str, Any]:
         attributes["instruction"] = instance.instruction
 
     # Extract tool information
+    # ADK agents store tools as a mix of raw callables (functions),
+    # BaseTool instances, and AgentTool wrappers. We need to handle all three.
     if hasattr(instance, "tools") and instance.tools:
         tools_info = []
         for tool in instance.tools:
-            if hasattr(tool, "name"):
-                tool_info = {"name": tool.name}
-                if hasattr(tool, "description"):
-                    tool_info["description"] = tool.description
+            tool_info = _extract_tool_info(tool)
+            if tool_info:
                 tools_info.append(tool_info)
         if tools_info:
             attributes["tools"] = tools_info
