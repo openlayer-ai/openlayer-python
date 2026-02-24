@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.17.7 (2026-02-24)
+
+Full Changelog: [v0.17.6...v0.17.7](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.6...v0.17.7)
+
+### Bug Fixes
+
+* **open-8974:** detect all tool types in Google ADK agent traces ([0ee64fe](https://github.com/openlayer-ai/openlayer-python/commit/0ee64fe46b1adf5eebcb9cd48fab052c730f2b42))
+
+
+### Chores
+
+* **internal:** add request options to SSE classes ([a60c8e4](https://github.com/openlayer-ai/openlayer-python/commit/a60c8e4d4502df796d36390564017743d1c74459))
+* **internal:** make `test_proxy_environment_variables` more resilient ([428cd95](https://github.com/openlayer-ai/openlayer-python/commit/428cd95607584130c4341e573dedcf7363d4aa3a))
+
 ## 0.17.6 (2026-02-20)
 
 Full Changelog: [v0.17.5...v0.17.6](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.5...v0.17.6)
