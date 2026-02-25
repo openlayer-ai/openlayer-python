@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.17.9 (2026-02-25)
+
+Full Changelog: [v0.17.8...v0.17.9](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.8...v0.17.9)
+
+### Chores
+
+* **closes OPEN-8832:** optionally upload data from external URLs to our storage ([c5059a7](https://github.com/openlayer-ai/openlayer-python/commit/c5059a7b203286d1458513d4d29e47caa4c42fdf))
+
 ## 0.17.8 (2026-02-25)
 
 Full Changelog: [v0.17.7...v0.17.8](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.7...v0.17.8)
