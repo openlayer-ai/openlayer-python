@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.17.8 (2026-02-25)
+
+Full Changelog: [v0.17.7...v0.17.8](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.7...v0.17.8)
+
+### Chores
+
+* **internal:** make `test_proxy_environment_variables` more resilient to env ([ad5b39e](https://github.com/openlayer-ai/openlayer-python/commit/ad5b39e8b878c8b4737ad49e0f4e66d7a593c0d8))
+
 ## 0.17.7 (2026-02-24)
 
 Full Changelog: [v0.17.6...v0.17.7](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.6...v0.17.7)
