@@ -118,6 +118,9 @@ class Step:
         """Logs step data."""
         for key, value in kwargs.items():
             if hasattr(self, key):
+                if key == "metadata":
+                    self.metadata.update(value)
+                    continue
                 setattr(self, key, value)
 
     def to_dict(self) -> Dict[str, Any]:
