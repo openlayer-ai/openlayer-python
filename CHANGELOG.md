@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.17.11 (2026-03-05)
+
+Full Changelog: [v0.17.10...v0.17.11](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.10...v0.17.11)
+
+### Bug Fixes
+
+* **closes OPEN-9306:** oCI tracer issue serializing GenericChatResponse ([#608](https://github.com/openlayer-ai/openlayer-python/issues/608)) ([9e60b94](https://github.com/openlayer-ai/openlayer-python/commit/9e60b94f155d70a6044f84287333a256abe3097e))
+
+
+### Chores
+
+* **closes OPEN-9405:** allow specifying/logging question column name ([#607](https://github.com/openlayer-ai/openlayer-python/issues/607)) ([436def7](https://github.com/openlayer-ai/openlayer-python/commit/436def78c8840a417aac1599600b25cb058cbc83))
+
 ## 0.17.10 (2026-03-05)
 
 Full Changelog: [v0.17.9...v0.17.10](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.9...v0.17.10)
