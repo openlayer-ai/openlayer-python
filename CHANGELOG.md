@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.17.10 (2026-03-05)
+
+Full Changelog: [v0.17.9...v0.17.10](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.9...v0.17.10)
+
+### Bug Fixes
+
+* **closes OPEN-9372:** ensure 'log_context' and 'log_output' work when called from the same function ([d3079ce](https://github.com/openlayer-ai/openlayer-python/commit/d3079ce72adf6c86d1db65095e001f5314765697))
+
 ## 0.17.9 (2026-02-25)
 
 Full Changelog: [v0.17.8...v0.17.9](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.8...v0.17.9)
