@@ -4,7 +4,7 @@ Openlayer SDK.
 
 import json
 import os
-from typing import Optional
+from typing import Any, Optional
 
 import yaml
 
@@ -70,3 +70,24 @@ def json_serialize(data):
             return data  # Data was serializable
         except TypeError:
             return str(data)  # Not serializable, convert to string
+
+
+def safe_serialize_raw_output(response: Any) -> Any:
+    """Return a JSON-safe payload for tracer raw_output fields.
+
+    This helper is intentionally generic so integration tracers can safely
+    serialize provider SDK responses with mixed object types.
+    """
+    try:
+        raw_candidate = response.data if hasattr(response, "data") else response
+
+        if hasattr(raw_candidate, "model_dump") and callable(raw_candidate.model_dump):
+            return json_serialize(raw_candidate.model_dump())
+        if hasattr(raw_candidate, "to_dict") and callable(raw_candidate.to_dict):
+            return json_serialize(raw_candidate.to_dict())
+        if hasattr(raw_candidate, "__dict__"):
+            return json_serialize(raw_candidate.__dict__)
+
+        return json_serialize(raw_candidate)
+    except Exception:
+        return str(response)

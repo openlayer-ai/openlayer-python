@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from oci.generative_ai_inference import GenerativeAiInferenceClient
 
 from ..tracing import tracer
+from ..utils import safe_serialize_raw_output
 
 logger = logging.getLogger(__name__)
 
@@ -126,8 +127,16 @@ def handle_streaming_chat(
     Iterator[Any]
         A generator that yields the chunks of the completion.
     """
+    # OCI SDK versions may expose stream events differently; support both wrapped
+    # responses (`response.data.events()`) and direct iterators.
+    chunks = response
+    if hasattr(response, "data") and hasattr(response.data, "events") and callable(response.data.events):
+        chunks = response.data.events()
+    elif hasattr(response, "events") and callable(response.events):
+        chunks = response.events()
+
     return stream_chunks(
-        chunks=response.data.events(),
+        chunks=chunks,
         chat_details=chat_details,
         kwargs=kwargs,
         start_time=start_time,
@@ -202,6 +211,7 @@ def stream_chunks(
 
     except Exception as e:
         logger.error("Failed yield chunk. %s", e)
+        raise
     finally:
         # Try to add step to the trace
         try:
@@ -306,7 +316,7 @@ def handle_non_streaming_chat(
             completion_tokens=tokens_info.get("output_tokens"),
             model=model_id,
             model_parameters=get_model_parameters(chat_details),
-            raw_output=response.data.__dict__ if hasattr(response, "data") else response.__dict__,
+            raw_output=safe_serialize_raw_output(response),
             id=None,
             metadata=additional_metadata,
         )
