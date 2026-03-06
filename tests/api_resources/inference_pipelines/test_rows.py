@@ -9,13 +9,78 @@ import pytest
 
 from openlayer import Openlayer, AsyncOpenlayer
 from tests.utils import assert_matches_type
-from openlayer.types.inference_pipelines import RowUpdateResponse
+from openlayer.types.inference_pipelines import (
+    RowCreateResponse,
+    RowUpdateResponse,
+)
 
 base_url = os.environ.get("TEST_API_BASE_URL", "http://127.0.0.1:4010")
 
 
 class TestRows:
     parametrize = pytest.mark.parametrize("client", [False, True], indirect=True, ids=["loose", "strict"])
+
+    @parametrize
+    def test_method_create(self, client: Openlayer) -> None:
+        row = client.inference_pipelines.rows.create(
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+        )
+        assert_matches_type(RowCreateResponse, row, path=["response"])
+
+    @parametrize
+    def test_method_create_with_all_params(self, client: Openlayer) -> None:
+        row = client.inference_pipelines.rows.create(
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            asc=True,
+            page=1,
+            per_page=1,
+            sort_column="sortColumn",
+            column_filters=[
+                {
+                    "measurement": "openlayer_token_set",
+                    "operator": "contains_none",
+                    "value": ["cat"],
+                }
+            ],
+            exclude_row_id_list=[0],
+            not_search_query_and=["string"],
+            not_search_query_or=["string"],
+            row_id_list=[0],
+            search_query_and=["string"],
+            search_query_or=["string"],
+        )
+        assert_matches_type(RowCreateResponse, row, path=["response"])
+
+    @parametrize
+    def test_raw_response_create(self, client: Openlayer) -> None:
+        response = client.inference_pipelines.rows.with_raw_response.create(
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+        )
+
+        assert response.is_closed is True
+        assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+        row = response.parse()
+        assert_matches_type(RowCreateResponse, row, path=["response"])
+
+    @parametrize
+    def test_streaming_response_create(self, client: Openlayer) -> None:
+        with client.inference_pipelines.rows.with_streaming_response.create(
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+        ) as response:
+            assert not response.is_closed
+            assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+
+            row = response.parse()
+            assert_matches_type(RowCreateResponse, row, path=["response"])
+
+        assert cast(Any, response.is_closed) is True
+
+    @parametrize
+    def test_path_params_create(self, client: Openlayer) -> None:
+        with pytest.raises(ValueError, match=r"Expected a non-empty value for `inference_pipeline_id` but received ''"):
+            client.inference_pipelines.rows.with_raw_response.create(
+                inference_pipeline_id="",
+            )
 
     @parametrize
     def test_method_update(self, client: Openlayer) -> None:
@@ -84,6 +149,68 @@ class TestAsyncRows:
     parametrize = pytest.mark.parametrize(
         "async_client", [False, True, {"http_client": "aiohttp"}], indirect=True, ids=["loose", "strict", "aiohttp"]
     )
+
+    @parametrize
+    async def test_method_create(self, async_client: AsyncOpenlayer) -> None:
+        row = await async_client.inference_pipelines.rows.create(
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+        )
+        assert_matches_type(RowCreateResponse, row, path=["response"])
+
+    @parametrize
+    async def test_method_create_with_all_params(self, async_client: AsyncOpenlayer) -> None:
+        row = await async_client.inference_pipelines.rows.create(
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            asc=True,
+            page=1,
+            per_page=1,
+            sort_column="sortColumn",
+            column_filters=[
+                {
+                    "measurement": "openlayer_token_set",
+                    "operator": "contains_none",
+                    "value": ["cat"],
+                }
+            ],
+            exclude_row_id_list=[0],
+            not_search_query_and=["string"],
+            not_search_query_or=["string"],
+            row_id_list=[0],
+            search_query_and=["string"],
+            search_query_or=["string"],
+        )
+        assert_matches_type(RowCreateResponse, row, path=["response"])
+
+    @parametrize
+    async def test_raw_response_create(self, async_client: AsyncOpenlayer) -> None:
+        response = await async_client.inference_pipelines.rows.with_raw_response.create(
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+        )
+
+        assert response.is_closed is True
+        assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+        row = await response.parse()
+        assert_matches_type(RowCreateResponse, row, path=["response"])
+
+    @parametrize
+    async def test_streaming_response_create(self, async_client: AsyncOpenlayer) -> None:
+        async with async_client.inference_pipelines.rows.with_streaming_response.create(
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+        ) as response:
+            assert not response.is_closed
+            assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+
+            row = await response.parse()
+            assert_matches_type(RowCreateResponse, row, path=["response"])
+
+        assert cast(Any, response.is_closed) is True
+
+    @parametrize
+    async def test_path_params_create(self, async_client: AsyncOpenlayer) -> None:
+        with pytest.raises(ValueError, match=r"Expected a non-empty value for `inference_pipeline_id` but received ''"):
+            await async_client.inference_pipelines.rows.with_raw_response.create(
+                inference_pipeline_id="",
+            )
 
     @parametrize
     async def test_method_update(self, async_client: AsyncOpenlayer) -> None:
