@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.18.0 (2026-03-06)
+
+Full Changelog: [v0.17.12...v0.18.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.12...v0.18.0)
+
+### Features
+
+* **api:** update POST /rows to use list method name ([675f015](https://github.com/openlayer-ai/openlayer-python/commit/675f01562b6e284e31fb0170a827df5036ab4555))
+* **closes OPEN-9425:** document /rows endpoint in API reference and … ([9c293e6](https://github.com/openlayer-ai/openlayer-python/commit/9c293e60c0730a5dea1d53506c2c7ad42d6de698))
+
 ## 0.17.12 (2026-03-06)
 
 Full Changelog: [v0.17.11...v0.17.12](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.11...v0.17.12)
