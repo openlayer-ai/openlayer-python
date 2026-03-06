@@ -150,11 +150,12 @@ Methods:
 Types:
 
 ```python
-from openlayer.types.inference_pipelines import RowUpdateResponse
+from openlayer.types.inference_pipelines import RowCreateResponse, RowUpdateResponse
 ```
 
 Methods:
 
+- <code title="post /inference-pipelines/{inferencePipelineId}/rows">client.inference_pipelines.rows.<a href="./src/openlayer/resources/inference_pipelines/rows.py">create</a>(inference_pipeline_id, \*\*<a href="src/openlayer/types/inference_pipelines/row_create_params.py">params</a>) -> <a href="./src/openlayer/types/inference_pipelines/row_create_response.py">RowCreateResponse</a></code>
 - <code title="put /inference-pipelines/{inferencePipelineId}/rows">client.inference_pipelines.rows.<a href="./src/openlayer/resources/inference_pipelines/rows.py">update</a>(inference_pipeline_id, \*\*<a href="src/openlayer/types/inference_pipelines/row_update_params.py">params</a>) -> <a href="./src/openlayer/types/inference_pipelines/row_update_response.py">RowUpdateResponse</a></code>
 
 ## TestResults
