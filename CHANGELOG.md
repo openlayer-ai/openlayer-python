@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.17.12 (2026-03-06)
+
+Full Changelog: [v0.17.11...v0.17.12](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.11...v0.17.12)
+
+### Chores
+
+* **test:** do not count install time for mock server timeout ([9ec48d7](https://github.com/openlayer-ai/openlayer-python/commit/9ec48d73e5e1957c46b9216e66388acabe69eae3))
+
 ## 0.17.11 (2026-03-05)
 
 Full Changelog: [v0.17.10...v0.17.11](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.10...v0.17.11)
