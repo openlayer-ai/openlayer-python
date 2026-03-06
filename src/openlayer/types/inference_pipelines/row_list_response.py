@@ -4,12 +4,12 @@ from typing import List
 
 from ..._models import BaseModel
 
-__all__ = ["RowCreateResponse", "Item"]
+__all__ = ["RowListResponse", "Item"]
 
 
 class Item(BaseModel):
     openlayer_row_id: int
 
 
-class RowCreateResponse(BaseModel):
+class RowListResponse(BaseModel):
     items: List[Item]
