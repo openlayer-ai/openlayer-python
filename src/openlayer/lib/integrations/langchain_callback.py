@@ -683,6 +683,7 @@ class OpenlayerHandlerMixin:
         serialized = serialized or {}
         tool_name = (
             name
+            or serialized.get("name")
             or (serialized.get("id", [])[-1] if serialized.get("id") else None)
             or "Tool"
         )
