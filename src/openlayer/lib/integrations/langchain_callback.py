@@ -32,6 +32,29 @@ LANGCHAIN_TO_OPENLAYER_PROVIDER_MAP = {
     "amazon_bedrock_converse_chat": "Bedrock",
 }
 
+# LiteLLM model prefixes to provider names.
+# When models are accessed via a LiteLLM proxy (e.g. "gemini/gemini-2.5-flash"),
+# the LangChain _type is "openai-chat" which incorrectly maps to "OpenAI".
+# This map resolves the actual provider from the model prefix.
+LITELLM_PREFIX_TO_PROVIDER_MAP = {
+    "gemini": "Google",
+    "anthropic": "Anthropic",
+    "cohere": "Cohere",
+    "mistral": "Mistral",
+    "bedrock": "Bedrock",
+    "vertex_ai": "Google",
+    "azure": "Azure",
+    "huggingface": "Hugging Face",
+    "replicate": "Replicate",
+    "together_ai": "Together AI",
+    "groq": "Groq",
+    "deepseek": "DeepSeek",
+    "fireworks_ai": "Fireworks AI",
+    "perplexity": "Perplexity",
+    "ollama": "Ollama",
+    "openai": "OpenAI",
+}
+
 
 if HAVE_LANGCHAIN:
     BaseCallbackHandlerClass = BaseCallbackHandler
@@ -380,6 +403,14 @@ class OpenlayerHandlerMixin:
             or serialized.get("name")
         )
 
+        # Override provider from LiteLLM model prefix (e.g. "gemini/gemini-2.5-flash")
+        # when the model is accessed through a proxy that reports as "openai-chat".
+        if model and "/" in model:
+            prefix = model.split("/", 1)[0]
+            litellm_provider = LITELLM_PREFIX_TO_PROVIDER_MAP.get(prefix)
+            if litellm_provider:
+                provider = litellm_provider
+
         # Clean invocation params (remove internal LangChain params)
         clean_params = {
             k: v for k, v in invocation_params.items() if not k.startswith("_")
@@ -477,7 +508,7 @@ class OpenlayerHandlerMixin:
             serialized, invocation_params, metadata or {}
         )
 
-        step_name = name or f"{model_info['provider'] or 'LLM'} Chat Completion"
+        step_name = f"{model_info['provider'] or 'LLM'} Chat Completion"
         prompt = [{"role": "user", "content": text} for text in prompts]
 
         self._start_step(
@@ -508,7 +539,9 @@ class OpenlayerHandlerMixin:
             serialized, invocation_params, metadata or {}
         )
 
-        step_name = name or f"{model_info['provider'] or 'Chat Model'} Chat Completion"
+        # Always use provider-based name for chat completions (e.g. "Google Chat Completion")
+        # rather than the run_name from the caller (e.g. "Language Model") which is generic.
+        step_name = f"{model_info['provider'] or 'Chat Model'} Chat Completion"
         prompt = self._messages_to_prompt_format(messages)
 
         self._start_step(
