@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.19.0 (2026-03-09)
+
+Full Changelog: [v0.18.0...v0.19.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.18.0...v0.19.0)
+
+### Features
+
+* Fix provider detection for LiteLLM proxy models and improve step naming ([b9bfda5](https://github.com/openlayer-ai/openlayer-python/commit/b9bfda5b1f5fb1ee0a47952c7c28d3a452a68435))
+* Strip LiteLLM prefix from model name ([841ad25](https://github.com/openlayer-ai/openlayer-python/commit/841ad25d7b3c9b3833b808a8a54d8a82afdae98e))
+
+
+### Bug Fixes
+
+* **closes OPEN-9426:** ensure tool name is retrieved from serialized data if not provided ([5d702ef](https://github.com/openlayer-ai/openlayer-python/commit/5d702ef70d86ba85e527a3a664f6de7944999326))
+
+
+### Chores
+
+* **ci:** skip uploading artifacts on stainless-internal branches ([c2b16ed](https://github.com/openlayer-ai/openlayer-python/commit/c2b16edb488d1320089c0a294cd981cfb0c7946c))
+
 ## 0.18.0 (2026-03-06)
 
 Full Changelog: [v0.17.12...v0.18.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.17.12...v0.18.0)
