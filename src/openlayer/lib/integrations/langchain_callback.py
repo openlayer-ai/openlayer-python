@@ -403,13 +403,14 @@ class OpenlayerHandlerMixin:
             or serialized.get("name")
         )
 
-        # Override provider from LiteLLM model prefix (e.g. "gemini/gemini-2.5-flash")
-        # when the model is accessed through a proxy that reports as "openai-chat".
+        # Handle LiteLLM model prefix (e.g. "gemini/gemini-2.5-flash"):
+        # extract the actual provider and strip the prefix from the model name.
         if model and "/" in model:
-            prefix = model.split("/", 1)[0]
+            prefix, model_name = model.split("/", 1)
             litellm_provider = LITELLM_PREFIX_TO_PROVIDER_MAP.get(prefix)
             if litellm_provider:
                 provider = litellm_provider
+                model = model_name
 
         # Clean invocation params (remove internal LangChain params)
         clean_params = {
