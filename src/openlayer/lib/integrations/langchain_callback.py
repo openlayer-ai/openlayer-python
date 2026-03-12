@@ -189,7 +189,12 @@ class OpenlayerHandlerMixin:
             and tracer.get_current_step() is None
         ):
             trace = self._traces_by_root.pop(run_id)
-            self._process_and_upload_trace(trace)
+            if tracer._configured_background_publish_enabled:
+                tracer._get_background_executor().submit(
+                    self._process_and_upload_trace, trace
+                )
+            else:
+                self._process_and_upload_trace(trace)
 
     def _process_and_upload_trace(self, trace: traces.Trace) -> None:
         """Process and upload the completed trace (only for standalone root steps)."""
@@ -1241,7 +1246,12 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
         # Only upload if: root step + has standalone trace + not part of external trace
         if is_root_step and has_standalone_trace and not self._has_external_trace:
             trace = self._traces_by_root.pop(run_id)
-            self._process_and_upload_async_trace(trace)
+            if tracer._configured_background_publish_enabled:
+                tracer._get_background_executor().submit(
+                    self._process_and_upload_async_trace, trace
+                )
+            else:
+                self._process_and_upload_async_trace(trace)
 
     def _process_and_upload_async_trace(self, trace: traces.Trace) -> None:
         """Process and upload trace for async handler."""
