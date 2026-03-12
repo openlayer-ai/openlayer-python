@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.19.1 (2026-03-12)
+
+Full Changelog: [v0.19.0...v0.19.1](https://github.com/openlayer-ai/openlayer-python/compare/v0.19.0...v0.19.1)
+
+### Chores
+
+* **closes OPEN-9632:** langChain callback handler adding latency ([9d9b283](https://github.com/openlayer-ai/openlayer-python/commit/9d9b2833299d069e151617ec9e12432b92ba20ca))
+
 ## 0.19.0 (2026-03-09)
 
 Full Changelog: [v0.18.0...v0.19.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.18.0...v0.19.0)
