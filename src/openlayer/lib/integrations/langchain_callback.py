@@ -1,6 +1,7 @@
 """Module with the Openlayer callback handler for LangChain."""
 
 # pylint: disable=unused-argument
+import contextvars
 import time
 from typing import Any, Callable, Dict, List, Optional, Union
 from uuid import UUID
@@ -190,8 +191,9 @@ class OpenlayerHandlerMixin:
         ):
             trace = self._traces_by_root.pop(run_id)
             if tracer._configured_background_publish_enabled:
+                ctx = contextvars.copy_context()
                 tracer._get_background_executor().submit(
-                    self._process_and_upload_trace, trace
+                    ctx.run, self._process_and_upload_trace, trace
                 )
             else:
                 self._process_and_upload_trace(trace)
@@ -1247,8 +1249,9 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
         if is_root_step and has_standalone_trace and not self._has_external_trace:
             trace = self._traces_by_root.pop(run_id)
             if tracer._configured_background_publish_enabled:
+                ctx = contextvars.copy_context()
                 tracer._get_background_executor().submit(
-                    self._process_and_upload_async_trace, trace
+                    ctx.run, self._process_and_upload_async_trace, trace
                 )
             else:
                 self._process_and_upload_async_trace(trace)
