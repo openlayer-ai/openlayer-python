@@ -1631,9 +1631,12 @@ def _handle_trace_completion(
 
         if _publish:
             if _configured_background_publish_enabled:
-                # Submit to background thread pool
+                # Submit to background thread pool, copying context so that
+                # contextvars (user_id, session_id, etc.) are preserved.
+                ctx = contextvars.copy_context()
                 executor = _get_background_executor()
                 executor.submit(
+                    ctx.run,
                     _upload_and_publish_trace,
                     current_trace,
                     resolved_pipeline_id,
