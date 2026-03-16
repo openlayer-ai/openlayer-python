@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.20.1 (2026-03-16)
+
+Full Changelog: [v0.20.0...v0.20.1](https://github.com/openlayer-ai/openlayer-python/compare/v0.20.0...v0.20.1)
+
+### Bug Fixes
+
+* handle by_alias=None for Pydantic 2.10+ compatibility ([#619](https://github.com/openlayer-ai/openlayer-python/issues/619)) ([ec17fa6](https://github.com/openlayer-ai/openlayer-python/commit/ec17fa61b275fbd4347176e2579119aab3f05be4))
+
 ## 0.20.0 (2026-03-16)
 
 Full Changelog: [v0.19.1...v0.20.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.19.1...v0.20.0)
