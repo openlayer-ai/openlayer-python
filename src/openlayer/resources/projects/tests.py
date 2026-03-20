@@ -8,7 +8,7 @@ from typing_extensions import Literal
 import httpx
 
 from ..._types import Body, Omit, Query, Headers, NotGiven, SequenceNotStr, omit, not_given
-from ..._utils import maybe_transform, async_maybe_transform
+from ..._utils import path_template, maybe_transform, async_maybe_transform
 from ..._compat import cached_property
 from ..._resource import SyncAPIResource, AsyncAPIResource
 from ..._response import (
@@ -170,7 +170,7 @@ class TestsResource(SyncAPIResource):
         if not project_id:
             raise ValueError(f"Expected a non-empty value for `project_id` but received {project_id!r}")
         return self._post(
-            f"/projects/{project_id}/tests",
+            path_template("/projects/{project_id}/tests", project_id=project_id),
             body=maybe_transform(
                 {
                     "description": description,
@@ -226,7 +226,7 @@ class TestsResource(SyncAPIResource):
         if not project_id:
             raise ValueError(f"Expected a non-empty value for `project_id` but received {project_id!r}")
         return self._put(
-            f"/projects/{project_id}/tests",
+            path_template("/projects/{project_id}/tests", project_id=project_id),
             body=maybe_transform({"payloads": payloads}, test_update_params.TestUpdateParams),
             options=make_request_options(
                 extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
@@ -282,7 +282,7 @@ class TestsResource(SyncAPIResource):
         if not project_id:
             raise ValueError(f"Expected a non-empty value for `project_id` but received {project_id!r}")
         return self._get(
-            f"/projects/{project_id}/tests",
+            path_template("/projects/{project_id}/tests", project_id=project_id),
             options=make_request_options(
                 extra_headers=extra_headers,
                 extra_query=extra_query,
@@ -447,7 +447,7 @@ class AsyncTestsResource(AsyncAPIResource):
         if not project_id:
             raise ValueError(f"Expected a non-empty value for `project_id` but received {project_id!r}")
         return await self._post(
-            f"/projects/{project_id}/tests",
+            path_template("/projects/{project_id}/tests", project_id=project_id),
             body=await async_maybe_transform(
                 {
                     "description": description,
@@ -503,7 +503,7 @@ class AsyncTestsResource(AsyncAPIResource):
         if not project_id:
             raise ValueError(f"Expected a non-empty value for `project_id` but received {project_id!r}")
         return await self._put(
-            f"/projects/{project_id}/tests",
+            path_template("/projects/{project_id}/tests", project_id=project_id),
             body=await async_maybe_transform({"payloads": payloads}, test_update_params.TestUpdateParams),
             options=make_request_options(
                 extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
@@ -559,7 +559,7 @@ class AsyncTestsResource(AsyncAPIResource):
         if not project_id:
             raise ValueError(f"Expected a non-empty value for `project_id` but received {project_id!r}")
         return await self._get(
-            f"/projects/{project_id}/tests",
+            path_template("/projects/{project_id}/tests", project_id=project_id),
             options=make_request_options(
                 extra_headers=extra_headers,
                 extra_query=extra_query,

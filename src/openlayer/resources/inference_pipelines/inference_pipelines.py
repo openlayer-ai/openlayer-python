@@ -29,7 +29,7 @@ from ...types import (
     inference_pipeline_retrieve_users_params,
 )
 from ..._types import Body, Omit, Query, Headers, NoneType, NotGiven, omit, not_given
-from ..._utils import maybe_transform, async_maybe_transform
+from ..._utils import path_template, maybe_transform, async_maybe_transform
 from ..._compat import cached_property
 from ..._resource import SyncAPIResource, AsyncAPIResource
 from ..._response import (
@@ -117,7 +117,7 @@ class InferencePipelinesResource(SyncAPIResource):
                 f"Expected a non-empty value for `inference_pipeline_id` but received {inference_pipeline_id!r}"
             )
         return self._get(
-            f"/inference-pipelines/{inference_pipeline_id}",
+            path_template("/inference-pipelines/{inference_pipeline_id}", inference_pipeline_id=inference_pipeline_id),
             options=make_request_options(
                 extra_headers=extra_headers,
                 extra_query=extra_query,
@@ -168,7 +168,7 @@ class InferencePipelinesResource(SyncAPIResource):
                 f"Expected a non-empty value for `inference_pipeline_id` but received {inference_pipeline_id!r}"
             )
         return self._put(
-            f"/inference-pipelines/{inference_pipeline_id}",
+            path_template("/inference-pipelines/{inference_pipeline_id}", inference_pipeline_id=inference_pipeline_id),
             body=maybe_transform(
                 {
                     "description": description,
@@ -212,7 +212,7 @@ class InferencePipelinesResource(SyncAPIResource):
             )
         extra_headers = {"Accept": "*/*", **(extra_headers or {})}
         return self._delete(
-            f"/inference-pipelines/{inference_pipeline_id}",
+            path_template("/inference-pipelines/{inference_pipeline_id}", inference_pipeline_id=inference_pipeline_id),
             options=make_request_options(
                 extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
             ),
@@ -257,7 +257,9 @@ class InferencePipelinesResource(SyncAPIResource):
                 f"Expected a non-empty value for `inference_pipeline_id` but received {inference_pipeline_id!r}"
             )
         return self._get(
-            f"/inference-pipelines/{inference_pipeline_id}/users",
+            path_template(
+                "/inference-pipelines/{inference_pipeline_id}/users", inference_pipeline_id=inference_pipeline_id
+            ),
             options=make_request_options(
                 extra_headers=extra_headers,
                 extra_query=extra_query,
@@ -338,7 +340,7 @@ class AsyncInferencePipelinesResource(AsyncAPIResource):
                 f"Expected a non-empty value for `inference_pipeline_id` but received {inference_pipeline_id!r}"
             )
         return await self._get(
-            f"/inference-pipelines/{inference_pipeline_id}",
+            path_template("/inference-pipelines/{inference_pipeline_id}", inference_pipeline_id=inference_pipeline_id),
             options=make_request_options(
                 extra_headers=extra_headers,
                 extra_query=extra_query,
@@ -389,7 +391,7 @@ class AsyncInferencePipelinesResource(AsyncAPIResource):
                 f"Expected a non-empty value for `inference_pipeline_id` but received {inference_pipeline_id!r}"
             )
         return await self._put(
-            f"/inference-pipelines/{inference_pipeline_id}",
+            path_template("/inference-pipelines/{inference_pipeline_id}", inference_pipeline_id=inference_pipeline_id),
             body=await async_maybe_transform(
                 {
                     "description": description,
@@ -433,7 +435,7 @@ class AsyncInferencePipelinesResource(AsyncAPIResource):
             )
         extra_headers = {"Accept": "*/*", **(extra_headers or {})}
         return await self._delete(
-            f"/inference-pipelines/{inference_pipeline_id}",
+            path_template("/inference-pipelines/{inference_pipeline_id}", inference_pipeline_id=inference_pipeline_id),
             options=make_request_options(
                 extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
             ),
@@ -478,7 +480,9 @@ class AsyncInferencePipelinesResource(AsyncAPIResource):
                 f"Expected a non-empty value for `inference_pipeline_id` but received {inference_pipeline_id!r}"
             )
         return await self._get(
-            f"/inference-pipelines/{inference_pipeline_id}/users",
+            path_template(
+                "/inference-pipelines/{inference_pipeline_id}/users", inference_pipeline_id=inference_pipeline_id
+            ),
             options=make_request_options(
                 extra_headers=extra_headers,
                 extra_query=extra_query,
