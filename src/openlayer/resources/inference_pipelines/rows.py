@@ -7,7 +7,7 @@ from typing import Iterable, Optional
 import httpx
 
 from ..._types import Body, Omit, Query, Headers, NotGiven, SequenceNotStr, omit, not_given
-from ..._utils import maybe_transform, async_maybe_transform
+from ..._utils import path_template, maybe_transform, async_maybe_transform
 from ..._compat import cached_property
 from ..._resource import SyncAPIResource, AsyncAPIResource
 from ..._response import (
@@ -77,7 +77,9 @@ class RowsResource(SyncAPIResource):
                 f"Expected a non-empty value for `inference_pipeline_id` but received {inference_pipeline_id!r}"
             )
         return self._put(
-            f"/inference-pipelines/{inference_pipeline_id}/rows",
+            path_template(
+                "/inference-pipelines/{inference_pipeline_id}/rows", inference_pipeline_id=inference_pipeline_id
+            ),
             body=maybe_transform(
                 {
                     "row": row,
@@ -142,7 +144,9 @@ class RowsResource(SyncAPIResource):
                 f"Expected a non-empty value for `inference_pipeline_id` but received {inference_pipeline_id!r}"
             )
         return self._post(
-            f"/inference-pipelines/{inference_pipeline_id}/rows",
+            path_template(
+                "/inference-pipelines/{inference_pipeline_id}/rows", inference_pipeline_id=inference_pipeline_id
+            ),
             body=maybe_transform(
                 {
                     "column_filters": column_filters,
@@ -227,7 +231,9 @@ class AsyncRowsResource(AsyncAPIResource):
                 f"Expected a non-empty value for `inference_pipeline_id` but received {inference_pipeline_id!r}"
             )
         return await self._put(
-            f"/inference-pipelines/{inference_pipeline_id}/rows",
+            path_template(
+                "/inference-pipelines/{inference_pipeline_id}/rows", inference_pipeline_id=inference_pipeline_id
+            ),
             body=await async_maybe_transform(
                 {
                     "row": row,
@@ -292,7 +298,9 @@ class AsyncRowsResource(AsyncAPIResource):
                 f"Expected a non-empty value for `inference_pipeline_id` but received {inference_pipeline_id!r}"
             )
         return await self._post(
-            f"/inference-pipelines/{inference_pipeline_id}/rows",
+            path_template(
+                "/inference-pipelines/{inference_pipeline_id}/rows", inference_pipeline_id=inference_pipeline_id
+            ),
             body=await async_maybe_transform(
                 {
                     "column_filters": column_filters,

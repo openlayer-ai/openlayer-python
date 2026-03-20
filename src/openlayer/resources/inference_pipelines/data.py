@@ -7,7 +7,7 @@ from typing import Dict, Iterable
 import httpx
 
 from ..._types import Body, Query, Headers, NotGiven, not_given
-from ..._utils import maybe_transform, async_maybe_transform
+from ..._utils import path_template, maybe_transform, async_maybe_transform
 from ..._compat import cached_property
 from ..._resource import SyncAPIResource, AsyncAPIResource
 from ..._response import (
@@ -78,7 +78,9 @@ class DataResource(SyncAPIResource):
                 f"Expected a non-empty value for `inference_pipeline_id` but received {inference_pipeline_id!r}"
             )
         return self._post(
-            f"/inference-pipelines/{inference_pipeline_id}/data-stream",
+            path_template(
+                "/inference-pipelines/{inference_pipeline_id}/data-stream", inference_pipeline_id=inference_pipeline_id
+            ),
             body=maybe_transform(
                 {
                     "config": config,
@@ -148,7 +150,9 @@ class AsyncDataResource(AsyncAPIResource):
                 f"Expected a non-empty value for `inference_pipeline_id` but received {inference_pipeline_id!r}"
             )
         return await self._post(
-            f"/inference-pipelines/{inference_pipeline_id}/data-stream",
+            path_template(
+                "/inference-pipelines/{inference_pipeline_id}/data-stream", inference_pipeline_id=inference_pipeline_id
+            ),
             body=await async_maybe_transform(
                 {
                     "config": config,
