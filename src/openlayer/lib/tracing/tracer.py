@@ -3,6 +3,7 @@
 import asyncio
 import atexit
 import contextvars
+import dataclasses
 import inspect
 import json
 import logging
@@ -532,15 +533,20 @@ def trace(
     Parameters
     ----------
     promote : list of str or dict mapping str to str, optional
-        Kwarg names whose values should be surfaced as top-level columns in the
-        trace data.  Pass a list to use the original kwarg names as column names,
+        Names whose values should be surfaced as top-level columns in the
+        trace data.  Keys are resolved from function **inputs** first; any
+        unresolved keys are then looked up in the function **output** (dict,
+        Pydantic model, or dataclass).  Pass a list to keep original names,
         or a dict to alias them::
 
-            # List form – uses original kwarg names
-            @tracer.trace(promote=["tool_call_count", "user_query"])
+            # List form – uses original names
+            @tracer.trace(promote=["user_query", "tool_call_count"])
 
-            # Dict form – maps kwarg_name -> column_name
-            @tracer.trace(promote={"user_query": "agent_input_query"})
+            # Dict form – maps name -> column_name
+            @tracer.trace(promote={
+                "user_query": "agent_input_query",       # from input
+                "tool_call_count": "agent_tool_calls",   # from output
+            })
 
     Examples
     --------
@@ -601,6 +607,7 @@ def trace(
                         self._token = None
                         self._output_chunks = []
                         self._trace_initialized = False
+                        self._unresolved_promote = {}
                         self._captured_context = (
                             None  # Capture context for ASGI compatibility
                         )
@@ -628,7 +635,9 @@ def trace(
                                 context_kwarg=context_kwarg,
                                 question_kwarg=question_kwarg,
                             )
-                            _apply_promote_kwargs(self._inputs, promote)
+                            self._unresolved_promote = _apply_promote_kwargs(
+                                self._inputs, promote
+                            )
                             self._trace_initialized = True
 
                         try:
@@ -642,6 +651,13 @@ def trace(
                             # Use captured context to ensure we have access to the trace
                             output = _join_output_chunks(self._output_chunks)
                             if self._captured_context:
+                                # Run promote inside captured context so
+                                # update_current_trace can find the trace ContextVar
+                                self._captured_context.run(
+                                    _apply_promote_output,
+                                    output,
+                                    self._unresolved_promote,
+                                )
                                 self._captured_context.run(
                                     _finalize_sync_generator_step,
                                     step=self._step,
@@ -654,6 +670,9 @@ def trace(
                                     on_flush_failure=on_flush_failure,
                                 )
                             else:
+                                _apply_promote_output(
+                                    output, self._unresolved_promote
+                                )
                                 _finalize_sync_generator_step(
                                     step=self._step,
                                     token=self._token,
@@ -724,7 +743,9 @@ def trace(
                             context_kwarg=context_kwarg,
                             question_kwarg=question_kwarg,
                         )
-                        _apply_promote_kwargs(original_inputs, promote)
+                        unresolved_promote = _apply_promote_kwargs(
+                            original_inputs, promote
+                        )
 
                         # Apply input guardrails
                         modified_inputs, input_guardrail_metadata = (
@@ -765,6 +786,9 @@ def trace(
                                 output = func(*bound.args, **bound.kwargs)
                             else:
                                 output = func(*func_args, **func_kwargs)
+
+                        # Promote unresolved keys from output
+                        _apply_promote_output(output, unresolved_promote)
 
                         # Apply output guardrails (skip if function was skipped)
                         if (
@@ -841,15 +865,20 @@ def trace_async(
     Parameters
     ----------
     promote : list of str or dict mapping str to str, optional
-        Kwarg names whose values should be surfaced as top-level columns in the
-        trace data.  Pass a list to use the original kwarg names as column names,
+        Names whose values should be surfaced as top-level columns in the
+        trace data.  Keys are resolved from function **inputs** first; any
+        unresolved keys are then looked up in the function **output** (dict,
+        Pydantic model, or dataclass).  Pass a list to keep original names,
         or a dict to alias them::
 
-            # List form – uses original kwarg names
-            @tracer.trace_async(promote=["job_id", "user_query"])
+            # List form – uses original names
+            @tracer.trace_async(promote=["job_id", "tool_call_count"])
 
-            # Dict form – maps kwarg_name -> column_name
-            @tracer.trace_async(promote={"user_query": "agent_input_query"})
+            # Dict form – maps name -> column_name
+            @tracer.trace_async(promote={
+                "user_query": "agent_input_query",       # from input
+                "tool_call_count": "agent_tool_calls",   # from output
+            })
 
     Examples
     --------
@@ -892,6 +921,7 @@ def trace_async(
                             self._token = None
                             self._output_chunks = []
                             self._trace_initialized = False
+                            self._unresolved_promote = {}
 
                         def __aiter__(self):
                             return self
@@ -916,7 +946,9 @@ def trace_async(
                                     context_kwarg=context_kwarg,
                                     question_kwarg=question_kwarg,
                                 )
-                                _apply_promote_kwargs(self._inputs, promote)
+                                self._unresolved_promote = _apply_promote_kwargs(
+                                    self._inputs, promote
+                                )
                                 self._trace_initialized = True
 
                             try:
@@ -926,6 +958,9 @@ def trace_async(
                             except StopAsyncIteration:
                                 # Finalize trace when generator is exhausted
                                 output = _join_output_chunks(self._output_chunks)
+                                _apply_promote_output(
+                                    output, self._unresolved_promote
+                                )
                                 _finalize_async_generator_step(
                                     step=self._step,
                                     token=self._token,
@@ -968,6 +1003,7 @@ def trace_async(
                     ) as step:
                         output = exception = None
                         guardrail_metadata = {}
+                        unresolved_promote = {}
 
                         try:
                             # Apply promote / input guardrails if provided
@@ -980,7 +1016,9 @@ def trace_async(
                                         context_kwarg=context_kwarg,
                                         question_kwarg=question_kwarg,
                                     )
-                                    _apply_promote_kwargs(inputs, promote)
+                                    unresolved_promote = _apply_promote_kwargs(
+                                        inputs, promote
+                                    )
 
                                     if guardrails:
                                         # Process inputs through guardrails
@@ -1029,6 +1067,9 @@ def trace_async(
                         except Exception as exc:
                             _log_step_exception(step, exc)
                             raise exc
+
+                        # Promote unresolved keys from output
+                        _apply_promote_output(output, unresolved_promote)
 
                         # Apply output guardrails if provided
                         if guardrails and output is not None:
@@ -1080,6 +1121,7 @@ def trace_async(
                 ) as step:
                     output = exception = None
                     guardrail_metadata = {}
+                    unresolved_promote = {}
                     try:
                         # Apply promote / input guardrails if provided
                         if promote or guardrails:
@@ -1091,7 +1133,9 @@ def trace_async(
                                     context_kwarg=context_kwarg,
                                     question_kwarg=question_kwarg,
                                 )
-                                _apply_promote_kwargs(inputs, promote)
+                                unresolved_promote = _apply_promote_kwargs(
+                                    inputs, promote
+                                )
 
                                 if guardrails:
                                     # Process inputs through guardrails
@@ -1136,6 +1180,9 @@ def trace_async(
                     except Exception as exc:
                         _log_step_exception(step, exc)
                         exception = exc
+
+                    # Promote unresolved keys from output
+                    _apply_promote_output(output, unresolved_promote)
 
                     # Apply output guardrails if provided
                     if guardrails and output is not None:
@@ -1869,21 +1916,86 @@ def _extract_function_inputs(
 def _apply_promote_kwargs(
     inputs: dict,
     promote: Optional[Union[List[str], Dict[str, str]]],
-) -> None:
-    """Promote selected function kwargs to trace-level columns."""
+) -> Dict[str, str]:
+    """Promote selected function kwargs to trace-level columns.
+
+    Returns a mapping of unresolved keys (field_name -> column_name) that were
+    not found in the function inputs, so they can be tried against the output.
+    """
     if not promote:
-        return
+        return {}
     mapping: Dict[str, str] = (
         {k: k for k in promote} if isinstance(promote, list) else promote
     )
     resolved: Dict[str, Any] = {}
+    unresolved: Dict[str, str] = {}
     for kwarg_name, column_name in mapping.items():
         if kwarg_name in inputs:
             resolved[column_name] = inputs[kwarg_name]
         else:
+            unresolved[kwarg_name] = column_name
+    if resolved:
+        update_current_trace(**resolved)
+    return unresolved
+
+
+def _apply_promote_output(
+    output: Any,
+    unresolved: Dict[str, str],
+) -> None:
+    """Promote fields from a function's output to trace-level columns.
+
+    Parameters
+    ----------
+    output : Any
+        The function return value. Supported types: dict, Pydantic model,
+        dataclass. Other types are skipped with a warning.
+    unresolved : dict
+        Mapping of field_name -> column_name for keys that were not found
+        in the function inputs (returned by ``_apply_promote_kwargs``).
+    """
+    if not unresolved or output is None:
+        return
+
+    # Convert output to a dict
+    output_dict: Optional[Dict[str, Any]] = None
+    if isinstance(output, dict):
+        output_dict = output
+    elif hasattr(output, "model_dump") and callable(output.model_dump):
+        # Pydantic v2
+        try:
+            output_dict = output.model_dump()
+        except Exception:
+            logger.warning("promote: failed to call model_dump() on output.")
+    elif hasattr(output, "dict") and callable(output.dict):
+        # Pydantic v1
+        try:
+            output_dict = output.dict()
+        except Exception:
+            logger.warning("promote: failed to call dict() on output.")
+    elif dataclasses.is_dataclass(output) and not isinstance(output, type):
+        try:
+            output_dict = dataclasses.asdict(output)
+        except Exception:
+            logger.warning("promote: failed to convert dataclass output to dict.")
+
+    if output_dict is None:
+        for field_name, column_name in unresolved.items():
             logger.warning(
-                "promote: kwarg `%s` not found in inputs of the current function.",
-                kwarg_name,
+                "promote: key `%s` not found in inputs and output is not a "
+                "dict, Pydantic model, or dataclass.",
+                field_name,
+            )
+        return
+
+    resolved: Dict[str, Any] = {}
+    for field_name, column_name in unresolved.items():
+        if field_name in output_dict:
+            resolved[column_name] = utils.json_serialize(output_dict[field_name])
+        else:
+            logger.warning(
+                "promote: key `%s` not found in function inputs or output.",
+                field_name,
             )
     if resolved:
         update_current_trace(**resolved)
