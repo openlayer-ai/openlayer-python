@@ -605,3 +605,210 @@ class TestErrorHandlingInTraces:
         assert inner_step.metadata is not None
         assert "Exceptions" in inner_step.metadata
         assert "Inner error" in inner_step.metadata["Exceptions"]
+
+
+class TestPromoteOutput:
+    """Test promote parameter with output field extraction."""
+
+    def setup_method(self) -> None:
+        tracer._configured_api_key = None
+        tracer._configured_pipeline_id = None
+        tracer._configured_base_url = None
+        tracer._client = None
+
+    def teardown_method(self) -> None:
+        tracer._configured_api_key = None
+        tracer._configured_pipeline_id = None
+        tracer._configured_base_url = None
+        tracer._client = None
+
+    @patch.object(tracer, "_publish", False)
+    def test_promote_input_kwargs_only(self) -> None:
+        """Promote with input-only keys still works (regression)."""
+        captured_trace = None
+
+        @tracer.trace(promote={"query": "user_query"})
+        def my_func(query: str) -> str:
+            nonlocal captured_trace
+            captured_trace = tracer.get_current_trace()
+            return "answer"
+
+        my_func("hello")
+        assert captured_trace is not None
+        assert captured_trace.metadata["user_query"] == "hello"
+
+    @patch.object(tracer, "_publish", False)
+    def test_promote_output_from_dict(self) -> None:
+        """Promote fields from a dict output."""
+        captured_trace = None
+
+        @tracer.trace(promote={"tool_count": "agent_tool_count"})
+        def my_func() -> Dict[str, Any]:
+            nonlocal captured_trace
+            captured_trace = tracer.get_current_trace()
+            return {"tool_count": 5, "answer": "result"}
+
+        result = my_func()
+        assert result == {"tool_count": 5, "answer": "result"}
+        assert captured_trace is not None
+        assert captured_trace.metadata["agent_tool_count"] == 5
+
+    @patch.object(tracer, "_publish", False)
+    def test_promote_output_from_pydantic_model(self) -> None:
+        """Promote fields from a Pydantic model output."""
+        pytest.importorskip("pydantic")
+        from pydantic import BaseModel
+
+        class AgentResult(BaseModel):
+            answer: str
+            tool_call_count: int
+            tool_names: List[str]
+
+        captured_trace = None
+
+        @tracer.trace(promote={
+            "tool_call_count": "agent_tool_calls",
+            "tool_names": "agent_tools",
+        })
+        def my_func() -> AgentResult:
+            nonlocal captured_trace
+            captured_trace = tracer.get_current_trace()
+            return AgentResult(
+                answer="Paris",
+                tool_call_count=3,
+                tool_names=["search", "lookup", "summarize"],
+            )
+
+        result = my_func()
+        assert result.answer == "Paris"
+        assert captured_trace is not None
+        assert captured_trace.metadata["agent_tool_calls"] == 3
+        assert captured_trace.metadata["agent_tools"] == [
+            "search", "lookup", "summarize"
+        ]
+
+    @patch.object(tracer, "_publish", False)
+    def test_promote_output_from_dataclass(self) -> None:
+        """Promote fields from a dataclass output."""
+        import dataclasses
+
+        @dataclasses.dataclass
+        class EvalResult:
+            score: float
+            confidence: float
+            details: str
+
+        captured_trace = None
+
+        @tracer.trace(promote=["score", "confidence"])
+        def my_func() -> EvalResult:
+            nonlocal captured_trace
+            captured_trace = tracer.get_current_trace()
+            return EvalResult(score=0.95, confidence=0.87, details="good")
+
+        result = my_func()
+        assert result.score == 0.95
+        assert captured_trace is not None
+        assert captured_trace.metadata["score"] == 0.95
+        assert captured_trace.metadata["confidence"] == 0.87
+        # "details" was NOT promoted
+        assert "details" not in captured_trace.metadata
+
+    @patch.object(tracer, "_publish", False)
+    def test_promote_mixed_inputs_and_outputs(self) -> None:
+        """Promote some keys from inputs, others from output."""
+        captured_trace = None
+
+        @tracer.trace(promote={
+            "user_query": "input_query",
+            "tool_count": "agent_tool_count",
+        })
+        def my_func(user_query: str) -> Dict[str, Any]:
+            nonlocal captured_trace
+            captured_trace = tracer.get_current_trace()
+            return {"tool_count": 3, "answer": "result"}
+
+        my_func("what is AI?")
+        assert captured_trace is not None
+        # "user_query" resolved from inputs
+        assert captured_trace.metadata["input_query"] == "what is AI?"
+        # "tool_count" resolved from output
+        assert captured_trace.metadata["agent_tool_count"] == 3
+
+    @patch.object(tracer, "_publish", False)
+    def test_promote_missing_key_warns(self) -> None:
+        """Keys not found in inputs or outputs should log a warning."""
+
+        @tracer.trace(promote={"nonexistent": "col"})
+        def my_func() -> Dict[str, Any]:
+            return {"answer": "result"}
+
+        with patch("openlayer.lib.tracing.tracer.logger") as mock_logger:
+            my_func()
+            # Should warn about missing key
+            mock_logger.warning.assert_called()
+            warning_args = mock_logger.warning.call_args_list
+            assert any("nonexistent" in str(call) for call in warning_args)
+
+    @patch.object(tracer, "_publish", False)
+    def test_promote_output_list_form(self) -> None:
+        """Promote output fields using list form (no aliasing)."""
+        captured_trace = None
+
+        @tracer.trace(promote=["score"])
+        def my_func() -> Dict[str, Any]:
+            nonlocal captured_trace
+            captured_trace = tracer.get_current_trace()
+            return {"score": 0.95, "details": "good"}
+
+        my_func()
+        assert captured_trace is not None
+        assert captured_trace.metadata["score"] == 0.95
+
+    @patch.object(tracer, "_publish", False)
+    def test_promote_output_nested_trace(self) -> None:
+        """Child steps can promote output fields to the shared trace."""
+        captured_trace = None
+
+        @tracer.trace(promote={"tool_count": "child_tool_count"})
+        def child_func() -> Dict[str, Any]:
+            return {"tool_count": 7, "answer": "inner"}
+
+        @tracer.trace(promote={"user_query": "input_query"})
+        def parent_func(user_query: str) -> str:
+            nonlocal captured_trace
+            result = child_func()
+            captured_trace = tracer.get_current_trace()
+            return result["answer"]
+
+        parent_func("hello")
+        assert captured_trace is not None
+        # Parent promoted from inputs
+        assert captured_trace.metadata["input_query"] == "hello"
+        # Child promoted from output
+        assert captured_trace.metadata["child_tool_count"] == 7
+
+    @patch.object(tracer, "_publish", False)
+    def test_promote_output_async(self) -> None:
+        """Promote output fields from an async function."""
+        captured_trace = None
+
+        @tracer.trace_async(promote={"score": "eval_score"})
+        async def my_func() -> Dict[str, Any]:
+            nonlocal captured_trace
+            captured_trace = tracer.get_current_trace()
+            return {"score": 0.9, "details": "good"}
+
+        asyncio.run(my_func())
+        assert captured_trace is not None
+        assert captured_trace.metadata["eval_score"] == 0.9
+
+    @patch.object(tracer, "_publish", False)
+    def test_promote_output_none_is_safe(self) -> None:
+        """Promote should not crash when output is None."""
+        @tracer.trace(promote={"tool_count": "tc"})
+        def my_func(tool_count: int) -> None:
+            return None
+
+        # "tool_count" exists in inputs, so it should be promoted from there
+        my_func(tool_count=5)
