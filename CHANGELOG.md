@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.21.0 (2026-03-26)
+
+Full Changelog: [v0.20.1...v0.21.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.20.1...v0.21.0)
+
+### Features
+
+* **closes OPEN-9557:** extend promote to resolve fields from function outputs ([c60b02f](https://github.com/openlayer-ai/openlayer-python/commit/c60b02f4970414de0bcba33bbaad73ec809a69ed))
+
 ## 0.20.1 (2026-03-16)
 
 Full Changelog: [v0.20.0...v0.20.1](https://github.com/openlayer-ai/openlayer-python/compare/v0.20.0...v0.20.1)
