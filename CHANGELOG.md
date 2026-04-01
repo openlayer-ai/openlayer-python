@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.22.0 (2026-04-01)
+
+Full Changelog: [v0.21.0...v0.22.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.21.0...v0.22.0)
+
+### Features
+
+* **internal:** implement indices array format for query and form serialization ([e942e18](https://github.com/openlayer-ai/openlayer-python/commit/e942e184c2aa996816f3ce31dc63540bba1b4a67))
+
+
+### Bug Fixes
+
+* **deps:** bump minimum typing-extensions version ([d359d17](https://github.com/openlayer-ai/openlayer-python/commit/d359d17848a178449417287829dba2e3aba8e8b2))
+* **pydantic:** do not pass `by_alias` unless set ([3679fc3](https://github.com/openlayer-ai/openlayer-python/commit/3679fc375ce6f06bfc1b73e810634de96435fa56))
+* sanitize endpoint path params ([dc9d512](https://github.com/openlayer-ai/openlayer-python/commit/dc9d512d70c3543562e241d1ad13c32700d9e79a))
+
+
+### Chores
+
+* **ci:** skip lint on metadata-only changes ([e23a0d8](https://github.com/openlayer-ai/openlayer-python/commit/e23a0d85258132f481f2780516bdd60f37ae60d5))
+* **internal:** tweak CI branches ([7e02151](https://github.com/openlayer-ai/openlayer-python/commit/7e021510e4a2abfe57e9634dcf561a55d52df23f))
+* **internal:** update gitignore ([e96f24b](https://github.com/openlayer-ai/openlayer-python/commit/e96f24b7a87c928e0e276b728e67e887ed2b4f1f))
+* **tests:** bump steady to v0.19.4 ([0ecf1e6](https://github.com/openlayer-ai/openlayer-python/commit/0ecf1e6b23fa9072b549325728ce7de83f0f8439))
+* **tests:** bump steady to v0.19.5 ([757aae0](https://github.com/openlayer-ai/openlayer-python/commit/757aae03228cbeb6daea0094a0744bb5148fb05f))
+* **tests:** bump steady to v0.19.6 ([95c72a9](https://github.com/openlayer-ai/openlayer-python/commit/95c72a92f27d3f8012a34567d134ee667663ee75))
+* **tests:** bump steady to v0.19.7 ([16d4263](https://github.com/openlayer-ai/openlayer-python/commit/16d426396e70c2a9e81e61a8ed7b323a17c90e95))
+* **tests:** bump steady to v0.20.1 ([6f06faf](https://github.com/openlayer-ai/openlayer-python/commit/6f06faf139d49d4ef42b1043f35ccb7c8653f067))
+* **tests:** bump steady to v0.20.2 ([5c4116d](https://github.com/openlayer-ai/openlayer-python/commit/5c4116d7f56608a438e91593be3ab78ebff7e2e2))
+
+
+### Refactors
+
+* **tests:** switch from prism to steady ([0f01051](https://github.com/openlayer-ai/openlayer-python/commit/0f01051033b82d888ea3d3966fb1f49b338e92c4))
+
 ## 0.21.0 (2026-03-26)
 
 Full Changelog: [v0.20.1...v0.21.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.20.1...v0.21.0)
