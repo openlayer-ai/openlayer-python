@@ -122,6 +122,7 @@ Types:
 from openlayer.types import (
     InferencePipelineRetrieveResponse,
     InferencePipelineUpdateResponse,
+    InferencePipelineRetrieveSessionsResponse,
     InferencePipelineRetrieveUsersResponse,
 )
 ```
@@ -131,7 +132,8 @@ Methods:
 - <code title="get /inference-pipelines/{inferencePipelineId}">client.inference_pipelines.<a href="./src/openlayer/resources/inference_pipelines/inference_pipelines.py">retrieve</a>(inference_pipeline_id, \*\*<a href="src/openlayer/types/inference_pipeline_retrieve_params.py">params</a>) -> <a href="./src/openlayer/types/inference_pipeline_retrieve_response.py">InferencePipelineRetrieveResponse</a></code>
 - <code title="put /inference-pipelines/{inferencePipelineId}">client.inference_pipelines.<a href="./src/openlayer/resources/inference_pipelines/inference_pipelines.py">update</a>(inference_pipeline_id, \*\*<a href="src/openlayer/types/inference_pipeline_update_params.py">params</a>) -> <a href="./src/openlayer/types/inference_pipeline_update_response.py">InferencePipelineUpdateResponse</a></code>
 - <code title="delete /inference-pipelines/{inferencePipelineId}">client.inference_pipelines.<a href="./src/openlayer/resources/inference_pipelines/inference_pipelines.py">delete</a>(inference_pipeline_id) -> None</code>
-- <code title="get /inference-pipelines/{inferencePipelineId}/users">client.inference_pipelines.<a href="./src/openlayer/resources/inference_pipelines/inference_pipelines.py">retrieve_users</a>(inference_pipeline_id, \*\*<a href="src/openlayer/types/inference_pipeline_retrieve_users_params.py">params</a>) -> <a href="./src/openlayer/types/inference_pipeline_retrieve_users_response.py">InferencePipelineRetrieveUsersResponse</a></code>
+- <code title="post /inference-pipelines/{inferencePipelineId}/sessions">client.inference_pipelines.<a href="./src/openlayer/resources/inference_pipelines/inference_pipelines.py">retrieve_sessions</a>(inference_pipeline_id, \*\*<a href="src/openlayer/types/inference_pipeline_retrieve_sessions_params.py">params</a>) -> <a href="./src/openlayer/types/inference_pipeline_retrieve_sessions_response.py">InferencePipelineRetrieveSessionsResponse</a></code>
+- <code title="post /inference-pipelines/{inferencePipelineId}/users">client.inference_pipelines.<a href="./src/openlayer/resources/inference_pipelines/inference_pipelines.py">retrieve_users</a>(inference_pipeline_id, \*\*<a href="src/openlayer/types/inference_pipeline_retrieve_users_params.py">params</a>) -> <a href="./src/openlayer/types/inference_pipeline_retrieve_users_response.py">InferencePipelineRetrieveUsersResponse</a></code>
 
 ## Data
 

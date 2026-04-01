@@ -24,3 +24,9 @@ from .inference_pipeline_retrieve_users_params import (
 from .inference_pipeline_retrieve_users_response import (
     InferencePipelineRetrieveUsersResponse as InferencePipelineRetrieveUsersResponse,
 )
+from .inference_pipeline_retrieve_sessions_params import (
+    InferencePipelineRetrieveSessionsParams as InferencePipelineRetrieveSessionsParams,
+)
+from .inference_pipeline_retrieve_sessions_response import (
+    InferencePipelineRetrieveSessionsResponse as InferencePipelineRetrieveSessionsResponse,
+)
