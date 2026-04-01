@@ -13,6 +13,7 @@ from openlayer.types import (
     InferencePipelineUpdateResponse,
     InferencePipelineRetrieveResponse,
     InferencePipelineRetrieveUsersResponse,
+    InferencePipelineRetrieveSessionsResponse,
 )
 
 base_url = os.environ.get("TEST_API_BASE_URL", "http://127.0.0.1:4010")
@@ -154,6 +155,68 @@ class TestInferencePipelines:
             )
 
     @parametrize
+    def test_method_retrieve_sessions(self, client: Openlayer) -> None:
+        inference_pipeline = client.inference_pipelines.retrieve_sessions(
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+        )
+        assert_matches_type(InferencePipelineRetrieveSessionsResponse, inference_pipeline, path=["response"])
+
+    @parametrize
+    def test_method_retrieve_sessions_with_all_params(self, client: Openlayer) -> None:
+        inference_pipeline = client.inference_pipelines.retrieve_sessions(
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            asc=True,
+            page=1,
+            per_page=1,
+            sort_column="sortColumn",
+            column_filters=[
+                {
+                    "measurement": "openlayer_token_set",
+                    "operator": "contains_none",
+                    "value": ["cat"],
+                }
+            ],
+            exclude_row_id_list=[0],
+            not_search_query_and=["string"],
+            not_search_query_or=["string"],
+            row_id_list=[0],
+            search_query_and=["string"],
+            search_query_or=["string"],
+        )
+        assert_matches_type(InferencePipelineRetrieveSessionsResponse, inference_pipeline, path=["response"])
+
+    @parametrize
+    def test_raw_response_retrieve_sessions(self, client: Openlayer) -> None:
+        response = client.inference_pipelines.with_raw_response.retrieve_sessions(
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+        )
+
+        assert response.is_closed is True
+        assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+        inference_pipeline = response.parse()
+        assert_matches_type(InferencePipelineRetrieveSessionsResponse, inference_pipeline, path=["response"])
+
+    @parametrize
+    def test_streaming_response_retrieve_sessions(self, client: Openlayer) -> None:
+        with client.inference_pipelines.with_streaming_response.retrieve_sessions(
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+        ) as response:
+            assert not response.is_closed
+            assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+
+            inference_pipeline = response.parse()
+            assert_matches_type(InferencePipelineRetrieveSessionsResponse, inference_pipeline, path=["response"])
+
+        assert cast(Any, response.is_closed) is True
+
+    @parametrize
+    def test_path_params_retrieve_sessions(self, client: Openlayer) -> None:
+        with pytest.raises(ValueError, match=r"Expected a non-empty value for `inference_pipeline_id` but received ''"):
+            client.inference_pipelines.with_raw_response.retrieve_sessions(
+                inference_pipeline_id="",
+            )
+
+    @parametrize
     def test_method_retrieve_users(self, client: Openlayer) -> None:
         inference_pipeline = client.inference_pipelines.retrieve_users(
             inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
@@ -164,8 +227,23 @@ class TestInferencePipelines:
     def test_method_retrieve_users_with_all_params(self, client: Openlayer) -> None:
         inference_pipeline = client.inference_pipelines.retrieve_users(
             inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            asc=True,
             page=1,
             per_page=1,
+            sort_column="sortColumn",
+            column_filters=[
+                {
+                    "measurement": "openlayer_token_set",
+                    "operator": "contains_none",
+                    "value": ["cat"],
+                }
+            ],
+            exclude_row_id_list=[0],
+            not_search_query_and=["string"],
+            not_search_query_or=["string"],
+            row_id_list=[0],
+            search_query_and=["string"],
+            search_query_or=["string"],
         )
         assert_matches_type(InferencePipelineRetrieveUsersResponse, inference_pipeline, path=["response"])
 
@@ -339,6 +417,68 @@ class TestAsyncInferencePipelines:
             )
 
     @parametrize
+    async def test_method_retrieve_sessions(self, async_client: AsyncOpenlayer) -> None:
+        inference_pipeline = await async_client.inference_pipelines.retrieve_sessions(
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+        )
+        assert_matches_type(InferencePipelineRetrieveSessionsResponse, inference_pipeline, path=["response"])
+
+    @parametrize
+    async def test_method_retrieve_sessions_with_all_params(self, async_client: AsyncOpenlayer) -> None:
+        inference_pipeline = await async_client.inference_pipelines.retrieve_sessions(
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            asc=True,
+            page=1,
+            per_page=1,
+            sort_column="sortColumn",
+            column_filters=[
+                {
+                    "measurement": "openlayer_token_set",
+                    "operator": "contains_none",
+                    "value": ["cat"],
+                }
+            ],
+            exclude_row_id_list=[0],
+            not_search_query_and=["string"],
+            not_search_query_or=["string"],
+            row_id_list=[0],
+            search_query_and=["string"],
+            search_query_or=["string"],
+        )
+        assert_matches_type(InferencePipelineRetrieveSessionsResponse, inference_pipeline, path=["response"])
+
+    @parametrize
+    async def test_raw_response_retrieve_sessions(self, async_client: AsyncOpenlayer) -> None:
+        response = await async_client.inference_pipelines.with_raw_response.retrieve_sessions(
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+        )
+
+        assert response.is_closed is True
+        assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+        inference_pipeline = await response.parse()
+        assert_matches_type(InferencePipelineRetrieveSessionsResponse, inference_pipeline, path=["response"])
+
+    @parametrize
+    async def test_streaming_response_retrieve_sessions(self, async_client: AsyncOpenlayer) -> None:
+        async with async_client.inference_pipelines.with_streaming_response.retrieve_sessions(
+            inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+        ) as response:
+            assert not response.is_closed
+            assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+
+            inference_pipeline = await response.parse()
+            assert_matches_type(InferencePipelineRetrieveSessionsResponse, inference_pipeline, path=["response"])
+
+        assert cast(Any, response.is_closed) is True
+
+    @parametrize
+    async def test_path_params_retrieve_sessions(self, async_client: AsyncOpenlayer) -> None:
+        with pytest.raises(ValueError, match=r"Expected a non-empty value for `inference_pipeline_id` but received ''"):
+            await async_client.inference_pipelines.with_raw_response.retrieve_sessions(
+                inference_pipeline_id="",
+            )
+
+    @parametrize
     async def test_method_retrieve_users(self, async_client: AsyncOpenlayer) -> None:
         inference_pipeline = await async_client.inference_pipelines.retrieve_users(
             inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
@@ -349,8 +489,23 @@ class TestAsyncInferencePipelines:
     async def test_method_retrieve_users_with_all_params(self, async_client: AsyncOpenlayer) -> None:
         inference_pipeline = await async_client.inference_pipelines.retrieve_users(
             inference_pipeline_id="182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e",
+            asc=True,
             page=1,
             per_page=1,
+            sort_column="sortColumn",
+            column_filters=[
+                {
+                    "measurement": "openlayer_token_set",
+                    "operator": "contains_none",
+                    "value": ["cat"],
+                }
+            ],
+            exclude_row_id_list=[0],
+            not_search_query_and=["string"],
+            not_search_query_or=["string"],
+            row_id_list=[0],
+            search_query_and=["string"],
+            search_query_or=["string"],
         )
         assert_matches_type(InferencePipelineRetrieveUsersResponse, inference_pipeline, path=["response"])
 
