@@ -9,7 +9,7 @@ from .._types import SequenceNotStr
 from .._utils import PropertyInfo
 
 __all__ = [
-    "InferencePipelineRetrieveUsersParams",
+    "InferencePipelineRetrieveSessionsParams",
     "ColumnFilter",
     "ColumnFilterSetColumnFilter",
     "ColumnFilterNumericColumnFilter",
@@ -17,7 +17,7 @@ __all__ = [
 ]
 
 
-class InferencePipelineRetrieveUsersParams(TypedDict, total=False):
+class InferencePipelineRetrieveSessionsParams(TypedDict, total=False):
     asc: bool
     """Whether or not to sort on the sortColumn in ascending order."""
 
