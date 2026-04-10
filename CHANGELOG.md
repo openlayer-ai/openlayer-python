@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.23.2 (2026-04-10)
+
+Full Changelog: [v0.23.1...v0.23.2](https://github.com/openlayer-ai/openlayer-python/compare/v0.23.1...v0.23.2)
+
+### Documentation
+
+* **closes OPEN-9953:** expose endpoints to get and delete a row ([1f08bda](https://github.com/openlayer-ai/openlayer-python/commit/1f08bda3f3295151b54f82f36e8ef11aaabac05e))
+
 ## 0.23.1 (2026-04-08)
 
 Full Changelog: [v0.23.0...v0.23.1](https://github.com/openlayer-ai/openlayer-python/compare/v0.23.0...v0.23.1)
