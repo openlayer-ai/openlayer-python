@@ -8,5 +8,6 @@ from .row_update_params import RowUpdateParams as RowUpdateParams
 from .data_stream_params import DataStreamParams as DataStreamParams
 from .row_update_response import RowUpdateResponse as RowUpdateResponse
 from .data_stream_response import DataStreamResponse as DataStreamResponse
+from .row_retrieve_response import RowRetrieveResponse as RowRetrieveResponse
 from .test_result_list_params import TestResultListParams as TestResultListParams
 from .test_result_list_response import TestResultListResponse as TestResultListResponse
