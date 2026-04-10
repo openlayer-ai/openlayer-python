@@ -11,6 +11,7 @@ __all__ = [
     "trace_async_openai",
     "trace_async",
     "trace_bedrock",
+    "trace_azure_content_understanding",
     "trace_oci_genai",
     "trace_oci",  # Alias for backward compatibility
     "trace_litellm",
@@ -136,6 +137,26 @@ def trace_bedrock(client):
     if not hasattr(client, "_service_model") or client._service_model.service_name != "bedrock-runtime":
         raise ValueError("Invalid client. Please provide a boto3 bedrock-runtime client.")
     return bedrock_tracer.trace_bedrock(client)
+
+
+def trace_azure_content_understanding(client):
+    """Trace Azure Content Understanding analyses."""
+    # pylint: disable=import-outside-toplevel
+    try:
+        from azure.ai.contentunderstanding import ContentUnderstandingClient
+    except ImportError:
+        raise ImportError(
+            "azure-ai-contentunderstanding is required for Azure Content Understanding tracing. "
+            "Install with: pip install azure-ai-contentunderstanding"
+        )
+
+    from .integrations import azure_content_understanding_tracer
+
+    if not isinstance(client, ContentUnderstandingClient):
+        raise ValueError(
+            "Invalid client. Please provide a ContentUnderstandingClient."
+        )
+    return azure_content_understanding_tracer.trace_azure_content_understanding(client)
 
 
 def trace_oci_genai(client, estimate_tokens: bool = True):
