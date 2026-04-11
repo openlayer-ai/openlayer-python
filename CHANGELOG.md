@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.23.3 (2026-04-11)
+
+Full Changelog: [v0.23.2...v0.23.3](https://github.com/openlayer-ai/openlayer-python/compare/v0.23.2...v0.23.3)
+
+### Bug Fixes
+
+* ensure file data are only sent as 1 parameter ([af32174](https://github.com/openlayer-ai/openlayer-python/commit/af321744159580393ccbf560d900f13d204a13b6))
+
 ## 0.23.2 (2026-04-10)
 
 Full Changelog: [v0.23.1...v0.23.2](https://github.com/openlayer-ai/openlayer-python/compare/v0.23.1...v0.23.2)
