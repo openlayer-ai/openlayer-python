@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.24.0 (2026-04-14)
+
+Full Changelog: [v0.23.3...v0.24.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.23.3...v0.24.0)
+
+### Features
+
+* **closes OPEN-10097:** create Azure Content Understanding tracer ([58c4120](https://github.com/openlayer-ai/openlayer-python/commit/58c41206eee96a981c48194385b78233305da988))
+
 ## 0.23.3 (2026-04-11)
 
 Full Changelog: [v0.23.2...v0.23.3](https://github.com/openlayer-ai/openlayer-python/compare/v0.23.2...v0.23.3)
