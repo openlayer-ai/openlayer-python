@@ -272,6 +272,178 @@ class TestLiteLLMIntegration:
         mock_response = Mock(spec=[])  # No special attributes
         
         provider = detect_provider_from_response(mock_response, 'gpt-4')
-        
+
         assert provider == 'openai'
         mock_litellm.get_llm_provider.assert_called_once_with('gpt-4')
+
+
+class TestLiteLLMEmbedding:
+    """Embedding calls must be traced via add_embedding_step_to_trace."""
+
+    @patch("openlayer.lib.integrations.litellm_tracer.HAVE_LITELLM", True)
+    @patch("openlayer.lib.integrations.litellm_tracer.litellm")
+    def test_trace_litellm_patches_embedding(self, mock_litellm: Mock) -> None:
+        from openlayer.lib.integrations import litellm_tracer
+
+        litellm_tracer._litellm_traced = False
+
+        original_embedding = Mock()
+        mock_litellm.embedding = original_embedding
+        mock_litellm.completion = Mock()
+
+        from openlayer.lib.integrations.litellm_tracer import trace_litellm
+
+        trace_litellm()
+
+        assert mock_litellm.embedding != original_embedding
+        assert callable(mock_litellm.embedding)
+
+    @patch("openlayer.lib.integrations.litellm_tracer.HAVE_LITELLM", True)
+    def test_handle_embedding_single_input(self) -> None:
+        from openlayer.lib.integrations.litellm_tracer import (
+            handle_embedding,  # pyright: ignore[reportUnknownVariableType]
+        )
+
+        fake_response = Mock()
+        fake_response.model = "text-embedding-3-small"
+        fake_response.data = [Mock(embedding=[0.1, 0.2, 0.3])]
+        fake_response.usage = Mock(prompt_tokens=4, total_tokens=4)
+        fake_response.model_dump = Mock(
+            return_value={"model": "text-embedding-3-small"}
+        )
+        fake_response._hidden_params = {}
+
+        embedding_func = Mock(return_value=fake_response)
+
+        with patch(
+            "openlayer.lib.tracing.tracer.add_embedding_step_to_trace"
+        ) as mock_add:
+            result = handle_embedding(
+                embedding_func=embedding_func,
+                model="text-embedding-3-small",
+                input="hello",
+                inference_id="custom-id",
+            )
+
+        assert result is fake_response
+        mock_add.assert_called_once()
+        kwargs = mock_add.call_args.kwargs
+        assert kwargs["name"] == "LiteLLM Embedding"
+        assert kwargs["model"] == "text-embedding-3-small"
+        assert kwargs["inputs"] == {"input": "hello"}
+        assert kwargs["output"] == [0.1, 0.2, 0.3]
+        assert kwargs["embedding_dimensions"] == 3
+        assert kwargs["embedding_count"] == 1
+        assert kwargs["prompt_tokens"] == 4
+        assert kwargs["tokens"] == 4
+        assert kwargs["id"] == "custom-id"
+
+    @patch("openlayer.lib.integrations.litellm_tracer.HAVE_LITELLM", True)
+    def test_handle_embedding_batch_input(self) -> None:
+        from openlayer.lib.integrations.litellm_tracer import (
+            handle_embedding,  # pyright: ignore[reportUnknownVariableType]
+        )
+
+        fake_response = Mock()
+        fake_response.model = "text-embedding-3-small"
+        fake_response.data = [
+            Mock(embedding=[0.1, 0.2, 0.3]),
+            Mock(embedding=[0.4, 0.5, 0.6]),
+            Mock(embedding=[0.7, 0.8, 0.9]),
+        ]
+        fake_response.usage = Mock(prompt_tokens=12, total_tokens=12)
+        fake_response.model_dump = Mock(return_value={})
+        fake_response._hidden_params = {}
+
+        embedding_func = Mock(return_value=fake_response)
+
+        with patch(
+            "openlayer.lib.tracing.tracer.add_embedding_step_to_trace"
+        ) as mock_add:
+            handle_embedding(
+                embedding_func=embedding_func,
+                model="text-embedding-3-small",
+                input=["a", "b", "c"],
+            )
+
+        kwargs = mock_add.call_args.kwargs
+        assert kwargs["inputs"] == {"input": ["a", "b", "c"]}
+        assert kwargs["output"] == [
+            [0.1, 0.2, 0.3],
+            [0.4, 0.5, 0.6],
+            [0.7, 0.8, 0.9],
+        ]
+        assert kwargs["embedding_dimensions"] == 3
+        assert kwargs["embedding_count"] == 3
+        assert kwargs["prompt_tokens"] == 12
+        assert kwargs["tokens"] == 12
+
+    @patch("openlayer.lib.integrations.litellm_tracer.HAVE_LITELLM", True)
+    def test_handle_embedding_cost_from_hidden_params(self) -> None:
+        from openlayer.lib.integrations.litellm_tracer import (
+            handle_embedding,  # pyright: ignore[reportUnknownVariableType]
+        )
+
+        fake_response = Mock()
+        fake_response.model = "text-embedding-3-small"
+        fake_response.data = [Mock(embedding=[0.1, 0.2])]
+        fake_response.usage = Mock(prompt_tokens=2, total_tokens=2)
+        fake_response.model_dump = Mock(return_value={})
+        fake_response._hidden_params = {"response_cost": 0.0000123}
+
+        with patch(
+            "openlayer.lib.tracing.tracer.add_embedding_step_to_trace"
+        ) as mock_add:
+            handle_embedding(
+                embedding_func=Mock(return_value=fake_response),
+                model="text-embedding-3-small",
+                input="x",
+            )
+
+        assert mock_add.call_args.kwargs["cost"] == 0.0000123
+
+    @patch("openlayer.lib.integrations.litellm_tracer.HAVE_LITELLM", True)
+    def test_handle_embedding_failure_does_not_break_client(self) -> None:
+        from openlayer.lib.integrations.litellm_tracer import (
+            handle_embedding,  # pyright: ignore[reportUnknownVariableType]
+        )
+
+        fake_response = Mock()
+        fake_response.model = "text-embedding-3-small"
+        fake_response.data = [Mock(embedding=[0.1])]
+        fake_response.usage = Mock(prompt_tokens=1, total_tokens=1)
+        fake_response.model_dump = Mock(return_value={})
+        fake_response._hidden_params = {}
+
+        with patch(
+            "openlayer.lib.tracing.tracer.add_embedding_step_to_trace",
+            side_effect=RuntimeError("backend down"),
+        ):
+            result = handle_embedding(
+                embedding_func=Mock(return_value=fake_response),
+                model="text-embedding-3-small",
+                input="x",
+            )
+
+        assert result is fake_response
+
+    @patch("openlayer.lib.integrations.litellm_tracer.HAVE_LITELLM", True)
+    @patch("openlayer.lib.integrations.litellm_tracer.litellm")
+    def test_completion_path_unchanged_after_embedding_patch(
+        self, mock_litellm: Mock
+    ) -> None:
+        """Patching embedding must not affect completion behaviour."""
+        from openlayer.lib.integrations import litellm_tracer
+
+        litellm_tracer._litellm_traced = False
+
+        original_completion = Mock()
+        mock_litellm.completion = original_completion
+        mock_litellm.embedding = Mock()
+
+        from openlayer.lib.integrations.litellm_tracer import trace_litellm
+
+        trace_litellm()
+
+        assert mock_litellm.completion != original_completion
+        assert callable(mock_litellm.completion)

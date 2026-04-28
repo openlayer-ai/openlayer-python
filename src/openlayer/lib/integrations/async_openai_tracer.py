@@ -16,6 +16,8 @@ except ImportError:
 if TYPE_CHECKING:
     import openai
 
+from ..tracing import tracer
+from ._openai_embedding_common import build_embedding_step_kwargs
 from .openai_tracer import (
     get_model_parameters,
     create_trace_args,
@@ -154,6 +156,22 @@ def trace_async_openai(
         client.responses.create = traced_responses_create_func
     else:
         logger.debug("Responses API not available in this AsyncOpenAI client version")
+
+    # Patch Embeddings API
+    if hasattr(client, "embeddings"):
+        embeddings_create_func = client.embeddings.create
+
+        @wraps(embeddings_create_func)
+        async def traced_embeddings_create_func(*args, **kwargs):
+            inference_id = kwargs.pop("inference_id", None)
+            return await handle_embedding_async(
+                *args,
+                **kwargs,
+                original_func=embeddings_create_func,
+                inference_id=inference_id,
+            )
+
+        client.embeddings.create = traced_embeddings_create_func
 
     return client
 
@@ -695,6 +713,38 @@ async def handle_async_non_streaming_parse(
     except Exception as e:
         logger.error(
             "Failed to trace the parse chat completion request with Openlayer. %s", e
+        )
+
+    return response
+
+
+# ----------------------------- Async Embeddings ----------------------------- #
+async def handle_embedding_async(
+    original_func: callable,
+    *args,
+    inference_id: Optional[str] = None,
+    **kwargs,
+) -> Any:
+    """Trace an async AsyncOpenAI client.embeddings.create() call."""
+    start_time = time.time()
+    response = await original_func(*args, **kwargs)
+    end_time = time.time()
+
+    try:
+        tracer.add_embedding_step_to_trace(
+            **build_embedding_step_kwargs(
+                response,
+                kwargs,
+                start_time,
+                end_time,
+                name="OpenAI Embedding",
+                provider="OpenAI",
+                inference_id=inference_id,
+            )
+        )
+    except Exception as e:
+        logger.error(
+            "Failed to trace the OpenAI embedding request with Openlayer. %s", e
         )
 
     return response
