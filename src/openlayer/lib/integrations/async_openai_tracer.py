@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     import openai
 
 from ..tracing import tracer
+from ._openai_embedding_common import build_embedding_step_kwargs
 from .openai_tracer import (
     get_model_parameters,
     create_trace_args,
@@ -725,46 +726,21 @@ async def handle_embedding_async(
     **kwargs,
 ) -> Any:
     """Trace an async AsyncOpenAI client.embeddings.create() call."""
-    from ._openai_embedding_common import (
-        get_embedding_model_parameters as _get_embedding_model_parameters,
-    )
-    from ._openai_embedding_common import (
-        parse_embedding_response as _parse_embedding_response,
-    )
-
     start_time = time.time()
     response = await original_func(*args, **kwargs)
     end_time = time.time()
 
     try:
-        model_name = getattr(response, "model", kwargs.get("model", "unknown"))
-        embeddings, dim, count = _parse_embedding_response(response)
-        usage = getattr(response, "usage", None)
-        prompt_tokens = getattr(usage, "prompt_tokens", 0) if usage else 0
-        total_tokens = (
-            getattr(usage, "total_tokens", prompt_tokens) if usage else prompt_tokens
-        )
-
         tracer.add_embedding_step_to_trace(
-            name="OpenAI Embedding",
-            end_time=end_time,
-            inputs={"input": kwargs.get("input")},
-            output=embeddings,
-            latency=(end_time - start_time) * 1000,
-            tokens=total_tokens,
-            prompt_tokens=prompt_tokens,
-            model=model_name,
-            model_parameters=_get_embedding_model_parameters(kwargs),
-            embedding_dimensions=dim,
-            embedding_count=count,
-            raw_output=(
-                response.model_dump()
-                if hasattr(response, "model_dump")
-                else str(response)
-            ),
-            provider="OpenAI",
-            id=inference_id,
-            metadata={"provider": "OpenAI"},
+            **build_embedding_step_kwargs(
+                response,
+                kwargs,
+                start_time,
+                end_time,
+                name="OpenAI Embedding",
+                provider="OpenAI",
+                inference_id=inference_id,
+            )
         )
     except Exception as e:
         logger.error(

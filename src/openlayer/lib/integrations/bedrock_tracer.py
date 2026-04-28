@@ -5,7 +5,7 @@ import json
 import logging
 import time
 from functools import wraps
-from typing import TYPE_CHECKING, Any, Dict, Iterator, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple, Union
 
 from botocore.response import StreamingBody
 
@@ -237,7 +237,7 @@ def _parse_embedding_input(body_data: Dict[str, Any], model_id: str) -> Dict[str
 
 def _parse_embedding_output(
     response_data: Dict[str, Any], model_id: str
-) -> tuple:
+) -> Tuple[Union[List[float], List[List[float]]], int, int]:
     """Returns (embeddings, dimensions, count)."""
     if model_id.startswith("amazon.titan-embed"):
         emb = response_data.get("embedding", [])
