@@ -812,3 +812,13 @@ class TestPromoteOutput:
 
         # "tool_count" exists in inputs, so it should be promoted from there
         my_func(tool_count=5)
+
+
+class TestEmbeddingStep:
+    """Tests for StepType.EMBEDDING and the add_embedding_step_to_trace helper."""
+
+    def test_step_type_embedding_exists(self) -> None:
+        """StepType.EMBEDDING must exist with the expected string value."""
+        from openlayer.lib.tracing.enums import StepType
+
+        assert StepType.EMBEDDING.value == "embedding"
