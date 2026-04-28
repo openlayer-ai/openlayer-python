@@ -58,3 +58,59 @@ class TestBedrockChatRegression:
         # Caller can still consume the response body — critical regression guard.
         replayed = response["body"].read()
         assert b"hello back" in replayed
+
+
+class TestBedrockEmbeddingDetection:
+    """Detection routes embedding models away from the chat handler."""
+
+    def test_is_embedding_model_titan(self) -> None:
+        from openlayer.lib.integrations.bedrock_tracer import _is_embedding_model
+
+        assert _is_embedding_model("amazon.titan-embed-text-v1") is True
+        assert _is_embedding_model("amazon.titan-embed-text-v2:0") is True
+
+    def test_is_embedding_model_cohere(self) -> None:
+        from openlayer.lib.integrations.bedrock_tracer import _is_embedding_model
+
+        assert _is_embedding_model("cohere.embed-english-v3") is True
+        assert _is_embedding_model("cohere.embed-multilingual-v3") is True
+
+    def test_is_embedding_model_chat_returns_false(self) -> None:
+        from openlayer.lib.integrations.bedrock_tracer import _is_embedding_model
+
+        assert _is_embedding_model("anthropic.claude-3-haiku-20240307-v1:0") is False
+        assert _is_embedding_model("meta.llama3-70b-instruct-v1:0") is False
+
+    def test_is_embedding_model_handles_empty_string(self) -> None:
+        from openlayer.lib.integrations.bedrock_tracer import _is_embedding_model
+
+        assert _is_embedding_model("") is False
+
+    def test_traced_invoke_routes_embedding_to_new_handler(self) -> None:
+        """An embedding modelId must call handle_embedding_invoke, not the chat handler."""
+        from botocore.response import StreamingBody
+
+        from openlayer.lib.integrations.bedrock_tracer import trace_bedrock
+
+        body = json.dumps(
+            {"embedding": [0.1, 0.2], "inputTextTokenCount": 4}
+        ).encode("utf-8")
+        mock_client = MagicMock()
+        mock_client.invoke_model.return_value = {
+            "body": StreamingBody(io.BytesIO(body), len(body))
+        }
+        traced = trace_bedrock(mock_client)
+
+        with patch(
+            "openlayer.lib.integrations.bedrock_tracer.handle_embedding_invoke"
+        ) as mock_embed, patch(
+            "openlayer.lib.integrations.bedrock_tracer.handle_non_streaming_invoke"
+        ) as mock_chat:
+            mock_embed.return_value = {"body": "ok"}
+            traced.invoke_model(
+                modelId="amazon.titan-embed-text-v2:0",
+                body=json.dumps({"inputText": "hi"}),
+            )
+
+        mock_embed.assert_called_once()
+        mock_chat.assert_not_called()

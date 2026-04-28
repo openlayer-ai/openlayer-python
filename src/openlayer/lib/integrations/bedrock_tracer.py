@@ -25,6 +25,11 @@ from ..tracing import tracer
 logger = logging.getLogger(__name__)
 
 
+def _is_embedding_model(model_id: str) -> bool:
+    """Return True when modelId refers to a Bedrock embedding model."""
+    return "embed" in (model_id or "").lower()
+
+
 def trace_bedrock(client: "boto3.client") -> "boto3.client":
     """Patch the Bedrock client to trace model invocations.
 
@@ -63,6 +68,14 @@ def trace_bedrock(client: "boto3.client") -> "boto3.client":
     @wraps(invoke_model_func)
     def traced_invoke_model(*args, **kwargs):
         inference_id = kwargs.pop("inference_id", None)
+        model_id = kwargs.get("modelId", "")
+        if _is_embedding_model(model_id):
+            return handle_embedding_invoke(
+                *args,
+                **kwargs,
+                invoke_func=invoke_model_func,
+                inference_id=inference_id,
+            )
         return handle_non_streaming_invoke(
             *args,
             **kwargs,
@@ -151,6 +164,16 @@ def handle_non_streaming_invoke(
 
     # Return the response with the properly restored body
     return response
+
+
+def handle_embedding_invoke(
+    invoke_func: callable,
+    *args,
+    inference_id: Optional[str] = None,
+    **kwargs,
+) -> Dict[str, Any]:
+    """Stub — full implementation in next task."""
+    return invoke_func(*args, **kwargs)
 
 
 def handle_streaming_invoke(
