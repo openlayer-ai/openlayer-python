@@ -822,3 +822,56 @@ class TestEmbeddingStep:
         from openlayer.lib.tracing.enums import StepType
 
         assert StepType.EMBEDDING.value == "embedding"
+
+    def test_add_embedding_step_to_trace_creates_step_with_correct_type(self) -> None:
+        """The helper must create a step with StepType.EMBEDDING and forward kwargs to step.log."""
+        from unittest.mock import MagicMock
+
+        from openlayer.lib.tracing import enums
+
+        mock_step = MagicMock()
+        mock_ctx = MagicMock()
+        mock_ctx.__enter__.return_value = mock_step
+        mock_ctx.__exit__.return_value = None
+
+        with patch.object(tracer, "create_step", return_value=mock_ctx) as mock_create_step:
+            tracer.add_embedding_step_to_trace(
+                name="OpenAI Embedding",
+                inputs={"input": "hello"},
+                output=[0.1, 0.2, 0.3],
+                model="text-embedding-3-small",
+                embedding_dimensions=3,
+                embedding_count=1,
+            )
+
+        mock_create_step.assert_called_once_with(
+            step_type=enums.StepType.EMBEDDING,
+            name="OpenAI Embedding",
+        )
+        mock_step.log.assert_called_once_with(
+            name="OpenAI Embedding",
+            inputs={"input": "hello"},
+            output=[0.1, 0.2, 0.3],
+            model="text-embedding-3-small",
+            embedding_dimensions=3,
+            embedding_count=1,
+        )
+
+    def test_add_embedding_step_to_trace_uses_default_name(self) -> None:
+        """When no name is given, the helper must default to 'Embedding'."""
+        from unittest.mock import MagicMock
+
+        from openlayer.lib.tracing import enums
+
+        mock_step = MagicMock()
+        mock_ctx = MagicMock()
+        mock_ctx.__enter__.return_value = mock_step
+        mock_ctx.__exit__.return_value = None
+
+        with patch.object(tracer, "create_step", return_value=mock_ctx) as mock_create_step:
+            tracer.add_embedding_step_to_trace(model="x", output=[0.0])
+
+        mock_create_step.assert_called_once_with(
+            step_type=enums.StepType.EMBEDDING,
+            name="Embedding",
+        )
