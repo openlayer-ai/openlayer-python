@@ -335,3 +335,41 @@ class TestLiteLLMEmbedding:
         assert kwargs["prompt_tokens"] == 4
         assert kwargs["tokens"] == 4
         assert kwargs["id"] == "custom-id"
+
+    @patch("openlayer.lib.integrations.litellm_tracer.HAVE_LITELLM", True)
+    def test_handle_embedding_batch_input(self) -> None:
+        from openlayer.lib.integrations.litellm_tracer import handle_embedding
+
+        fake_response = Mock()
+        fake_response.model = "text-embedding-3-small"
+        fake_response.data = [
+            Mock(embedding=[0.1, 0.2, 0.3]),
+            Mock(embedding=[0.4, 0.5, 0.6]),
+            Mock(embedding=[0.7, 0.8, 0.9]),
+        ]
+        fake_response.usage = Mock(prompt_tokens=12, total_tokens=12)
+        fake_response.model_dump = Mock(return_value={})
+        fake_response._hidden_params = {}
+
+        embedding_func = Mock(return_value=fake_response)
+
+        with patch(
+            "openlayer.lib.tracing.tracer.add_embedding_step_to_trace"
+        ) as mock_add:
+            handle_embedding(
+                embedding_func=embedding_func,
+                model="text-embedding-3-small",
+                input=["a", "b", "c"],
+            )
+
+        kwargs = mock_add.call_args.kwargs
+        assert kwargs["inputs"] == {"input": ["a", "b", "c"]}
+        assert kwargs["output"] == [
+            [0.1, 0.2, 0.3],
+            [0.4, 0.5, 0.6],
+            [0.7, 0.8, 0.9],
+        ]
+        assert kwargs["embedding_dimensions"] == 3
+        assert kwargs["embedding_count"] == 3
+        assert kwargs["prompt_tokens"] == 12
+        assert kwargs["tokens"] == 12
