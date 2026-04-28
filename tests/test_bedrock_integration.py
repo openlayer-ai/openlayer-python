@@ -243,3 +243,56 @@ class TestBedrockCohereEmbedding:
             "truncate": None,
             "embedding_types": None,
         }
+
+
+class TestBedrockEmbeddingResilience:
+    """Tracing failures must never break the caller; response body must remain usable."""
+
+    def test_embedding_failure_does_not_break_client(self) -> None:
+        from botocore.response import StreamingBody
+
+        from openlayer.lib.integrations.bedrock_tracer import trace_bedrock
+
+        body_bytes = json.dumps(
+            {"embedding": [0.1, 0.2], "inputTextTokenCount": 4}
+        ).encode("utf-8")
+        mock_client = MagicMock()
+        mock_client.invoke_model.return_value = {
+            "body": StreamingBody(io.BytesIO(body_bytes), len(body_bytes))
+        }
+        traced = trace_bedrock(mock_client)
+
+        with patch(
+            "openlayer.lib.tracing.tracer.add_embedding_step_to_trace",
+            side_effect=RuntimeError("backend down"),
+        ):
+            response = traced.invoke_model(
+                modelId="amazon.titan-embed-text-v2:0",
+                body=json.dumps({"inputText": "hi"}),
+            )
+
+        # Caller still gets the real response.
+        assert response["body"].read() == body_bytes
+
+    def test_embedding_response_body_is_replayable(self) -> None:
+        from botocore.response import StreamingBody
+
+        from openlayer.lib.integrations.bedrock_tracer import trace_bedrock
+
+        body_bytes = json.dumps(
+            {"embedding": [0.9, 0.8, 0.7], "inputTextTokenCount": 3}
+        ).encode("utf-8")
+        mock_client = MagicMock()
+        mock_client.invoke_model.return_value = {
+            "body": StreamingBody(io.BytesIO(body_bytes), len(body_bytes))
+        }
+        traced = trace_bedrock(mock_client)
+
+        with patch("openlayer.lib.tracing.tracer.add_embedding_step_to_trace"):
+            response = traced.invoke_model(
+                modelId="amazon.titan-embed-text-v2:0",
+                body=json.dumps({"inputText": "x"}),
+            )
+
+        # The body must be readable by the caller after tracing has consumed it.
+        assert response["body"].read() == body_bytes
