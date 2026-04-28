@@ -153,6 +153,22 @@ def trace_openai(
     else:
         logger.debug("Responses API not available in this OpenAI client version")
 
+    # Patch Embeddings API
+    if hasattr(client, "embeddings"):
+        embeddings_create_func = client.embeddings.create
+
+        @wraps(embeddings_create_func)
+        def traced_embeddings_create_func(*args, **kwargs):
+            inference_id = kwargs.pop("inference_id", None)
+            return handle_embedding(
+                *args,
+                **kwargs,
+                original_func=embeddings_create_func,
+                inference_id=inference_id,
+            )
+
+        client.embeddings.create = traced_embeddings_create_func
+
     return client
 
 
@@ -1609,6 +1625,63 @@ def parse_structured_output_data(response: Any) -> Union[str, Dict[str, Any], No
         logger.error("Failed to parse structured output data: %s", e)
         # Final fallback to regular parsing
         return parse_non_streaming_output_data(response)
+
+
+# ----------------------------- OpenAI Embeddings ---------------------------- #
+def handle_embedding(
+    original_func: callable,
+    *args,
+    inference_id: Optional[str] = None,
+    **kwargs,
+) -> Any:
+    """Trace a sync OpenAI client.embeddings.create() call."""
+    from ._openai_embedding_common import (
+        get_embedding_model_parameters as _get_embedding_model_parameters,
+    )
+    from ._openai_embedding_common import (
+        parse_embedding_response as _parse_embedding_response,
+    )
+
+    start_time = time.time()
+    response = original_func(*args, **kwargs)
+    end_time = time.time()
+
+    try:
+        model_name = getattr(response, "model", kwargs.get("model", "unknown"))
+        embeddings, dim, count = _parse_embedding_response(response)
+        usage = getattr(response, "usage", None)
+        prompt_tokens = getattr(usage, "prompt_tokens", 0) if usage else 0
+        total_tokens = (
+            getattr(usage, "total_tokens", prompt_tokens) if usage else prompt_tokens
+        )
+
+        tracer.add_embedding_step_to_trace(
+            name="OpenAI Embedding",
+            end_time=end_time,
+            inputs={"input": kwargs.get("input")},
+            output=embeddings,
+            latency=(end_time - start_time) * 1000,
+            tokens=total_tokens,
+            prompt_tokens=prompt_tokens,
+            model=model_name,
+            model_parameters=_get_embedding_model_parameters(kwargs),
+            embedding_dimensions=dim,
+            embedding_count=count,
+            raw_output=(
+                response.model_dump()
+                if hasattr(response, "model_dump")
+                else str(response)
+            ),
+            provider="OpenAI",
+            id=inference_id,
+            metadata={"provider": "OpenAI"},
+        )
+    except Exception as e:
+        logger.error(
+            "Failed to trace the OpenAI embedding request with Openlayer. %s", e
+        )
+
+    return response
 
 
 # --------------------------- OpenAI Assistants API -------------------------- #
