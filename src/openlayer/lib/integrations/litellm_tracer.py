@@ -96,8 +96,24 @@ def trace_litellm() -> None:
         )
 
     litellm.completion = traced_completion
+
+    # Patch litellm.embedding to trace embedding calls.
+    original_embedding = litellm.embedding
+
+    @wraps(original_embedding)
+    def traced_embedding(*args, **kwargs):
+        inference_id = kwargs.pop("inference_id", None)
+        return handle_embedding(
+            *args,
+            **kwargs,
+            embedding_func=original_embedding,
+            inference_id=inference_id,
+        )
+
+    litellm.embedding = traced_embedding
+
     _litellm_traced = True
-    logger.debug("litellm.completion has been patched for Openlayer tracing")
+    logger.debug("litellm.completion and litellm.embedding have been patched for Openlayer tracing")
 
 
 def handle_streaming_completion(
@@ -335,6 +351,94 @@ def handle_non_streaming_completion(
         logger.error("Failed to trace the LiteLLM completion request with Openlayer. %s", e)
 
     return response
+
+
+def handle_embedding(
+    embedding_func: callable,
+    *args,
+    inference_id: Optional[str] = None,
+    **kwargs,
+) -> Any:
+    """Handle a single litellm.embedding() invocation."""
+    start_time = time.time()
+    response = embedding_func(*args, **kwargs)
+    end_time = time.time()
+
+    try:
+        model_name = kwargs.get("model", getattr(response, "model", "unknown"))
+        provider = detect_provider_from_response(response, model_name)
+        embeddings, dim, count = _parse_embedding_response(response)
+        usage_data = extract_usage_from_response(response)
+        extra_metadata = extract_litellm_metadata(response, model_name)
+        cost = extra_metadata.get("cost", None)
+
+        prompt_tokens = usage_data.get("prompt_tokens") or 0
+        total_tokens = usage_data.get("total_tokens") or prompt_tokens
+
+        tracer.add_embedding_step_to_trace(
+            name="LiteLLM Embedding",
+            end_time=end_time,
+            inputs={"input": kwargs.get("input")},
+            output=embeddings,
+            latency=(end_time - start_time) * 1000,
+            tokens=total_tokens,
+            prompt_tokens=prompt_tokens,
+            model=model_name,
+            model_parameters=_get_embedding_model_parameters(kwargs),
+            embedding_dimensions=dim,
+            embedding_count=count,
+            raw_output=(
+                response.model_dump()
+                if hasattr(response, "model_dump")
+                else str(response)
+            ),
+            provider=provider,
+            cost=cost,
+            id=inference_id,
+            metadata={
+                "provider": provider,
+                "litellm_model": model_name,
+                **extra_metadata,
+            },
+        )
+    except Exception as e:
+        logger.error(
+            "Failed to trace the LiteLLM embedding request with Openlayer. %s", e
+        )
+
+    return response
+
+
+def _parse_embedding_response(response: Any) -> tuple:
+    """Returns (embeddings, dimensions, count). Mirrors OpenAI EmbeddingResponse."""
+    try:
+        data = getattr(response, "data", None)
+        if data is None and isinstance(response, dict):
+            data = response.get("data", [])
+        if not data:
+            return [], 0, 0
+        embeddings = [
+            item["embedding"] if isinstance(item, dict) else item.embedding
+            for item in data
+        ]
+        if not embeddings:
+            return [], 0, 0
+        if len(embeddings) == 1:
+            return embeddings[0], len(embeddings[0]), 1
+        return embeddings, len(embeddings[0]), len(embeddings)
+    except Exception:
+        return [], 0, 0
+
+
+def _get_embedding_model_parameters(kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "dimensions": kwargs.get("dimensions"),
+        "encoding_format": kwargs.get("encoding_format"),
+        "user": kwargs.get("user"),
+        "timeout": kwargs.get("timeout"),
+        "api_base": kwargs.get("api_base"),
+        "api_version": kwargs.get("api_version"),
+    }
 
 
 def get_model_parameters(kwargs: Dict[str, Any]) -> Dict[str, Any]:

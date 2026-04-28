@@ -272,6 +272,66 @@ class TestLiteLLMIntegration:
         mock_response = Mock(spec=[])  # No special attributes
         
         provider = detect_provider_from_response(mock_response, 'gpt-4')
-        
+
         assert provider == 'openai'
         mock_litellm.get_llm_provider.assert_called_once_with('gpt-4')
+
+
+class TestLiteLLMEmbedding:
+    """Embedding calls must be traced via add_embedding_step_to_trace."""
+
+    @patch("openlayer.lib.integrations.litellm_tracer.HAVE_LITELLM", True)
+    @patch("openlayer.lib.integrations.litellm_tracer.litellm")
+    def test_trace_litellm_patches_embedding(self, mock_litellm: Mock) -> None:
+        from openlayer.lib.integrations import litellm_tracer
+
+        litellm_tracer._litellm_traced = False
+
+        original_embedding = Mock()
+        mock_litellm.embedding = original_embedding
+        mock_litellm.completion = Mock()
+
+        from openlayer.lib.integrations.litellm_tracer import trace_litellm
+
+        trace_litellm()
+
+        assert mock_litellm.embedding != original_embedding
+        assert callable(mock_litellm.embedding)
+
+    @patch("openlayer.lib.integrations.litellm_tracer.HAVE_LITELLM", True)
+    def test_handle_embedding_single_input(self) -> None:
+        from openlayer.lib.integrations.litellm_tracer import handle_embedding
+
+        fake_response = Mock()
+        fake_response.model = "text-embedding-3-small"
+        fake_response.data = [Mock(embedding=[0.1, 0.2, 0.3])]
+        fake_response.usage = Mock(prompt_tokens=4, total_tokens=4)
+        fake_response.model_dump = Mock(
+            return_value={"model": "text-embedding-3-small"}
+        )
+        fake_response._hidden_params = {}
+
+        embedding_func = Mock(return_value=fake_response)
+
+        with patch(
+            "openlayer.lib.tracing.tracer.add_embedding_step_to_trace"
+        ) as mock_add:
+            result = handle_embedding(
+                embedding_func=embedding_func,
+                model="text-embedding-3-small",
+                input="hello",
+                inference_id="custom-id",
+            )
+
+        assert result is fake_response
+        mock_add.assert_called_once()
+        kwargs = mock_add.call_args.kwargs
+        assert kwargs["name"] == "LiteLLM Embedding"
+        assert kwargs["model"] == "text-embedding-3-small"
+        assert kwargs["inputs"] == {"input": "hello"}
+        assert kwargs["output"] == [0.1, 0.2, 0.3]
+        assert kwargs["embedding_dimensions"] == 3
+        assert kwargs["embedding_count"] == 1
+        assert kwargs["prompt_tokens"] == 4
+        assert kwargs["tokens"] == 4
+        assert kwargs["id"] == "custom-id"
