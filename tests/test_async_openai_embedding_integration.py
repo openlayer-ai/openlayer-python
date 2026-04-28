@@ -1,7 +1,7 @@
 """Test OpenAI embedding integration (async)."""
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import Mock, AsyncMock, MagicMock, patch
 
 
 class TestOpenAIAsyncEmbedding:

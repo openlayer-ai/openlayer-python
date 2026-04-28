@@ -1,6 +1,6 @@
 """Test OpenAI embedding integration (sync)."""
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, MagicMock, patch
 
 
 class TestOpenAISyncEmbedding:
