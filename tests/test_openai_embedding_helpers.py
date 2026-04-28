@@ -1,5 +1,9 @@
 """Test shared OpenAI embedding parsers."""
 
+# openlayer.lib.integrations is in pyright's ignore list, so imports get
+# unknown/partially unknown types; disable these diagnostics for this test file only.
+# pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false, reportUnknownParameterType=false, reportMissingParameterType=false
+
 from unittest.mock import Mock
 
 

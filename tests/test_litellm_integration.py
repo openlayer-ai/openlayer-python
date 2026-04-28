@@ -300,7 +300,9 @@ class TestLiteLLMEmbedding:
 
     @patch("openlayer.lib.integrations.litellm_tracer.HAVE_LITELLM", True)
     def test_handle_embedding_single_input(self) -> None:
-        from openlayer.lib.integrations.litellm_tracer import handle_embedding
+        from openlayer.lib.integrations.litellm_tracer import (
+            handle_embedding,  # pyright: ignore[reportUnknownVariableType]
+        )
 
         fake_response = Mock()
         fake_response.model = "text-embedding-3-small"
@@ -338,7 +340,9 @@ class TestLiteLLMEmbedding:
 
     @patch("openlayer.lib.integrations.litellm_tracer.HAVE_LITELLM", True)
     def test_handle_embedding_batch_input(self) -> None:
-        from openlayer.lib.integrations.litellm_tracer import handle_embedding
+        from openlayer.lib.integrations.litellm_tracer import (
+            handle_embedding,  # pyright: ignore[reportUnknownVariableType]
+        )
 
         fake_response = Mock()
         fake_response.model = "text-embedding-3-small"
@@ -376,7 +380,9 @@ class TestLiteLLMEmbedding:
 
     @patch("openlayer.lib.integrations.litellm_tracer.HAVE_LITELLM", True)
     def test_handle_embedding_cost_from_hidden_params(self) -> None:
-        from openlayer.lib.integrations.litellm_tracer import handle_embedding
+        from openlayer.lib.integrations.litellm_tracer import (
+            handle_embedding,  # pyright: ignore[reportUnknownVariableType]
+        )
 
         fake_response = Mock()
         fake_response.model = "text-embedding-3-small"
@@ -398,7 +404,9 @@ class TestLiteLLMEmbedding:
 
     @patch("openlayer.lib.integrations.litellm_tracer.HAVE_LITELLM", True)
     def test_handle_embedding_failure_does_not_break_client(self) -> None:
-        from openlayer.lib.integrations.litellm_tracer import handle_embedding
+        from openlayer.lib.integrations.litellm_tracer import (
+            handle_embedding,  # pyright: ignore[reportUnknownVariableType]
+        )
 
         fake_response = Mock()
         fake_response.model = "text-embedding-3-small"

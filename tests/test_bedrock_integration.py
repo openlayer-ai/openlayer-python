@@ -1,5 +1,9 @@
 """Test AWS Bedrock integration."""
 
+# openlayer.lib.integrations is in pyright's ignore list, so imports from bedrock_tracer
+# get unknown/partially unknown types; disable these diagnostics for this test file only.
+# pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false, reportUnknownParameterType=false, reportMissingParameterType=false
+
 import io
 import json
 from unittest.mock import MagicMock, patch
@@ -10,7 +14,7 @@ class TestBedrockChatRegression:
 
     def _make_anthropic_response(self, body_dict):
         """Build a response dict mimicking what bedrock-runtime returns."""
-        from botocore.response import StreamingBody
+        from botocore.response import StreamingBody  # pyright: ignore[reportMissingImports]
 
         body_bytes = json.dumps(body_dict).encode("utf-8")
         return {"body": StreamingBody(io.BytesIO(body_bytes), len(body_bytes))}
@@ -88,7 +92,7 @@ class TestBedrockEmbeddingDetection:
 
     def test_traced_invoke_routes_embedding_to_new_handler(self) -> None:
         """An embedding modelId must call handle_embedding_invoke, not the chat handler."""
-        from botocore.response import StreamingBody
+        from botocore.response import StreamingBody  # pyright: ignore[reportMissingImports]
 
         from openlayer.lib.integrations.bedrock_tracer import trace_bedrock
 
@@ -120,7 +124,7 @@ class TestBedrockTitanEmbedding:
     """Titan v1 and v2 embedding requests produce well-formed embedding steps."""
 
     def _titan_response(self, embedding, token_count):
-        from botocore.response import StreamingBody
+        from botocore.response import StreamingBody  # pyright: ignore[reportMissingImports]
 
         body = json.dumps(
             {"embedding": embedding, "inputTextTokenCount": token_count}
@@ -198,7 +202,7 @@ class TestBedrockCohereEmbedding:
     """Cohere v3 embedding produces a multi-vector batch step."""
 
     def _cohere_response(self, embeddings):
-        from botocore.response import StreamingBody
+        from botocore.response import StreamingBody  # pyright: ignore[reportMissingImports]
 
         body = json.dumps(
             {
@@ -249,7 +253,7 @@ class TestBedrockEmbeddingResilience:
     """Tracing failures must never break the caller; response body must remain usable."""
 
     def test_embedding_failure_does_not_break_client(self) -> None:
-        from botocore.response import StreamingBody
+        from botocore.response import StreamingBody  # pyright: ignore[reportMissingImports]
 
         from openlayer.lib.integrations.bedrock_tracer import trace_bedrock
 
@@ -275,7 +279,7 @@ class TestBedrockEmbeddingResilience:
         assert response["body"].read() == body_bytes
 
     def test_embedding_response_body_is_replayable(self) -> None:
-        from botocore.response import StreamingBody
+        from botocore.response import StreamingBody  # pyright: ignore[reportMissingImports]
 
         from openlayer.lib.integrations.bedrock_tracer import trace_bedrock
 

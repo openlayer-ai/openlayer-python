@@ -1,5 +1,9 @@
 """Test OpenAI embedding integration (async)."""
 
+# openlayer.lib.integrations is in pyright's ignore list, so imports get
+# unknown/partially unknown types; disable these diagnostics for this test file only.
+# pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false, reportUnknownParameterType=false, reportMissingParameterType=false
+
 import asyncio
 from unittest.mock import Mock, AsyncMock, MagicMock, patch
 
@@ -88,7 +92,7 @@ class TestOpenAIAsyncEmbedding:
         assert result is fake
 
     def test_trace_async_openai_patches_embeddings_create(self) -> None:
-        import openai
+        import openai  # pyright: ignore[reportMissingImports]
 
         from openlayer.lib.integrations.async_openai_tracer import trace_async_openai
 
