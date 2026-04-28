@@ -114,3 +114,81 @@ class TestBedrockEmbeddingDetection:
 
         mock_embed.assert_called_once()
         mock_chat.assert_not_called()
+
+
+class TestBedrockTitanEmbedding:
+    """Titan v1 and v2 embedding requests produce well-formed embedding steps."""
+
+    def _titan_response(self, embedding, token_count):
+        from botocore.response import StreamingBody
+
+        body = json.dumps(
+            {"embedding": embedding, "inputTextTokenCount": token_count}
+        ).encode("utf-8")
+        return {"body": StreamingBody(io.BytesIO(body), len(body))}
+
+    def test_titan_v2_single_embedding(self) -> None:
+        from openlayer.lib.integrations.bedrock_tracer import trace_bedrock
+
+        vec = [0.1, 0.2, 0.3, 0.4]
+        mock_client = MagicMock()
+        mock_client.invoke_model.return_value = self._titan_response(vec, 7)
+        traced = trace_bedrock(mock_client)
+
+        with patch(
+            "openlayer.lib.tracing.tracer.add_embedding_step_to_trace"
+        ) as mock_add:
+            response = traced.invoke_model(
+                modelId="amazon.titan-embed-text-v2:0",
+                body=json.dumps(
+                    {"inputText": "hello world", "dimensions": 4, "normalize": True}
+                ),
+                contentType="application/json",
+                accept="application/json",
+            )
+
+        mock_add.assert_called_once()
+        kwargs = mock_add.call_args.kwargs
+        assert kwargs["name"] == "AWS Bedrock Embedding"
+        assert kwargs["model"] == "amazon.titan-embed-text-v2:0"
+        assert kwargs["provider"] == "Bedrock"
+        assert kwargs["inputs"] == {"input": "hello world"}
+        assert kwargs["output"] == vec
+        assert kwargs["embedding_dimensions"] == 4
+        assert kwargs["embedding_count"] == 1
+        assert kwargs["prompt_tokens"] == 7
+        assert kwargs["tokens"] == 7
+        assert kwargs["model_parameters"] == {
+            "dimensions": 4,
+            "normalize": True,
+        }
+        assert response["body"].read() == json.dumps(
+            {"embedding": vec, "inputTextTokenCount": 7}
+        ).encode("utf-8")
+
+    def test_titan_v1_single_embedding(self) -> None:
+        from openlayer.lib.integrations.bedrock_tracer import trace_bedrock
+
+        vec = [0.5] * 1536
+        mock_client = MagicMock()
+        mock_client.invoke_model.return_value = self._titan_response(vec, 12)
+        traced = trace_bedrock(mock_client)
+
+        with patch(
+            "openlayer.lib.tracing.tracer.add_embedding_step_to_trace"
+        ) as mock_add:
+            traced.invoke_model(
+                modelId="amazon.titan-embed-text-v1",
+                body=json.dumps({"inputText": "another"}),
+            )
+
+        kwargs = mock_add.call_args.kwargs
+        assert kwargs["model"] == "amazon.titan-embed-text-v1"
+        assert kwargs["embedding_dimensions"] == 1536
+        assert kwargs["embedding_count"] == 1
+        assert kwargs["prompt_tokens"] == 12
+        # v1 has no `dimensions`/`normalize` params in its request body
+        assert kwargs["model_parameters"] == {
+            "dimensions": None,
+            "normalize": None,
+        }
