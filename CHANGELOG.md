@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.25.0 (2026-04-28)
+
+Full Changelog: [v0.24.0...v0.25.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.24.0...v0.25.0)
+
+### Features
+
+* support setting headers via env ([c1c13bf](https://github.com/openlayer-ai/openlayer-python/commit/c1c13bf876651a00a587c90e12df4ded5a9c18d0))
+
+
+### Bug Fixes
+
+* use correct field name format for multipart file arrays ([d46c242](https://github.com/openlayer-ai/openlayer-python/commit/d46c242c8da80ac47852ec5f9d31ce9cd0ef8b84))
+
+
+### Performance Improvements
+
+* **client:** optimize file structure copying in multipart requests ([f1bd1b6](https://github.com/openlayer-ai/openlayer-python/commit/f1bd1b67ef14d4dd38f16287f16583af8ecb095c))
+
+
+### Chores
+
+* **internal:** more robust bootstrap script ([7db0bc0](https://github.com/openlayer-ai/openlayer-python/commit/7db0bc04d2dc7244c73d80ecd42215d269f78f6a))
+* **tests:** bump steady to v0.22.1 ([1a1013d](https://github.com/openlayer-ai/openlayer-python/commit/1a1013d6e5d82b18deca30f215195904f0e3d4f1))
+
 ## 0.24.0 (2026-04-14)
 
 Full Changelog: [v0.23.3...v0.24.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.23.3...v0.24.0)
