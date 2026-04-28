@@ -192,3 +192,54 @@ class TestBedrockTitanEmbedding:
             "dimensions": None,
             "normalize": None,
         }
+
+
+class TestBedrockCohereEmbedding:
+    """Cohere v3 embedding produces a multi-vector batch step."""
+
+    def _cohere_response(self, embeddings):
+        from botocore.response import StreamingBody
+
+        body = json.dumps(
+            {
+                "embeddings": embeddings,
+                "id": "abc-123",
+                "response_type": "embeddings_floats",
+            }
+        ).encode("utf-8")
+        return {"body": StreamingBody(io.BytesIO(body), len(body))}
+
+    def test_cohere_embed_batch(self) -> None:
+        from openlayer.lib.integrations.bedrock_tracer import trace_bedrock
+
+        embeddings = [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6], [0.7, 0.8, 0.9]]
+        mock_client = MagicMock()
+        mock_client.invoke_model.return_value = self._cohere_response(embeddings)
+        traced = trace_bedrock(mock_client)
+
+        with patch(
+            "openlayer.lib.tracing.tracer.add_embedding_step_to_trace"
+        ) as mock_add:
+            traced.invoke_model(
+                modelId="cohere.embed-english-v3",
+                body=json.dumps(
+                    {
+                        "texts": ["one", "two", "three"],
+                        "input_type": "search_document",
+                    }
+                ),
+            )
+
+        kwargs = mock_add.call_args.kwargs
+        assert kwargs["model"] == "cohere.embed-english-v3"
+        assert kwargs["inputs"] == {"input": ["one", "two", "three"]}
+        assert kwargs["output"] == embeddings
+        assert kwargs["embedding_dimensions"] == 3
+        assert kwargs["embedding_count"] == 3
+        # Cohere v3 does not return tokens in its response body.
+        assert kwargs["prompt_tokens"] == 0
+        assert kwargs["model_parameters"] == {
+            "input_type": "search_document",
+            "truncate": None,
+            "embedding_types": None,
+        }
