@@ -150,6 +150,22 @@ def trace_openai(
             )
 
         client.responses.create = traced_responses_create_func
+
+        if hasattr(client.responses, "parse"):
+            responses_parse_func = client.responses.parse
+
+            @wraps(responses_parse_func)
+            def traced_responses_parse_func(*args, **kwargs):
+                inference_id = kwargs.pop("inference_id", None)
+                return handle_responses_non_streaming_create(
+                    *args,
+                    **kwargs,
+                    create_func=responses_parse_func,
+                    inference_id=inference_id,
+                    is_azure_openai=is_azure_openai,
+                )
+
+            client.responses.parse = traced_responses_parse_func
     else:
         logger.debug("Responses API not available in this OpenAI client version")
 
