@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.25.2 (2026-05-06)
+
+Full Changelog: [v0.25.1...v0.25.2](https://github.com/openlayer-ai/openlayer-python/compare/v0.25.1...v0.25.2)
+
+### Chores
+
+* **closes OPEN-10613:** assign step type in trace decorator ([1291bb0](https://github.com/openlayer-ai/openlayer-python/commit/1291bb0a1ad173e9898e64b8e6041532cfd90b4a))
+
 ## 0.25.1 (2026-05-06)
 
 Full Changelog: [v0.25.0...v0.25.1](https://github.com/openlayer-ai/openlayer-python/compare/v0.25.0...v0.25.1)
