@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.25.1 (2026-05-06)
+
+Full Changelog: [v0.25.0...v0.25.1](https://github.com/openlayer-ai/openlayer-python/compare/v0.25.0...v0.25.1)
+
+### Bug Fixes
+
+* **closes OPEN-10593:** openAI parse responses not getting patched ([224408f](https://github.com/openlayer-ai/openlayer-python/commit/224408fdbdf47ac3f5a87a758edca73a6431d97d))
+
 ## 0.25.0 (2026-04-28)
 
 Full Changelog: [v0.24.0...v0.25.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.24.0...v0.25.0)
