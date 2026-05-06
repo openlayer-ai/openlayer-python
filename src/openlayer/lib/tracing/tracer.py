@@ -593,6 +593,12 @@ def trace(
             step_kwargs["name"] = func.__name__
         step_name = step_kwargs["name"]
 
+        _raw_step_type = step_kwargs.get("step_type", enums.StepType.USER_CALL)
+        if isinstance(_raw_step_type, str):
+            _raw_step_type = enums.StepType(_raw_step_type)
+        step_type = _raw_step_type
+        step_kwargs["step_type"] = step_type
+
         # Check if it's a generator function
         if inspect.isgeneratorfunction(func):
             # For sync generators, use class-based approach to delay trace creation
@@ -622,7 +628,7 @@ def trace(
                             self._step, self._is_root_step, self._token = (
                                 _create_and_initialize_step(
                                     step_name=step_name,
-                                    step_type=enums.StepType.USER_CALL,
+                                    step_type=step_type,
                                     inputs=None,
                                     output=None,
                                     metadata=None,
@@ -906,6 +912,12 @@ def trace_async(
             step_kwargs["name"] = func.__name__
         step_name = step_kwargs["name"]
 
+        _raw_step_type = step_kwargs.get("step_type", enums.StepType.USER_CALL)
+        if isinstance(_raw_step_type, str):
+            _raw_step_type = enums.StepType(_raw_step_type)
+        step_type = _raw_step_type
+        step_kwargs["step_type"] = step_type
+
         if asyncio.iscoroutinefunction(func) or inspect.isasyncgenfunction(func):
             # Check if it's specifically an async generator function
             if inspect.isasyncgenfunction(func):
@@ -933,7 +945,7 @@ def trace_async(
                                 self._step, self._is_root_step, self._token = (
                                     _create_and_initialize_step(
                                         step_name=step_name,
-                                        step_type=enums.StepType.USER_CALL,
+                                        step_type=step_type,
                                         inputs=None,
                                         output=None,
                                         metadata=None,
@@ -1867,6 +1879,9 @@ def _process_wrapper_inputs_and_outputs(
         context_kwarg=context_kwarg,
         question_kwarg=question_kwarg,
     )
+    if isinstance(step, steps.ToolStep):
+        step.function_name = step.name
+        step.arguments = inputs
     _finalize_step_logging(
         step=step,
         inputs=inputs,
