@@ -466,6 +466,30 @@ def get_rag_question() -> Optional[str]:
     return _rag_question.get(None)
 
 
+_CROSS_CONTEXT_TOKEN_MESSAGE = "was created in a different Context"
+
+
+def _safe_reset_contextvar(var: "contextvars.ContextVar[Any]", token: Any) -> None:
+    """Reset a ContextVar token, swallowing the cross-context ``ValueError``.
+
+    Async generators driven by integrations (Google ADK, etc.) can be entered
+    and exited in different asyncio Contexts. The token from ``set()`` then
+    becomes invalid and ``reset()`` raises
+    ``ValueError("<Token ...> was created in a different Context")``. During
+    exception unwinding that secondary failure becomes a chained exception
+    polluting the user's traceback (OPEN-10343). Other ``ValueError``s are
+    re-raised.
+    """
+    if token is None:
+        return
+    try:
+        var.reset(token)
+    except ValueError as exc:
+        if _CROSS_CONTEXT_TOKEN_MESSAGE not in str(exc):
+            raise
+        logger.debug("Skipping cross-context ContextVar reset: %s", exc)
+
+
 @contextmanager
 def create_step(
     name: str,
@@ -493,13 +517,7 @@ def create_step(
             latency = (new_step.end_time - new_step.start_time) * 1000  # in ms
             new_step.latency = latency
 
-        try:
-            _current_step.reset(token)
-        except ValueError as e:
-            # Handle context variable mismatch gracefully
-            # This can occur when async generators cross context boundaries
-            if "was created in a different Context" not in str(e):
-                raise
+        _safe_reset_contextvar(_current_step, token)
 
         _handle_trace_completion(
             is_root_step=is_root_step,
