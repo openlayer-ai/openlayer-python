@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.25.3 (2026-05-07)
+
+Full Changelog: [v0.25.2...v0.25.3](https://github.com/openlayer-ai/openlayer-python/compare/v0.25.2...v0.25.3)
+
+### Chores
+
+* **internal:** reformat pyproject.toml ([a59d4d2](https://github.com/openlayer-ai/openlayer-python/commit/a59d4d2175da1f47eb50a6b613ee05ace0ea524e))
+* **internal:** version bump ([e272859](https://github.com/openlayer-ai/openlayer-python/commit/e27285920326aec651bc5dcf0009ca2ad2cb5b2a))
+
 ## 0.25.2 (2026-05-06)
 
 Full Changelog: [v0.25.1...v0.25.2](https://github.com/openlayer-ai/openlayer-python/compare/v0.25.1...v0.25.2)
