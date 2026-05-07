@@ -518,6 +518,15 @@ def add_chat_completion_step_to_trace(**kwargs) -> None:
         step.log(**kwargs)
 
 
+def add_embedding_step_to_trace(**kwargs) -> None:
+    """Adds an embedding step to the trace."""
+    with create_step(
+        step_type=enums.StepType.EMBEDDING,
+        name=kwargs.get("name", "Embedding"),
+    ) as step:
+        step.log(**kwargs)
+
+
 def trace(
     *step_args,
     inference_pipeline_id: Optional[str] = None,

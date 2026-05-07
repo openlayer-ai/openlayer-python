@@ -17,3 +17,5 @@ Brewfile.lock.json
 
 .ipynb_checkpoints
 .DS_Store
+
+.worktrees/

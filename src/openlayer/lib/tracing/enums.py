@@ -8,6 +8,7 @@ class StepType(enum.Enum):
 
     AGENT = "agent"
     CHAT_COMPLETION = "chat_completion"
+    EMBEDDING = "embedding"
     GUARDRAIL = "guardrail"
     HANDOFF = "handoff"
     RETRIEVER = "retriever"

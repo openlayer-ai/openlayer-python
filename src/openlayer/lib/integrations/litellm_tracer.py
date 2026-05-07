@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
 from ..tracing import tracer
 from ..tracing import enums as tracer_enums
+from ._openai_embedding_common import build_embedding_step_kwargs
 
 logger = logging.getLogger(__name__)
 
@@ -96,8 +97,24 @@ def trace_litellm() -> None:
         )
 
     litellm.completion = traced_completion
+
+    # Patch litellm.embedding to trace embedding calls.
+    original_embedding = litellm.embedding
+
+    @wraps(original_embedding)
+    def traced_embedding(*args, **kwargs):
+        inference_id = kwargs.pop("inference_id", None)
+        return handle_embedding(
+            *args,
+            **kwargs,
+            embedding_func=original_embedding,
+            inference_id=inference_id,
+        )
+
+    litellm.embedding = traced_embedding
+
     _litellm_traced = True
-    logger.debug("litellm.completion has been patched for Openlayer tracing")
+    logger.debug("litellm.completion and litellm.embedding have been patched for Openlayer tracing")
 
 
 def handle_streaming_completion(
@@ -333,6 +350,60 @@ def handle_non_streaming_completion(
     # pylint: disable=broad-except
     except Exception as e:
         logger.error("Failed to trace the LiteLLM completion request with Openlayer. %s", e)
+
+    return response
+
+
+def handle_embedding(
+    embedding_func: callable,
+    *args,
+    inference_id: Optional[str] = None,
+    **kwargs,
+) -> Any:
+    """Handle a single litellm.embedding() invocation."""
+    start_time = time.time()
+    response = embedding_func(*args, **kwargs)
+    end_time = time.time()
+
+    try:
+        model_name = kwargs.get("model", getattr(response, "model", "unknown"))
+        provider = detect_provider_from_response(response, model_name)
+        extra_metadata = extract_litellm_metadata(response, model_name)
+        usage_data = extract_usage_from_response(response)
+
+        step_kwargs = build_embedding_step_kwargs(
+            response,
+            kwargs,
+            start_time,
+            end_time,
+            name="LiteLLM Embedding",
+            provider=provider,
+            inference_id=inference_id,
+        )
+
+        # LiteLLM-specific overlays: usage uses LiteLLM's normalized dict, extra
+        # connection params, response cost, and provider metadata.
+        prompt_tokens = usage_data.get("prompt_tokens") or 0
+        step_kwargs["prompt_tokens"] = prompt_tokens
+        step_kwargs["tokens"] = usage_data.get("total_tokens") or prompt_tokens
+        step_kwargs["model_parameters"] = {
+            **step_kwargs["model_parameters"],
+            "timeout": kwargs.get("timeout"),
+            "api_base": kwargs.get("api_base"),
+            "api_version": kwargs.get("api_version"),
+        }
+        step_kwargs["cost"] = extra_metadata.get("cost", None)
+        step_kwargs["metadata"] = {
+            **step_kwargs["metadata"],
+            "litellm_model": model_name,
+            **extra_metadata,
+        }
+
+        tracer.add_embedding_step_to_trace(**step_kwargs)
+    except Exception as e:
+        logger.error(
+            "Failed to trace the LiteLLM embedding request with Openlayer. %s", e
+        )
 
     return response
 
