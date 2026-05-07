@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.26.0 (2026-05-07)
+
+Full Changelog: [v0.25.3...v0.26.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.25.3...v0.26.0)
+
+### Features
+
+* **closes OPEN-10480:** add embedding tracer support for Bedrock, LiteLLM, OpenAI ([aa87e40](https://github.com/openlayer-ai/openlayer-python/commit/aa87e40d4314abf9dd9bbba538d9d5f3247b4399))
+
 ## 0.25.3 (2026-05-07)
 
 Full Changelog: [v0.25.2...v0.25.3](https://github.com/openlayer-ai/openlayer-python/compare/v0.25.2...v0.25.3)
