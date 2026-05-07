@@ -47,6 +47,7 @@ except ImportError:
 
 from ..tracing import tracer, steps, enums
 from ..tracing.tracer import _current_step as _tracer_current_step
+from ..tracing.tracer import _safe_reset_contextvar
 
 logger = logging.getLogger(__name__)
 
@@ -282,6 +283,21 @@ def _sort_steps_by_time(step: Any, recursive: bool = True) -> None:
     if recursive:
         for child_step in step.steps:
             _sort_steps_by_time(child_step, recursive=True)
+
+
+def _record_step_error(step: Any, error: BaseException) -> None:
+    """Record exception info on a step's metadata without overwriting output."""
+    if step is None:
+        return
+    try:
+        if getattr(step, "metadata", None) is None:
+            step.metadata = {}
+        step.metadata["error"] = {
+            "type": type(error).__name__,
+            "message": str(error),
+        }
+    except Exception:  # pragma: no cover - defensive: never break unwinding
+        logger.debug("Failed to record error on step metadata", exc_info=True)
 
 
 def _build_llm_request_for_trace(llm_request: Any) -> Dict[str, Any]:
@@ -676,8 +692,8 @@ def _base_agent_run_async_wrapper() -> Any:
                         step.output = "Agent execution completed"
 
                 except Exception as e:
-                    step.output = f"Error: {str(e)}"
-                    logger.error(f"Error in agent execution: {e}")
+                    _record_step_error(step, e)
+                    logger.debug("Agent execution raised; propagating: %s", e)
                     raise
                 finally:
                     # Sort all nested steps recursively by start_time to ensure chronological order
@@ -691,8 +707,7 @@ def _base_agent_run_async_wrapper() -> Any:
 
             # Restore the current step context if we changed it for transfer
             # This must be done AFTER the with block exits
-            if transfer_token is not None:
-                _tracer_current_step.reset(transfer_token)
+            _safe_reset_contextvar(_tracer_current_step, transfer_token)
 
         return new_function()
 
@@ -923,8 +938,8 @@ def _base_llm_flow_call_llm_async_wrapper() -> Any:
                             pass
 
                 except Exception as e:
-                    step.output = f"Error: {str(e)}"
-                    logger.error(f"Error in LLM call: {e}")
+                    _record_step_error(step, e)
+                    logger.debug("LLM call raised; propagating: %s", e)
                     raise
                 finally:
                     # Sort nested steps by start_time for correct chronological order
@@ -1025,8 +1040,8 @@ def _call_tool_async_wrapper() -> Any:
                     return result
 
                 except Exception as e:
-                    step.output = f"Error: {str(e)}"
-                    logger.error(f"Error in tool execution: {e}")
+                    _record_step_error(step, e)
+                    logger.debug("Tool execution raised; propagating: %s", e)
                     raise
                 finally:
                     # Sort nested steps by start_time for correct chronological order
@@ -1296,12 +1311,14 @@ def _create_callback_wrapper(callback_name: str, callback_type: str) -> Callable
 
                             return result
                         except Exception as e:
-                            step.output = f"Error: {str(e)}"
+                            _record_step_error(step, e)
                             raise
                 finally:
-                    # Restore the previous current step
-                    if saved_token is not None:
-                        _tracer_current_step.reset(saved_token)
+                    # Restore the previous current step. Wrapped defensively
+                    # because the await chain can cross asyncio Contexts and
+                    # would otherwise raise a chained ValueError from this
+                    # cleanup path during exception unwinding (OPEN-10343).
+                    _safe_reset_contextvar(_tracer_current_step, saved_token)
 
             return async_traced_callback
         else:
@@ -1363,12 +1380,12 @@ def _create_callback_wrapper(callback_name: str, callback_type: str) -> Callable
 
                             return result
                         except Exception as e:
-                            step.output = f"Error: {str(e)}"
+                            _record_step_error(step, e)
                             raise
                 finally:
-                    # Restore the previous current step
-                    if saved_token is not None:
-                        _tracer_current_step.reset(saved_token)
+                    # Restore the previous current step. Wrapped defensively
+                    # for symmetry with the async path; see OPEN-10343.
+                    _safe_reset_contextvar(_tracer_current_step, saved_token)
 
             return sync_traced_callback
 
