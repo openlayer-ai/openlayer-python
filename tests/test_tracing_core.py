@@ -500,6 +500,7 @@ class TestStepTypes:
             enums.StepType.RETRIEVER: steps.RetrieverStep,
             enums.StepType.TOOL: steps.ToolStep,
             enums.StepType.GUARDRAIL: steps.GuardrailStep,
+            enums.StepType.EMBEDDING: steps.EmbeddingStep,
         }
 
         for step_type, expected_class in step_types_mapping.items():
@@ -812,3 +813,136 @@ class TestPromoteOutput:
 
         # "tool_count" exists in inputs, so it should be promoted from there
         my_func(tool_count=5)
+
+
+class TestEmbeddingStep:
+    """Tests for StepType.EMBEDDING and the add_embedding_step_to_trace helper."""
+
+    def test_step_type_embedding_exists(self) -> None:
+        """StepType.EMBEDDING must exist with the expected string value."""
+        from openlayer.lib.tracing.enums import StepType
+
+        assert StepType.EMBEDDING.value == "embedding"
+
+    def test_add_embedding_step_to_trace_creates_step_with_correct_type(self) -> None:
+        """The helper must create a step with StepType.EMBEDDING and forward kwargs to step.log."""
+        from unittest.mock import MagicMock
+
+        from openlayer.lib.tracing import enums
+
+        mock_step = MagicMock()
+        mock_ctx = MagicMock()
+        mock_ctx.__enter__.return_value = mock_step
+        mock_ctx.__exit__.return_value = None
+
+        with patch.object(tracer, "create_step", return_value=mock_ctx) as mock_create_step:
+            tracer.add_embedding_step_to_trace(
+                name="OpenAI Embedding",
+                inputs={"input": "hello"},
+                output=[0.1, 0.2, 0.3],
+                model="text-embedding-3-small",
+                embedding_dimensions=3,
+                embedding_count=1,
+            )
+
+        mock_create_step.assert_called_once_with(
+            step_type=enums.StepType.EMBEDDING,
+            name="OpenAI Embedding",
+        )
+        mock_step.log.assert_called_once_with(
+            name="OpenAI Embedding",
+            inputs={"input": "hello"},
+            output=[0.1, 0.2, 0.3],
+            model="text-embedding-3-small",
+            embedding_dimensions=3,
+            embedding_count=1,
+        )
+
+    @patch.object(tracer, "_publish", False)
+    def test_add_embedding_step_to_trace_uses_real_factory(self) -> None:
+        """End-to-end: add_embedding_step_to_trace must produce a serializable
+        EmbeddingStep with embedding-specific fields populated. Regression guard
+        for the original silent-failure bug where StepType.EMBEDDING was missing
+        from step_factory and embedding-specific kwargs were dropped by step.log().
+        """
+        captured_steps: List[Any] = []
+
+        with tracer.create_step("main_step") as main_step:
+            tracer.add_embedding_step_to_trace(
+                name="OpenAI Embedding",
+                inputs={"input": "hello"},
+                output=[0.1, 0.2, 0.3],
+                model="text-embedding-3-small",
+                provider="OpenAI",
+                prompt_tokens=4,
+                tokens=4,
+                embedding_dimensions=3,
+                embedding_count=1,
+                model_parameters={"dimensions": None},
+            )
+            captured_steps = main_step.steps
+
+        assert len(captured_steps) == 1
+        step = captured_steps[0]
+        assert step.step_type == enums.StepType.EMBEDDING
+
+        step_dict = step.to_dict()
+        assert step_dict["type"] == "embedding"
+        assert step_dict["model"] == "text-embedding-3-small"
+        assert step_dict["provider"] == "OpenAI"
+        assert step_dict["promptTokens"] == 4
+        assert step_dict["tokens"] == 4
+        assert step_dict["embeddingDimensions"] == 3
+        assert step_dict["embeddingCount"] == 1
+        assert step_dict["output"] == [0.1, 0.2, 0.3]
+        # Auto-generated UUID must not have been overwritten with "None"
+        assert step_dict["id"] != "None"
+
+    def test_build_embedding_step_kwargs_does_not_overwrite_id_when_inference_id_is_none(self) -> None:
+        """build_embedding_step_kwargs must not include id=None, or it would
+        overwrite the auto-generated UUID via step.log() → setattr().
+        """
+        from unittest.mock import Mock
+
+        from openlayer.lib.integrations._openai_embedding_common import (
+            build_embedding_step_kwargs,
+        )
+
+        response = Mock()
+        response.model = "text-embedding-3-small"
+        response.data = [Mock(embedding=[0.1, 0.2])]
+        response.usage = Mock(prompt_tokens=4, total_tokens=4)
+        response.model_dump = Mock(return_value={})
+
+        step_kwargs = build_embedding_step_kwargs(
+            response=response,
+            call_kwargs={"input": "hi", "model": "text-embedding-3-small"},
+            start_time=0.0,
+            end_time=0.1,
+            name="OpenAI Embedding",
+            provider="OpenAI",
+            inference_id=None,
+        )
+
+        # Either omit "id" entirely, or never include None — both are correct.
+        # Including {"id": None} would clobber the step's auto-UUID.
+        assert step_kwargs.get("id") is not None or "id" not in step_kwargs
+
+    def test_add_embedding_step_to_trace_uses_default_name(self) -> None:
+        """When no name is given, the helper must default to 'Embedding'."""
+        from unittest.mock import MagicMock
+
+        from openlayer.lib.tracing import enums
+
+        mock_step = MagicMock()
+        mock_ctx = MagicMock()
+        mock_ctx.__enter__.return_value = mock_step
+        mock_ctx.__exit__.return_value = None
+
+        with patch.object(tracer, "create_step", return_value=mock_ctx) as mock_create_step:
+            tracer.add_embedding_step_to_trace(model="x", output=[0.0])
+
+        mock_create_step.assert_called_once_with(
+            step_type=enums.StepType.EMBEDDING,
+            name="Embedding",
+        )

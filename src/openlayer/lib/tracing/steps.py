@@ -206,6 +206,48 @@ class ChatCompletionStep(Step):
         return step_dict
 
 
+class EmbeddingStep(Step):
+    """Embedding step represents an embedding API call in the trace."""
+
+    def __init__(
+        self,
+        name: str,
+        inputs: Optional[Any] = None,
+        output: Optional[Any] = None,
+        metadata: Optional[Dict[str, any]] = None,
+    ) -> None:
+        super().__init__(name=name, inputs=inputs, output=output, metadata=metadata)
+
+        self.step_type = enums.StepType.EMBEDDING
+        self.provider: str = None
+        self.prompt_tokens: int = None
+        self.tokens: int = None
+        self.cost: float = None
+        self.model: str = None
+        self.model_parameters: Dict[str, Any] = None
+        self.raw_output: Any = None
+        self.embedding_dimensions: int = None
+        self.embedding_count: int = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Dictionary representation of the EmbeddingStep."""
+        step_dict = super().to_dict()
+        step_dict.update(
+            {
+                "provider": self.provider,
+                "promptTokens": self.prompt_tokens,
+                "tokens": self.tokens,
+                "cost": self.cost,
+                "model": self.model,
+                "modelParameters": self.model_parameters,
+                "rawOutput": self.raw_output,
+                "embeddingDimensions": self.embedding_dimensions,
+                "embeddingCount": self.embedding_count,
+            }
+        )
+        return step_dict
+
+
 class AgentStep(Step):
     """Agent step represents an agent in the trace."""
 
@@ -362,5 +404,6 @@ def step_factory(step_type: enums.StepType, *args, **kwargs) -> Step:
         enums.StepType.TOOL: ToolStep,
         enums.StepType.HANDOFF: HandoffStep,
         enums.StepType.GUARDRAIL: GuardrailStep,
+        enums.StepType.EMBEDDING: EmbeddingStep,
     }
     return step_type_mapping[step_type](*args, **kwargs)

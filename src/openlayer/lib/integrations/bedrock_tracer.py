@@ -5,7 +5,7 @@ import json
 import logging
 import time
 from functools import wraps
-from typing import TYPE_CHECKING, Any, Dict, Iterator, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple, Union
 
 from botocore.response import StreamingBody
 
@@ -23,6 +23,11 @@ if TYPE_CHECKING:
 from ..tracing import tracer
 
 logger = logging.getLogger(__name__)
+
+
+def _is_embedding_model(model_id: str) -> bool:
+    """Return True when modelId refers to a Bedrock embedding model."""
+    return "embed" in (model_id or "").lower()
 
 
 def trace_bedrock(client: "boto3.client") -> "boto3.client":
@@ -63,6 +68,14 @@ def trace_bedrock(client: "boto3.client") -> "boto3.client":
     @wraps(invoke_model_func)
     def traced_invoke_model(*args, **kwargs):
         inference_id = kwargs.pop("inference_id", None)
+        model_id = kwargs.get("modelId", "")
+        if _is_embedding_model(model_id):
+            return handle_embedding_invoke(
+                *args,
+                **kwargs,
+                invoke_func=invoke_model_func,
+                inference_id=inference_id,
+            )
         return handle_non_streaming_invoke(
             *args,
             **kwargs,
@@ -151,6 +164,112 @@ def handle_non_streaming_invoke(
 
     # Return the response with the properly restored body
     return response
+
+
+def handle_embedding_invoke(
+    invoke_func: callable,
+    *args,
+    inference_id: Optional[str] = None,
+    **kwargs,
+) -> Dict[str, Any]:
+    """Handle invoke_model for embedding models (Titan, Cohere)."""
+    start_time = time.time()
+    response = invoke_func(*args, **kwargs)
+    end_time = time.time()
+
+    try:
+        # Parse the request body
+        body_str = kwargs.get("body", "{}")
+        if isinstance(body_str, bytes):
+            body_str = body_str.decode("utf-8")
+        body_data = json.loads(body_str) if isinstance(body_str, str) else body_str
+
+        # Read and replace the response body so callers can still consume it
+        original_body = response["body"]
+        response_body_bytes = original_body.read()
+        response_data = json.loads(
+            response_body_bytes.decode("utf-8")
+            if isinstance(response_body_bytes, bytes)
+            else response_body_bytes
+        )
+        new_stream = io.BytesIO(response_body_bytes)
+        response["body"] = StreamingBody(new_stream, len(response_body_bytes))
+
+        model_id = kwargs.get("modelId", "")
+        inputs = _parse_embedding_input(body_data, model_id)
+        embeddings, dim, count = _parse_embedding_output(response_data, model_id)
+        prompt_tokens = _parse_embedding_tokens(response_data, model_id)
+        model_parameters = _get_embedding_model_parameters(body_data, model_id)
+
+        tracer.add_embedding_step_to_trace(
+            name="AWS Bedrock Embedding",
+            end_time=end_time,
+            inputs=inputs,
+            output=embeddings,
+            latency=(end_time - start_time) * 1000,
+            tokens=prompt_tokens,
+            prompt_tokens=prompt_tokens,
+            model=model_id,
+            model_parameters=model_parameters,
+            embedding_dimensions=dim,
+            embedding_count=count,
+            raw_output=response_data,
+            provider="Bedrock",
+            id=inference_id,
+            metadata={},
+        )
+
+    except Exception as e:
+        logger.error(
+            "Failed to trace the Bedrock embedding invocation with Openlayer. %s", e
+        )
+
+    return response
+
+
+def _parse_embedding_input(body_data: Dict[str, Any], model_id: str) -> Dict[str, Any]:
+    if model_id.startswith("amazon.titan-embed"):
+        return {"input": body_data.get("inputText", "")}
+    if model_id.startswith("cohere.embed"):
+        return {"input": body_data.get("texts", [])}
+    return {"input": body_data}
+
+
+def _parse_embedding_output(
+    response_data: Dict[str, Any], model_id: str
+) -> Tuple[Union[List[float], List[List[float]]], int, int]:
+    """Returns (embeddings, dimensions, count)."""
+    if model_id.startswith("amazon.titan-embed"):
+        emb = response_data.get("embedding", [])
+        return emb, len(emb), 1
+    if model_id.startswith("cohere.embed"):
+        embs = response_data.get("embeddings", [])
+        dim = len(embs[0]) if embs else 0
+        return embs, dim, len(embs)
+    return [], 0, 0
+
+
+def _parse_embedding_tokens(response_data: Dict[str, Any], model_id: str) -> int:
+    if model_id.startswith("amazon.titan-embed"):
+        return response_data.get("inputTextTokenCount", 0)
+    return 0
+
+
+def _get_embedding_model_parameters(
+    body_data: Dict[str, Any], model_id: str
+) -> Dict[str, Any]:
+    if model_id.startswith("amazon.titan-embed"):
+        return {
+            "dimensions": body_data.get("dimensions"),
+            "normalize": body_data.get("normalize"),
+        }
+    if model_id.startswith("cohere.embed"):
+        return {
+            "input_type": body_data.get("input_type"),
+            "truncate": body_data.get("truncate"),
+            "embedding_types": body_data.get("embedding_types"),
+        }
+    return {}
 
 
 def handle_streaming_invoke(
