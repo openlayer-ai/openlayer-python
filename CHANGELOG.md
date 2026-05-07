@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.26.1 (2026-05-07)
+
+Full Changelog: [v0.26.0...v0.26.1](https://github.com/openlayer-ai/openlayer-python/compare/v0.26.0...v0.26.1)
+
+### Bug Fixes
+
+* **closes OPEN-10343:** handle Google ADK callback exceptions cleanly ([8ec3f76](https://github.com/openlayer-ai/openlayer-python/commit/8ec3f76e5aab165ea3cd6fc2d4cf327c70f9e3aa))
+
 ## 0.26.0 (2026-05-07)
 
 Full Changelog: [v0.25.3...v0.26.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.25.3...v0.26.0)
