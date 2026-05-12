@@ -12,6 +12,7 @@ import threading
 import time
 import traceback
 import uuid
+import warnings
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from functools import wraps
@@ -47,31 +48,65 @@ logger = logging.getLogger(__name__)
 
 TRUE_LIST = ["true", "on", "1"]
 
+# Internal/edge-case env vars read once at import time.
 _publish = utils.get_env_variable("OPENLAYER_DISABLE_PUBLISH") not in TRUE_LIST
 _verify_ssl = (
     utils.get_env_variable("OPENLAYER_VERIFY_SSL") or "true"
 ).lower() in TRUE_LIST
 _client = None
 
-# Configuration variables for programmatic setup
-_configured_api_key: Optional[str] = None
-_configured_pipeline_id: Optional[str] = None
-_configured_base_url: Optional[str] = None
-_configured_timeout: Optional[Union[int, float]] = None
-_configured_max_retries: Optional[int] = None
+# Sentinel used by init()/configure() to distinguish "not passed" from
+# explicit None (the latter is the "clear configured value" path).
+_UNSET: Any = object()
 
-# Offline buffering and callback configuration
-_configured_on_flush_failure: Optional[OnFlushFailureCallback] = None
-_configured_offline_buffer_enabled: bool = False
-_configured_offline_buffer_path: Optional[str] = None
-_configured_max_buffer_size: Optional[int] = None
+# Holds only what the user has explicitly set via init() (or the deprecated
+# configure() alias). Keys present here win over env vars. Missing keys fall
+# back to env vars via the resolver helpers below.
+_tracer_config: Dict[str, Any] = {}
 
-# Attachment upload configuration
-_configured_attachment_upload_enabled: bool = False
-_configured_url_upload_enabled: bool = False
+# Defaults applied when a key is absent from both _tracer_config and the environment.
+# Used only for advanced knobs that have no env-var fallback.
+_DEFAULTS: Dict[str, Any] = {
+    "offline_buffer_enabled": False,
+    "attachment_upload_enabled": False,
+    "url_upload_enabled": False,
+    "background_publish_enabled": True,
+}
 
-# Background publishing configuration
-_configured_background_publish_enabled: bool = True
+# Defined later so _get_client() can emit one INFO log on first build.
+_client_init_logged: bool = False
+
+
+def _resolve(key: str, env_var: Optional[str] = None) -> Any:
+    """Resolve a configured value: _tracer_config > env var > default.
+
+    `_tracer_config` is checked first so an explicit None (via init(api_key=None))
+    takes precedence over the env var. Returns None if neither is set and
+    no default exists.
+    """
+    if key in _tracer_config:
+        return _tracer_config[key]
+    if env_var:
+        env_val = utils.get_env_variable(env_var)
+        if env_val is not None:
+            return env_val
+    return _DEFAULTS.get(key)
+
+
+# Public resolvers for the three user-facing knobs. Every code path that
+# needs these (the SDK client, the @trace decorator, integrations like the
+# LangChain callback) MUST go through these helpers — never read env vars
+# directly.
+def resolve_api_key() -> Optional[str]:
+    return _resolve("api_key", "OPENLAYER_API_KEY")
+
+
+def resolve_pipeline_id() -> Optional[str]:
+    return _resolve("inference_pipeline_id", "OPENLAYER_INFERENCE_PIPELINE_ID")
+
+
+def resolve_base_url() -> Optional[str]:
+    return _resolve("base_url", "OPENLAYER_BASE_URL")
 
 # Background executor for async trace publishing
 _background_executor: Optional[ThreadPoolExecutor] = None
@@ -99,128 +134,188 @@ def _shutdown_background_executor() -> None:
         logger.debug("Background executor shutdown complete")
 
 
-def configure(
-    api_key: Optional[str] = None,
-    inference_pipeline_id: Optional[str] = None,
-    base_url: Optional[str] = None,
-    timeout: Optional[Union[int, float]] = None,
-    max_retries: Optional[int] = None,
-    on_flush_failure: Optional[OnFlushFailureCallback] = None,
-    offline_buffer_enabled: bool = False,
-    offline_buffer_path: Optional[str] = None,
-    max_buffer_size: Optional[int] = None,
-    attachment_upload_enabled: bool = False,
-    url_upload_enabled: bool = False,
-    background_publish_enabled: bool = True,
+def init(
+    api_key: Any = _UNSET,
+    inference_pipeline_id: Any = _UNSET,
+    base_url: Any = _UNSET,
+    timeout: Any = _UNSET,
+    max_retries: Any = _UNSET,
+    on_flush_failure: Any = _UNSET,
+    offline_buffer_enabled: Any = _UNSET,
+    offline_buffer_path: Any = _UNSET,
+    max_buffer_size: Any = _UNSET,
+    attachment_upload_enabled: Any = _UNSET,
+    url_upload_enabled: Any = _UNSET,
+    background_publish_enabled: Any = _UNSET,
 ) -> None:
-    """Configure the Openlayer tracer with custom settings.
+    """Initialize and configure the Openlayer tracer.
 
-    This function allows you to programmatically set the API key, inference pipeline ID,
-    base URL, timeout, retry settings, and offline buffering for the Openlayer client,
-    instead of relying on environment variables.
+    This is the canonical entry point for programmatic tracer configuration. It is
+    idempotent and merges with prior state, so it is safe to call multiple times —
+    only the arguments you pass are updated. Arguments you omit are left untouched.
+
+    The three user-facing knobs (``api_key``, ``inference_pipeline_id``, ``base_url``)
+    can also be supplied via environment variables (``OPENLAYER_API_KEY``,
+    ``OPENLAYER_INFERENCE_PIPELINE_ID``, ``OPENLAYER_BASE_URL``). Precedence is:
+
+        explicit value passed here  >  environment variable  >  built-in default
+
+    Passing ``None`` explicitly for a key clears the env-var fallback for that key
+    (the resolver will then return ``None``); omitting an argument preserves the
+    previously configured value.
 
     Args:
-        api_key: The Openlayer API key. If not provided, falls back to OPENLAYER_API_KEY environment variable.
-        inference_pipeline_id: The default inference pipeline ID to use for tracing.
-            If not provided, falls back to OPENLAYER_INFERENCE_PIPELINE_ID environment variable.
-        base_url: The base URL for the Openlayer API. If not provided, falls back to
-            OPENLAYER_BASE_URL environment variable or the default.
-        timeout: The timeout for the Openlayer API in seconds (int or float). Defaults to 60 seconds.
-        max_retries: The maximum number of retries for failed API requests. Defaults to 2.
-        on_flush_failure: Optional callback function called when trace data fails to send to Openlayer.
-            Should accept (trace_data, config, error) as arguments.
-        offline_buffer_enabled: Enable offline buffering of failed traces. Defaults to False.
-        offline_buffer_path: Directory path for storing buffered traces. Defaults to ~/.openlayer/buffer.
-        max_buffer_size: Maximum number of trace files to store in buffer. Defaults to 1000.
-        attachment_upload_enabled: Enable uploading of attachments (images, audio, etc.) to
-            Openlayer storage. When enabled, attachments on steps will be uploaded during
-            trace completion. Defaults to False.
-        url_upload_enabled: Enable downloading and re-uploading of external URL
-            attachments to Openlayer storage. When enabled, attachments that reference
-            external URLs will be fetched and uploaded so the platform has a durable copy.
-            Requires attachment_upload_enabled to also be True. Defaults to False.
-        background_publish_enabled: Enable background publishing of traces. When enabled,
-            attachment uploads and trace publishing happen in a background thread, allowing
-            the main thread to return immediately. When disabled, tracing is synchronous.
-            Defaults to True.
+        api_key: Openlayer API key. Falls back to ``OPENLAYER_API_KEY``.
+        inference_pipeline_id: Default inference pipeline ID for tracing. Falls back
+            to ``OPENLAYER_INFERENCE_PIPELINE_ID``.
+        base_url: Base URL of the Openlayer API (useful for on-prem deployments).
+            Falls back to ``OPENLAYER_BASE_URL``.
+        timeout: API request timeout in seconds. Defaults to the SDK client default.
+        max_retries: Maximum retries for failed API requests. Defaults to the SDK
+            client default.
+        on_flush_failure: Optional callback invoked when a trace fails to publish.
+            Receives ``(trace_data, config, error)``.
+        offline_buffer_enabled: Buffer failed traces to disk for later replay.
+            Defaults to False.
+        offline_buffer_path: Directory for buffered traces. Defaults to
+            ``~/.openlayer/buffer``.
+        max_buffer_size: Maximum number of trace files to keep in the buffer.
+            Defaults to 1000.
+        attachment_upload_enabled: Upload attachments (images, audio, etc.) attached
+            to steps. Defaults to False.
+        url_upload_enabled: When attachment_upload_enabled is True, also fetch
+            external URL attachments and re-upload them to Openlayer storage so the
+            platform has a durable copy. Defaults to False.
+        background_publish_enabled: Publish traces from a background thread so the
+            main thread returns immediately. Defaults to True.
 
     Examples:
-        >>> import openlayer.lib.tracing.tracer as tracer
-        >>> # Configure with API key and pipeline ID
-        >>> tracer.configure(api_key="your_api_key_here", inference_pipeline_id="your_pipeline_id_here")
-        >>> # Configure with failure callback and offline buffering
-        >>> def on_failure(trace_data, config, error):
-        ...     print(f"Failed to send trace: {error}")
-        ...     # Could also log to monitoring system, send alerts, etc.
-        >>> tracer.configure(
-        ...     api_key="your_api_key_here",
-        ...     inference_pipeline_id="your_pipeline_id_here",
-        ...     on_flush_failure=on_failure,
-        ...     offline_buffer_enabled=True,
-        ...     offline_buffer_path="/tmp/openlayer_buffer",
-        ...     max_buffer_size=500,
-        ... )
-        >>> # Configure with attachment uploads enabled
-        >>> tracer.configure(
-        ...     api_key="your_api_key_here",
-        ...     inference_pipeline_id="your_pipeline_id_here",
-        ...     attachment_upload_enabled=True,
-        ... )
-        >>> # Now use the decorators normally
-        >>> @tracer.trace()
+        >>> from openlayer.lib import init, trace
+        >>> # Minimal: pick up everything from env vars
+        >>> init()
+        >>>
+        >>> # Programmatic: override a couple of values
+        >>> init(api_key="...", inference_pipeline_id="...")
+        >>>
+        >>> # Idempotent / partial update — merges with prior state
+        >>> init(inference_pipeline_id="other-pipeline")  # api_key preserved
+        >>>
+        >>> @trace()
         >>> def my_function():
         ...     return "result"
     """
-    global _configured_api_key, _configured_pipeline_id, _configured_base_url, _configured_timeout, _configured_max_retries, _client
-    global _configured_on_flush_failure, _configured_offline_buffer_enabled, _configured_offline_buffer_path, _configured_max_buffer_size, _offline_buffer
-    global _configured_attachment_upload_enabled, _configured_url_upload_enabled, _configured_background_publish_enabled
+    global _client, _offline_buffer
 
-    _configured_api_key = api_key
-    _configured_pipeline_id = inference_pipeline_id
-    _configured_base_url = base_url
-    _configured_timeout = timeout
-    _configured_max_retries = max_retries
-    _configured_on_flush_failure = on_flush_failure
-    _configured_offline_buffer_enabled = offline_buffer_enabled
-    _configured_offline_buffer_path = offline_buffer_path
-    _configured_max_buffer_size = max_buffer_size
-    _configured_attachment_upload_enabled = attachment_upload_enabled
-    _configured_url_upload_enabled = url_upload_enabled
-    _configured_background_publish_enabled = background_publish_enabled
+    for key, val in (
+        ("api_key", api_key),
+        ("inference_pipeline_id", inference_pipeline_id),
+        ("base_url", base_url),
+        ("timeout", timeout),
+        ("max_retries", max_retries),
+        ("on_flush_failure", on_flush_failure),
+        ("offline_buffer_enabled", offline_buffer_enabled),
+        ("offline_buffer_path", offline_buffer_path),
+        ("max_buffer_size", max_buffer_size),
+        ("attachment_upload_enabled", attachment_upload_enabled),
+        ("url_upload_enabled", url_upload_enabled),
+        ("background_publish_enabled", background_publish_enabled),
+    ):
+        if val is not _UNSET:
+            _tracer_config[key] = val
 
-    # Reset the client and buffer so they get recreated with new configuration
+    # Reset the lazily-built client, buffer, and attachment uploader so they
+    # get rebuilt with the new configuration on next use.
     _client = None
     _offline_buffer = None
-
-    # Reset attachment uploader
     from .attachment_uploader import reset_uploader
 
     reset_uploader()
 
 
+# Track that the configure() deprecation log has been emitted once per process
+# so we don't spam logs on repeated calls.
+_configure_deprecation_logged: bool = False
+
+
+def configure(**kwargs: Any) -> None:
+    """Deprecated. Use :func:`openlayer.lib.init` instead.
+
+    Kept as a thin wrapper that emits a ``DeprecationWarning`` and delegates to
+    :func:`init`. Behavior is identical to calling ``init(**kwargs)``.
+
+    Note: unlike the previous implementation, this no longer resets unspecified
+    options — partial calls now merge with prior state. To clear a configured
+    value, pass it explicitly as ``None``.
+    """
+    global _configure_deprecation_logged
+    warnings.warn(
+        "openlayer.lib.configure() is deprecated and will be removed in v1.0. "
+        "Use openlayer.lib.init() instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    if not _configure_deprecation_logged:
+        logger.info(
+            "openlayer.lib.configure() is deprecated; use openlayer.lib.init() instead."
+        )
+        _configure_deprecation_logged = True
+    init(**kwargs)
+
+
+def get_tracer_config() -> Dict[str, Any]:
+    """Return the currently-resolved tracer configuration.
+
+    Useful for debugging "is my env var being picked up?" type questions. The
+    API key is redacted. Values are the result of running each knob through the
+    resolver (configured > env var > default), so what you see here is what the
+    tracer will actually use on the next request.
+    """
+    api_key = resolve_api_key()
+    return {
+        "api_key": "***" if api_key else None,
+        "inference_pipeline_id": resolve_pipeline_id(),
+        "base_url": resolve_base_url(),
+        "timeout": _tracer_config.get("timeout"),
+        "max_retries": _tracer_config.get("max_retries"),
+        "on_flush_failure": _tracer_config.get("on_flush_failure"),
+        "offline_buffer_enabled": _resolve("offline_buffer_enabled"),
+        "offline_buffer_path": _tracer_config.get("offline_buffer_path"),
+        "max_buffer_size": _tracer_config.get("max_buffer_size"),
+        "attachment_upload_enabled": _resolve("attachment_upload_enabled"),
+        "url_upload_enabled": _resolve("url_upload_enabled"),
+        "background_publish_enabled": _resolve("background_publish_enabled"),
+        "publish": _publish,
+        "verify_ssl": _verify_ssl,
+    }
+
+
 def _get_client() -> Optional[Openlayer]:
     """Get or create the Openlayer client with lazy initialization."""
-    global _client
+    global _client, _client_init_logged
     if not _publish:
         return None
 
     if _client is None:
-        # Lazy initialization - create client when first needed
-        client_kwargs = {}
+        # Lazy initialization — only pass through values that have been
+        # explicitly configured. Env vars (OPENLAYER_API_KEY, OPENLAYER_BASE_URL)
+        # are picked up by the SDK client itself when these are absent.
+        client_kwargs: Dict[str, Any] = {}
 
-        # Use configured API key if available, otherwise fall back to environment variable
-        if _configured_api_key is not None:
-            client_kwargs["api_key"] = _configured_api_key
+        api_key = resolve_api_key()
+        if api_key is not None:
+            client_kwargs["api_key"] = api_key
 
-        # Use configured base URL if available, otherwise fall back to environment variable
-        if _configured_base_url is not None:
-            client_kwargs["base_url"] = _configured_base_url
+        base_url = resolve_base_url()
+        if base_url is not None:
+            client_kwargs["base_url"] = base_url
 
-        if _configured_timeout is not None:
-            client_kwargs["timeout"] = _configured_timeout
+        timeout = _tracer_config.get("timeout")
+        if timeout is not None:
+            client_kwargs["timeout"] = timeout
 
-        if _configured_max_retries is not None:
-            client_kwargs["max_retries"] = _configured_max_retries
+        max_retries = _tracer_config.get("max_retries")
+        if max_retries is not None:
+            client_kwargs["max_retries"] = max_retries
 
         if _verify_ssl:
             _client = Openlayer(**client_kwargs)
@@ -231,6 +326,14 @@ def _get_client() -> Optional[Openlayer]:
                 ),
                 **client_kwargs,
             )
+
+        if not _client_init_logged:
+            logger.info(
+                "Openlayer tracer initialized (pipeline_id=%s, base_url=%s)",
+                resolve_pipeline_id(),
+                base_url or "<sdk default>",
+            )
+            _client_init_logged = True
     return _client
 
 
@@ -434,13 +537,14 @@ def _get_offline_buffer() -> Optional[OfflineBuffer]:
     """Get or create the offline buffer instance."""
     global _offline_buffer
 
-    if _configured_offline_buffer_enabled and _offline_buffer is None:
+    enabled = bool(_resolve("offline_buffer_enabled"))
+    if enabled and _offline_buffer is None:
         _offline_buffer = OfflineBuffer(
-            buffer_path=_configured_offline_buffer_path,
-            max_buffer_size=_configured_max_buffer_size,
+            buffer_path=_tracer_config.get("offline_buffer_path"),
+            max_buffer_size=_tracer_config.get("max_buffer_size"),
         )
 
-    return _offline_buffer if _configured_offline_buffer_enabled else None
+    return _offline_buffer if enabled else None
 
 
 # ----------------------------- Public API functions ----------------------------- #
@@ -588,7 +692,7 @@ def trace(
     >>>
     >>> # Set the environment variables
     >>> os.environ["OPENLAYER_API_KEY"] = "YOUR_OPENLAYER_API_KEY_HERE"
-    >>> os.environ["OPENLAYER_PROJECT_NAME"] = "YOUR_OPENLAYER_PROJECT_NAME_HERE"
+    >>> os.environ["OPENLAYER_INFERENCE_PIPELINE_ID"] = "YOUR_PIPELINE_ID_HERE"
     >>>
     >>> # Create guardrail instance
     >>> pii_guardrail = PIIGuardrail(name="PII Protection")
@@ -1708,15 +1812,13 @@ def _handle_trace_completion(
         if isinstance(current_step, steps.ChatCompletionStep):
             prompt = current_step.inputs.get("prompt")
 
-        # Resolve inference_pipeline_id now (while we have access to config)
-        resolved_pipeline_id = (
-            inference_pipeline_id
-            or _configured_pipeline_id
-            or utils.get_env_variable("OPENLAYER_INFERENCE_PIPELINE_ID")
-        )
+        # Resolve inference_pipeline_id now (while we have access to config).
+        # Decorator argument takes priority; otherwise consult the resolver
+        # which checks init()/configure() state then the env var.
+        resolved_pipeline_id = inference_pipeline_id or resolve_pipeline_id()
 
         if _publish:
-            if _configured_background_publish_enabled:
+            if _resolve("background_publish_enabled"):
                 # Submit to background thread pool, copying context so that
                 # contextvars (user_id, session_id, etc.) are preserved.
                 ctx = contextvars.copy_context()
@@ -1761,7 +1863,7 @@ def _upload_and_publish_trace(
     """
     try:
         # Upload attachments before processing trace data
-        if _configured_attachment_upload_enabled:
+        if _resolve("attachment_upload_enabled"):
             try:
                 from .attachment_uploader import upload_trace_attachments
 
@@ -1854,7 +1956,7 @@ def _handle_streaming_failure(
     """
     try:
         # Call the failure callback if configured (per-trace takes priority over global)
-        failure_callback = on_flush_failure or _configured_on_flush_failure
+        failure_callback = on_flush_failure or _tracer_config.get("on_flush_failure")
         if failure_callback:
             try:
                 failure_callback(trace_data, config, error)

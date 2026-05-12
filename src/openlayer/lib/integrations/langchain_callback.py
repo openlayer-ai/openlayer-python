@@ -190,7 +190,7 @@ class OpenlayerHandlerMixin:
             and tracer.get_current_step() is None
         ):
             trace = self._traces_by_root.pop(run_id)
-            if tracer._configured_background_publish_enabled:
+            if tracer._resolve("background_publish_enabled"):
                 ctx = contextvars.copy_context()
                 tracer._get_background_executor().submit(
                     ctx.run, self._process_and_upload_trace, trace
@@ -249,9 +249,7 @@ class OpenlayerHandlerMixin:
                     serialized_config = utils.json_serialize(config)
 
                     client.inference_pipelines.data.stream(
-                        inference_pipeline_id=utils.get_env_variable(
-                            "OPENLAYER_INFERENCE_PIPELINE_ID"
-                        ),
+                        inference_pipeline_id=tracer.resolve_pipeline_id(),
                         rows=[serialized_trace_data],
                         config=serialized_config,
                     )
@@ -1248,7 +1246,7 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
         # Only upload if: root step + has standalone trace + not part of external trace
         if is_root_step and has_standalone_trace and not self._has_external_trace:
             trace = self._traces_by_root.pop(run_id)
-            if tracer._configured_background_publish_enabled:
+            if tracer._resolve("background_publish_enabled"):
                 ctx = contextvars.copy_context()
                 tracer._get_background_executor().submit(
                     ctx.run, self._process_and_upload_async_trace, trace
@@ -1307,9 +1305,7 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
                     serialized_config = utils.json_serialize(config)
 
                     client.inference_pipelines.data.stream(
-                        inference_pipeline_id=utils.get_env_variable(
-                            "OPENLAYER_INFERENCE_PIPELINE_ID"
-                        ),
+                        inference_pipeline_id=tracer.resolve_pipeline_id(),
                         rows=[serialized_trace_data],
                         config=serialized_config,
                     )
