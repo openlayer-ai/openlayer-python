@@ -22,16 +22,12 @@ class TestBasicTracing:
 
     def setup_method(self) -> None:
         """Setup before each test - reset global state."""
-        tracer._configured_api_key = None
-        tracer._configured_pipeline_id = None
-        tracer._configured_base_url = None
+        tracer._tracer_config.clear()
         tracer._client = None
 
     def teardown_method(self) -> None:
         """Cleanup after each test."""
-        tracer._configured_api_key = None
-        tracer._configured_pipeline_id = None
-        tracer._configured_base_url = None
+        tracer._tracer_config.clear()
         tracer._client = None
 
     @patch.object(tracer, "_publish", False)
@@ -90,15 +86,11 @@ class TestContextManagement:
     """Test context management functionality."""
 
     def setup_method(self) -> None:
-        tracer._configured_api_key = None
-        tracer._configured_pipeline_id = None
-        tracer._configured_base_url = None
+        tracer._tracer_config.clear()
         tracer._client = None
 
     def teardown_method(self) -> None:
-        tracer._configured_api_key = None
-        tracer._configured_pipeline_id = None
-        tracer._configured_base_url = None
+        tracer._tracer_config.clear()
         tracer._client = None
 
     @patch.object(tracer, "_publish", False)
@@ -112,15 +104,11 @@ class TestTraceDataStructure:
     """Test trace data structure and content."""
 
     def setup_method(self) -> None:
-        tracer._configured_api_key = None
-        tracer._configured_pipeline_id = None
-        tracer._configured_base_url = None
+        tracer._tracer_config.clear()
         tracer._client = None
 
     def teardown_method(self) -> None:
-        tracer._configured_api_key = None
-        tracer._configured_pipeline_id = None
-        tracer._configured_base_url = None
+        tracer._tracer_config.clear()
         tracer._client = None
 
     @patch.object(tracer, "_publish", False)
@@ -281,15 +269,11 @@ class TestTraceMetadata:
     """Test trace metadata functionality."""
 
     def setup_method(self) -> None:
-        tracer._configured_api_key = None
-        tracer._configured_pipeline_id = None
-        tracer._configured_base_url = None
+        tracer._tracer_config.clear()
         tracer._client = None
 
     def teardown_method(self) -> None:
-        tracer._configured_api_key = None
-        tracer._configured_pipeline_id = None
-        tracer._configured_base_url = None
+        tracer._tracer_config.clear()
         tracer._client = None
 
     @patch.object(tracer, "_publish", False)
@@ -364,15 +348,11 @@ class TestTraceSerialization:
     """Test trace serialization and post-processing."""
 
     def setup_method(self) -> None:
-        tracer._configured_api_key = None
-        tracer._configured_pipeline_id = None
-        tracer._configured_base_url = None
+        tracer._tracer_config.clear()
         tracer._client = None
 
     def teardown_method(self) -> None:
-        tracer._configured_api_key = None
-        tracer._configured_pipeline_id = None
-        tracer._configured_base_url = None
+        tracer._tracer_config.clear()
         tracer._client = None
 
     def test_step_to_dict_format(self) -> None:
@@ -480,15 +460,11 @@ class TestStepTypes:
     """Test different step types and their specific behavior."""
 
     def setup_method(self) -> None:
-        tracer._configured_api_key = None
-        tracer._configured_pipeline_id = None
-        tracer._configured_base_url = None
+        tracer._tracer_config.clear()
         tracer._client = None
 
     def teardown_method(self) -> None:
-        tracer._configured_api_key = None
-        tracer._configured_pipeline_id = None
-        tracer._configured_base_url = None
+        tracer._tracer_config.clear()
         tracer._client = None
 
     def test_step_factory_creates_correct_types(self) -> None:
@@ -546,15 +522,11 @@ class TestErrorHandlingInTraces:
     """Test error handling and exception capture in traces."""
 
     def setup_method(self) -> None:
-        tracer._configured_api_key = None
-        tracer._configured_pipeline_id = None
-        tracer._configured_base_url = None
+        tracer._tracer_config.clear()
         tracer._client = None
 
     def teardown_method(self) -> None:
-        tracer._configured_api_key = None
-        tracer._configured_pipeline_id = None
-        tracer._configured_base_url = None
+        tracer._tracer_config.clear()
         tracer._client = None
 
     @patch.object(tracer, "_publish", False)
@@ -612,15 +584,11 @@ class TestPromoteOutput:
     """Test promote parameter with output field extraction."""
 
     def setup_method(self) -> None:
-        tracer._configured_api_key = None
-        tracer._configured_pipeline_id = None
-        tracer._configured_base_url = None
+        tracer._tracer_config.clear()
         tracer._client = None
 
     def teardown_method(self) -> None:
-        tracer._configured_api_key = None
-        tracer._configured_pipeline_id = None
-        tracer._configured_base_url = None
+        tracer._tracer_config.clear()
         tracer._client = None
 
     @patch.object(tracer, "_publish", False)

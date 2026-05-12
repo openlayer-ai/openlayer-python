@@ -7,15 +7,24 @@ from typing import Any, Dict, List, Tuple
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+from openlayer.lib.tracing import tracer
 from openlayer.lib.tracing.tracer import (
     OfflineBuffer,
-    configure,
+    init,
     get_buffer_status,
     _get_offline_buffer,
     clear_offline_buffer,
     replay_buffered_traces,
     _handle_streaming_failure,
 )
+
+
+def _reset_tracer_state() -> None:
+    """Clear tracer config and lazily-built state. Replacement for the old
+    bare init() reset call, which no longer resets under merge semantics."""
+    tracer._tracer_config.clear()
+    tracer._client = None
+    tracer._offline_buffer = None
 
 
 class TestOfflineBuffer:
@@ -158,7 +167,7 @@ class TestTracerConfiguration:
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
         # Reset configuration
-        configure()
+        _reset_tracer_state()
 
     def test_configure_offline_buffering(self):
         """Test configuring offline buffering."""
@@ -166,7 +175,7 @@ class TestTracerConfiguration:
         def failure_callback(trace_data: Dict[str, Any], config: Dict[str, Any], error: Exception) -> None:
             pass
 
-        configure(
+        init(
             on_flush_failure=failure_callback,
             offline_buffer_enabled=True,
             offline_buffer_path=self.temp_dir,
@@ -174,27 +183,20 @@ class TestTracerConfiguration:
         )
 
         # Test that configuration was set
-        from openlayer.lib.tracing.tracer import (
-            _configured_max_buffer_size,
-            _configured_on_flush_failure,
-            _configured_offline_buffer_path,
-            _configured_offline_buffer_enabled,
-        )
-
-        assert _configured_on_flush_failure == failure_callback
-        assert _configured_offline_buffer_enabled is True
-        assert _configured_offline_buffer_path == self.temp_dir
-        assert _configured_max_buffer_size == 100
+        assert tracer._tracer_config["on_flush_failure"] == failure_callback
+        assert tracer._tracer_config["offline_buffer_enabled"] is True
+        assert tracer._tracer_config["offline_buffer_path"] == self.temp_dir
+        assert tracer._tracer_config["max_buffer_size"] == 100
 
     def test_get_offline_buffer_disabled(self):
         """Test that offline buffer returns None when disabled."""
-        configure(offline_buffer_enabled=False)
+        init(offline_buffer_enabled=False)
         buffer = _get_offline_buffer()
         assert buffer is None
 
     def test_get_offline_buffer_enabled(self):
         """Test that offline buffer is created when enabled."""
-        configure(
+        init(
             offline_buffer_enabled=True,
             offline_buffer_path=self.temp_dir,
         )
@@ -221,11 +223,11 @@ class TestStreamingFailureHandler:
         import shutil
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
-        configure()
+        _reset_tracer_state()
 
     def test_handle_streaming_failure_with_callback(self):
         """Test failure handling with callback only."""
-        configure(on_flush_failure=self.mock_failure_callback)
+        init(on_flush_failure=self.mock_failure_callback)
 
         trace_data = {"inferenceId": "test-123"}
         config = {"output_column_name": "output"}
@@ -240,7 +242,7 @@ class TestStreamingFailureHandler:
 
     def test_handle_streaming_failure_with_buffer(self):
         """Test failure handling with offline buffer."""
-        configure(
+        init(
             offline_buffer_enabled=True,
             offline_buffer_path=self.temp_dir,
         )
@@ -264,7 +266,7 @@ class TestStreamingFailureHandler:
         def failing_callback(_trace_data: Dict[str, Any], _config: Dict[str, Any], _error: Exception) -> None:
             raise Exception("Callback error")
 
-        configure(
+        init(
             on_flush_failure=failing_callback,
             offline_buffer_enabled=True,
             offline_buffer_path=self.temp_dir,
@@ -296,11 +298,11 @@ class TestBufferUtilityFunctions:
         import shutil
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
-        configure()
+        _reset_tracer_state()
 
     def test_get_buffer_status_disabled(self):
         """Test buffer status when disabled."""
-        configure(offline_buffer_enabled=False)
+        init(offline_buffer_enabled=False)
         status = get_buffer_status()
 
         assert status["enabled"] is False
@@ -308,7 +310,7 @@ class TestBufferUtilityFunctions:
 
     def test_get_buffer_status_enabled(self):
         """Test buffer status when enabled."""
-        configure(
+        init(
             offline_buffer_enabled=True,
             offline_buffer_path=self.temp_dir,
         )
@@ -321,7 +323,7 @@ class TestBufferUtilityFunctions:
 
     def test_clear_offline_buffer_disabled(self):
         """Test clearing buffer when disabled."""
-        configure(offline_buffer_enabled=False)
+        init(offline_buffer_enabled=False)
         result = clear_offline_buffer()
 
         assert result["traces_removed"] == 0
@@ -329,7 +331,7 @@ class TestBufferUtilityFunctions:
 
     def test_clear_offline_buffer_enabled(self):
         """Test clearing buffer when enabled."""
-        configure(
+        init(
             offline_buffer_enabled=True,
             offline_buffer_path=self.temp_dir,
         )
@@ -352,7 +354,7 @@ class TestBufferUtilityFunctions:
         mock_client.inference_pipelines.data.stream.return_value = mock_response
         mock_get_client.return_value = mock_client
 
-        configure(
+        init(
             offline_buffer_enabled=True,
             offline_buffer_path=self.temp_dir,
         )
@@ -390,7 +392,7 @@ class TestBufferUtilityFunctions:
         mock_client.inference_pipelines.data.stream.side_effect = Exception("API Error")
         mock_get_client.return_value = mock_client
 
-        configure(
+        init(
             offline_buffer_enabled=True,
             offline_buffer_path=self.temp_dir,
         )
@@ -421,7 +423,7 @@ class TestBufferUtilityFunctions:
 
     def test_replay_buffered_traces_disabled(self):
         """Test replay when buffer is disabled."""
-        configure(offline_buffer_enabled=False)
+        init(offline_buffer_enabled=False)
         result = replay_buffered_traces()
 
         assert result["total_traces"] == 0
@@ -434,7 +436,7 @@ class TestBufferUtilityFunctions:
         """Test replay when no client is available."""
         mock_get_client.return_value = None
 
-        configure(
+        init(
             offline_buffer_enabled=True,
             offline_buffer_path=self.temp_dir,
         )
@@ -459,7 +461,7 @@ class TestEndToEndIntegration:
         import shutil
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
-        configure()
+        _reset_tracer_state()
 
     @patch("openlayer.lib.tracing.tracer._get_client")
     @patch("openlayer.lib.tracing.tracer._publish", True)
@@ -477,7 +479,7 @@ class TestEndToEndIntegration:
         def on_failure(trace_data: Dict[str, Any], config: Dict[str, Any], error: Exception) -> None:
             failure_calls.append((trace_data, config, str(error)))
 
-        configure(
+        init(
             api_key="test-key",
             inference_pipeline_id="test-pipeline",
             on_flush_failure=on_failure,

@@ -297,7 +297,7 @@ def get_uploader() -> Optional[AttachmentUploader]:
     global _uploader
     from . import tracer
 
-    if not tracer._configured_attachment_upload_enabled:
+    if not tracer._resolve("attachment_upload_enabled"):
         return None
 
     if _uploader is None:
@@ -305,7 +305,7 @@ def get_uploader() -> Optional[AttachmentUploader]:
         if client:
             _uploader = AttachmentUploader(
                 client,
-                url_upload_enabled=tracer._configured_url_upload_enabled,
+                url_upload_enabled=bool(tracer._resolve("url_upload_enabled")),
             )
 
     return _uploader

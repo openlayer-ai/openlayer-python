@@ -1,7 +1,9 @@
 """Openlayer lib."""
 
 __all__ = [
+    "init",
     "configure",
+    "get_tracer_config",
     "trace",
     "trace_anthropic",
     "trace_openai",
@@ -43,7 +45,9 @@ from .tracing.context import (
     clear_user_session_context,
 )
 
+init = tracer.init
 configure = tracer.configure
+get_tracer_config = tracer.get_tracer_config
 trace = tracer.trace
 trace_async = tracer.trace_async
 update_current_trace = tracer.update_current_trace

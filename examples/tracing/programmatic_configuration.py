@@ -1,31 +1,33 @@
 """
-Example: Programmatic Configuration for Openlayer Tracing
+Example: Configuring the Openlayer Tracer
 
-This example demonstrates how to configure Openlayer tracing programmatically
-using the configure() function, instead of relying on environment variables.
+Demonstrates the three ways to configure the tracer and how they compose:
+  1. Environment variables (canonical for deployments)
+  2. init() — programmatic, idempotent, merges on repeated calls
+  3. Per-decorator override via @trace(inference_pipeline_id=...)
+
+Precedence (highest first):
+  decorator argument  >  init()  >  environment variable  >  default
+
+Also shows the deprecated configure() alias, kept for backward compatibility.
 """
 
 import os
 import openai
-from openlayer.lib import configure, trace, trace_openai
+from openlayer.lib import init, configure, get_tracer_config, trace, trace_openai
 
 
 def example_environment_variables():
-    """Traditional approach using environment variables."""
+    """Canonical deployment path — env vars only, no code changes needed."""
     print("=== Environment Variables Approach ===")
 
-    # Set environment variables (traditional approach)
     os.environ["OPENLAYER_API_KEY"] = "your_openlayer_api_key_here"
     os.environ["OPENLAYER_INFERENCE_PIPELINE_ID"] = "your_pipeline_id_here"
     os.environ["OPENAI_API_KEY"] = "your_openai_api_key_here"
 
-    # Use the @trace decorator
     @trace()
     def generate_response(query: str) -> str:
-        """Generate a response using OpenAI."""
-        # Configure OpenAI client and trace it
         client = trace_openai(openai.OpenAI())
-
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": query}],
@@ -33,32 +35,24 @@ def example_environment_variables():
         )
         return response.choices[0].message.content
 
-    # Test the function
-    result = generate_response("What is machine learning?")
-    print(f"Response: {result}")
+    print(f"Response: {generate_response('What is machine learning?')}")
 
 
-def example_programmatic_configuration():
-    """New approach using programmatic configuration."""
-    print("\n=== Programmatic Configuration Approach ===")
+def example_programmatic_init():
+    """Programmatic configuration via init() — preferred for notebooks/apps."""
+    print("\n=== Programmatic init() ===")
 
-    # Configure Openlayer programmatically
-    configure(
+    init(
         api_key="your_openlayer_api_key_here",
         inference_pipeline_id="your_pipeline_id_here",
-        # base_url="https://api.openlayer.com/v1"  # Optional: custom base URL
+        # base_url="https://onprem.example.com",  # Optional, for on-prem deployments
     )
 
-    # Set OpenAI API key
     os.environ["OPENAI_API_KEY"] = "your_openai_api_key_here"
 
-    # Use the @trace decorator (no environment variables needed for Openlayer)
     @trace()
-    def generate_response_programmatic(query: str) -> str:
-        """Generate a response using OpenAI with programmatic configuration."""
-        # Configure OpenAI client and trace it
+    def generate_response(query: str) -> str:
         client = trace_openai(openai.OpenAI())
-
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": query}],
@@ -66,78 +60,82 @@ def example_programmatic_configuration():
         )
         return response.choices[0].message.content
 
-    # Test the function
-    result = generate_response_programmatic("What is deep learning?")
-    print(f"Response: {result}")
+    print(f"Response: {generate_response('What is deep learning?')}")
+
+
+def example_init_merges_on_repeat():
+    """init() is idempotent and merges — safe to call multiple times."""
+    print("\n=== init() Merge Semantics ===")
+
+    init(api_key="key-A", inference_pipeline_id="pipeline-A")
+    # Later in the program, override just one knob — the rest is preserved.
+    init(inference_pipeline_id="pipeline-B")
+
+    cfg = get_tracer_config()  # API key is redacted in the returned dict
+    print(f"Resolved config: api_key={cfg['api_key']}, pipeline_id={cfg['inference_pipeline_id']}")
+    # api_key=***, pipeline_id=pipeline-B
 
 
 def example_per_decorator_override():
-    """Example showing how to override pipeline ID per decorator."""
-    print("\n=== Per-Decorator Pipeline ID Override ===")
+    """The @trace decorator can override the configured pipeline per-call."""
+    print("\n=== Per-Decorator Override ===")
 
-    # Configure default settings
-    configure(
-        api_key="your_openlayer_api_key_here",
-        inference_pipeline_id="default_pipeline_id",
-    )
+    init(api_key="your_openlayer_api_key_here", inference_pipeline_id="default_pipeline_id")
 
-    # Function using default pipeline ID
     @trace()
     def default_pipeline_function(query: str) -> str:
         return f"Response to: {query}"
 
-    # Function using specific pipeline ID (overrides default)
     @trace(inference_pipeline_id="specific_pipeline_id")
     def specific_pipeline_function(query: str) -> str:
         return f"Specific response to: {query}"
 
-    # Test both functions
-    default_pipeline_function("Question 1")  # Uses default_pipeline_id
-    specific_pipeline_function("Question 2")  # Uses specific_pipeline_id
-
-    print("Both functions executed with different pipeline IDs")
+    default_pipeline_function("Question 1")   # default_pipeline_id
+    specific_pipeline_function("Question 2")  # specific_pipeline_id
 
 
-def example_mixed_configuration():
-    """Example showing mixed environment and programmatic configuration."""
-    print("\n=== Mixed Configuration Approach ===")
+def example_mixed_env_and_init():
+    """Env var for API key, init() for pipeline — both honored via resolver."""
+    print("\n=== Mixed (Env Var + init()) ===")
 
-    # Set API key via environment variable
     os.environ["OPENLAYER_API_KEY"] = "your_openlayer_api_key_here"
-
-    # Set pipeline ID programmatically
-    configure(inference_pipeline_id="programmatic_pipeline_id")
+    init(inference_pipeline_id="programmatic_pipeline_id")
 
     @trace()
     def mixed_config_function(query: str) -> str:
-        """Function using mixed configuration."""
         return f"Mixed config response to: {query}"
 
-    # Test the function
-    result = mixed_config_function("What is the best approach?")
-    print(f"Response: {result}")
+    print(f"Response: {mixed_config_function('What is the best approach?')}")
+
+
+def example_deprecated_configure():
+    """configure() is kept for backward compatibility but is deprecated.
+
+    It now merges (rather than replacing) state and emits a DeprecationWarning
+    on each call. New code should use init() instead.
+    """
+    print("\n=== Deprecated configure() (still works) ===")
+
+    configure(
+        api_key="your_openlayer_api_key_here",
+        inference_pipeline_id="your_pipeline_id_here",
+    )
 
 
 if __name__ == "__main__":
     print("Openlayer Tracing Configuration Examples")
     print("=" * 50)
-
-    # Note: Replace the placeholder API keys and IDs with real values
-    print(
-        "Note: Replace placeholder API keys and pipeline IDs with real values before running."
-    )
-    print()
+    print("Note: Replace placeholder API keys and pipeline IDs with real values.\n")
 
     try:
-        # Run examples (these will fail without real API keys)
         example_environment_variables()
-        example_programmatic_configuration()
+        example_programmatic_init()
+        example_init_merges_on_repeat()
         example_per_decorator_override()
-        example_mixed_configuration()
-
+        example_mixed_env_and_init()
+        example_deprecated_configure()
     except Exception as e:
         print(f"Example failed (expected with placeholder keys): {e}")
         print("\nTo run this example successfully:")
         print("1. Replace placeholder API keys with real values")
         print("2. Replace pipeline IDs with real Openlayer pipeline IDs")
-        print("3. Ensure you have valid OpenAI and Openlayer accounts")
