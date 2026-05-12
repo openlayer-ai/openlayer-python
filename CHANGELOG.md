@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.27.0 (2026-05-12)
+
+Full Changelog: [v0.26.1...v0.27.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.26.1...v0.27.0)
+
+### Features
+
+* **internal/types:** support eagerly validating pydantic iterators ([5fca464](https://github.com/openlayer-ai/openlayer-python/commit/5fca46469bc9b21ee537845a96f0bd9a451dd2a3))
+
+
+### Bug Fixes
+
+* **client:** add missing f-string prefix in file type error message ([dd350fd](https://github.com/openlayer-ai/openlayer-python/commit/dd350fd2663918c57ec0acfdd0ed676747ff0cc8))
+
 ## 0.26.1 (2026-05-07)
 
 Full Changelog: [v0.26.0...v0.26.1](https://github.com/openlayer-ai/openlayer-python/compare/v0.26.0...v0.26.1)
