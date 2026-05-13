@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.27.1 (2026-05-13)
+
+Full Changelog: [v0.27.0...v0.27.1](https://github.com/openlayer-ai/openlayer-python/compare/v0.27.0...v0.27.1)
+
 ## 0.27.0 (2026-05-12)
 
 Full Changelog: [v0.26.1...v0.27.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.26.1...v0.27.0)
