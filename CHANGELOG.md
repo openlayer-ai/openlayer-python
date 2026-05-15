@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.27.3 (2026-05-15)
+
+Full Changelog: [v0.27.2...v0.27.3](https://github.com/openlayer-ai/openlayer-python/compare/v0.27.2...v0.27.3)
+
+### Chores
+
+* **closes OPEN-10363:** clean up trace configuration ([52314ec](https://github.com/openlayer-ai/openlayer-python/commit/52314ec81d03871e10b8ed243eaec9a5fd52280f))
+
 ## 0.27.2 (2026-05-14)
 
 Full Changelog: [v0.27.1...v0.27.2](https://github.com/openlayer-ai/openlayer-python/compare/v0.27.1...v0.27.2)
