@@ -53,7 +53,10 @@ def trace_groq(
         raise ImportError(
             "Groq library is not installed. Please install it with: pip install groq"
         )
-    
+
+    if getattr(client, "_openlayer_patched", False) is True:
+        return client
+
     create_func = client.chat.completions.create
 
     @wraps(create_func)
@@ -76,7 +79,34 @@ def trace_groq(
         )
 
     client.chat.completions.create = traced_create_func
+    client._openlayer_patched = True
     return client
+
+
+def _patch_groq() -> None:
+    """Patch ``groq.Groq.__init__`` (and ``AsyncGroq`` if available) so every
+    newly-constructed instance is auto-traced. Idempotent."""
+    if not HAVE_GROQ:
+        return
+    # pylint: disable=import-outside-toplevel
+    from ._auto import _patch_class_init
+
+    _patch_class_init(groq.Groq, trace_groq)
+    async_cls = getattr(groq, "AsyncGroq", None)
+    if async_cls is not None:
+        _patch_class_init(async_cls, trace_groq)
+
+
+def _unpatch_groq() -> None:
+    if not HAVE_GROQ:
+        return
+    # pylint: disable=import-outside-toplevel
+    from ._auto import _unpatch_class_init
+
+    _unpatch_class_init(groq.Groq)
+    async_cls = getattr(groq, "AsyncGroq", None)
+    if async_cls is not None:
+        _unpatch_class_init(async_cls)
 
 
 def handle_streaming_create(

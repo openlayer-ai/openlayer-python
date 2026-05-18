@@ -53,7 +53,10 @@ def trace_mistral(
         raise ImportError(
             "Mistral library is not installed. Please install it with: pip install mistralai"
         )
-    
+
+    if getattr(client, "_openlayer_patched", False) is True:
+        return client
+
     stream_func = client.chat.stream
     create_func = client.chat.complete
 
@@ -80,7 +83,28 @@ def trace_mistral(
     client.chat.stream = traced_stream_func
     client.chat.complete = traced_create_func
 
+    client._openlayer_patched = True
     return client
+
+
+def _patch_mistral() -> None:
+    """Patch ``mistralai.Mistral.__init__`` so every newly-constructed instance is
+    auto-traced. Idempotent."""
+    if not HAVE_MISTRAL:
+        return
+    # pylint: disable=import-outside-toplevel
+    from ._auto import _patch_class_init
+
+    _patch_class_init(mistralai.Mistral, trace_mistral)
+
+
+def _unpatch_mistral() -> None:
+    if not HAVE_MISTRAL:
+        return
+    # pylint: disable=import-outside-toplevel
+    from ._auto import _unpatch_class_init
+
+    _unpatch_class_init(mistralai.Mistral)
 
 
 def handle_streaming_create(

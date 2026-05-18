@@ -59,6 +59,9 @@ def trace_oci_genai(
     if not HAVE_OCI:
         raise ImportError("oci library is not installed. Please install it with: pip install oci")
 
+    if getattr(client, "_openlayer_patched", False) is True:
+        return client
+
     chat_func = client.chat
 
     @wraps(chat_func)
@@ -100,7 +103,28 @@ def trace_oci_genai(
             )
 
     client.chat = traced_chat_func
+    client._openlayer_patched = True
     return client
+
+
+def _patch_oci() -> None:
+    """Patch ``oci.generative_ai_inference.GenerativeAiInferenceClient.__init__``
+    so every newly-constructed client is auto-traced. Idempotent."""
+    if not HAVE_OCI:
+        return
+    # pylint: disable=import-outside-toplevel
+    from ._auto import _patch_class_init
+
+    _patch_class_init(GenerativeAiInferenceClient, trace_oci_genai)
+
+
+def _unpatch_oci() -> None:
+    if not HAVE_OCI:
+        return
+    # pylint: disable=import-outside-toplevel
+    from ._auto import _unpatch_class_init
+
+    _unpatch_class_init(GenerativeAiInferenceClient)
 
 
 def handle_streaming_chat(

@@ -71,6 +71,9 @@ def trace_async_openai(
     if not HAVE_OPENAI:
         raise ImportError("OpenAI library is not installed. Please install it with: pip install openai")
 
+    if getattr(client, "_openlayer_patched", False) is True:
+        return client
+
     is_azure_openai = isinstance(client, openai.AsyncAzureOpenAI)
 
     # Patch Chat Completions API
@@ -174,6 +177,7 @@ def trace_async_openai(
 
         client.embeddings.create = traced_embeddings_create_func
 
+    client._openlayer_patched = True
     return client
 
 

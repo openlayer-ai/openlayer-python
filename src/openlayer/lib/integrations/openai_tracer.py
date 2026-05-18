@@ -70,6 +70,9 @@ def trace_openai(
             "OpenAI library is not installed. Please install it with: pip install openai"
         )
 
+    if getattr(client, "_openlayer_patched", False) is True:
+        return client
+
     is_azure_openai = isinstance(client, openai.AzureOpenAI)
 
     # Patch Chat Completions API
@@ -187,7 +190,34 @@ def trace_openai(
 
         client.embeddings.create = traced_embeddings_create_func
 
+    client._openlayer_patched = True
     return client
+
+
+def _patch_openai() -> None:
+    """Patch ``openai.OpenAI`` / ``AzureOpenAI`` / ``AsyncOpenAI`` / ``AsyncAzureOpenAI``
+    ``__init__`` so every newly-constructed instance is auto-traced. Idempotent."""
+    if not HAVE_OPENAI:
+        return
+    # pylint: disable=import-outside-toplevel
+    from ._auto import _patch_class_init
+    from .async_openai_tracer import trace_async_openai
+
+    _patch_class_init(openai.OpenAI, trace_openai)
+    _patch_class_init(openai.AzureOpenAI, trace_openai)
+    _patch_class_init(openai.AsyncOpenAI, trace_async_openai)
+    _patch_class_init(openai.AsyncAzureOpenAI, trace_async_openai)
+
+
+def _unpatch_openai() -> None:
+    """Restore the original ``__init__`` on every OpenAI client class."""
+    if not HAVE_OPENAI:
+        return
+    # pylint: disable=import-outside-toplevel
+    from ._auto import _unpatch_class_init
+
+    for cls in (openai.OpenAI, openai.AzureOpenAI, openai.AsyncOpenAI, openai.AsyncAzureOpenAI):
+        _unpatch_class_init(cls)
 
 
 def handle_streaming_create(

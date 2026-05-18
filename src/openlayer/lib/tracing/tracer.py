@@ -147,6 +147,7 @@ def init(
     attachment_upload_enabled: Any = _UNSET,
     url_upload_enabled: Any = _UNSET,
     background_publish_enabled: Any = _UNSET,
+    auto_instrument: Union[bool, List[str]] = True,
 ) -> None:
     """Initialize and configure the Openlayer tracer.
 
@@ -188,6 +189,14 @@ def init(
             platform has a durable copy. Defaults to False.
         background_publish_enabled: Publish traces from a background thread so the
             main thread returns immediately. Defaults to True.
+        auto_instrument: When truthy (default ``True``), detects every installed
+            supported LLM SDK (openai, anthropic, mistral, groq, gemini, oci,
+            azure_content_understanding, litellm, portkey, google_adk) and patches
+            it so newly-constructed clients are auto-traced. Pass ``False`` to skip
+            patching, or a list of names (e.g. ``["openai", "anthropic"]``) to
+            patch only that subset. This is a procedural argument — it is NOT
+            persisted across calls, and ``False`` does not unpatch (use
+            :func:`openlayer.lib.unpatch_all` for that).
 
     Examples:
         >>> from openlayer.lib import init, trace
@@ -231,6 +240,13 @@ def init(
 
     reset_uploader()
 
+    # Run auto-instrumentation. The patchers themselves are idempotent, so
+    # repeated init() calls are safe. False short-circuits entirely.
+    if auto_instrument is not False:
+        from ..integrations._auto import auto_instrument as _run_auto_instrument
+
+        _run_auto_instrument(auto_instrument)
+
 
 # Track that the configure() deprecation log has been emitted once per process
 # so we don't spam logs on repeated calls.
@@ -259,6 +275,10 @@ def configure(**kwargs: Any) -> None:
             "openlayer.lib.configure() is deprecated; use openlayer.lib.init() instead."
         )
         _configure_deprecation_logged = True
+    # Preserve the historical configure() behavior of NOT auto-instrumenting —
+    # users who haven't migrated to init() should not be surprised by sudden
+    # client patching on SDK upgrade.
+    kwargs.setdefault("auto_instrument", False)
     init(**kwargs)
 
 

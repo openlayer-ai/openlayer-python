@@ -57,6 +57,9 @@ def trace_azure_content_understanding(
             "Please install it with: pip install azure-ai-contentunderstanding"
         )
 
+    if getattr(client, "_openlayer_patched", False) is True:
+        return client
+
     begin_analyze_func = client.begin_analyze
 
     @wraps(begin_analyze_func)
@@ -109,7 +112,28 @@ def trace_azure_content_understanding(
         return poller
 
     client.begin_analyze = traced_begin_analyze
+    client._openlayer_patched = True
     return client
+
+
+def _patch_acu() -> None:
+    """Patch ``azure.ai.contentunderstanding.ContentUnderstandingClient.__init__``
+    so every newly-constructed client is auto-traced. Idempotent."""
+    if not HAVE_AZURE_CONTENT_UNDERSTANDING:
+        return
+    # pylint: disable=import-outside-toplevel
+    from ._auto import _patch_class_init
+
+    _patch_class_init(ContentUnderstandingClient, trace_azure_content_understanding)
+
+
+def _unpatch_acu() -> None:
+    if not HAVE_AZURE_CONTENT_UNDERSTANDING:
+        return
+    # pylint: disable=import-outside-toplevel
+    from ._auto import _unpatch_class_init
+
+    _unpatch_class_init(ContentUnderstandingClient)
 
 
 def _extract_usage_from_poller(poller: Any) -> Dict[str, Any]:
