@@ -61,6 +61,9 @@ def trace_bedrock(client: "boto3.client") -> "boto3.client":
             "boto3 library is not installed. Please install it with: pip install boto3"
         )
 
+    if getattr(client, "_openlayer_patched", False) is True:
+        return client
+
     # Patch invoke_model for non-streaming requests
     invoke_model_func = client.invoke_model
     invoke_model_stream_func = client.invoke_model_with_response_stream
@@ -95,6 +98,7 @@ def trace_bedrock(client: "boto3.client") -> "boto3.client":
 
     client.invoke_model = traced_invoke_model
     client.invoke_model_with_response_stream = traced_invoke_model_stream
+    client._openlayer_patched = True
     return client
 
 

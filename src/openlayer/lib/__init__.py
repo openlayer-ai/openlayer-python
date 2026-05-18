@@ -4,6 +4,8 @@ __all__ = [
     "init",
     "configure",
     "get_tracer_config",
+    "auto_instrument",
+    "unpatch_all",
     "trace",
     "trace_anthropic",
     "trace_openai",
@@ -46,6 +48,7 @@ from .tracing.context import (
     get_current_session_id,
     clear_user_session_context,
 )
+from .integrations._auto import auto_instrument, unpatch_all
 
 init = tracer.init
 configure = tracer.configure

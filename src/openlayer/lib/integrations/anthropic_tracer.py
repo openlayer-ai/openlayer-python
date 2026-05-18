@@ -53,7 +53,10 @@ def trace_anthropic(
         raise ImportError(
             "Anthropic library is not installed. Please install it with: pip install anthropic"
         )
-    
+
+    if getattr(client, "_openlayer_patched", False) is True:
+        return client
+
     create_func = client.messages.create
 
     @wraps(create_func)
@@ -76,7 +79,35 @@ def trace_anthropic(
         )
 
     client.messages.create = traced_create_func
+    client._openlayer_patched = True
     return client
+
+
+def _patch_anthropic() -> None:
+    """Patch ``anthropic.Anthropic`` (and async variant if available) ``__init__``
+    so every newly-constructed instance is auto-traced. Idempotent."""
+    if not HAVE_ANTHROPIC:
+        return
+    # pylint: disable=import-outside-toplevel
+    from ._auto import _patch_class_init
+
+    _patch_class_init(anthropic.Anthropic, trace_anthropic)
+    # Async variant: patch only if it exists in this anthropic version.
+    async_cls = getattr(anthropic, "AsyncAnthropic", None)
+    if async_cls is not None:
+        _patch_class_init(async_cls, trace_anthropic)
+
+
+def _unpatch_anthropic() -> None:
+    if not HAVE_ANTHROPIC:
+        return
+    # pylint: disable=import-outside-toplevel
+    from ._auto import _unpatch_class_init
+
+    _unpatch_class_init(anthropic.Anthropic)
+    async_cls = getattr(anthropic, "AsyncAnthropic", None)
+    if async_cls is not None:
+        _unpatch_class_init(async_cls)
 
 
 def handle_streaming_create(
