@@ -20,6 +20,8 @@ __all__ = [
     "trace_portkey",
     "trace_google_adk",
     "unpatch_google_adk",
+    "trace_claude_agent_sdk",
+    "traced_claude_agent_sdk_query",
     "trace_gemini",
     "update_current_trace",
     "update_current_step",
@@ -313,6 +315,80 @@ def unpatch_google_adk():
     from .integrations import google_adk_tracer
 
     return google_adk_tracer.unpatch_google_adk()
+
+
+# ------------------------------ Claude Agent SDK ---------------------------- #
+def trace_claude_agent_sdk(
+    *,
+    inference_pipeline_id=None,
+    truncate_tool_output_chars: int = 8192,
+    capture_thinking: bool = True,
+    redact_mcp_env: bool = True,
+):
+    """Enable Openlayer tracing for the Claude Agent SDK.
+
+    Monkey-patches ``claude_agent_sdk.query`` and ``ClaudeSDKClient`` so every
+    call becomes an Openlayer trace with nested steps for assistant turns,
+    tool calls (including MCP and subagent calls), session metadata, cost,
+    and tokens.
+
+    Requirements:
+        ``claude-agent-sdk>=0.1.81`` must be installed:
+        ``pip install 'claude-agent-sdk>=0.1.81'``
+
+    Args:
+        inference_pipeline_id: Optional Openlayer inference pipeline ID. Falls
+            back to the ``OPENLAYER_INFERENCE_PIPELINE_ID`` env var.
+        truncate_tool_output_chars: Maximum characters of tool output to
+            capture per TOOL step. Defaults to 8192.
+        capture_thinking: Whether to capture ``ThinkingBlock`` content into
+            chat-completion step metadata. Defaults to True.
+        redact_mcp_env: Whether to strip ``env`` and ``headers`` from MCP
+            server config dicts in trace metadata. Defaults to True.
+
+    Example:
+        >>> import os
+        >>> os.environ["OPENLAYER_API_KEY"] = "..."
+        >>> os.environ["OPENLAYER_INFERENCE_PIPELINE_ID"] = "..."
+        >>> os.environ["ANTHROPIC_API_KEY"] = "..."
+        >>> from openlayer.lib import trace_claude_agent_sdk
+        >>> trace_claude_agent_sdk()
+        >>>
+        >>> from claude_agent_sdk import query, ClaudeAgentOptions
+        >>> async for m in query(prompt="hello", options=ClaudeAgentOptions(model="claude-haiku-4-5")):
+        ...     ...
+    """
+    # pylint: disable=import-outside-toplevel
+    from .integrations import claude_agent_sdk as _integration
+
+    return _integration.trace_claude_agent_sdk(
+        inference_pipeline_id=inference_pipeline_id,
+        truncate_tool_output_chars=truncate_tool_output_chars,
+        capture_thinking=capture_thinking,
+        redact_mcp_env=redact_mcp_env,
+    )
+
+
+def traced_claude_agent_sdk_query(*, prompt, options=None, inference_pipeline_id=None, **kwargs):
+    """Per-call wrapper around ``claude_agent_sdk.query()`` (alternative to global init).
+
+    Returns an async iterator that yields the same messages as ``query()`` while
+    emitting an Openlayer trace as a side effect.
+
+    Example:
+        >>> from openlayer.lib import traced_claude_agent_sdk_query
+        >>> async for m in traced_claude_agent_sdk_query(prompt="hello"):
+        ...     ...
+    """
+    # pylint: disable=import-outside-toplevel
+    from .integrations import claude_agent_sdk as _integration
+
+    return _integration.traced_query(
+        prompt=prompt,
+        options=options,
+        inference_pipeline_id=inference_pipeline_id,
+        **kwargs,
+    )
 
 
 # -------------------------------- Google Gemini --------------------------------- #

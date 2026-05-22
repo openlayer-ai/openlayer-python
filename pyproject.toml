@@ -159,7 +159,7 @@ exclude = [
     ".git",
 ]
 
-ignore = ["src/openlayer/lib/*", "examples/*"]
+ignore = ["src/openlayer/lib/*", "examples/*", "tests/integrations/*"]
 
 reportImplicitOverride = true
 reportOverlappingOverload = false
