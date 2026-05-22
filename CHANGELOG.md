@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.28.0 (2026-05-22)
+
+Full Changelog: [v0.27.3...v0.28.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.27.3...v0.28.0)
+
+### Features
+
+* **closes OPEN-10634:** Claude Agent SDK Python integration ([00b255f](https://github.com/openlayer-ai/openlayer-python/commit/00b255f0a5613bfaf23641852aec73674ca19c67))
+
 ## 0.27.3 (2026-05-15)
 
 Full Changelog: [v0.27.2...v0.27.3](https://github.com/openlayer-ai/openlayer-python/compare/v0.27.2...v0.27.3)
