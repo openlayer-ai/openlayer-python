@@ -41,6 +41,17 @@ def _disable_publish(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(_tracer, "_publish", False, raising=False)
 
 
+@pytest.fixture(autouse=True)
+def _reset_adk_patch_state():
+    """Unpatch ADK after each test so the module-level idempotency flag
+    (``_google_adk_patched``) doesn't leak between tests and turn a later
+    ``trace_google_adk()`` into a silent no-op."""
+    yield
+    from openlayer.lib.integrations.google_adk_tracer import _unpatch_google_adk
+
+    _unpatch_google_adk()
+
+
 def _collect_exception_chain(exc: BaseException) -> List[BaseException]:
     """Walk ``__cause__`` / ``__context__`` and return the unique chain."""
     seen: List[BaseException] = []

@@ -1,4 +1,13 @@
-"""Module with methods used to trace Google Gemini LLMs."""
+"""Module with methods used to trace Google Gemini LLMs.
+
+NOTE: This targets the LEGACY Google Generative AI SDK only — package
+``google-generativeai``, module ``google.generativeai``, client
+``genai.GenerativeModel``. That SDK is in maintenance mode. The new Google
+Gen AI SDK (package ``google-genai``, module ``google.genai``, client
+``genai.Client()`` with ``client.models.generate_content``) is NOT handled
+here and is not auto-instrumented; supporting it needs a separate tracer +
+registry entry (see the TODO in ``_auto.py``).
+"""
 
 import json
 import logging
