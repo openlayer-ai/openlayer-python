@@ -58,6 +58,11 @@ _original_callbacks: Dict[str, Any] = {}
 # Track wrapped methods for cleanup
 _wrapped_methods = []
 
+# Module-level idempotency guard. _patch_google_adk() wraps many methods via
+# wrapt; without this, a second call (e.g. a repeated init(auto_instrument=True))
+# would stack a wrapper layer on every ADK method. Reset by _unpatch_google_adk().
+_google_adk_patched = False
+
 # Context variable to store the current user query across nested calls
 _current_user_query: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
     "google_adk_user_query", default=None
@@ -1536,6 +1541,11 @@ def _patch_google_adk() -> None:
     Reference:
         ADK Telemetry: https://github.com/google/adk-python/tree/main/src/google/adk/telemetry
     """
+    global _google_adk_patched
+    if _google_adk_patched:
+        logger.debug("Google ADK already patched; skipping (idempotent).")
+        return
+
     logger.debug("Applying Google ADK patches for Openlayer instrumentation")
 
     # Only disable ADK's tracer if explicitly requested
@@ -1595,6 +1605,8 @@ def _patch_google_adk() -> None:
     # Patch tool execution
     _patch_module_function("google.adk.flows.llm_flows.functions", "__call_tool_async", _call_tool_async_wrapper)
 
+    _google_adk_patched = True
+
     if _disable_adk_otel_tracing:
         logger.info("Google ADK patching complete. ADK's OTel tracing disabled, using Openlayer only.")
     else:
@@ -1611,7 +1623,7 @@ def _unpatch_google_adk() -> None:
     - Removes all method patches
     - Clears stored original callbacks
     """
-    global _disable_adk_otel_tracing
+    global _disable_adk_otel_tracing, _google_adk_patched
 
     logger.debug("Removing Google ADK patches")
 
@@ -1641,7 +1653,8 @@ def _unpatch_google_adk() -> None:
     # Clear stored original callbacks
     _original_callbacks.clear()
 
-    # Reset the flag
+    # Reset the flags so a subsequent trace_google_adk() re-patches cleanly
     _disable_adk_otel_tracing = False
+    _google_adk_patched = False
 
     logger.info("Google ADK unpatching complete")

@@ -66,56 +66,72 @@ def trace_portkey() -> None:
             "Portkey library is not installed. Please install it with: pip install portkey-ai"
         )
 
-    # Patch instances on initialization rather than class-level attributes.
-    # Some SDKs initialize 'chat' lazily on the instance.
-    original_init = Portkey.__init__
+    # Patch instances on initialization rather than class-level attributes
+    # (some SDKs initialize 'chat' lazily on the instance). Routed through the
+    # shared _patch_class_init helper so it inherits the class-level idempotency
+    # guard — calling trace_portkey() (or init()) repeatedly does not stack
+    # wrappers on Portkey.__init__.
+    # pylint: disable=import-outside-toplevel
+    from ._auto import _patch_class_init
 
-    @wraps(original_init)
-    def traced_init(self, *args, **kwargs):
-        original_init(self, *args, **kwargs)
-        try:
-            # Avoid double-patching
-            if getattr(self, "_openlayer_portkey_patched", False):
-                return
-            # Access chat to ensure it's constructed, then wrap create
-            chat = getattr(self, "chat", None)
-            if chat is None or not hasattr(chat, "completions") or not hasattr(chat.completions, "create"):
-                # If the structure isn't present, skip gracefully and log diagnostics
-                logger.debug(
-                    "Openlayer Portkey tracer: Portkey client missing expected attributes (chat/completions/create). "
-                    "Tracing not applied for this instance."
-                )
-                return
-            original_create = chat.completions.create
+    _patch_class_init(Portkey, _wrap_portkey_instance)
 
-            @wraps(original_create)
-            def traced_create(*c_args, **c_kwargs):
-                inference_id = c_kwargs.pop("inference_id", None)
-                stream = c_kwargs.get("stream", False)
-                if stream:
-                    return handle_streaming_create(
-                        self,
-                        *c_args,
-                        create_func=original_create,
-                        inference_id=inference_id,
-                        **c_kwargs,
-                    )
-                return handle_non_streaming_create(
-                    self,
+
+def _wrap_portkey_instance(client: "Portkey") -> "Portkey":
+    """Wrap a Portkey client instance's chat.completions.create for tracing.
+
+    Idempotent per instance via the ``_openlayer_portkey_patched`` marker. Skips
+    gracefully (with a debug log) when the client lacks the expected structure.
+    """
+    try:
+        if getattr(client, "_openlayer_portkey_patched", False):
+            return client
+        # Access chat to ensure it's constructed, then wrap create
+        chat = getattr(client, "chat", None)
+        if chat is None or not hasattr(chat, "completions") or not hasattr(chat.completions, "create"):
+            logger.debug(
+                "Openlayer Portkey tracer: Portkey client missing expected attributes (chat/completions/create). "
+                "Tracing not applied for this instance."
+            )
+            return client
+        original_create = chat.completions.create
+
+        @wraps(original_create)
+        def traced_create(*c_args, **c_kwargs):
+            inference_id = c_kwargs.pop("inference_id", None)
+            stream = c_kwargs.get("stream", False)
+            if stream:
+                return handle_streaming_create(
+                    client,
                     *c_args,
                     create_func=original_create,
                     inference_id=inference_id,
                     **c_kwargs,
                 )
+            return handle_non_streaming_create(
+                client,
+                *c_args,
+                create_func=original_create,
+                inference_id=inference_id,
+                **c_kwargs,
+            )
 
-            self.chat.completions.create = traced_create
-            setattr(self, "_openlayer_portkey_patched", True)
-            logger.debug("Openlayer Portkey tracer: successfully patched Portkey client instance for tracing.")
-        except Exception as e:
-            logger.debug("Failed to patch Portkey client instance for tracing: %s", e)
+        client.chat.completions.create = traced_create
+        setattr(client, "_openlayer_portkey_patched", True)
+        logger.debug("Openlayer Portkey tracer: successfully patched Portkey client instance for tracing.")
+    except Exception as e:
+        logger.debug("Failed to patch Portkey client instance for tracing: %s", e)
+    return client
 
-    Portkey.__init__ = traced_init
-    logger.info("Openlayer Portkey tracer: tracing enabled (instance-level patch).")
+
+def _unpatch_portkey() -> None:
+    """Restore Portkey.__init__ to its original. No-op if not patched."""
+    if not HAVE_PORTKEY:
+        return
+    # pylint: disable=import-outside-toplevel
+    from ._auto import _unpatch_class_init
+
+    _unpatch_class_init(Portkey)
 
 
 def handle_streaming_create(

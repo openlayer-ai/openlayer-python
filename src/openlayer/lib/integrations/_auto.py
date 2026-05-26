@@ -138,6 +138,12 @@ REGISTRY: Tuple[IntegrationSpec, ...] = (
         _patch_via("groq_tracer", "_patch_groq"),
         _patch_via("groq_tracer", "_unpatch_groq"),
     ),
+    # TODO: This targets the LEGACY Google Generative AI SDK (package
+    # `google-generativeai`, module `google.generativeai`), which is in
+    # maintenance mode. The new Google Gen AI SDK (package `google-genai`,
+    # module `google.genai`, client `genai.Client()`) is NOT yet covered —
+    # users on it get no auto-instrumentation. Follow-up: add a
+    # google_genai_tracer and register a second entry probing `google.genai`.
     IntegrationSpec(
         "gemini",
         "google.generativeai",
@@ -166,7 +172,7 @@ REGISTRY: Tuple[IntegrationSpec, ...] = (
         "portkey",
         "portkey_ai",
         _patch_via("portkey_tracer", "trace_portkey"),
-        None,
+        _patch_via("portkey_tracer", "_unpatch_portkey"),
     ),
     IntegrationSpec(
         "google_adk",
