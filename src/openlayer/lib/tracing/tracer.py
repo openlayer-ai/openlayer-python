@@ -384,7 +384,9 @@ class OfflineBuffer:
         self.buffer_path = Path(
             buffer_path or os.path.expanduser("~/.openlayer/buffer")
         )
-        self.max_buffer_size = max_buffer_size or 1000
+        # Use an explicit None check so a caller-supplied 0 (buffer nothing) is
+        # respected rather than falling through to the default.
+        self.max_buffer_size = 1000 if max_buffer_size is None else max_buffer_size
         self._lock = threading.RLock()
 
         # Create buffer directory if it doesn't exist
@@ -408,19 +410,41 @@ class OfflineBuffer:
         Returns:
             True if successfully stored, False otherwise
         """
+        if self.max_buffer_size <= 0:
+            logger.debug("Offline buffer max_buffer_size <= 0; not storing trace")
+            return False
         try:
             with self._lock:
-                # Check buffer size limit
-                existing_files = list(self.buffer_path.glob("trace_*.json"))
-                if len(existing_files) >= self.max_buffer_size:
-                    # Remove oldest file to make room
-                    oldest_file = min(existing_files, key=lambda f: f.stat().st_mtime)
-                    oldest_file.unlink()
-                    logger.debug("Removed oldest buffered trace: %s", oldest_file)
+                # Trim the buffer so that, after adding one file, we stay within
+                # the limit. Removing the whole excess in one batch (rather than
+                # a single file per store) keeps the buffer bounded even when
+                # multiple processes share the directory and evict concurrently;
+                # otherwise each writer drops one file while many add and the cap
+                # is never enforced.
+                existing: List[Tuple[float, Path]] = []
+                for existing_file in self.buffer_path.glob("trace_*.json"):
+                    try:
+                        existing.append((existing_file.stat().st_mtime, existing_file))
+                    except OSError:
+                        # File vanished (a concurrent writer evicted it); skip it.
+                        continue
+                if len(existing) >= self.max_buffer_size:
+                    existing.sort(key=lambda pair: pair[0])  # oldest first
+                    remove_count = len(existing) - self.max_buffer_size + 1
+                    for _, old_file in existing[:remove_count]:
+                        try:
+                            old_file.unlink()
+                        except OSError:
+                            # Best effort - another writer may have removed it.
+                            pass
+                    logger.debug("Evicted %d old buffered trace(s)", remove_count)
 
-                # Create filename with timestamp and unique suffix
+                # Create filename with timestamp and unique suffix. Use the full
+                # UUID (not a truncated slice) so filenames stay unique even at
+                # high volume within a single process: worker threads share a
+                # PID, so a truncated id could collide and overwrite a trace.
                 timestamp = int(time.time() * 1000)  # milliseconds
-                unique_id = str(uuid.uuid4())[:8]  # Short unique identifier
+                unique_id = str(uuid.uuid4())
                 filename = f"trace_{timestamp}_{os.getpid()}_{unique_id}.json"
                 file_path = self.buffer_path / filename
 
@@ -534,19 +558,25 @@ class OfflineBuffer:
         Returns:
             Number of traces removed
         """
+        removed = 0
         try:
             with self._lock:
                 trace_files = list(self.buffer_path.glob("trace_*.json"))
-                count = len(trace_files)
 
                 for file_path in trace_files:
-                    file_path.unlink(missing_ok=True)
+                    # Isolate each removal so one failure does not abort the rest
+                    # and the returned count reflects what was actually removed.
+                    try:
+                        file_path.unlink(missing_ok=True)
+                        removed += 1
+                    except OSError as e:
+                        logger.error("Failed to remove buffered trace %s: %s", file_path, e)
 
-                logger.info("Cleared %d traces from offline buffer", count)
-                return count
+                logger.info("Cleared %d traces from offline buffer", removed)
+                return removed
         except Exception as e:
             logger.error("Failed to clear buffer: %s", e)
-            return 0
+            return removed
 
 
 # Global offline buffer instance
@@ -1622,6 +1652,10 @@ def replay_buffered_traces(
             "error": "No Openlayer client available",
         }
 
+    # Always make at least one attempt, even if a caller passes 0 or a negative,
+    # so replay never silently no-ops while leaving traces buffered.
+    attempts = max(1, max_retries)
+
     buffered_traces = offline_buffer.get_buffered_traces()
     total_traces = len(buffered_traces)
     success_count = 0
@@ -1640,7 +1674,7 @@ def replay_buffered_traces(
         last_error = None
 
         # Retry logic
-        for attempt in range(max_retries):
+        for attempt in range(attempts):
             try:
                 response = client.inference_pipelines.data.stream(
                     inference_pipeline_id=inference_pipeline_id,
@@ -1680,7 +1714,7 @@ def replay_buffered_traces(
                 )
 
                 # If this is the last attempt, mark as failed
-                if attempt == max_retries - 1:
+                if attempt == attempts - 1:
                     failure_count += 1
                     failed_traces.append(
                         {

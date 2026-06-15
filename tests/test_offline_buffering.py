@@ -153,6 +153,44 @@ class TestOfflineBuffer:
         traces = self.buffer.get_buffered_traces()
         assert len(traces) == 0
 
+    def test_store_trace_max_buffer_size_zero(self):
+        """A max_buffer_size of 0 stores nothing."""
+        buf = OfflineBuffer(buffer_path=str(Path(self.temp_dir) / "zero_buf"), max_buffer_size=0)
+        assert buf.max_buffer_size == 0
+        assert buf.store_trace({"inferenceId": "x"}, {}, "p") is False
+        assert len(buf.get_buffered_traces()) == 0
+
+    def test_store_trace_batch_eviction(self):
+        """Storing into an over-capacity backlog trims it down to the cap in one
+        store, rather than dropping only a single file."""
+        # Seed 10 files with a large cap so no eviction happens yet.
+        big = OfflineBuffer(buffer_path=str(self.buffer_path), max_buffer_size=100)
+        for i in range(10):
+            big.store_trace({"inferenceId": f"b-{i}"}, {}, "p")
+        assert len(list(self.buffer_path.glob("trace_*.json"))) == 10
+
+        # A buffer over the same dir with a small cap must trim the whole backlog
+        # on the next store. Dropping one file per store is what let concurrent
+        # writers blow past the cap.
+        small = OfflineBuffer(buffer_path=str(self.buffer_path), max_buffer_size=3)
+        small.store_trace({"inferenceId": "newest"}, {}, "p")
+        assert len(list(self.buffer_path.glob("trace_*.json"))) == 3
+
+    def test_clear_buffer_resilient_to_failed_removal(self):
+        """clear_buffer keeps going when one entry can't be removed and reports
+        the count actually removed."""
+        self.buffer.store_trace({"inferenceId": "a"}, {}, "p")
+        self.buffer.store_trace({"inferenceId": "b"}, {}, "p")
+        # A directory matching the trace glob cannot be unlink()'d, simulating one
+        # un-removable entry without mocking the filesystem.
+        (self.buffer_path / "trace_999_0_undeletable.json").mkdir()
+
+        removed = self.buffer.clear_buffer()
+
+        assert removed == 2
+        # The directory survives; the two real trace files are gone.
+        assert len(list(self.buffer_path.glob("trace_*.json"))) == 1
+
 
 class TestTracerConfiguration:
     """Test cases for tracer configuration with offline buffering."""
@@ -420,6 +458,28 @@ class TestBufferUtilityFunctions:
         # Check that trace is still in buffer
         traces = buffer.get_buffered_traces()
         assert len(traces) == 1
+
+    @patch("openlayer.lib.tracing.tracer._get_client")
+    def test_replay_buffered_traces_max_retries_zero(self, mock_get_client: Mock) -> None:
+        """max_retries=0 still attempts each trace once instead of silently no-op."""
+        mock_client = Mock()
+        mock_client.inference_pipelines.data.stream.side_effect = Exception("API Error")
+        mock_get_client.return_value = mock_client
+
+        init(offline_buffer_enabled=True, offline_buffer_path=self.temp_dir)
+        buffer = _get_offline_buffer()
+        assert buffer is not None
+        buffer.store_trace({"inferenceId": "z1", "output": "o"}, {"output_column_name": "output"}, "test-pipeline")
+
+        failure_calls: List[Tuple[Dict[str, Any], Dict[str, Any], Exception]] = []
+        result = replay_buffered_traces(
+            max_retries=0,
+            on_replay_failure=lambda td, cfg, err: failure_calls.append((td, cfg, err)),
+        )
+
+        assert mock_client.inference_pipelines.data.stream.call_count == 1
+        assert result["failure_count"] == 1
+        assert len(failure_calls) == 1
 
     def test_replay_buffered_traces_disabled(self):
         """Test replay when buffer is disabled."""
