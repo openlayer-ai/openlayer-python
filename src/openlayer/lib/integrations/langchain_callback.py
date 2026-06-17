@@ -7,15 +7,14 @@ from typing import Any, Callable, Dict, List, Optional, Union
 from uuid import UUID
 
 try:
-    try:
-        from langchain_core import messages as langchain_schema
-        from langchain_core.callbacks.base import (
-            AsyncCallbackHandler,
-            BaseCallbackHandler,
-        )
-    except ImportError:
-        from langchain import schema as langchain_schema
-        from langchain.callbacks.base import AsyncCallbackHandler, BaseCallbackHandler
+    # langchain-core is sufficient for this handler. The legacy
+    # ``langchain.schema`` / ``langchain.callbacks.base`` import paths were
+    # removed in LangChain v1, so we import from ``langchain_core`` directly.
+    from langchain_core import messages as langchain_schema
+    from langchain_core.callbacks.base import (
+        AsyncCallbackHandler,
+        BaseCallbackHandler,
+    )
 
     HAVE_LANGCHAIN = True
 except ImportError:
@@ -31,6 +30,34 @@ LANGCHAIN_TO_OPENLAYER_PROVIDER_MAP = {
     "chat-ollama": "Ollama",
     "vertexai": "Google",
     "amazon_bedrock_converse_chat": "Bedrock",
+}
+
+# LangChain v1 injects a standardized ``metadata["ls_provider"]`` (e.g.
+# "openai", "anthropic", "google_genai", "groq"...). This maps those values to
+# Openlayer's canonical provider names. Values without an explicit entry fall
+# back to a title-cased version of the ls_provider string.
+LS_PROVIDER_TO_OPENLAYER_MAP = {
+    "openai": "OpenAI",
+    "azure": "Azure",
+    "azure_openai": "Azure",
+    "anthropic": "Anthropic",
+    "google": "Google",
+    "google_genai": "Google",
+    "google_vertexai": "Google",
+    "vertexai": "Google",
+    "cohere": "Cohere",
+    "mistralai": "Mistral",
+    "mistral": "Mistral",
+    "bedrock": "Bedrock",
+    "amazon_bedrock": "Bedrock",
+    "ollama": "Ollama",
+    "huggingface": "Hugging Face",
+    "replicate": "Replicate",
+    "together": "Together AI",
+    "groq": "Groq",
+    "deepseek": "DeepSeek",
+    "fireworks": "Fireworks AI",
+    "perplexity": "Perplexity",
 }
 
 # LiteLLM model prefixes to provider names.
@@ -71,10 +98,7 @@ class OpenlayerHandlerMixin:
 
     def __init__(self, **kwargs: Any) -> None:
         if not HAVE_LANGCHAIN:
-            raise ImportError(
-                "LangChain library is not installed. Please install it with: pip "
-                "install langchain"
-            )
+            raise ImportError("LangChain library is not installed. Please install it with: pip install langchain-core")
         super().__init__()
         self.metadata: Dict[str, Any] = kwargs or {}
         self.steps: Dict[UUID, steps.Step] = {}
@@ -89,6 +113,9 @@ class OpenlayerHandlerMixin:
         self._inference_id = kwargs.get("inference_id")
         # Extract metadata_transformer from kwargs if provided
         self._metadata_transformer = kwargs.get("metadata_transformer")
+        # Opt-out flag: auto-map LangGraph metadata["thread_id"] to the trace's
+        # session_id when the user has not explicitly provided one.
+        self._map_thread_id_to_session = kwargs.get("map_thread_id_to_session", True)
 
     def _start_step(
         self,
@@ -197,17 +224,11 @@ class OpenlayerHandlerMixin:
 
         # Only upload if this is a standalone trace (not integrated with external trace)
         # If current_step is set, we're part of a larger trace and shouldn't upload
-        if (
-            is_root_step
-            and run_id in self._traces_by_root
-            and tracer.get_current_step() is None
-        ):
+        if is_root_step and run_id in self._traces_by_root and tracer.get_current_step() is None:
             trace = self._traces_by_root.pop(run_id)
             if tracer._resolve("background_publish_enabled"):
                 ctx = contextvars.copy_context()
-                tracer._get_background_executor().submit(
-                    ctx.run, self._process_and_upload_trace, trace
-                )
+                tracer._get_background_executor().submit(ctx.run, self._process_and_upload_trace, trace)
             else:
                 self._process_and_upload_trace(trace)
 
@@ -314,11 +335,7 @@ class OpenlayerHandlerMixin:
             return self._message_to_dict(obj)
 
         # Handle ChatPromptValue objects which contain messages
-        if (
-            hasattr(obj, "messages")
-            and hasattr(obj, "__class__")
-            and "ChatPromptValue" in obj.__class__.__name__
-        ):
+        if hasattr(obj, "messages") and hasattr(obj, "__class__") and "ChatPromptValue" in obj.__class__.__name__:
             return [self._convert_langchain_objects(msg) for msg in obj.messages]
 
         # Handle dictionaries
@@ -353,9 +370,7 @@ class OpenlayerHandlerMixin:
                 pass
 
         # Handle objects with content attribute
-        if hasattr(obj, "content") and not isinstance(
-            obj, langchain_schema.BaseMessage
-        ):
+        if hasattr(obj, "content") and not isinstance(obj, langchain_schema.BaseMessage):
             return obj.content
 
         # Handle objects with value attribute
@@ -373,9 +388,7 @@ class OpenlayerHandlerMixin:
         # For everything else, convert to string
         return str(obj)
 
-    def _message_to_dict(
-        self, message: "langchain_schema.BaseMessage"
-    ) -> Dict[str, str]:
+    def _message_to_dict(self, message: "langchain_schema.BaseMessage") -> Dict[str, Any]:
         """Convert a LangChain message to a JSON-serializable dictionary."""
         message_type = getattr(message, "type", "user")
 
@@ -385,11 +398,61 @@ class OpenlayerHandlerMixin:
         elif message_type == "system":
             role = "system"
 
-        return {"role": role, "content": str(message.content)}
+        content_str, content_blocks = self._normalize_content(message.content)
+        result: Dict[str, Any] = {"role": role, "content": content_str}
 
-    def _messages_to_prompt_format(
-        self, messages: List[List["langchain_schema.BaseMessage"]]
-    ) -> List[Dict[str, str]]:
+        # With ``LC_OUTPUT_VERSION=v1`` the content can be a list of typed
+        # blocks. Preserve any non-text blocks (reasoning, tool_call, image...)
+        # structurally rather than stringifying the whole list.
+        if content_blocks:
+            result["content_blocks"] = content_blocks
+
+        # Preserve tool calls on assistant messages (e.g. AIMessage.tool_calls).
+        # Without this, agent turns that only emit tool calls would drop them
+        # from the recorded inputs. Done defensively so it never raises on
+        # messages that lack the attribute.
+        tool_calls = getattr(message, "tool_calls", None)
+        if tool_calls:
+            result["tool_calls"] = tool_calls
+
+        return result
+
+    @staticmethod
+    def _normalize_content(content: Any) -> tuple:
+        """Normalize message content into a (text, non_text_blocks) pair.
+
+        Handles the three shapes ``message.content`` can take:
+          * a plain string (returned unchanged, no blocks);
+          * a list of strings (joined into the text);
+          * a list of typed blocks (dicts with a ``type`` key) as produced
+            under ``LC_OUTPUT_VERSION=v1`` -- text is extracted from
+            ``text``-type blocks while non-text blocks are preserved
+            structurally.
+
+        Defensive: never raises on unexpected shapes.
+        """
+        if isinstance(content, str):
+            return content, []
+
+        if isinstance(content, list):
+            text_parts: List[str] = []
+            non_text_blocks: List[Any] = []
+            for block in content:
+                if isinstance(block, str):
+                    text_parts.append(block)
+                elif isinstance(block, dict):
+                    if block.get("type") == "text" and "text" in block:
+                        text_parts.append(str(block.get("text", "")))
+                    else:
+                        non_text_blocks.append(block)
+                else:
+                    non_text_blocks.append(block)
+            return "".join(text_parts), non_text_blocks
+
+        # Fallback for any other shape.
+        return str(content), []
+
+    def _messages_to_prompt_format(self, messages: List[List["langchain_schema.BaseMessage"]]) -> List[Dict[str, str]]:
         """Convert LangChain messages to Openlayer prompt format using
         unified conversion."""
         prompt = []
@@ -410,9 +473,17 @@ class OpenlayerHandlerMixin:
         invocation_params = invocation_params or {}
         metadata = metadata or {}
 
-        provider = invocation_params.get("_type")
-        if provider in LANGCHAIN_TO_OPENLAYER_PROVIDER_MAP:
-            provider = LANGCHAIN_TO_OPENLAYER_PROVIDER_MAP[provider]
+        # Provider resolution order:
+        #   1. metadata["ls_provider"] (standardized by LangChain v1)
+        #   2. invocation_params["_type"] via the legacy _type map
+        #   3. LiteLLM model prefix (handled below)
+        ls_provider = metadata.get("ls_provider")
+        if ls_provider:
+            provider = LS_PROVIDER_TO_OPENLAYER_MAP.get(ls_provider, str(ls_provider).replace("_", " ").title())
+        else:
+            provider = invocation_params.get("_type")
+            if provider in LANGCHAIN_TO_OPENLAYER_PROVIDER_MAP:
+                provider = LANGCHAIN_TO_OPENLAYER_PROVIDER_MAP[provider]
 
         model = (
             invocation_params.get("model_name")
@@ -431,9 +502,7 @@ class OpenlayerHandlerMixin:
                 model = model_name
 
         # Clean invocation params (remove internal LangChain params)
-        clean_params = {
-            k: v for k, v in invocation_params.items() if not k.startswith("_")
-        }
+        clean_params = {k: v for k, v in invocation_params.items() if not k.startswith("_")}
 
         return {
             "provider": provider,
@@ -441,18 +510,46 @@ class OpenlayerHandlerMixin:
             "model_parameters": clean_params,
         }
 
-    def _extract_token_info(
-        self, response: "langchain_schema.LLMResult"
-    ) -> Dict[str, Any]:
-        """Extract token information generically from LLM response."""
-        llm_output = response.llm_output or {}
+    def _extract_token_info(self, response: "langchain_schema.LLMResult") -> Dict[str, Any]:
+        """Extract token information generically from LLM response.
 
-        # Try standard token_usage location first
-        token_usage = (
-            llm_output.get("token_usage") or llm_output.get("estimatedTokens") or {}
-        )
+        In LangChain v1, ``AIMessage.usage_metadata`` is the guaranteed,
+        standardized token source, so it is read FIRST. The provider-specific
+        ``llm_output`` / ``generation_info`` paths (Ollama ``prompt_eval_count``,
+        Google ``usage_metadata`` in generation_info) remain as fallbacks so
+        nothing regresses.
 
-        # Fallback to generation info for providers like Ollama/Google
+        When ``usage_metadata`` carries ``input_token_details`` /
+        ``output_token_details`` (e.g. ``cache_creation``, ``cache_read``,
+        ``reasoning``, ``audio``), those are surfaced under a ``token_details``
+        key so cost is accurate for prompt-caching / reasoning models.
+        """
+        token_usage: Dict[str, Any] = {}
+        token_details: Dict[str, Any] = {}
+
+        # 1. usage_metadata on the message (standardized, v1-first).
+        if response.generations:
+            gen = response.generations[0][0]
+            usage = getattr(getattr(gen, "message", None), "usage_metadata", None)
+            if usage:
+                token_usage = {
+                    "prompt_tokens": usage.get("input_tokens", 0),
+                    "completion_tokens": usage.get("output_tokens", 0),
+                    "total_tokens": usage.get("total_tokens", 0),
+                }
+                input_details = usage.get("input_token_details")
+                if input_details:
+                    token_details["input_token_details"] = dict(input_details)
+                output_details = usage.get("output_token_details")
+                if output_details:
+                    token_details["output_token_details"] = dict(output_details)
+
+        # 2. Fall back to llm_output for providers that surface it there.
+        if not token_usage:
+            llm_output = response.llm_output or {}
+            token_usage = llm_output.get("token_usage") or llm_output.get("estimatedTokens") or {}
+
+        # 3. Fall back to generation_info for providers like Ollama/Google.
         if not token_usage and response.generations:
             gen = response.generations[0][0]
             generation_info = gen.generation_info or {}
@@ -474,29 +571,55 @@ class OpenlayerHandlerMixin:
                     "completion_tokens": usage.get("candidates_token_count", 0),
                     "total_tokens": usage.get("total_token_count", 0),
                 }
-            # AWS Bedrock / newer LangChain style - usage_metadata on the message
-            elif hasattr(gen, "message") and hasattr(gen.message, "usage_metadata"):
-                usage = gen.message.usage_metadata
-                if usage:
-                    token_usage = {
-                        "prompt_tokens": usage.get("input_tokens", 0),
-                        "completion_tokens": usage.get("output_tokens", 0),
-                        "total_tokens": usage.get("total_tokens", 0),
-                    }
 
-        return {
+        result = {
             "prompt_tokens": token_usage.get("prompt_tokens", 0),
             "completion_tokens": token_usage.get("completion_tokens", 0),
             "tokens": token_usage.get("total_tokens", 0),
         }
+        if token_details:
+            result["token_details"] = token_details
+        return result
 
     def _extract_output(self, response: "langchain_schema.LLMResult") -> str:
-        """Extract output text from LLM response."""
+        """Extract output text from LLM response.
+
+        When a generation carries no text (e.g. an agent turn whose model
+        response is *only* tool calls, as in LangGraph / ``create_agent``),
+        fall back to serializing the message's tool calls so the step output
+        is not empty.
+        """
         output = ""
         for generations in response.generations:
             for generation in generations:
-                output += generation.text.replace("\n", " ")
+                text = generation.text or ""
+                if text:
+                    output += text.replace("\n", " ")
+                else:
+                    output += self._tool_calls_to_str(generation)
         return output
+
+    def _tool_calls_to_str(self, generation: Any) -> str:
+        """Serialize tool calls from a generation's message, if any.
+
+        Done defensively (getattr) so it never raises on generations or
+        messages that lack a ``message`` / ``tool_calls`` attribute, and works
+        whether or not langchain uses the v1 message shape.
+        """
+        message = getattr(generation, "message", None)
+        if message is None:
+            return ""
+
+        tool_calls = getattr(message, "tool_calls", None)
+        if not tool_calls:
+            return ""
+
+        import json
+
+        try:
+            return json.dumps(tool_calls, default=str)
+        except (TypeError, ValueError):
+            return str(tool_calls)
 
     def _safe_parse_json(self, input_str: str) -> Any:
         """Safely parse JSON string, returning the string if parsing fails."""
@@ -523,9 +646,7 @@ class OpenlayerHandlerMixin:
     ) -> Any:
         """Common logic for LLM start."""
         invocation_params = kwargs.get("invocation_params", {})
-        model_info = self._extract_model_info(
-            serialized, invocation_params, metadata or {}
-        )
+        model_info = self._extract_model_info(serialized, invocation_params, metadata or {})
 
         step_name = f"{model_info['provider'] or 'LLM'} Chat Completion"
         prompt = [{"role": "user", "content": text} for text in prompts]
@@ -539,6 +660,7 @@ class OpenlayerHandlerMixin:
             metadata={"tags": tags} if tags else None,
             **model_info,
         )
+        self._apply_thread_id_session(run_id, metadata)
 
     def _handle_chat_model_start(
         self,
@@ -554,9 +676,7 @@ class OpenlayerHandlerMixin:
     ) -> Any:
         """Common logic for chat model start."""
         invocation_params = kwargs.get("invocation_params", {})
-        model_info = self._extract_model_info(
-            serialized, invocation_params, metadata or {}
-        )
+        model_info = self._extract_model_info(serialized, invocation_params, metadata or {})
 
         # Always use provider-based name for chat completions (e.g. "Google Chat Completion")
         # rather than the run_name from the caller (e.g. "Language Model") which is generic.
@@ -572,6 +692,7 @@ class OpenlayerHandlerMixin:
             metadata={"tags": tags} if tags else None,
             **model_info,
         )
+        self._apply_thread_id_session(run_id, metadata)
 
     def _handle_llm_end(
         self,
@@ -591,12 +712,15 @@ class OpenlayerHandlerMixin:
         # Only extract token info if it hasn't been set during streaming
         step = self.steps[run_id]
         token_info = {}
-        if not (
-            hasattr(step, "prompt_tokens")
-            and step.prompt_tokens is not None
-            and step.prompt_tokens > 0
-        ):
+        if not (hasattr(step, "prompt_tokens") and step.prompt_tokens is not None and step.prompt_tokens > 0):
             token_info = self._extract_token_info(response)
+
+        # ChatCompletionStep has no dedicated field for fine-grained token
+        # details (cache_read/creation, reasoning, audio...), so surface them
+        # under step metadata where cost-relevant breakdowns can be read.
+        token_details = token_info.pop("token_details", None)
+        if token_details:
+            step.metadata = {**step.metadata, "token_details": token_details}
 
         self._end_step(
             run_id=run_id,
@@ -632,10 +756,22 @@ class OpenlayerHandlerMixin:
         # Extract chain name from serialized data or use provided name
         # Handle case where serialized can be None
         serialized = serialized or {}
+        metadata = metadata or {}
+
+        # Resolve the chain's display name. Prefer the runnable's own ``name``
+        # (e.g. a node's name like "callAgent", or "RunnableSequence"/"Prompt"
+        # for nested LCEL runs), then fall back to LangGraph's injected
+        # ``metadata["langgraph_node"]`` only when no name is available, then the
+        # serialized id. This mirrors the TS handler's ``name ?? langgraph_node
+        # ?? id`` precedence. ``langgraph_node`` is inherited by *every* run
+        # nested inside a node, so preferring it over ``name`` would relabel all
+        # of a node's internal LCEL runs (RunnableSequence/Prompt/...) — and even
+        # nested sub-graphs — with the parent node's name. LangGraph already sets
+        # ``name`` to the node name at node boundaries, so this keeps nodes
+        # identifiable while preserving the inner structure's real names.
+        langgraph_node = metadata.get("langgraph_node")
         chain_name = (
-            name
-            or (serialized.get("id", [])[-1] if serialized.get("id") else None)
-            or "Chain"
+            name or langgraph_node or (serialized.get("id", [])[-1] if serialized.get("id") else None) or "Chain"
         )
 
         # Skip chains marked as hidden (e.g., internal LangGraph chains)
@@ -656,10 +792,11 @@ class OpenlayerHandlerMixin:
             metadata={
                 "tags": tags,
                 "serialized": serialized,
-                **(metadata or {}),
+                **metadata,
                 **kwargs,
             },
         )
+        self._apply_thread_id_session(run_id, metadata)
 
     def _handle_chain_end(
         self,
@@ -695,9 +832,7 @@ class OpenlayerHandlerMixin:
         step = self.steps[run_id]
         if step.name == "LangGraph" and outputs.get("messages"):
             if isinstance(outputs.get("messages"), list):
-                if isinstance(
-                    outputs.get("messages")[-1], langchain_schema.BaseMessage
-                ):
+                if isinstance(outputs.get("messages")[-1], langchain_schema.BaseMessage):
                     outputs = outputs.get("messages")[-1].content
 
         self._end_step(
@@ -734,10 +869,7 @@ class OpenlayerHandlerMixin:
         # Handle case where serialized can be None
         serialized = serialized or {}
         tool_name = (
-            name
-            or serialized.get("name")
-            or (serialized.get("id", [])[-1] if serialized.get("id") else None)
-            or "Tool"
+            name or serialized.get("name") or (serialized.get("id", [])[-1] if serialized.get("id") else None) or "Tool"
         )
 
         # Parse input - prefer structured inputs over string
@@ -890,9 +1022,7 @@ class OpenlayerHandlerMixin:
         """Common logic for retriever start."""
         # Handle case where serialized can be None
         serialized = serialized or {}
-        retriever_name = (
-            serialized.get("id", [])[-1] if serialized.get("id") else "Retriever"
-        )
+        retriever_name = serialized.get("id", [])[-1] if serialized.get("id") else "Retriever"
 
         self._start_step(
             run_id=run_id,
@@ -929,6 +1059,11 @@ class OpenlayerHandlerMixin:
             else:
                 doc_contents.append(str(doc))
 
+        # Populate the trace-level `context` so the reserved column is set.
+        # Prefer an active (external) trace context; otherwise fall back to the
+        # standalone trace this handler owns for the run. Without the fallback,
+        # synchronous RAG pipelines (where the retriever is the root step and no
+        # external @trace context exists) would silently drop the context.
         current_trace = self._find_trace(run_id)
         if current_trace:
             current_trace.update_metadata(context=doc_contents)
@@ -960,11 +1095,7 @@ class OpenlayerHandlerMixin:
         """Common logic for LLM new token."""
         # Safely check for chunk and usage_metadata
         chunk = kwargs.get("chunk")
-        if (
-            chunk
-            and hasattr(chunk, "message")
-            and hasattr(chunk.message, "usage_metadata")
-        ):
+        if chunk and hasattr(chunk, "message") and hasattr(chunk.message, "usage_metadata"):
             usage = chunk.message.usage_metadata
 
             # Only proceed if usage is not None
@@ -985,6 +1116,42 @@ class OpenlayerHandlerMixin:
                         step.log(**token_info)
         return
 
+    def _apply_thread_id_session(self, run_id: UUID, metadata: Optional[Dict[str, Any]]) -> None:
+        """Map LangGraph ``metadata["thread_id"]`` to the trace's session_id.
+
+        Any LangGraph app with a checkpointer injects ``thread_id`` into
+        callback metadata. When ``map_thread_id_to_session`` is enabled (the
+        default) and the user has not explicitly set a session via
+        ``UserSessionContext``, the thread_id is written to the trace's
+        ``session_id`` metadata so it is promoted to the ``session_id`` column
+        by ``post_process_trace``.
+
+        An explicitly-set session_id is never clobbered: ``post_process_trace``
+        re-applies the ``UserSessionContext`` value after merging trace
+        metadata, and this method additionally skips writing when a context
+        session_id is present.
+        """
+        if not self._map_thread_id_to_session or not metadata:
+            return
+
+        thread_id = metadata.get("thread_id")
+        if not thread_id:
+            return
+
+        # Do not clobber an explicitly-provided session_id.
+        if tracer.UserSessionContext.get_session_id() is not None:
+            return
+
+        target_trace = self._find_trace(run_id)
+        if target_trace is None:
+            return
+
+        existing = (target_trace.metadata or {}).get("session_id")
+        if existing:
+            return
+
+        target_trace.update_metadata(session_id=str(thread_id))
+
 
 class OpenlayerHandler(OpenlayerHandlerMixin, BaseCallbackHandlerClass):  # type: ignore[misc]
     """LangChain callback handler that logs to Openlayer."""
@@ -997,9 +1164,8 @@ class OpenlayerHandler(OpenlayerHandlerMixin, BaseCallbackHandlerClass):  # type
         ignore_retriever=False,
         ignore_agent=False,
         inference_id: Optional[Any] = None,
-        metadata_transformer: Optional[
-            Callable[[Dict[str, Any]], Dict[str, Any]]
-        ] = None,
+        metadata_transformer: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
+        map_thread_id_to_session: bool = True,
         **kwargs: Any,
     ) -> None:
         # Add both inference_id and metadata_transformer to kwargs so they get passed to mixin
@@ -1007,6 +1173,7 @@ class OpenlayerHandler(OpenlayerHandlerMixin, BaseCallbackHandlerClass):  # type
             kwargs["inference_id"] = inference_id
         if metadata_transformer is not None:
             kwargs["metadata_transformer"] = metadata_transformer
+        kwargs["map_thread_id_to_session"] = map_thread_id_to_session
         super().__init__(**kwargs)
         # Store the ignore flags as instance variables
         self._ignore_llm = ignore_llm
@@ -1035,9 +1202,7 @@ class OpenlayerHandler(OpenlayerHandlerMixin, BaseCallbackHandlerClass):  # type
     def ignore_agent(self) -> bool:
         return self._ignore_agent
 
-    def on_llm_start(
-        self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
-    ) -> Any:
+    def on_llm_start(self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any) -> Any:
         """Run when LLM starts running."""
         if self.ignore_llm:
             return
@@ -1060,9 +1225,7 @@ class OpenlayerHandler(OpenlayerHandlerMixin, BaseCallbackHandlerClass):  # type
             return
         return self._handle_llm_end(response, **kwargs)
 
-    def on_llm_error(
-        self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
-    ) -> Any:
+    def on_llm_error(self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any) -> Any:
         """Run when LLM errors."""
         if self.ignore_llm:
             return
@@ -1072,9 +1235,7 @@ class OpenlayerHandler(OpenlayerHandlerMixin, BaseCallbackHandlerClass):  # type
         """Run on new LLM token. Only available when streaming is enabled."""
         return self._handle_llm_new_token(token, **kwargs)
 
-    def on_chain_start(
-        self, serialized: Dict[str, Any], inputs: Dict[str, Any], **kwargs: Any
-    ) -> Any:
+    def on_chain_start(self, serialized: Dict[str, Any], inputs: Dict[str, Any], **kwargs: Any) -> Any:
         """Run when chain starts running."""
         if self.ignore_chain:
             return
@@ -1086,17 +1247,13 @@ class OpenlayerHandler(OpenlayerHandlerMixin, BaseCallbackHandlerClass):  # type
             return
         return self._handle_chain_end(outputs, **kwargs)
 
-    def on_chain_error(
-        self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
-    ) -> Any:
+    def on_chain_error(self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any) -> Any:
         """Run when chain errors."""
         if self.ignore_chain:
             return
         return self._handle_chain_error(error, **kwargs)
 
-    def on_tool_start(
-        self, serialized: Dict[str, Any], input_str: str, **kwargs: Any
-    ) -> Any:
+    def on_tool_start(self, serialized: Dict[str, Any], input_str: str, **kwargs: Any) -> Any:
         """Run when tool starts running."""
         if self.ignore_retriever:
             return
@@ -1108,29 +1265,41 @@ class OpenlayerHandler(OpenlayerHandlerMixin, BaseCallbackHandlerClass):  # type
             return
         return self._handle_tool_end(output, **kwargs)
 
-    def on_tool_error(
-        self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
-    ) -> Any:
+    def on_tool_error(self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any) -> Any:
         """Run when tool errors."""
         if self.ignore_retriever:
             return
         return self._handle_tool_error(error, **kwargs)
 
+    def on_retriever_start(self, serialized: Dict[str, Any], query: str, **kwargs: Any) -> Any:
+        """Run when retriever starts running."""
+        if self.ignore_retriever:
+            return
+        return self._handle_retriever_start(serialized, query, **kwargs)
+
+    def on_retriever_end(self, documents: List[Any], **kwargs: Any) -> Any:
+        """Run when retriever ends running."""
+        if self.ignore_retriever:
+            return
+        return self._handle_retriever_end(documents, **kwargs)
+
+    def on_retriever_error(self, error: Exception, **kwargs: Any) -> Any:
+        """Run when retriever errors."""
+        if self.ignore_retriever:
+            return
+        return self._handle_retriever_error(error, **kwargs)
+
     def on_text(self, text: str, **kwargs: Any) -> Any:
         """Run on arbitrary text."""
         pass
 
-    def on_agent_action(
-        self, action: "langchain_schema.AgentAction", **kwargs: Any
-    ) -> Any:
+    def on_agent_action(self, action: "langchain_schema.AgentAction", **kwargs: Any) -> Any:
         """Run on agent action."""
         if self.ignore_agent:
             return
         return self._handle_agent_action(action, **kwargs)
 
-    def on_agent_finish(
-        self, finish: "langchain_schema.AgentFinish", **kwargs: Any
-    ) -> Any:
+    def on_agent_finish(self, finish: "langchain_schema.AgentFinish", **kwargs: Any) -> Any:
         """Run on agent end."""
         if self.ignore_agent:
             return
@@ -1148,9 +1317,8 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
         ignore_retriever=False,
         ignore_agent=False,
         inference_id: Optional[Any] = None,
-        metadata_transformer: Optional[
-            Callable[[Dict[str, Any]], Dict[str, Any]]
-        ] = None,
+        metadata_transformer: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
+        map_thread_id_to_session: bool = True,
         **kwargs: Any,
     ) -> None:
         # Add both inference_id and metadata_transformer to kwargs so they get passed to mixin
@@ -1158,6 +1326,7 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
             kwargs["inference_id"] = inference_id
         if metadata_transformer is not None:
             kwargs["metadata_transformer"] = metadata_transformer
+        kwargs["map_thread_id_to_session"] = map_thread_id_to_session
         super().__init__(**kwargs)
         # Store the ignore flags as instance variables
         self._ignore_llm = ignore_llm
@@ -1313,9 +1482,7 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
             trace = self._traces_by_root.pop(run_id)
             if tracer._resolve("background_publish_enabled"):
                 ctx = contextvars.copy_context()
-                tracer._get_background_executor().submit(
-                    ctx.run, self._process_and_upload_async_trace, trace
-                )
+                tracer._get_background_executor().submit(ctx.run, self._process_and_upload_async_trace, trace)
             else:
                 self._process_and_upload_async_trace(trace)
 
@@ -1378,9 +1545,7 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
                 tracer.logger.error("Could not stream data to Openlayer %s", err)
 
     # All callback methods remain the same - just delegate to mixin
-    async def on_llm_start(
-        self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
-    ) -> Any:
+    async def on_llm_start(self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any) -> Any:
         if self.ignore_llm:
             return
         return self._handle_llm_start(serialized, prompts, **kwargs)
@@ -1395,16 +1560,12 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
             return
         return self._handle_chat_model_start(serialized, messages, **kwargs)
 
-    async def on_llm_end(
-        self, response: "langchain_schema.LLMResult", **kwargs: Any
-    ) -> Any:
+    async def on_llm_end(self, response: "langchain_schema.LLMResult", **kwargs: Any) -> Any:
         if self.ignore_llm:
             return
         return self._handle_llm_end(response, **kwargs)
 
-    async def on_llm_error(
-        self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
-    ) -> Any:
+    async def on_llm_error(self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any) -> Any:
         if self.ignore_llm:
             return
         return self._handle_llm_error(error, **kwargs)
@@ -1412,9 +1573,7 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
     async def on_llm_new_token(self, token: str, **kwargs: Any) -> Any:
         return self._handle_llm_new_token(token, **kwargs)
 
-    async def on_chain_start(
-        self, serialized: Dict[str, Any], inputs: Dict[str, Any], **kwargs: Any
-    ) -> Any:
+    async def on_chain_start(self, serialized: Dict[str, Any], inputs: Dict[str, Any], **kwargs: Any) -> Any:
         if self.ignore_chain:
             return
         return self._handle_chain_start(serialized, inputs, **kwargs)
@@ -1424,16 +1583,12 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
             return
         return self._handle_chain_end(outputs, **kwargs)
 
-    async def on_chain_error(
-        self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
-    ) -> Any:
+    async def on_chain_error(self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any) -> Any:
         if self.ignore_chain:
             return
         return self._handle_chain_error(error, **kwargs)
 
-    async def on_tool_start(
-        self, serialized: Dict[str, Any], input_str: str, **kwargs: Any
-    ) -> Any:
+    async def on_tool_start(self, serialized: Dict[str, Any], input_str: str, **kwargs: Any) -> Any:
         if self.ignore_retriever:  # Note: tool events use ignore_retriever flag
             return
         return self._handle_tool_start(serialized, input_str, **kwargs)
@@ -1443,9 +1598,7 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
             return
         return self._handle_tool_end(output, **kwargs)
 
-    async def on_tool_error(
-        self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
-    ) -> Any:
+    async def on_tool_error(self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any) -> Any:
         if self.ignore_retriever:
             return
         return self._handle_tool_error(error, **kwargs)
@@ -1453,23 +1606,17 @@ class AsyncOpenlayerHandler(OpenlayerHandlerMixin, AsyncCallbackHandlerClass):  
     async def on_text(self, text: str, **kwargs: Any) -> Any:
         pass
 
-    async def on_agent_action(
-        self, action: "langchain_schema.AgentAction", **kwargs: Any
-    ) -> Any:
+    async def on_agent_action(self, action: "langchain_schema.AgentAction", **kwargs: Any) -> Any:
         if self.ignore_agent:
             return
         return self._handle_agent_action(action, **kwargs)
 
-    async def on_agent_finish(
-        self, finish: "langchain_schema.AgentFinish", **kwargs: Any
-    ) -> Any:
+    async def on_agent_finish(self, finish: "langchain_schema.AgentFinish", **kwargs: Any) -> Any:
         if self.ignore_agent:
             return
         return self._handle_agent_finish(finish, **kwargs)
 
-    async def on_retriever_start(
-        self, serialized: Dict[str, Any], query: str, **kwargs: Any
-    ) -> Any:
+    async def on_retriever_start(self, serialized: Dict[str, Any], query: str, **kwargs: Any) -> Any:
         if self.ignore_retriever:
             return
         return self._handle_retriever_start(serialized, query, **kwargs)
