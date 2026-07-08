@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.30.0 (2026-07-08)
+
+Full Changelog: [v0.29.1...v0.30.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.29.1...v0.30.0)
+
+### Features
+
+* **closes OPEN-11315:** modernize the LangChain/LangGraph callback handler for v1 ([f5f38d2](https://github.com/openlayer-ai/openlayer-python/commit/f5f38d22e0c062962ae6723aad96016ab37f7eb9))
+
+
+### Bug Fixes
+
+* **tracing:** harden offline buffer for concurrency and high volume ([00525f7](https://github.com/openlayer-ai/openlayer-python/commit/00525f70d75a07aae28426ae1fcaed485922b21d))
+
 ## 0.29.1 (2026-06-05)
 
 Full Changelog: [v0.29.0...v0.29.1](https://github.com/openlayer-ai/openlayer-python/compare/v0.29.0...v0.29.1)
