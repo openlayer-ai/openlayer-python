@@ -141,11 +141,7 @@ class Step:
 
         # Include valid attachments only (filter out ones with no data/reference)
         if self.attachments:
-            valid_attachments = [
-                attachment.to_dict()
-                for attachment in self.attachments
-                if attachment.is_valid()
-            ]
+            valid_attachments = [attachment.to_dict() for attachment in self.attachments if attachment.is_valid()]
             if valid_attachments:
                 result["attachments"] = valid_attachments
 
@@ -187,6 +183,11 @@ class ChatCompletionStep(Step):
         self.model: str = None
         self.model_parameters: Dict[str, Any] = None
         self.raw_output: str = None
+        # Optional per-category token map (e.g. {"input_tokens": ...,
+        # "output_tokens": ...}). When set, the backend prices each category by
+        # exact key match to populate ``costDetails``; when unset it is omitted
+        # so integrations that only report scalar tokens are unaffected.
+        self.usage_details: Optional[Dict[str, int]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Dictionary representation of the ChatCompletionStep."""
@@ -203,6 +204,8 @@ class ChatCompletionStep(Step):
                 "rawOutput": self.raw_output,
             }
         )
+        if self.usage_details:
+            step_dict["usageDetails"] = self.usage_details
         return step_dict
 
 
