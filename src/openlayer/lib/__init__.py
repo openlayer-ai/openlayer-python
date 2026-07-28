@@ -25,6 +25,7 @@ __all__ = [
     "trace_claude_agent_sdk",
     "traced_claude_agent_sdk_query",
     "trace_gemini",
+    "trace_google_genai",
     "update_current_trace",
     "update_current_step",
     # Offline buffer management functions
@@ -162,9 +163,7 @@ def trace_azure_content_understanding(client):
     from .integrations import azure_content_understanding_tracer
 
     if not isinstance(client, ContentUnderstandingClient):
-        raise ValueError(
-            "Invalid client. Please provide a ContentUnderstandingClient."
-        )
+        raise ValueError("Invalid client. Please provide a ContentUnderstandingClient.")
     return azure_content_understanding_tracer.trace_azure_content_understanding(client)
 
 
@@ -236,14 +235,14 @@ def trace_portkey():
         >>> from openlayer.lib import trace_portkey
         >>> # Enable openlayer tracing for all Portkey completions
         >>> trace_portkey()
-        >>> # Basic portkey client initialization    
+        >>> # Basic portkey client initialization
         >>> portkey = Portkey(
         >>>     api_key = os.environ['PORTKEY_API_KEY'],
         >>>     config = "YOUR_PORTKEY_CONFIG_ID", # optional your portkey config id
         >>> )
         >>> # use portkey normally - tracing happens automatically
         >>> response = portkey.chat.completions.create(
-        >>>     #model = "@YOUR_PORTKEY_SLUG/YOUR_MODEL_NAME", # optional if giving config
+        >>> # model = "@YOUR_PORTKEY_SLUG/YOUR_MODEL_NAME", # optional if giving config
         >>>     messages = [
         >>>         {"role": "system", "content": "You are a helpful assistant."},
         >>>         {"role": "user", "content": "Write a poem on Argentina, least 100 words."}
@@ -395,18 +394,98 @@ def traced_claude_agent_sdk_query(*, prompt, options=None, inference_pipeline_id
 
 
 # -------------------------------- Google Gemini --------------------------------- #
-def trace_gemini(client):
-    """Trace Google Gemini chat completions."""
+def _legacy_gemini_model_class():
+    """``google.generativeai.GenerativeModel``, or None if not installed."""
     # pylint: disable=import-outside-toplevel
     try:
-        import google.generativeai as genai
+        import google.generativeai as legacy_genai
+
+        return legacy_genai.GenerativeModel
     except ImportError:
+        return None
+
+
+def _google_genai_client_class():
+    """``google.genai.Client``, or None if not installed."""
+    # pylint: disable=import-outside-toplevel
+    try:
+        from google import genai as google_genai
+
+        return google_genai.Client
+    except ImportError:
+        return None
+
+
+def trace_gemini(client):
+    """Trace Google Gemini chat completions for either Google SDK.
+
+    Accepts both Gemini clients and dispatches to the matching tracer:
+
+    - ``google.genai.Client`` (package ``google-genai``, the current unified SDK,
+      including ``vertexai=True`` mode) -> ``trace_google_genai``
+    - ``google.generativeai.GenerativeModel`` (package ``google-generativeai``,
+      legacy / maintenance mode) -> the legacy Gemini tracer
+
+    Only the SDK matching the client passed in is imported, so having just one of
+    the two installed is fine.
+
+    Example:
+        >>> from google import genai
+        >>> from openlayer.lib import trace_gemini
+        >>> client = trace_gemini(genai.Client(vertexai=True, project="p", location="us-central1"))
+        >>> client.models.generate_content(model="gemini-2.5-flash", contents="hi")
+    """
+    # pylint: disable=import-outside-toplevel
+    legacy_class = _legacy_gemini_model_class()
+    unified_class = _google_genai_client_class()
+
+    if legacy_class is not None and isinstance(client, legacy_class):
+        from .integrations import gemini_tracer
+
+        return gemini_tracer.trace_gemini(client)
+
+    if unified_class is not None and isinstance(client, unified_class):
+        from .integrations import google_genai_tracer
+
+        return google_genai_tracer.trace_google_genai(client)
+
+    if legacy_class is None and unified_class is None:
         raise ImportError(
-            "google-generativeai is required for Gemini tracing. Install with: pip install google-generativeai"
+            "Gemini tracing requires either google-genai (recommended) or "
+            "google-generativeai. Install with: pip install google-genai"
         )
 
-    from .integrations import gemini_tracer
+    raise ValueError(
+        "Invalid client. Please provide a google.genai.Client (package "
+        "google-genai) or a google.generativeai.GenerativeModel (package "
+        f"google-generativeai). Got: {type(client).__module__}.{type(client).__qualname__}"
+    )
 
-    if not isinstance(client, genai.GenerativeModel):
-        raise ValueError("Invalid client. Please provide a google.generativeai.GenerativeModel instance.")
-    return gemini_tracer.trace_gemini(client)
+
+def trace_google_genai(client):
+    """Trace Google Gen AI (``google-genai``) content generation.
+
+    Covers ``client.models.generate_content`` and ``generate_content_stream``,
+    their async equivalents under ``client.aio.models``, and chat sessions via
+    ``client.chats`` — in both Vertex AI and AI Studio mode.
+
+    Example:
+        >>> from google import genai
+        >>> from openlayer.lib import trace_google_genai
+        >>> client = trace_google_genai(genai.Client(vertexai=True, project="p", location="us-central1"))
+        >>> client.models.generate_content(model="gemini-2.5-flash", contents="hi")
+    """
+    # pylint: disable=import-outside-toplevel
+    unified_class = _google_genai_client_class()
+    if unified_class is None:
+        raise ImportError("google-genai is required for Google Gen AI tracing. Install with: pip install google-genai")
+
+    if not isinstance(client, unified_class):
+        raise ValueError(
+            "Invalid client. Please provide a google.genai.Client instance. Got: "
+            f"{type(client).__module__}.{type(client).__qualname__}"
+        )
+
+    from .integrations import google_genai_tracer
+
+    return google_genai_tracer.trace_google_genai(client)

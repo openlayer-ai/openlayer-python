@@ -898,6 +898,13 @@ def _base_llm_flow_call_llm_async_wrapper() -> Any:
             ) as step:
                 # Set ChatCompletionStep attributes
                 step.model = model_name
+                # NOTE: deliberately NOT the "gemini" cost slug used by the Gemini
+                # tracers. This wrapper is model-agnostic — BaseLlmFlow._call_llm_async
+                # resolves the LLM via __get_llm() and calls generate_content_async on
+                # whatever it gets, so LiteLlm and Claude-on-Vertex agents reach here
+                # too. Hardcoding "gemini" would pair it with e.g. a claude-* model and
+                # miss the cost lookup entirely. Fixing this properly means deriving the
+                # slug per-model; tracked separately.
                 step.provider = "Google"
                 step.model_parameters = model_parameters
 

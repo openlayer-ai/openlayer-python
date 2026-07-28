@@ -38,3 +38,10 @@ try:
     __all__.extend(["trace_gemini"])
 except ImportError:
     pass
+
+try:
+    from .google_genai_tracer import trace_google_genai
+
+    __all__.extend(["trace_google_genai"])
+except ImportError:
+    pass
