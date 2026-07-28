@@ -2,11 +2,10 @@
 
 NOTE: This targets the LEGACY Google Generative AI SDK only — package
 ``google-generativeai``, module ``google.generativeai``, client
-``genai.GenerativeModel``. That SDK is in maintenance mode. The new Google
+``genai.GenerativeModel``. That SDK is in maintenance mode. The current Google
 Gen AI SDK (package ``google-genai``, module ``google.genai``, client
-``genai.Client()`` with ``client.models.generate_content``) is NOT handled
-here and is not auto-instrumented; supporting it needs a separate tracer +
-registry entry (see the TODO in ``_auto.py``).
+``genai.Client()`` with ``client.models.generate_content``) is handled by
+``google_genai_tracer.py``, which is registered separately in ``_auto.py``.
 """
 
 import json
@@ -29,23 +28,66 @@ from ..tracing import tracer
 
 logger = logging.getLogger(__name__)
 
+# Backend cost lookup is an exact ``(provider.lower(), model)`` match with no
+# aliasing, so ``provider`` must BE a real cost-table slug. The former "Google"
+# label is OpenRouter-sourced: it misses newer models entirely (e.g.
+# gemini-3-pro-preview prices at $0) and carries stale prices for the ``-latest``
+# aliases. Kept in sync with ``google_genai_tracer.PROVIDER``.
+PROVIDER = "gemini"
+
+
+def _extract_token_counts(usage: Any) -> tuple:
+    """Return ``(prompt_tokens, completion_tokens, total_tokens)`` from usage.
+
+    ``candidates_token_count`` EXCLUDES ``thoughts_token_count``, and thinking is
+    on by default for 2.5-series models, so ``prompt + candidates`` badly
+    undercounts — measured 14 tokens for a call that consumed 757 (prompt 8,
+    candidates 6, thoughts 743).
+
+    ``total_token_count`` is authoritative when present. Thinking tokens are
+    folded into ``completion_tokens`` because they are billed as output and the
+    backend prices cost from ``completionTokens``.
+    """
+    if usage is None:
+        return 0, 0, 0
+
+    def _count(name: str) -> Optional[int]:
+        value = getattr(usage, name, None)
+        return value if isinstance(value, int) else None
+
+    prompt_tokens = _count("prompt_token_count") or 0
+    candidates_tokens = _count("candidates_token_count") or 0
+    thoughts_tokens = _count("thoughts_token_count") or 0
+    tool_use_tokens = _count("tool_use_prompt_token_count") or 0
+    total_tokens = _count("total_token_count")
+
+    completion_tokens = candidates_tokens + thoughts_tokens
+    if total_tokens is None:
+        total_tokens = prompt_tokens + completion_tokens + tool_use_tokens
+
+    return prompt_tokens, completion_tokens, total_tokens
+
 
 def _clean_model_name(model_name: str) -> str:
-    """Remove 'models/' prefix from Gemini model names.
-    
+    """Reduce a Gemini model name to the bare slug the cost table is keyed on.
+
     Parameters
     ----------
     model_name : str
         The raw model name from the client (e.g., "models/gemini-pro").
-    
+
     Returns
     -------
     str
         The cleaned model name (e.g., "gemini-pro").
     """
-    if model_name and model_name.startswith("models/"):
-        return model_name[7:]  # Remove "models/" prefix (7 characters)
-    return model_name
+    if not model_name or not isinstance(model_name, str):
+        return model_name
+    # Last path segment, so full Vertex resource paths
+    # ("projects/p/locations/l/publishers/google/models/gemini-2.5-flash") reduce
+    # correctly too, not just the "models/" prefix. Cost rows are keyed on bare
+    # slugs, so a prefixed name silently prices at $0.
+    return model_name.rsplit("/", 1)[-1] or model_name
 
 
 def trace_gemini(
@@ -209,6 +251,7 @@ def stream_chunks(
     first_token_time = None
     num_of_completion_tokens = 0
     num_of_prompt_tokens = 0
+    num_of_total_tokens = 0
     latency = None
 
     try:
@@ -227,13 +270,14 @@ def stream_chunks(
             if hasattr(chunk, "text"):
                 collected_output_data.append(chunk.text)
 
-            # Extract token counts if available
-            if hasattr(chunk, "usage_metadata"):
-                usage = chunk.usage_metadata
-                if hasattr(usage, "prompt_token_count"):
-                    num_of_prompt_tokens = usage.prompt_token_count
-                if hasattr(usage, "candidates_token_count"):
-                    num_of_completion_tokens = usage.candidates_token_count
+            # Extract token counts if available. usage_metadata is cumulative
+            # across chunks, so the last chunk's values win rather than summing.
+            if getattr(chunk, "usage_metadata", None) is not None:
+                (
+                    num_of_prompt_tokens,
+                    num_of_completion_tokens,
+                    num_of_total_tokens,
+                ) = _extract_token_counts(chunk.usage_metadata)
 
             yield chunk
 
@@ -253,7 +297,7 @@ def stream_chunks(
                 inputs={"prompt": _format_input_messages(contents)},
                 output=output_data,
                 latency=latency,
-                tokens=num_of_prompt_tokens + num_of_completion_tokens,
+                tokens=num_of_total_tokens,
                 prompt_tokens=num_of_prompt_tokens,
                 completion_tokens=num_of_completion_tokens,
                 model=model_name,
@@ -320,11 +364,15 @@ async def stream_chunks_async(
     first_token_time = None
     num_of_completion_tokens = 0
     num_of_prompt_tokens = 0
+    num_of_total_tokens = 0
     latency = None
 
     try:
         i = 0
-        async for i, chunk in enumerate(chunks):
+        # NOTE: a manual counter, not ``enumerate`` — ``enumerate`` returns a plain
+        # iterator, so ``async for i, chunk in enumerate(chunks)`` raises
+        # TypeError. This path could never have worked before.
+        async for chunk in chunks:
             # Store raw output
             try:
                 raw_outputs.append(_serialize_chunk(chunk))
@@ -333,18 +381,20 @@ async def stream_chunks_async(
 
             if i == 0:
                 first_token_time = time.time()
+            i += 1
 
             # Extract text content from chunk
             if hasattr(chunk, "text"):
                 collected_output_data.append(chunk.text)
 
-            # Extract token counts if available
-            if hasattr(chunk, "usage_metadata"):
-                usage = chunk.usage_metadata
-                if hasattr(usage, "prompt_token_count"):
-                    num_of_prompt_tokens = usage.prompt_token_count
-                if hasattr(usage, "candidates_token_count"):
-                    num_of_completion_tokens = usage.candidates_token_count
+            # Extract token counts if available. usage_metadata is cumulative
+            # across chunks, so the last chunk's values win rather than summing.
+            if getattr(chunk, "usage_metadata", None) is not None:
+                (
+                    num_of_prompt_tokens,
+                    num_of_completion_tokens,
+                    num_of_total_tokens,
+                ) = _extract_token_counts(chunk.usage_metadata)
 
             yield chunk
 
@@ -364,7 +414,7 @@ async def stream_chunks_async(
                 inputs={"prompt": _format_input_messages(contents)},
                 output=output_data,
                 latency=latency,
-                tokens=num_of_prompt_tokens + num_of_completion_tokens,
+                tokens=num_of_total_tokens,
                 prompt_tokens=num_of_prompt_tokens,
                 completion_tokens=num_of_completion_tokens,
                 model=model_name,
@@ -414,22 +464,20 @@ def handle_non_streaming_generate(
     try:
         output_data = parse_non_streaming_output_data(response)
 
-        # Extract token counts
-        num_of_prompt_tokens = 0
-        num_of_completion_tokens = 0
-        if hasattr(response, "usage_metadata"):
-            usage = response.usage_metadata
-            if hasattr(usage, "prompt_token_count"):
-                num_of_prompt_tokens = usage.prompt_token_count
-            if hasattr(usage, "candidates_token_count"):
-                num_of_completion_tokens = usage.candidates_token_count
+        # Extract token counts. Thinking tokens are folded into the completion
+        # count and the reported total comes from total_token_count.
+        (
+            num_of_prompt_tokens,
+            num_of_completion_tokens,
+            num_of_total_tokens,
+        ) = _extract_token_counts(getattr(response, "usage_metadata", None))
 
         trace_args = create_trace_args(
             end_time=end_time,
             inputs={"prompt": _format_input_messages(args[0] if args else kwargs.get("contents"))},
             output=output_data,
             latency=(end_time - start_time) * 1000,
-            tokens=num_of_prompt_tokens + num_of_completion_tokens,
+            tokens=num_of_total_tokens,
             prompt_tokens=num_of_prompt_tokens,
             completion_tokens=num_of_completion_tokens,
             model=model_name,
@@ -477,22 +525,20 @@ async def handle_non_streaming_generate_async(
     try:
         output_data = parse_non_streaming_output_data(response)
 
-        # Extract token counts
-        num_of_prompt_tokens = 0
-        num_of_completion_tokens = 0
-        if hasattr(response, "usage_metadata"):
-            usage = response.usage_metadata
-            if hasattr(usage, "prompt_token_count"):
-                num_of_prompt_tokens = usage.prompt_token_count
-            if hasattr(usage, "candidates_token_count"):
-                num_of_completion_tokens = usage.candidates_token_count
+        # Extract token counts. Thinking tokens are folded into the completion
+        # count and the reported total comes from total_token_count.
+        (
+            num_of_prompt_tokens,
+            num_of_completion_tokens,
+            num_of_total_tokens,
+        ) = _extract_token_counts(getattr(response, "usage_metadata", None))
 
         trace_args = create_trace_args(
             end_time=end_time,
             inputs={"prompt": _format_input_messages(args[0] if args else kwargs.get("contents"))},
             output=output_data,
             latency=(end_time - start_time) * 1000,
-            tokens=num_of_prompt_tokens + num_of_completion_tokens,
+            tokens=num_of_total_tokens,
             prompt_tokens=num_of_prompt_tokens,
             completion_tokens=num_of_completion_tokens,
             model=model_name,
@@ -614,7 +660,7 @@ def create_trace_args(
 
 def add_to_trace(**kwargs) -> None:
     """Add a chat completion step to the trace."""
-    tracer.add_chat_completion_step_to_trace(**kwargs, name="Gemini Generation", provider="Google")
+    tracer.add_chat_completion_step_to_trace(**kwargs, name="Gemini Generation", provider=PROVIDER)
 
 
 def _format_input_messages(contents: Any) -> list:
