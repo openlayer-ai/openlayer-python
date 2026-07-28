@@ -16,7 +16,10 @@ No network: ``AsyncModels.generate_content`` is stubbed on the CLASS before the
 class-init patch, so ADK's real call path is exercised end to end.
 """
 
+# Neither google-adk nor google-genai is installed in the lint env, so imports
+# from the `google` namespace package don't resolve there.
 # pyright: reportMissingImports=false, reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false, reportUnknownParameterType=false, reportMissingParameterType=false, reportUnusedFunction=false
+# pyright: reportMissingTypeStubs=false, reportAttributeAccessIssue=false, reportCallIssue=false
 
 import asyncio
 from typing import Any, Dict, List

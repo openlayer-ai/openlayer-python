@@ -11,8 +11,12 @@ tracer wraps the stub. Spans are asserted by patching the tracer module's
 """
 
 # google-genai isn't installed in the lint env, and pytest fixtures hide autouse
-# functions from static analysis.
+# functions from static analysis. The last two matter in BOTH directions: without
+# the package, `from google import genai` is an unresolved attribute on a
+# namespace package; with it, `inference_id` is an extra kwarg the SDK's own
+# signature doesn't declare (that's the whole point -- the tracer pops it).
 # pyright: reportMissingImports=false, reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false, reportUnknownParameterType=false, reportMissingParameterType=false, reportUnusedFunction=false
+# pyright: reportMissingTypeStubs=false, reportAttributeAccessIssue=false, reportCallIssue=false
 
 import asyncio
 import contextvars
@@ -291,7 +295,7 @@ class TestAsyncGeneration:
 
         async def _drive() -> List[str]:
             stream = await client.aio.models.generate_content_stream(model="gemini-2.5-flash", contents="hi")
-            return [chunk.text async for chunk in stream]
+            return [chunk.text async for chunk in stream if chunk.text]
 
         with patch.object(gg, "add_to_trace") as mock_add:
             texts = asyncio.run(_drive())
