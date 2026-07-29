@@ -583,3 +583,121 @@ class TestImportSimplification:
         assert lc.HAVE_LANGCHAIN is True
         # The schema alias must resolve to langchain_core, not the legacy path.
         assert lc.langchain_schema.__name__.startswith("langchain_core")
+
+
+# --------------------------------------------------------------------------- #
+# OPEN-11695: model name normalization + priced usageDetails/costDetails
+# --------------------------------------------------------------------------- #
+class TestModelNameNormalization:
+    def test_strips_gemini_models_prefix(self) -> None:
+        # Customer case: ChatGoogleGenerativeAI reports ls_provider=google_genai
+        # and a model with the Gemini Developer API "models/" prefix. Without the
+        # strip the cost table lookup misses -> $0.
+        handler = OpenlayerHandler()
+        info = handler._extract_model_info(
+            serialized={},
+            invocation_params={
+                "_type": "chat-google-generative-ai",
+                "model": "models/gemini-3.5-flash",
+            },
+            metadata={
+                "ls_provider": "google_genai",
+                "ls_model_name": "models/gemini-3.5-flash",
+            },
+        )
+        assert info["provider"] == "Google"
+        assert info["model"] == "gemini-3.5-flash"
+
+    def test_models_prefix_strip_independent_of_provider(self) -> None:
+        handler = OpenlayerHandler()
+        info = handler._extract_model_info(
+            serialized={},
+            invocation_params={"model": "models/gemini-2.5-flash"},
+            metadata={},
+        )
+        assert info["model"] == "gemini-2.5-flash"
+
+    def test_type_anchor_maps_when_ls_provider_absent(self) -> None:
+        # OPEN-11695: the exact reported _type string must resolve to Google even
+        # without metadata["ls_provider"] (older langchain-google-genai etc.).
+        handler = OpenlayerHandler()
+        info = handler._extract_model_info(
+            serialized={},
+            invocation_params={
+                "_type": "chat-google-generative-ai",
+                "model": "models/gemini-3.5-flash",
+            },
+            metadata={},
+        )
+        assert info["provider"] == "Google"
+        assert info["model"] == "gemini-3.5-flash"
+
+
+class TestUsageDetailsPricing:
+    def test_scalar_partition_when_no_details(self) -> None:
+        assert OpenlayerHandler._build_usage_details(100, 50) == {
+            "input_tokens": 100,
+            "output_tokens": 50,
+        }
+
+    def test_none_when_no_tokens(self) -> None:
+        assert OpenlayerHandler._build_usage_details(0, 0) is None
+
+    def test_cached_tokens_partitioned_non_overlapping(self) -> None:
+        # LangChain reports input_tokens INCLUSIVE of cache_read/cache_creation;
+        # the backend prices a non-overlapping partition under its own keys.
+        details = OpenlayerHandler._build_usage_details(350, 100, {"cache_read": 100, "cache_creation": 200}, None)
+        assert details is not None
+        assert details == {
+            "input_tokens": 50,  # 350 - 100 - 200
+            "output_tokens": 100,
+            "cached_tokens": 100,
+            "cache_creation_tokens": 200,
+        }
+        assert sum(details.values()) == 350 + 100  # partition conserves total
+
+    def test_audio_broken_out_both_directions(self) -> None:
+        details = OpenlayerHandler._build_usage_details(300, 120, {"audio": 30}, {"audio": 20})
+        assert details == {
+            "input_tokens": 270,
+            "output_tokens": 100,
+            "audio_input_tokens": 30,
+            "audio_output_tokens": 20,
+        }
+
+    def test_reasoning_stays_folded_into_output(self) -> None:
+        # Reasoning is billed at the output rate; must not be split out or
+        # subtracted from output_tokens.
+        details = OpenlayerHandler._build_usage_details(100, 240, None, {"reasoning": 200})
+        assert details == {"input_tokens": 100, "output_tokens": 240}
+
+    def test_usage_details_set_on_step_via_callbacks(self) -> None:
+        handler = OpenlayerHandler()
+        run_id = uuid.uuid4()
+        handler.on_chat_model_start(
+            serialized={"name": "gemini"},
+            messages=[[HumanMessage(content="hi")]],
+            run_id=run_id,
+            invocation_params={"model": "models/gemini-3.5-flash"},
+            metadata={"ls_provider": "google_genai"},
+        )
+        step = handler.steps[run_id]
+        assert isinstance(step, steps.ChatCompletionStep)
+        message = _ai_message_with_usage(
+            input_tokens=27131,
+            output_tokens=17739,
+            total_tokens=44870,
+            input_token_details={"cache_read": 10000},
+        )
+        handler.on_llm_end(LLMResult(generations=[[ChatGeneration(message=message)]]), run_id=run_id)
+        # Priced, non-overlapping partition lands on the step (and serializes as
+        # the "usageDetails" column the backend prices into costDetails).
+        assert step.usage_details == {
+            "input_tokens": 17131,
+            "output_tokens": 17739,
+            "cached_tokens": 10000,
+        }
+        assert step.to_dict()["usageDetails"] == step.usage_details
+
+    def test_step_omits_usage_details_when_unset(self) -> None:
+        assert "usageDetails" not in steps.ChatCompletionStep(name="x").to_dict()

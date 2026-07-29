@@ -30,6 +30,11 @@ LANGCHAIN_TO_OPENLAYER_PROVIDER_MAP = {
     "chat-ollama": "Ollama",
     "vertexai": "Google",
     "amazon_bedrock_converse_chat": "Bedrock",
+    # ChatGoogleGenerativeAI's _llm_type. Anchored here as well as via
+    # ls_provider ("google_genai") so the exact reported string (OPEN-11695)
+    # still resolves when metadata["ls_provider"] is absent (older
+    # langchain-google-genai, or callers that don't forward it).
+    "chat-google-generative-ai": "Google",
 }
 
 # LangChain v1 injects a standardized ``metadata["ls_provider"]`` (e.g.
@@ -492,6 +497,14 @@ class OpenlayerHandlerMixin:
             or serialized.get("name")
         )
 
+        # Strip the Google Gemini Developer API "models/" prefix
+        # (e.g. "models/gemini-3.5-flash" -> "gemini-3.5-flash"). The cost table
+        # stores bare Gemini names and no provider is named "models", so this is
+        # safe. Runs before the LiteLLM prefix handling below so the remaining
+        # name has no stray leading segment.
+        if model and model.startswith("models/"):
+            model = model[len("models/") :]
+
         # Handle LiteLLM model prefix (e.g. "gemini/gemini-2.5-flash"):
         # extract the actual provider and strip the prefix from the model name.
         if model and "/" in model:
@@ -580,6 +593,59 @@ class OpenlayerHandlerMixin:
         if token_details:
             result["token_details"] = token_details
         return result
+
+    @staticmethod
+    def _build_usage_details(
+        prompt_tokens: int,
+        completion_tokens: int,
+        input_token_details: Optional[Dict[str, int]] = None,
+        output_token_details: Optional[Dict[str, int]] = None,
+    ) -> Optional[Dict[str, int]]:
+        """Build the per-category token map the cost backend prices by exact key.
+
+        The backend prices a **non-overlapping** partition: it sums a price for
+        each ``usageDetails`` key it recognizes. LangChain, however, reports the
+        granular categories (``cache_read``, ``cache_creation``, ``audio``) as
+        **subsets** of the ``input_tokens`` / ``output_tokens`` totals. So we
+        break each granular category out under the key the cost table uses and
+        subtract it from the input/output base, keeping the partition
+        non-overlapping and its sum equal to the total token count.
+
+        Key mapping (LangChain -> Openlayer cost table):
+          input  ``cache_read``     -> ``cached_tokens``
+          input  ``cache_creation`` -> ``cache_creation_tokens``
+          input  ``audio``          -> ``audio_input_tokens``
+          output ``audio``          -> ``audio_output_tokens``
+
+        ``reasoning`` is intentionally left folded into ``output_tokens`` -- it
+        is billed at the output rate and the cost table has no separate price for
+        it. Zero-valued categories are omitted; returns ``None`` when there are no
+        tokens so the ``usageDetails`` column is omitted rather than emitted empty.
+        """
+        input_token_details = input_token_details or {}
+        output_token_details = output_token_details or {}
+
+        cache_read = int(input_token_details.get("cache_read", 0) or 0)
+        cache_creation = int(input_token_details.get("cache_creation", 0) or 0)
+        audio_input = int(input_token_details.get("audio", 0) or 0)
+        audio_output = int(output_token_details.get("audio", 0) or 0)
+
+        # Base = total minus the granular categories broken out below.
+        input_base = prompt_tokens - cache_read - cache_creation - audio_input
+        output_base = completion_tokens - audio_output
+
+        usage_details: Dict[str, int] = {}
+        for key, value in (
+            ("input_tokens", input_base),
+            ("output_tokens", output_base),
+            ("cached_tokens", cache_read),
+            ("cache_creation_tokens", cache_creation),
+            ("audio_input_tokens", audio_input),
+            ("audio_output_tokens", audio_output),
+        ):
+            if value and value > 0:
+                usage_details[key] = value
+        return usage_details or None
 
     def _extract_output(self, response: "langchain_schema.LLMResult") -> str:
         """Extract output text from LLM response.
@@ -721,6 +787,18 @@ class OpenlayerHandlerMixin:
         token_details = token_info.pop("token_details", None)
         if token_details:
             step.metadata = {**step.metadata, "token_details": token_details}
+
+        # Also emit a priced, non-overlapping per-category usageDetails map so
+        # the backend can populate costDetails (the token_details above are only
+        # surfaced as informational metadata, not priced).
+        usage_details = self._build_usage_details(
+            token_info.get("prompt_tokens", 0),
+            token_info.get("completion_tokens", 0),
+            (token_details or {}).get("input_token_details"),
+            (token_details or {}).get("output_token_details"),
+        )
+        if usage_details:
+            token_info["usage_details"] = usage_details
 
         self._end_step(
             run_id=run_id,
@@ -1104,11 +1182,21 @@ class OpenlayerHandlerMixin:
                 run_id = kwargs.get("run_id")
                 if run_id and run_id in self.steps:
                     # Convert usage to the expected format like _extract_token_info does
+                    prompt_tokens = usage.get("input_tokens", 0)
+                    completion_tokens = usage.get("output_tokens", 0)
                     token_info = {
-                        "prompt_tokens": usage.get("input_tokens", 0),
-                        "completion_tokens": usage.get("output_tokens", 0),
+                        "prompt_tokens": prompt_tokens,
+                        "completion_tokens": completion_tokens,
                         "tokens": usage.get("total_tokens", 0),
                     }
+                    usage_details = self._build_usage_details(
+                        prompt_tokens,
+                        completion_tokens,
+                        usage.get("input_token_details"),
+                        usage.get("output_token_details"),
+                    )
+                    if usage_details:
+                        token_info["usage_details"] = usage_details
 
                     # Update the step with token usage information
                     step = self.steps[run_id]
