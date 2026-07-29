@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.31.0 (2026-07-29)
+
+Full Changelog: [v0.30.1...v0.31.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.30.1...v0.31.0)
+
+### Features
+
+* **stlc:** configurable CI runner and private-production-repo support in workflow templates ([e317d0b](https://github.com/openlayer-ai/openlayer-python/commit/e317d0b6447fef4a44bb0576e77367091a1b012e))
+
+
+### Bug Fixes
+
+* **closes OPEN-11695:** strip Gemini models/ prefix and emit priced usageDetails so LangChain cost estimation stops returning $0 ([#658](https://github.com/openlayer-ai/openlayer-python/issues/658)) ([e4b2e26](https://github.com/openlayer-ai/openlayer-python/commit/e4b2e26f001826b5b6f858239abbf58cbdc4ff2d))
+
 ## 0.30.1 (2026-07-08)
 
 Full Changelog: [v0.30.0...v0.30.1](https://github.com/openlayer-ai/openlayer-python/compare/v0.30.0...v0.30.1)
