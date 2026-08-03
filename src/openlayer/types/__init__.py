@@ -6,8 +6,10 @@ from .project_list_params import ProjectListParams as ProjectListParams
 from .test_evaluate_params import TestEvaluateParams as TestEvaluateParams
 from .project_create_params import ProjectCreateParams as ProjectCreateParams
 from .project_list_response import ProjectListResponse as ProjectListResponse
+from .project_update_params import ProjectUpdateParams as ProjectUpdateParams
 from .test_evaluate_response import TestEvaluateResponse as TestEvaluateResponse
 from .project_create_response import ProjectCreateResponse as ProjectCreateResponse
+from .project_update_response import ProjectUpdateResponse as ProjectUpdateResponse
 from .workspace_update_params import WorkspaceUpdateParams as WorkspaceUpdateParams
 from .commit_retrieve_response import CommitRetrieveResponse as CommitRetrieveResponse
 from .test_list_results_params import TestListResultsParams as TestListResultsParams

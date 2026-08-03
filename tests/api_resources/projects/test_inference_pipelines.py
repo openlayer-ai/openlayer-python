@@ -53,7 +53,11 @@ class TestInferencePipelines:
             project={
                 "name": "My Project",
                 "task_type": "llm-base",
+                "data_retention_days": 30,
                 "description": "My project description.",
+                "model_developer": "Acme AI",
+                "model_types": ["llm"],
+                "purpose": "Answer customer billing questions.",
             },
             workspace={
                 "name": "Openlayer",
@@ -189,7 +193,11 @@ class TestAsyncInferencePipelines:
             project={
                 "name": "My Project",
                 "task_type": "llm-base",
+                "data_retention_days": 30,
                 "description": "My project description.",
+                "model_developer": "Acme AI",
+                "model_types": ["llm"],
+                "purpose": "Answer customer billing questions.",
             },
             workspace={
                 "name": "Openlayer",

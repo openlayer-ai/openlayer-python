@@ -8,16 +8,16 @@ from pydantic import Field as FieldInfo
 
 from .._models import BaseModel
 
-__all__ = ["ProjectListResponse", "Item", "ItemLinks", "ItemGitRepo"]
+__all__ = ["ProjectUpdateResponse", "Links", "GitRepo"]
 
 
-class ItemLinks(BaseModel):
+class Links(BaseModel):
     """Links to the project."""
 
     app: str
 
 
-class ItemGitRepo(BaseModel):
+class GitRepo(BaseModel):
     id: str
 
     date_connected: datetime = FieldInfo(alias="dateConnected")
@@ -43,7 +43,7 @@ class ItemGitRepo(BaseModel):
     root_dir: Optional[str] = FieldInfo(alias="rootDir", default=None)
 
 
-class Item(BaseModel):
+class ProjectUpdateResponse(BaseModel):
     id: str
     """The project id."""
 
@@ -65,7 +65,7 @@ class Item(BaseModel):
     inference_pipeline_count: int = FieldInfo(alias="inferencePipelineCount")
     """The number of inference pipelines in the project."""
 
-    links: ItemLinks
+    links: Links
     """Links to the project."""
 
     monitoring_goal_count: int = FieldInfo(alias="monitoringGoalCount")
@@ -97,7 +97,7 @@ class Item(BaseModel):
     description: Optional[str] = None
     """The project description."""
 
-    git_repo: Optional[ItemGitRepo] = FieldInfo(alias="gitRepo", default=None)
+    git_repo: Optional[GitRepo] = FieldInfo(alias="gitRepo", default=None)
 
     api_model_developer: Optional[str] = FieldInfo(alias="modelDeveloper", default=None)
     """Who developed the model used in this project."""
@@ -107,7 +107,3 @@ class Item(BaseModel):
 
     purpose: Optional[str] = None
     """What the system in this project is intended to do."""
-
-
-class ProjectListResponse(BaseModel):
-    items: List[Item]

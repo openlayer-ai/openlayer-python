@@ -15,7 +15,7 @@ from .tests import (
     TestsResourceWithStreamingResponse,
     AsyncTestsResourceWithStreamingResponse,
 )
-from ...types import project_list_params, project_create_params
+from ...types import project_list_params, project_create_params, project_update_params
 from .commits import (
     CommitsResource,
     AsyncCommitsResource,
@@ -24,7 +24,7 @@ from .commits import (
     CommitsResourceWithStreamingResponse,
     AsyncCommitsResourceWithStreamingResponse,
 )
-from ..._types import Body, Omit, Query, Headers, NoneType, NotGiven, omit, not_given
+from ..._types import Body, Omit, Query, Headers, NoneType, NotGiven, SequenceNotStr, omit, not_given
 from ..._utils import path_template, maybe_transform, async_maybe_transform
 from ..._compat import cached_property
 from ..._resource import SyncAPIResource, AsyncAPIResource
@@ -45,6 +45,7 @@ from .inference_pipelines import (
 )
 from ...types.project_list_response import ProjectListResponse
 from ...types.project_create_response import ProjectCreateResponse
+from ...types.project_update_response import ProjectUpdateResponse
 
 __all__ = ["ProjectsResource", "AsyncProjectsResource"]
 
@@ -86,7 +87,11 @@ class ProjectsResource(SyncAPIResource):
         *,
         name: str,
         task_type: Literal["llm-base", "tabular-classification", "tabular-regression", "text-classification"],
+        data_retention_days: Optional[int] | Omit = omit,
         description: Optional[str] | Omit = omit,
+        model_developer: Optional[str] | Omit = omit,
+        model_types: Optional[SequenceNotStr[str]] | Omit = omit,
+        purpose: Optional[str] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -102,7 +107,16 @@ class ProjectsResource(SyncAPIResource):
 
           task_type: The task type of the project.
 
+          data_retention_days: Number of days to retain monitoring data for this project. Null means data is
+              retained indefinitely.
+
           description: The project description.
+
+          model_developer: Who developed the model used in this project.
+
+          model_types: The kinds of model used in this project.
+
+          purpose: What the system in this project is intended to do.
 
           extra_headers: Send extra headers
 
@@ -118,7 +132,11 @@ class ProjectsResource(SyncAPIResource):
                 {
                     "name": name,
                     "task_type": task_type,
+                    "data_retention_days": data_retention_days,
                     "description": description,
+                    "model_developer": model_developer,
+                    "model_types": model_types,
+                    "purpose": purpose,
                 },
                 project_create_params.ProjectCreateParams,
             ),
@@ -126,6 +144,69 @@ class ProjectsResource(SyncAPIResource):
                 extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
             ),
             cast_to=ProjectCreateResponse,
+        )
+
+    def update(
+        self,
+        project_id: str,
+        *,
+        data_retention_days: Optional[int] | Omit = omit,
+        description: Optional[str] | Omit = omit,
+        model_developer: Optional[str] | Omit = omit,
+        model_types: Optional[SequenceNotStr[str]] | Omit = omit,
+        name: str | Omit = omit,
+        purpose: Optional[str] | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> ProjectUpdateResponse:
+        """
+        Update a project's metadata.
+
+        Args:
+          data_retention_days: Number of days to retain monitoring data for this project. Null means data is
+              retained indefinitely.
+
+          description: The project description.
+
+          model_developer: Who developed the model used in this project.
+
+          model_types: The kinds of model used in this project.
+
+          name: The project name.
+
+          purpose: What the system in this project is intended to do.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        if not project_id:
+            raise ValueError(f"Expected a non-empty value for `project_id` but received {project_id!r}")
+        return self._patch(
+            path_template("/projects/{project_id}", project_id=project_id),
+            body=maybe_transform(
+                {
+                    "data_retention_days": data_retention_days,
+                    "description": description,
+                    "model_developer": model_developer,
+                    "model_types": model_types,
+                    "name": name,
+                    "purpose": purpose,
+                },
+                project_update_params.ProjectUpdateParams,
+            ),
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=ProjectUpdateResponse,
         )
 
     def list(
@@ -255,7 +336,11 @@ class AsyncProjectsResource(AsyncAPIResource):
         *,
         name: str,
         task_type: Literal["llm-base", "tabular-classification", "tabular-regression", "text-classification"],
+        data_retention_days: Optional[int] | Omit = omit,
         description: Optional[str] | Omit = omit,
+        model_developer: Optional[str] | Omit = omit,
+        model_types: Optional[SequenceNotStr[str]] | Omit = omit,
+        purpose: Optional[str] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -271,7 +356,16 @@ class AsyncProjectsResource(AsyncAPIResource):
 
           task_type: The task type of the project.
 
+          data_retention_days: Number of days to retain monitoring data for this project. Null means data is
+              retained indefinitely.
+
           description: The project description.
+
+          model_developer: Who developed the model used in this project.
+
+          model_types: The kinds of model used in this project.
+
+          purpose: What the system in this project is intended to do.
 
           extra_headers: Send extra headers
 
@@ -287,7 +381,11 @@ class AsyncProjectsResource(AsyncAPIResource):
                 {
                     "name": name,
                     "task_type": task_type,
+                    "data_retention_days": data_retention_days,
                     "description": description,
+                    "model_developer": model_developer,
+                    "model_types": model_types,
+                    "purpose": purpose,
                 },
                 project_create_params.ProjectCreateParams,
             ),
@@ -295,6 +393,69 @@ class AsyncProjectsResource(AsyncAPIResource):
                 extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
             ),
             cast_to=ProjectCreateResponse,
+        )
+
+    async def update(
+        self,
+        project_id: str,
+        *,
+        data_retention_days: Optional[int] | Omit = omit,
+        description: Optional[str] | Omit = omit,
+        model_developer: Optional[str] | Omit = omit,
+        model_types: Optional[SequenceNotStr[str]] | Omit = omit,
+        name: str | Omit = omit,
+        purpose: Optional[str] | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> ProjectUpdateResponse:
+        """
+        Update a project's metadata.
+
+        Args:
+          data_retention_days: Number of days to retain monitoring data for this project. Null means data is
+              retained indefinitely.
+
+          description: The project description.
+
+          model_developer: Who developed the model used in this project.
+
+          model_types: The kinds of model used in this project.
+
+          name: The project name.
+
+          purpose: What the system in this project is intended to do.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        if not project_id:
+            raise ValueError(f"Expected a non-empty value for `project_id` but received {project_id!r}")
+        return await self._patch(
+            path_template("/projects/{project_id}", project_id=project_id),
+            body=await async_maybe_transform(
+                {
+                    "data_retention_days": data_retention_days,
+                    "description": description,
+                    "model_developer": model_developer,
+                    "model_types": model_types,
+                    "name": name,
+                    "purpose": purpose,
+                },
+                project_update_params.ProjectUpdateParams,
+            ),
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=ProjectUpdateResponse,
         )
 
     async def list(
@@ -394,6 +555,9 @@ class ProjectsResourceWithRawResponse:
         self.create = to_raw_response_wrapper(
             projects.create,
         )
+        self.update = to_raw_response_wrapper(
+            projects.update,
+        )
         self.list = to_raw_response_wrapper(
             projects.list,
         )
@@ -420,6 +584,9 @@ class AsyncProjectsResourceWithRawResponse:
 
         self.create = async_to_raw_response_wrapper(
             projects.create,
+        )
+        self.update = async_to_raw_response_wrapper(
+            projects.update,
         )
         self.list = async_to_raw_response_wrapper(
             projects.list,
@@ -448,6 +615,9 @@ class ProjectsResourceWithStreamingResponse:
         self.create = to_streamed_response_wrapper(
             projects.create,
         )
+        self.update = to_streamed_response_wrapper(
+            projects.update,
+        )
         self.list = to_streamed_response_wrapper(
             projects.list,
         )
@@ -474,6 +644,9 @@ class AsyncProjectsResourceWithStreamingResponse:
 
         self.create = async_to_streamed_response_wrapper(
             projects.create,
+        )
+        self.update = async_to_streamed_response_wrapper(
+            projects.update,
         )
         self.list = async_to_streamed_response_wrapper(
             projects.list,
