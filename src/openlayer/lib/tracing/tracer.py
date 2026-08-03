@@ -71,6 +71,11 @@ _DEFAULTS: Dict[str, Any] = {
     "attachment_upload_enabled": False,
     "url_upload_enabled": False,
     "background_publish_enabled": True,
+    # Caps how many traces can be queued for background publishing at once.
+    # Without this cap, a slow/unreachable Openlayer backend causes traces
+    # (each holding full step inputs/outputs) to pile up in the executor's
+    # unbounded work queue, growing memory without limit (OPEN-11984).
+    "background_publish_max_queue_size": 100,
 }
 
 # Defined later so _get_client() can emit one INFO log on first build.
@@ -111,26 +116,48 @@ def resolve_base_url() -> Optional[str]:
 # Background executor for async trace publishing
 _background_executor: Optional[ThreadPoolExecutor] = None
 
+# Bounds how many traces may be queued/in-flight for background publishing at
+# once. `ThreadPoolExecutor`'s own work queue is unbounded, so without this
+# semaphore a slow or unreachable Openlayer backend causes queued Trace
+# objects (each holding full step inputs/outputs) to accumulate without
+# limit, eventually exhausting memory (OPEN-11984).
+_background_queue_semaphore: Optional[threading.Semaphore] = None
+_background_executor_lock = threading.Lock()
+
 
 def _get_background_executor() -> ThreadPoolExecutor:
     """Get or create the background executor for trace publishing."""
     global _background_executor
     if _background_executor is None:
-        _background_executor = ThreadPoolExecutor(
-            max_workers=4, thread_name_prefix="openlayer-tracer"
-        )
-        # Register cleanup on exit
-        atexit.register(_shutdown_background_executor)
+        with _background_executor_lock:
+            if _background_executor is None:
+                _background_executor = ThreadPoolExecutor(
+                    max_workers=4, thread_name_prefix="openlayer-tracer"
+                )
+                # Register cleanup on exit
+                atexit.register(_shutdown_background_executor)
     return _background_executor
+
+
+def _get_background_queue_semaphore() -> threading.Semaphore:
+    """Get or create the semaphore bounding the background-publish queue."""
+    global _background_queue_semaphore
+    if _background_queue_semaphore is None:
+        with _background_executor_lock:
+            if _background_queue_semaphore is None:
+                max_queue_size = _resolve("background_publish_max_queue_size")
+                _background_queue_semaphore = threading.Semaphore(max_queue_size)
+    return _background_queue_semaphore
 
 
 def _shutdown_background_executor() -> None:
     """Shutdown the background executor gracefully."""
-    global _background_executor
+    global _background_executor, _background_queue_semaphore
     if _background_executor is not None:
         logger.debug("Shutting down background executor, waiting for pending tasks...")
         _background_executor.shutdown(wait=True)
         _background_executor = None
+        _background_queue_semaphore = None
         logger.debug("Background executor shutdown complete")
 
 
@@ -147,6 +174,7 @@ def init(
     attachment_upload_enabled: Any = _UNSET,
     url_upload_enabled: Any = _UNSET,
     background_publish_enabled: Any = _UNSET,
+    background_publish_max_queue_size: Any = _UNSET,
     auto_instrument: Union[bool, List[str]] = True,
 ) -> None:
     """Initialize and configure the Openlayer tracer.
@@ -189,6 +217,10 @@ def init(
             platform has a durable copy. Defaults to False.
         background_publish_enabled: Publish traces from a background thread so the
             main thread returns immediately. Defaults to True.
+        background_publish_max_queue_size: Maximum number of traces that may be
+            queued/in-flight for background publishing at once. If the Openlayer
+            backend is slow or unreachable, additional traces are dropped (and
+            logged) instead of accumulating in memory. Defaults to 100.
         auto_instrument: When truthy (default ``True``), detects every installed
             supported LLM SDK (openai, anthropic, mistral, groq, gemini, oci,
             azure_content_understanding, litellm, portkey, google_adk) and patches
@@ -228,6 +260,7 @@ def init(
         ("attachment_upload_enabled", attachment_upload_enabled),
         ("url_upload_enabled", url_upload_enabled),
         ("background_publish_enabled", background_publish_enabled),
+        ("background_publish_max_queue_size", background_publish_max_queue_size),
     ):
         if val is not _UNSET:
             _tracer_config[key] = val
@@ -236,6 +269,8 @@ def init(
     # get rebuilt with the new configuration on next use.
     _client = None
     _offline_buffer = None
+    global _background_queue_semaphore
+    _background_queue_semaphore = None
     from .attachment_uploader import reset_uploader
 
     reset_uploader()
@@ -304,6 +339,9 @@ def get_tracer_config() -> Dict[str, Any]:
         "attachment_upload_enabled": _resolve("attachment_upload_enabled"),
         "url_upload_enabled": _resolve("url_upload_enabled"),
         "background_publish_enabled": _resolve("background_publish_enabled"),
+        "background_publish_max_queue_size": _resolve(
+            "background_publish_max_queue_size"
+        ),
         "publish": _publish,
         "verify_ssl": _verify_ssl,
     }
@@ -655,7 +693,7 @@ def create_step(
     on_flush_failure: Optional[OnFlushFailureCallback] = None,
 ) -> Generator[steps.Step, None, None]:
     """Starts a trace and yields a Step object."""
-    new_step, is_root_step, token = _create_and_initialize_step(
+    new_step, is_root_step, token, trace_token = _create_and_initialize_step(
         step_name=name,
         step_type=step_type,
         inputs=inputs,
@@ -679,6 +717,9 @@ def create_step(
             inference_pipeline_id=inference_pipeline_id,
             on_flush_failure=on_flush_failure,
         )
+
+        if is_root_step:
+            _safe_reset_contextvar(_current_trace, trace_token)
 
 
 def add_chat_completion_step_to_trace(**kwargs) -> None:
@@ -792,6 +833,7 @@ def trace(
                         self._step = None
                         self._is_root_step = False
                         self._token = None
+                        self._trace_token = None
                         self._output_chunks = []
                         self._trace_initialized = False
                         self._unresolved_promote = {}
@@ -806,7 +848,12 @@ def trace(
                         # Initialize tracing on first iteration only
                         if not self._trace_initialized:
                             self._original_gen = func(*func_args, **func_kwargs)
-                            self._step, self._is_root_step, self._token = (
+                            (
+                                self._step,
+                                self._is_root_step,
+                                self._token,
+                                self._trace_token,
+                            ) = (
                                 _create_and_initialize_step(
                                     step_name=step_name,
                                     step_type=step_type,
@@ -849,6 +896,7 @@ def trace(
                                     _finalize_sync_generator_step,
                                     step=self._step,
                                     token=self._token,
+                                    trace_token=self._trace_token,
                                     is_root_step=self._is_root_step,
                                     step_name=step_name,
                                     inputs=self._inputs,
@@ -863,6 +911,7 @@ def trace(
                                 _finalize_sync_generator_step(
                                     step=self._step,
                                     token=self._token,
+                                    trace_token=self._trace_token,
                                     is_root_step=self._is_root_step,
                                     step_name=step_name,
                                     inputs=self._inputs,
@@ -881,6 +930,7 @@ def trace(
                                         _finalize_sync_generator_step,
                                         step=self._step,
                                         token=self._token,
+                                        trace_token=self._trace_token,
                                         is_root_step=self._is_root_step,
                                         step_name=step_name,
                                         inputs=self._inputs,
@@ -892,6 +942,7 @@ def trace(
                                     _finalize_sync_generator_step(
                                         step=self._step,
                                         token=self._token,
+                                        trace_token=self._trace_token,
                                         is_root_step=self._is_root_step,
                                         step_name=step_name,
                                         inputs=self._inputs,
@@ -1112,6 +1163,7 @@ def trace_async(
                             self._step = None
                             self._is_root_step = False
                             self._token = None
+                            self._trace_token = None
                             self._output_chunks = []
                             self._trace_initialized = False
                             self._unresolved_promote = {}
@@ -1123,7 +1175,12 @@ def trace_async(
                             # Initialize tracing on first iteration only
                             if not self._trace_initialized:
                                 self._original_gen = func(*func_args, **func_kwargs)
-                                self._step, self._is_root_step, self._token = (
+                                (
+                                    self._step,
+                                    self._is_root_step,
+                                    self._token,
+                                    self._trace_token,
+                                ) = (
                                     _create_and_initialize_step(
                                         step_name=step_name,
                                         step_type=step_type,
@@ -1157,6 +1214,7 @@ def trace_async(
                                 _finalize_async_generator_step(
                                     step=self._step,
                                     token=self._token,
+                                    trace_token=self._trace_token,
                                     is_root_step=self._is_root_step,
                                     step_name=step_name,
                                     inputs=self._inputs,
@@ -1173,6 +1231,7 @@ def trace_async(
                                     _finalize_async_generator_step(
                                         step=self._step,
                                         token=self._token,
+                                        trace_token=self._trace_token,
                                         is_root_step=self._is_root_step,
                                         step_name=step_name,
                                         inputs=self._inputs,
@@ -1807,11 +1866,11 @@ def _create_and_initialize_step(
     inputs: Optional[Any] = None,
     output: Optional[Any] = None,
     metadata: Optional[Dict[str, Any]] = None,
-) -> Tuple[steps.Step, bool, Any]:
+) -> Tuple[steps.Step, bool, Any, Any]:
     """Create a new step and initialize trace/parent relationships.
 
     Returns:
-        Tuple of (step, is_root_step, token)
+        Tuple of (step, is_root_step, step_token, trace_token)
     """
     new_step = steps.step_factory(
         step_type=step_type,
@@ -1824,11 +1883,12 @@ def _create_and_initialize_step(
 
     parent_step = get_current_step()
     is_root_step = parent_step is None
+    trace_token = None
 
     if parent_step is None:
         logger.debug("Starting a new trace...")
         current_trace = traces.Trace()
-        _current_trace.set(current_trace)
+        trace_token = _current_trace.set(current_trace)
         _rag_context.set(None)
         current_trace.add_step(new_step)
 
@@ -1838,7 +1898,7 @@ def _create_and_initialize_step(
         parent_step.add_nested_step(new_step)
 
     token = _current_step.set(new_step)
-    return new_step, is_root_step, token
+    return new_step, is_root_step, token, trace_token
 
 
 def _handle_trace_completion(
@@ -1875,17 +1935,37 @@ def _handle_trace_completion(
             if _resolve("background_publish_enabled"):
                 # Submit to background thread pool, copying context so that
                 # contextvars (user_id, session_id, etc.) are preserved.
-                ctx = contextvars.copy_context()
-                executor = _get_background_executor()
-                executor.submit(
-                    ctx.run,
-                    _upload_and_publish_trace,
-                    current_trace,
-                    resolved_pipeline_id,
-                    prompt,
-                    on_flush_failure,
-                )
-                logger.debug("Trace submitted to background executor for publishing")
+                # Bounded by a semaphore so a slow/unreachable backend can't
+                # cause traces to accumulate in the executor's (unbounded)
+                # work queue and exhaust memory (OPEN-11984). When the queue
+                # is full, we drop the trace rather than block the caller.
+                semaphore = _get_background_queue_semaphore()
+                if semaphore.acquire(blocking=False):
+                    ctx = contextvars.copy_context()
+                    executor = _get_background_executor()
+                    future = executor.submit(
+                        ctx.run,
+                        _upload_and_publish_trace,
+                        current_trace,
+                        resolved_pipeline_id,
+                        prompt,
+                        on_flush_failure,
+                    )
+                    future.add_done_callback(lambda _f: semaphore.release())
+                    logger.debug("Trace submitted to background executor for publishing")
+                else:
+                    logger.warning(
+                        "Openlayer background publish queue is full (max %d "
+                        "pending traces); dropping trace for step '%s' instead "
+                        "of buffering it in memory. This usually means the "
+                        "Openlayer backend is slow or unreachable. Consider "
+                        "checking connectivity, raising "
+                        "background_publish_max_queue_size, or setting "
+                        "background_publish_enabled=False for synchronous "
+                        "publishing.",
+                        _resolve("background_publish_max_queue_size"),
+                        step_name,
+                    )
             else:
                 # Run synchronously
                 _upload_and_publish_trace(
@@ -2259,6 +2339,7 @@ def _finalize_step_logging(
 def _finalize_sync_generator_step(
     step: steps.Step,
     token: Any,
+    trace_token: Any,
     is_root_step: bool,
     step_name: str,
     inputs: dict,
@@ -2288,10 +2369,14 @@ def _finalize_sync_generator_step(
         on_flush_failure=on_flush_failure,
     )
 
+    if is_root_step:
+        _safe_reset_contextvar(_current_trace, trace_token)
+
 
 def _finalize_async_generator_step(
     step: steps.Step,
     token: Any,
+    trace_token: Any,
     is_root_step: bool,
     step_name: str,
     inputs: dict,
@@ -2310,6 +2395,9 @@ def _finalize_async_generator_step(
         inference_pipeline_id=inference_pipeline_id,
         on_flush_failure=on_flush_failure,
     )
+
+    if is_root_step:
+        _safe_reset_contextvar(_current_trace, trace_token)
 
 
 def _join_output_chunks(output_chunks: List[Any]) -> str:
