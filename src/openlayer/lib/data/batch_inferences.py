@@ -42,18 +42,19 @@ def upload_batch_inferences(
 
     # Write dataset and config to temp directory
     with tempfile.TemporaryDirectory() as tmp_dir:
-        # If DataFrame is provided, convert it to Arrow Table and write it using IPC
-        # writer
-        if dataset_df is not None:
-            temp_file_path = f"{tmp_dir}/dataset.arrow"
-            pa_table = pa.Table.from_pandas(dataset_df)
-            pa_schema = pa_table.schema
+        # Both inputs are uploaded as an Arrow IPC stream. The object key is already
+        # committed to `.arrow` by the presigned URL above, and the backend dispatches
+        # on that extension when it reads the batch back — so a CSV has to be
+        # converted here rather than uploaded as-is.
+        if dataset_df is None:
+            dataset_df = pd.read_csv(dataset_path)
 
-            with pa.ipc.RecordBatchStreamWriter(temp_file_path, pa_schema) as writer:
-                writer.write_table(pa_table, max_chunksize=16384)
-        else:
-            object_name = f"batch_data_{time.time()}_{inference_pipeline_id}.csv"
-            temp_file_path = dataset_path
+        temp_file_path = f"{tmp_dir}/dataset.arrow"
+        pa_table = pa.Table.from_pandas(dataset_df)
+        pa_schema = pa_table.schema
+
+        with pa.ipc.RecordBatchStreamWriter(temp_file_path, pa_schema) as writer:
+            writer.write_table(pa_table, max_chunksize=16384)
 
         # camelCase the config
         config = maybe_transform(config, data_stream_params.Config)
