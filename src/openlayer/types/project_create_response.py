@@ -1,6 +1,6 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime
 from typing_extensions import Literal
 
@@ -88,7 +88,22 @@ class ProjectCreateResponse(BaseModel):
     workspace_id: Optional[str] = FieldInfo(alias="workspaceId", default=None)
     """The workspace id."""
 
+    data_retention_days: Optional[int] = FieldInfo(alias="dataRetentionDays", default=None)
+    """Number of days to retain monitoring data for this project.
+
+    Null means data is retained indefinitely.
+    """
+
     description: Optional[str] = None
     """The project description."""
 
     git_repo: Optional[GitRepo] = FieldInfo(alias="gitRepo", default=None)
+
+    api_model_developer: Optional[str] = FieldInfo(alias="modelDeveloper", default=None)
+    """Who developed the model used in this project."""
+
+    api_model_types: Optional[List[str]] = FieldInfo(alias="modelTypes", default=None)
+    """The kinds of model used in this project."""
+
+    purpose: Optional[str] = None
+    """What the system in this project is intended to do."""
