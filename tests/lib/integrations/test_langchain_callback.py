@@ -732,6 +732,49 @@ class TestProviderCostSlugs:
         ("LITELLM_PREFIX_TO_PROVIDER_MAP", LITELLM_PREFIX_TO_PROVIDER_MAP),
     )
 
+    # Provider slugs published by https://llm-costs.openlayer.com/v1/costs that these
+    # maps target. Vendored rather than fetched so the suite stays offline; refresh with
+    #   curl -s https://llm-costs.openlayer.com/v1/costs | jq -r '.costs[].provider' | sort -u
+    # Last verified 2026-08-20 against 139 published providers.
+    COST_SLUGS = frozenset(
+        {
+            "anthropic",
+            "azure",
+            "bedrock",
+            "cohere",
+            "deepseek",
+            "fireworks_ai",
+            "google",
+            "groq",
+            "mistral",
+            "ollama",
+            "openai",
+            "perplexity",
+            "replicate",
+            "together_ai",
+        }
+    )
+
+    # Vendors with no provider slug upstream at all: no value can resolve a cost, so the
+    # name is display-only. Mirrors the ``null`` entries in openlayer-ts's
+    # PROVIDER_COST_SLUG.
+    UNPRICED_VENDORS = frozenset({"huggingface"})
+
+    def test_every_provider_value_resolves_a_cost_slug(self) -> None:
+        """Stronger than the space check: the value must actually price something.
+
+        Ports the invariant openlayer-ts asserts via PROVIDER_COST_SLUG -- a provider
+        is only worth mapping if its canonical name resolves a price, otherwise the
+        step gets a nicer label and still costs $0.
+        """
+        for name, mapping in self.ALL_MAPS:
+            for key, value in sorted(mapping.items()):
+                slug = value.lower()
+                assert slug in self.COST_SLUGS or slug in self.UNPRICED_VENDORS, (
+                    f"{name}[{key!r}] = {value!r} lowercases to {slug!r}, which is neither a "
+                    f"published cost slug nor a known-unpriced vendor: every row would cost $0"
+                )
+
     def test_no_provider_value_contains_a_space(self) -> None:
         for name, mapping in self.ALL_MAPS:
             offenders = sorted({v for v in mapping.values() if " " in v})
