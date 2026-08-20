@@ -24,6 +24,10 @@ except ImportError:
 from .. import utils
 from ..tracing import enums, steps, tracer, traces
 
+# Provider values below must stay matchable against the llm-costs table: cost is
+# resolved by lowercasing the provider and matching a slug exactly. Matching
+# normalizes case but NOT separators, so "Together AI" prices every row at $0
+# while "Together_AI" prices correctly. Never use spaces in these values.
 LANGCHAIN_TO_OPENLAYER_PROVIDER_MAP = {
     "azure-openai-chat": "Azure",
     "openai-chat": "OpenAI",
@@ -56,12 +60,12 @@ LS_PROVIDER_TO_OPENLAYER_MAP = {
     "bedrock": "Bedrock",
     "amazon_bedrock": "Bedrock",
     "ollama": "Ollama",
-    "huggingface": "Hugging Face",
+    "huggingface": "HuggingFace",
     "replicate": "Replicate",
-    "together": "Together AI",
+    "together": "Together_AI",
     "groq": "Groq",
     "deepseek": "DeepSeek",
-    "fireworks": "Fireworks AI",
+    "fireworks": "Fireworks_AI",
     "perplexity": "Perplexity",
 }
 
@@ -77,12 +81,12 @@ LITELLM_PREFIX_TO_PROVIDER_MAP = {
     "bedrock": "Bedrock",
     "vertex_ai": "Google",
     "azure": "Azure",
-    "huggingface": "Hugging Face",
+    "huggingface": "HuggingFace",
     "replicate": "Replicate",
-    "together_ai": "Together AI",
+    "together_ai": "Together_AI",
     "groq": "Groq",
     "deepseek": "DeepSeek",
-    "fireworks_ai": "Fireworks AI",
+    "fireworks_ai": "Fireworks_AI",
     "perplexity": "Perplexity",
     "ollama": "Ollama",
     "openai": "OpenAI",
@@ -484,7 +488,10 @@ class OpenlayerHandlerMixin:
         #   3. LiteLLM model prefix (handled below)
         ls_provider = metadata.get("ls_provider")
         if ls_provider:
-            provider = LS_PROVIDER_TO_OPENLAYER_MAP.get(ls_provider, str(ls_provider).replace("_", " ").title())
+            # Keep separators: cost is matched by lowercasing this value against a
+            # llm-costs slug, and matching normalizes case but NOT separators. Turning
+            # "vercel_ai_gateway" into "Vercel Ai Gateway" makes the row price at $0.
+            provider = LS_PROVIDER_TO_OPENLAYER_MAP.get(ls_provider, str(ls_provider).title())
         else:
             provider = invocation_params.get("_type")
             if provider in LANGCHAIN_TO_OPENLAYER_PROVIDER_MAP:
