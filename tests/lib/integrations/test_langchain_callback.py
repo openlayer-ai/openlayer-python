@@ -35,7 +35,12 @@ from langchain_core.messages import AIMessage, ToolMessage, HumanMessage
 from langchain_core.documents import Document
 
 from openlayer.lib.tracing import enums, steps
-from openlayer.lib.integrations.langchain_callback import OpenlayerHandler
+from openlayer.lib.integrations.langchain_callback import (
+    LS_PROVIDER_TO_OPENLAYER_MAP,
+    LITELLM_PREFIX_TO_PROVIDER_MAP,
+    LANGCHAIN_TO_OPENLAYER_PROVIDER_MAP,
+    OpenlayerHandler,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -400,13 +405,19 @@ class TestLsProviderDetection:
         assert info["model"] == "claude-x"
 
     def test_ls_provider_title_cases_unknown_values(self) -> None:
+        """Unknown ls_provider values are title-cased but keep their separators.
+
+        Underscores must survive: the cost table is keyed by slugs like
+        ``vercel_ai_gateway``, and replacing "_" with " " makes the provider
+        un-priceable. See TestProviderCostSlugs.
+        """
         handler = OpenlayerHandler()
         info = handler._extract_model_info(
             serialized={},
             invocation_params={"model": "some-model"},
             metadata={"ls_provider": "some_new_provider"},
         )
-        assert info["provider"] == "Some New Provider"
+        assert info["provider"] == "Some_New_Provider"
 
     def test_falls_back_to_type_map_without_ls_provider(self) -> None:
         handler = OpenlayerHandler()
@@ -701,3 +712,127 @@ class TestUsageDetailsPricing:
 
     def test_step_omits_usage_details_when_unset(self) -> None:
         assert "usageDetails" not in steps.ChatCompletionStep(name="x").to_dict()
+
+
+# --------------------------------------------------------------------------- #
+# Provider values must be matchable against the llm-costs table
+# --------------------------------------------------------------------------- #
+class TestProviderCostSlugs:
+    """Cost is resolved by lowercasing ``provider`` and matching a llm-costs slug.
+
+    Matching normalizes case but NOT separators (verified against the live API:
+    provider "Together AI" priced at $0.0, while "Together_AI" and "together_ai"
+    both priced at $0.0065 for the same model and token counts). So any provider
+    value containing a space silently prices every row at zero.
+    """
+
+    ALL_MAPS = (
+        ("LANGCHAIN_TO_OPENLAYER_PROVIDER_MAP", LANGCHAIN_TO_OPENLAYER_PROVIDER_MAP),
+        ("LS_PROVIDER_TO_OPENLAYER_MAP", LS_PROVIDER_TO_OPENLAYER_MAP),
+        ("LITELLM_PREFIX_TO_PROVIDER_MAP", LITELLM_PREFIX_TO_PROVIDER_MAP),
+    )
+
+    # Provider slugs published by https://llm-costs.openlayer.com/v1/costs that these
+    # maps target. Vendored rather than fetched so the suite stays offline; refresh with
+    #   curl -s https://llm-costs.openlayer.com/v1/costs | jq -r '.costs[].provider' | sort -u
+    # Last verified 2026-08-20 against 139 published providers.
+    COST_SLUGS = frozenset(
+        {
+            "anthropic",
+            "azure",
+            "bedrock",
+            "cohere",
+            "deepseek",
+            "fireworks_ai",
+            "google",
+            "groq",
+            "mistral",
+            "ollama",
+            "openai",
+            "perplexity",
+            "replicate",
+            "together_ai",
+        }
+    )
+
+    # Vendors with no provider slug upstream at all: no value can resolve a cost, so the
+    # name is display-only. Mirrors the ``null`` entries in openlayer-ts's
+    # PROVIDER_COST_SLUG.
+    UNPRICED_VENDORS = frozenset({"huggingface"})
+
+    def test_every_provider_value_resolves_a_cost_slug(self) -> None:
+        """Stronger than the space check: the value must actually price something.
+
+        Ports the invariant openlayer-ts asserts via PROVIDER_COST_SLUG -- a provider
+        is only worth mapping if its canonical name resolves a price, otherwise the
+        step gets a nicer label and still costs $0.
+        """
+        for name, mapping in self.ALL_MAPS:
+            for key, value in sorted(mapping.items()):
+                slug = value.lower()
+                assert slug in self.COST_SLUGS or slug in self.UNPRICED_VENDORS, (
+                    f"{name}[{key!r}] = {value!r} lowercases to {slug!r}, which is neither a "
+                    f"published cost slug nor a known-unpriced vendor: every row would cost $0"
+                )
+
+    def test_no_provider_value_contains_a_space(self) -> None:
+        for name, mapping in self.ALL_MAPS:
+            offenders = sorted({v for v in mapping.values() if " " in v})
+            assert not offenders, f"{name} maps to space-separated values (silent $0): {offenders}"
+
+    @pytest.mark.parametrize(
+        ("prefix", "expected_slug"),
+        [
+            # regressions this class was added for
+            ("together_ai", "together_ai"),
+            ("fireworks_ai", "fireworks_ai"),
+            ("huggingface", "huggingface"),
+            # canaries: these already resolved correctly and must keep doing so
+            ("gemini", "google"),
+            ("vertex_ai", "google"),
+            ("anthropic", "anthropic"),
+            ("bedrock", "bedrock"),
+            ("deepseek", "deepseek"),
+        ],
+    )
+    def test_litellm_prefix_resolves_to_cost_slug(self, prefix: str, expected_slug: str) -> None:
+        handler = OpenlayerHandler()
+        info = handler._extract_model_info(
+            serialized={},
+            invocation_params={"model": f"{prefix}/some-model"},
+            metadata={},
+        )
+        assert info["provider"] is not None
+        assert info["provider"].lower() == expected_slug
+        assert info["model"] == "some-model"
+
+    @pytest.mark.parametrize(
+        ("ls_provider", "expected_slug"),
+        [
+            ("together", "together_ai"),
+            ("fireworks", "fireworks_ai"),
+            ("huggingface", "huggingface"),
+            ("anthropic", "anthropic"),
+            ("google_genai", "google"),
+        ],
+    )
+    def test_ls_provider_resolves_to_cost_slug(self, ls_provider: str, expected_slug: str) -> None:
+        handler = OpenlayerHandler()
+        info = handler._extract_model_info(
+            serialized={},
+            invocation_params={"model": "some-model"},
+            metadata={"ls_provider": ls_provider},
+        )
+        assert info["provider"] is not None
+        assert info["provider"].lower() == expected_slug
+
+    def test_unmapped_ls_provider_preserves_slug_separators(self) -> None:
+        """An unmapped ls_provider that IS already a valid slug must stay matchable."""
+        handler = OpenlayerHandler()
+        info = handler._extract_model_info(
+            serialized={},
+            invocation_params={"model": "some-model"},
+            metadata={"ls_provider": "vercel_ai_gateway"},
+        )
+        assert info["provider"] is not None
+        assert info["provider"].lower() == "vercel_ai_gateway"
