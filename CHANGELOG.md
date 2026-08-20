@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.31.3 (2026-08-20)
+
+Full Changelog: [v0.31.2...v0.31.3](https://github.com/openlayer-ai/openlayer-python/compare/v0.31.2...v0.31.3)
+
+### Bug Fixes
+
+* **langchain:** stop emitting space-separated provider names that price at $0 ([#666](https://github.com/openlayer-ai/openlayer-python/issues/666)) ([dc418a2](https://github.com/openlayer-ai/openlayer-python/commit/dc418a2e4a8de69531a695eeb7a109a16e736eac))
+
+
+### Chores
+
+* **internal:** allow the mock server port to be set with STAINLESS_MOCK_PORT ([d1947aa](https://github.com/openlayer-ai/openlayer-python/commit/d1947aa4b3f7a142181ec43f7a41d6db9100723d))
+
 ## 0.31.2 (2026-08-04)
 
 Full Changelog: [v0.31.1...v0.31.2](https://github.com/openlayer-ai/openlayer-python/compare/v0.31.1...v0.31.2)
