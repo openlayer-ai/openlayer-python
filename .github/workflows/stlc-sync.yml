@@ -1,8 +1,5 @@
-# NOTE(stlc migration, 2026-08-25): repo names below point at the
-# stainless-sdks placeholder repos used to validate the migration.
-# At cutover, replace:
-#   - the production repo with openlayer-ai/openlayer-python
-#   - the staging/config repo owner with your own org after transfer
+# NOTE(stlc migration): repo names below are set for openlayer-ai. CONFIG_REPO is
+# left as a TODO -- set it to your config repo, then re-seal with `stlc build --push`.
 name: Sync SDK repos
 
 # Keeps the staging and production trunks in sync and the config repo's
@@ -29,7 +26,7 @@ jobs:
     # Runner comes from the STLC_RUNNER repo/org variable when set; defaults to GitHub-hosted.
     runs-on: ${{ vars.STLC_RUNNER || 'ubuntu-latest' }}
     if: >-
-      github.repository == 'stainless-sdks/openlayer-python-staging' &&
+      github.repository == 'openlayer-ai/openlayer-python-staging' &&
       (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch')
     permissions:
       contents: write
@@ -37,7 +34,7 @@ jobs:
       group: stlc-back-sync
       cancel-in-progress: true
     env:
-      PRODUCTION_REPO: stainless-sdks/openlayer-python-prod
+      PRODUCTION_REPO: openlayer-ai/openlayer-python
     steps:
       - name: Check out staging
         uses: actions/checkout@v6
@@ -105,12 +102,12 @@ jobs:
     # the poll. Dispatch-only: it cannot write production or staging contents.
     runs-on: ${{ vars.STLC_RUNNER || 'ubuntu-latest' }}
     if: >-
-      github.repository == 'stainless-sdks/openlayer-python-prod' &&
+      github.repository == 'openlayer-ai/openlayer-python' &&
       (github.event_name == 'release' || github.event_name == 'workflow_dispatch')
     permissions:
       contents: read
     env:
-      STAGING_REPO: stainless-sdks/openlayer-python-staging
+      STAGING_REPO: openlayer-ai/openlayer-python-staging
     steps:
       - name: Dispatch back-sync to staging
         env:
@@ -158,7 +155,7 @@ jobs:
     # stlc's own pushes, so the bot's commits can't trigger a re-seal loop.
     runs-on: ${{ vars.STLC_RUNNER || 'ubuntu-latest' }}
     if: >-
-      github.repository == 'stainless-sdks/openlayer-python-staging' &&
+      github.repository == 'openlayer-ai/openlayer-python-staging' &&
       github.event_name == 'push'
     permissions:
       contents: read
@@ -166,7 +163,7 @@ jobs:
       group: seal-dispatch-${{ github.ref }}
       cancel-in-progress: false
     env:
-      CONFIG_REPO: stainless-sdks/openlayer-config
+      CONFIG_REPO: TODO-set-to-your-config-repo # e.g. openlayer-ai/openlayer-config
     steps:
       - name: Loop-guard and send re-seal dispatch
         env:
