@@ -24,6 +24,8 @@ __all__ = [
     "unpatch_google_adk",
     "trace_claude_agent_sdk",
     "traced_claude_agent_sdk_query",
+    "trace_copilot",
+    "untrace_copilot",
     "trace_gemini",
     "trace_google_genai",
     "update_current_trace",
@@ -391,6 +393,63 @@ def traced_claude_agent_sdk_query(*, prompt, options=None, inference_pipeline_id
         inference_pipeline_id=inference_pipeline_id,
         **kwargs,
     )
+
+
+# ---------------------------- GitHub Copilot SDK ---------------------------- #
+def trace_copilot(
+    *,
+    inference_pipeline_id=None,
+    truncate_tool_output_chars: int = 8192,
+    capture_reasoning: bool = True,
+):
+    """Enable Openlayer tracing for the GitHub Copilot SDK.
+
+    Monkey-patches ``copilot.CopilotClient.create_session`` so every session
+    becomes an Openlayer trace with nested steps for assistant turns, tool
+    calls and subagents, including tokens and cost. Idempotent, and composes
+    with any ``on_event`` handler you pass yourself.
+
+    Requirements:
+        ``github-copilot-sdk>=1.0.11`` must be installed:
+        ``pip install 'github-copilot-sdk>=1.0.11'``
+
+    Args:
+        inference_pipeline_id: Optional Openlayer inference pipeline ID. Falls
+            back to the ``OPENLAYER_INFERENCE_PIPELINE_ID`` env var.
+        truncate_tool_output_chars: Maximum characters of tool output to
+            capture per TOOL step. Defaults to 8192.
+        capture_reasoning: Whether to capture reasoning text into
+            chat-completion step metadata. Defaults to True.
+
+    Example:
+        >>> import os
+        >>> os.environ["OPENLAYER_API_KEY"] = "..."
+        >>> os.environ["OPENLAYER_INFERENCE_PIPELINE_ID"] = "..."
+        >>> from openlayer.lib import trace_copilot
+        >>> trace_copilot()
+        >>>
+        >>> from copilot import CopilotClient
+        >>> client = CopilotClient()
+        >>> await client.start()
+        >>> session = await client.create_session()
+        >>> await session.send_and_wait("Summarize this repository")
+    """
+    # pylint: disable=import-outside-toplevel
+    from .integrations import copilot_sdk as _integration
+
+    return _integration.trace_copilot(
+        inference_pipeline_id=inference_pipeline_id,
+        truncate_tool_output_chars=truncate_tool_output_chars,
+        capture_reasoning=capture_reasoning,
+    )
+
+
+def untrace_copilot():
+    """Undo :func:`trace_copilot`, restoring the original ``create_session``."""
+    # pylint: disable=import-outside-toplevel
+    from .integrations import copilot_sdk as _integration
+
+    return _integration.untrace_copilot()
 
 
 # -------------------------------- Google Gemini --------------------------------- #

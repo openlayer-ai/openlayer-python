@@ -187,6 +187,15 @@ REGISTRY: Tuple[IntegrationSpec, ...] = (
         _patch_via("google_adk_tracer", "trace_google_adk"),
         _patch_via("google_adk_tracer", "unpatch_google_adk"),
     ),
+    # `github-copilot-sdk` imports as `copilot`. Unlike the entries above this
+    # one patches a *session factory* rather than a client class, but the
+    # patch/unpatch contract is the same: idempotent and reversible.
+    IntegrationSpec(
+        "copilot",
+        "copilot",
+        _patch_via("copilot_sdk", "trace_copilot"),
+        _patch_via("copilot_sdk", "untrace_copilot"),
+    ),
 )
 
 
