@@ -14,7 +14,7 @@ jobs:
   promote:
     # Runner comes from the STLC_RUNNER repo/org variable when set; defaults to GitHub-hosted.
     runs-on: ${{ vars.STLC_RUNNER || 'ubuntu-latest' }}
-    if: github.repository == 'openlayer-ai/openlayer-python-staging-new'
+    if: github.repository == 'openlayer-ai/openlayer-python-staging'
     # Optional gate: add required reviewers to this environment to approve each
     # promote. With none it only scopes secrets and adds no gate. Remove if unused.
     environment: production
