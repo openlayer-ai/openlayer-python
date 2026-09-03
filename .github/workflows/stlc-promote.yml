@@ -1,5 +1,3 @@
-# NOTE(stlc migration): repo names below are set for openlayer-ai. CONFIG_REPO is
-# left as a TODO -- set it to your config repo, then re-seal with `stlc build --push`.
 name: Promote SDKs
 
 # Promote staging to production by fast-forwarding production main up to staging,
@@ -16,7 +14,7 @@ jobs:
   promote:
     # Runner comes from the STLC_RUNNER repo/org variable when set; defaults to GitHub-hosted.
     runs-on: ${{ vars.STLC_RUNNER || 'ubuntu-latest' }}
-    if: github.repository == 'openlayer-ai/openlayer-python-staging'
+    if: github.repository == 'openlayer-ai/openlayer-python-staging-new'
     # Optional gate: add required reviewers to this environment to approve each
     # promote. With none it only scopes secrets and adds no gate. Remove if unused.
     environment: production
