@@ -1,9 +1,12 @@
 name: Promote SDKs
 
-# Promote staging to production by fast-forwarding production main up to staging,
-# preserving SHAs so the trunks stay identical and linear (nothing to heal on the
-# next stlc build). Manual dispatch by design: a maintainer promotes the accumulated
-# batch to cut a release; release-please then opens its version PR on production.
+# Promote staging to production by opening a pull request on the production repo
+# whose head is staging main (pushed to the `stlc/promote` branch). Production `main`
+# stays fully protected; the PR is the human review gate before publishing. It must
+# be merged with a MERGE COMMIT (never squash/rebase) so the trunks keep shared
+# history; back-sync then fast-forwards staging to the merge commit. Manual dispatch
+# by design: a maintainer promotes the accumulated batch to cut a release;
+# release-please then opens its version PR on production.
 on:
   workflow_dispatch: {}
 
@@ -47,17 +50,40 @@ jobs:
             echo "synced=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Promote staging to production (fast-forward)
+      - name: Promote staging to production (pull request)
         if: steps.diff.outputs.synced == 'false'
+        env:
+          PROMOTE_BRANCH: stlc/promote
         run: |
           # Refuse unless production is an ancestor of staging: otherwise the trunks
-          # have forked (production advanced without a back-sync) and FF is unsafe.
+          # have forked (production advanced without a back-sync) and the PR would be
+          # a real merge. Back-sync production into staging first.
           if ! git merge-base --is-ancestor production/main origin/main; then
             echo "::error title=Promote blocked::production/main is not an ancestor of staging main. Back-sync production into staging first."
             exit 1
           fi
-          git push production origin/main:refs/heads/main
-          echo "Fast-forwarded production/main to staging/main."
+          # Publish staging's tip as a branch on production and open (or refresh) the
+          # promote PR. `main` is protected on production; the PR is the review gate.
+          git push --force production "origin/main:refs/heads/${PROMOTE_BRANCH}"
+          tip=$(git rev-parse --short origin/main)
+          {
+            echo "Promotes \`${PRODUCTION_REPO}\` \`main\` to the staging trunk (\`${tip}\`)."
+            echo
+            echo "**Merge with a merge commit — do not squash or rebase.** Squashing rewrites the commits and forks the trunks; the next back-sync and promote refuse until repaired by hand."
+            echo
+            echo "After merging, release-please opens the version PR on this repo; merging that one tags and publishes."
+            echo
+            echo "### Commits"
+            git log --format='- %h %s' production/main..origin/main
+          } > /tmp/promote-body.md
+          existing=$(gh pr list -R "$PRODUCTION_REPO" --head "$PROMOTE_BRANCH" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh pr edit "$existing" -R "$PRODUCTION_REPO" --title "Promote staging to production (${tip})" --body-file /tmp/promote-body.md
+            echo "Refreshed promote PR #${existing} on ${PRODUCTION_REPO}."
+          else
+            gh pr create -R "$PRODUCTION_REPO" --base main --head "$PROMOTE_BRANCH" \
+              --title "Promote staging to production (${tip})" --body-file /tmp/promote-body.md
+          fi
 
       - name: Alert on failure
         if: failure()

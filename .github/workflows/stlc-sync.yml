@@ -61,7 +61,13 @@ jobs:
           # If not, staging already has production's content (release-please commits).
           MERGED=$(git merge-tree --write-tree origin/main production/main) || MERGED=conflict
           STAGING_TREE=$(git rev-parse 'origin/main^{tree}')
-          if [ "$MERGED" = "$STAGING_TREE" ]; then
+          if [ "$(git rev-parse origin/main)" != "$(git rev-parse production/main)" ] \
+             && git merge-base --is-ancestor origin/main production/main; then
+            # Production is a strict descendant of staging — e.g. the merged promote PR
+            # (a merge commit with an identical tree) or a release commit. Fast-forward
+            # even when the trees match, so the trunks share history and codegen isn't held.
+            echo "behind=true" >> "$GITHUB_OUTPUT"
+          elif [ "$MERGED" = "$STAGING_TREE" ]; then
             echo "Staging already has production's content. Nothing to pull back."
             echo "behind=false" >> "$GITHUB_OUTPUT"
           else
