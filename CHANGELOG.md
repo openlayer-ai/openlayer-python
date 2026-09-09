@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.32.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.31.3...v0.32.0) (2026-09-09)
+
+### Features
+
+* **examples:** add Microsoft Agent Framework tracing example ([#667](https://github.com/openlayer-ai/openlayer-python/issues/667)) ([3ba4592](https://github.com/openlayer-ai/openlayer-python/commit/3ba4592fd684c7a3d91c11fe08d7ade2112b32d5))
+
 ## 0.31.3 (2026-08-20)
 
 Full Changelog: [v0.31.2...v0.31.3](https://github.com/openlayer-ai/openlayer-python/compare/v0.31.2...v0.31.3)
