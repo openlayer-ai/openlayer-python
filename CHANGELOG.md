@@ -7,18 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [0.32.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.31.3...v0.32.0) (2026-09-09)
 
-
 ### Features
 
 * **examples:** add Microsoft Agent Framework tracing example ([#667](https://github.com/openlayer-ai/openlayer-python/issues/667)) ([3ba4592](https://github.com/openlayer-ai/openlayer-python/commit/3ba4592fd684c7a3d91c11fe08d7ade2112b32d5))
-* initial stlc build ([d66bfcf](https://github.com/openlayer-ai/openlayer-python/commit/d66bfcfb11aed362a3b5ea9c583d101db0e565ad))
-* **stlc:** add stlc workspace and CI automation ([ed90004](https://github.com/openlayer-ai/openlayer-python/commit/ed900047d74336d3cc66f0e9f240a70139e57140))
-
-
-### Chores
-
-* **ci:** point stlc workflows at openlayer-ai ([f67de79](https://github.com/openlayer-ai/openlayer-python/commit/f67de79156abc3f0b80b2c61e5a96695762a2809))
-* merge production main into the staging trunk (bring [#667](https://github.com/openlayer-ai/openlayer-python/issues/667) into the integrated line) ([cf3fe11](https://github.com/openlayer-ai/openlayer-python/commit/cf3fe11650434c3d2fee6d331d734335781751f2))
 
 ## 0.31.3 (2026-08-20)
 
