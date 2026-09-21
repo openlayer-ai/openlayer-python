@@ -36,11 +36,22 @@ from ._base_client import (
 )
 
 if TYPE_CHECKING:
-    from .resources import tests, commits, storage, projects, workspaces, inference_pipelines
+    from .resources import (
+        tests,
+        commits,
+        storage,
+        projects,
+        governance,
+        workspaces,
+        background_tasks,
+        inference_pipelines,
+    )
     from .resources.tests import TestsResource, AsyncTestsResource
     from .resources.commits.commits import CommitsResource, AsyncCommitsResource
     from .resources.storage.storage import StorageResource, AsyncStorageResource
+    from .resources.background_tasks import BackgroundTasksResource, AsyncBackgroundTasksResource
     from .resources.projects.projects import ProjectsResource, AsyncProjectsResource
+    from .resources.governance.governance import GovernanceResource, AsyncGovernanceResource
     from .resources.workspaces.workspaces import WorkspacesResource, AsyncWorkspacesResource
     from .resources.inference_pipelines.inference_pipelines import (
         InferencePipelinesResource,
@@ -154,6 +165,18 @@ class Openlayer(SyncAPIClient):
         from .resources.tests import TestsResource
 
         return TestsResource(self)
+
+    @cached_property
+    def background_tasks(self) -> BackgroundTasksResource:
+        from .resources.background_tasks import BackgroundTasksResource
+
+        return BackgroundTasksResource(self)
+
+    @cached_property
+    def governance(self) -> GovernanceResource:
+        from .resources.governance import GovernanceResource
+
+        return GovernanceResource(self)
 
     @cached_property
     def with_raw_response(self) -> OpenlayerWithRawResponse:
@@ -376,6 +399,18 @@ class AsyncOpenlayer(AsyncAPIClient):
         return AsyncTestsResource(self)
 
     @cached_property
+    def background_tasks(self) -> AsyncBackgroundTasksResource:
+        from .resources.background_tasks import AsyncBackgroundTasksResource
+
+        return AsyncBackgroundTasksResource(self)
+
+    @cached_property
+    def governance(self) -> AsyncGovernanceResource:
+        from .resources.governance import AsyncGovernanceResource
+
+        return AsyncGovernanceResource(self)
+
+    @cached_property
     def with_raw_response(self) -> AsyncOpenlayerWithRawResponse:
         return AsyncOpenlayerWithRawResponse(self)
 
@@ -541,6 +576,18 @@ class OpenlayerWithRawResponse:
 
         return TestsResourceWithRawResponse(self._client.tests)
 
+    @cached_property
+    def background_tasks(self) -> background_tasks.BackgroundTasksResourceWithRawResponse:
+        from .resources.background_tasks import BackgroundTasksResourceWithRawResponse
+
+        return BackgroundTasksResourceWithRawResponse(self._client.background_tasks)
+
+    @cached_property
+    def governance(self) -> governance.GovernanceResourceWithRawResponse:
+        from .resources.governance import GovernanceResourceWithRawResponse
+
+        return GovernanceResourceWithRawResponse(self._client.governance)
+
 
 class AsyncOpenlayerWithRawResponse:
     _client: AsyncOpenlayer
@@ -583,6 +630,18 @@ class AsyncOpenlayerWithRawResponse:
         from .resources.tests import AsyncTestsResourceWithRawResponse
 
         return AsyncTestsResourceWithRawResponse(self._client.tests)
+
+    @cached_property
+    def background_tasks(self) -> background_tasks.AsyncBackgroundTasksResourceWithRawResponse:
+        from .resources.background_tasks import AsyncBackgroundTasksResourceWithRawResponse
+
+        return AsyncBackgroundTasksResourceWithRawResponse(self._client.background_tasks)
+
+    @cached_property
+    def governance(self) -> governance.AsyncGovernanceResourceWithRawResponse:
+        from .resources.governance import AsyncGovernanceResourceWithRawResponse
+
+        return AsyncGovernanceResourceWithRawResponse(self._client.governance)
 
 
 class OpenlayerWithStreamedResponse:
@@ -627,6 +686,18 @@ class OpenlayerWithStreamedResponse:
 
         return TestsResourceWithStreamingResponse(self._client.tests)
 
+    @cached_property
+    def background_tasks(self) -> background_tasks.BackgroundTasksResourceWithStreamingResponse:
+        from .resources.background_tasks import BackgroundTasksResourceWithStreamingResponse
+
+        return BackgroundTasksResourceWithStreamingResponse(self._client.background_tasks)
+
+    @cached_property
+    def governance(self) -> governance.GovernanceResourceWithStreamingResponse:
+        from .resources.governance import GovernanceResourceWithStreamingResponse
+
+        return GovernanceResourceWithStreamingResponse(self._client.governance)
+
 
 class AsyncOpenlayerWithStreamedResponse:
     _client: AsyncOpenlayer
@@ -669,6 +740,18 @@ class AsyncOpenlayerWithStreamedResponse:
         from .resources.tests import AsyncTestsResourceWithStreamingResponse
 
         return AsyncTestsResourceWithStreamingResponse(self._client.tests)
+
+    @cached_property
+    def background_tasks(self) -> background_tasks.AsyncBackgroundTasksResourceWithStreamingResponse:
+        from .resources.background_tasks import AsyncBackgroundTasksResourceWithStreamingResponse
+
+        return AsyncBackgroundTasksResourceWithStreamingResponse(self._client.background_tasks)
+
+    @cached_property
+    def governance(self) -> governance.AsyncGovernanceResourceWithStreamingResponse:
+        from .resources.governance import AsyncGovernanceResourceWithStreamingResponse
+
+        return AsyncGovernanceResourceWithStreamingResponse(self._client.governance)
 
 
 Client = Openlayer

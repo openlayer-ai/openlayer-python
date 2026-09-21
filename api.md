@@ -186,12 +186,13 @@ Methods:
 Types:
 
 ```python
-from openlayer.types.storage import PresignedURLCreateResponse
+from openlayer.types.storage import PresignedURLCreateResponse, PresignedURLRetrieveResponse
 ```
 
 Methods:
 
 - <code title="post /storage/presigned-url">client.storage.presigned_url.<a href="./src/openlayer/resources/storage/presigned_url.py">create</a>(\*\*<a href="src/openlayer/types/storage/presigned_url_create_params.py">params</a>) -> <a href="./src/openlayer/types/storage/presigned_url_create_response.py">PresignedURLCreateResponse</a></code>
+- <code title="get /storage/presigned-url">client.storage.presigned_url.<a href="./src/openlayer/resources/storage/presigned_url.py">retrieve</a>(\*\*<a href="src/openlayer/types/storage/presigned_url_retrieve_params.py">params</a>) -> <a href="./src/openlayer/types/storage/presigned_url_retrieve_response.py">PresignedURLRetrieveResponse</a></code>
 
 # Tests
 
@@ -205,3 +206,149 @@ Methods:
 
 - <code title="post /tests/{testId}/evaluate">client.tests.<a href="./src/openlayer/resources/tests.py">evaluate</a>(test_id, \*\*<a href="src/openlayer/types/test_evaluate_params.py">params</a>) -> <a href="./src/openlayer/types/test_evaluate_response.py">TestEvaluateResponse</a></code>
 - <code title="get /tests/{testId}/results">client.tests.<a href="./src/openlayer/resources/tests.py">list_results</a>(test_id, \*\*<a href="src/openlayer/types/test_list_results_params.py">params</a>) -> <a href="./src/openlayer/types/test_list_results_response.py">TestListResultsResponse</a></code>
+
+# BackgroundTasks
+
+Types:
+
+```python
+from openlayer.types import BackgroundTaskRetrieveResponse
+```
+
+Methods:
+
+- <code title="get /background-tasks/{taskId}">client.background_tasks.<a href="./src/openlayer/resources/background_tasks.py">retrieve</a>(task_id) -> <a href="./src/openlayer/types/background_task_retrieve_response.py">BackgroundTaskRetrieveResponse</a></code>
+
+# Governance
+
+## Frameworks
+
+Types:
+
+```python
+from openlayer.types.governance import (
+    FrameworkCreateResponse,
+    FrameworkRetrieveResponse,
+    FrameworkUpdateResponse,
+    FrameworkListResponse,
+    FrameworkExportResponse,
+    FrameworkListProjectRuleStatsResponse,
+    FrameworkListProjectsResponse,
+    FrameworkListRulesResponse,
+)
+```
+
+Methods:
+
+- <code title="post /workspaces/{workspaceId}/frameworks">client.governance.frameworks.<a href="./src/openlayer/resources/governance/frameworks/frameworks.py">create</a>(workspace_id, \*\*<a href="src/openlayer/types/governance/framework_create_params.py">params</a>) -> <a href="./src/openlayer/types/governance/framework_create_response.py">FrameworkCreateResponse</a></code>
+- <code title="get /frameworks/{frameworkId}">client.governance.frameworks.<a href="./src/openlayer/resources/governance/frameworks/frameworks.py">retrieve</a>(framework_id) -> <a href="./src/openlayer/types/governance/framework_retrieve_response.py">FrameworkRetrieveResponse</a></code>
+- <code title="put /frameworks/{frameworkId}">client.governance.frameworks.<a href="./src/openlayer/resources/governance/frameworks/frameworks.py">update</a>(framework_id, \*\*<a href="src/openlayer/types/governance/framework_update_params.py">params</a>) -> <a href="./src/openlayer/types/governance/framework_update_response.py">FrameworkUpdateResponse</a></code>
+- <code title="get /workspaces/{workspaceId}/frameworks">client.governance.frameworks.<a href="./src/openlayer/resources/governance/frameworks/frameworks.py">list</a>(workspace_id, \*\*<a href="src/openlayer/types/governance/framework_list_params.py">params</a>) -> <a href="./src/openlayer/types/governance/framework_list_response.py">FrameworkListResponse</a></code>
+- <code title="post /frameworks/{frameworkId}/export">client.governance.frameworks.<a href="./src/openlayer/resources/governance/frameworks/frameworks.py">export</a>(framework_id, \*\*<a href="src/openlayer/types/governance/framework_export_params.py">params</a>) -> <a href="./src/openlayer/types/governance/framework_export_response.py">FrameworkExportResponse</a></code>
+- <code title="get /frameworks/{frameworkId}/project-rule-stats">client.governance.frameworks.<a href="./src/openlayer/resources/governance/frameworks/frameworks.py">list_project_rule_stats</a>(framework_id, \*\*<a href="src/openlayer/types/governance/framework_list_project_rule_stats_params.py">params</a>) -> <a href="./src/openlayer/types/governance/framework_list_project_rule_stats_response.py">FrameworkListProjectRuleStatsResponse</a></code>
+- <code title="get /frameworks/{frameworkId}/projects">client.governance.frameworks.<a href="./src/openlayer/resources/governance/frameworks/frameworks.py">list_projects</a>(framework_id, \*\*<a href="src/openlayer/types/governance/framework_list_projects_params.py">params</a>) -> <a href="./src/openlayer/types/governance/framework_list_projects_response.py">FrameworkListProjectsResponse</a></code>
+- <code title="get /frameworks/{frameworkId}/rules">client.governance.frameworks.<a href="./src/openlayer/resources/governance/frameworks/frameworks.py">list_rules</a>(framework_id, \*\*<a href="src/openlayer/types/governance/framework_list_rules_params.py">params</a>) -> <a href="./src/openlayer/types/governance/framework_list_rules_response.py">FrameworkListRulesResponse</a></code>
+
+### Documents
+
+Types:
+
+```python
+from openlayer.types.governance.frameworks import DocumentRetrieveResponse, DocumentListResponse
+```
+
+Methods:
+
+- <code title="get /frameworks/{frameworkId}/documents/{documentId}">client.governance.frameworks.documents.<a href="./src/openlayer/resources/governance/frameworks/documents.py">retrieve</a>(document_id, \*, framework_id) -> <a href="./src/openlayer/types/governance/frameworks/document_retrieve_response.py">DocumentRetrieveResponse</a></code>
+- <code title="get /frameworks/{frameworkId}/documents">client.governance.frameworks.documents.<a href="./src/openlayer/resources/governance/frameworks/documents.py">list</a>(framework_id, \*\*<a href="src/openlayer/types/governance/frameworks/document_list_params.py">params</a>) -> <a href="./src/openlayer/types/governance/frameworks/document_list_response.py">DocumentListResponse</a></code>
+
+### Sections
+
+Types:
+
+```python
+from openlayer.types.governance.frameworks import SectionListRulesResponse
+```
+
+Methods:
+
+- <code title="get /frameworks/{frameworkId}/sections/{sectionId}/rules">client.governance.frameworks.sections.<a href="./src/openlayer/resources/governance/frameworks/sections.py">list_rules</a>(section_id, \*, framework_id, \*\*<a href="src/openlayer/types/governance/frameworks/section_list_rules_params.py">params</a>) -> <a href="./src/openlayer/types/governance/frameworks/section_list_rules_response.py">SectionListRulesResponse</a></code>
+
+### Subsections
+
+Types:
+
+```python
+from openlayer.types.governance.frameworks import SubsectionListRulesResponse
+```
+
+Methods:
+
+- <code title="get /frameworks/{frameworkId}/subsections/{subsectionId}/rules">client.governance.frameworks.subsections.<a href="./src/openlayer/resources/governance/frameworks/subsections.py">list_rules</a>(subsection_id, \*, framework_id, \*\*<a href="src/openlayer/types/governance/frameworks/subsection_list_rules_params.py">params</a>) -> <a href="./src/openlayer/types/governance/frameworks/subsection_list_rules_response.py">SubsectionListRulesResponse</a></code>
+
+## Rules
+
+Types:
+
+```python
+from openlayer.types.governance import (
+    RuleCreateResponse,
+    RuleRetrieveResponse,
+    RuleUpdateResponse,
+    RuleListResponse,
+)
+```
+
+Methods:
+
+- <code title="post /workspaces/{workspaceId}/rules">client.governance.rules.<a href="./src/openlayer/resources/governance/rules.py">create</a>(workspace_id, \*\*<a href="src/openlayer/types/governance/rule_create_params.py">params</a>) -> <a href="./src/openlayer/types/governance/rule_create_response.py">RuleCreateResponse</a></code>
+- <code title="get /rules/{ruleId}">client.governance.rules.<a href="./src/openlayer/resources/governance/rules.py">retrieve</a>(rule_id) -> <a href="./src/openlayer/types/governance/rule_retrieve_response.py">RuleRetrieveResponse</a></code>
+- <code title="put /rules/{ruleId}">client.governance.rules.<a href="./src/openlayer/resources/governance/rules.py">update</a>(rule_id, \*\*<a href="src/openlayer/types/governance/rule_update_params.py">params</a>) -> <a href="./src/openlayer/types/governance/rule_update_response.py">RuleUpdateResponse</a></code>
+- <code title="get /workspaces/{workspaceId}/rules">client.governance.rules.<a href="./src/openlayer/resources/governance/rules.py">list</a>(workspace_id, \*\*<a href="src/openlayer/types/governance/rule_list_params.py">params</a>) -> <a href="./src/openlayer/types/governance/rule_list_response.py">RuleListResponse</a></code>
+- <code title="delete /rules/{ruleId}">client.governance.rules.<a href="./src/openlayer/resources/governance/rules.py">delete</a>(rule_id) -> None</code>
+
+## RuleResults
+
+Types:
+
+```python
+from openlayer.types.governance import (
+    RuleResultRetrieveResponse,
+    RuleResultUpdateResponse,
+    RuleResultListResponse,
+    RuleResultCreateEvidenceResponse,
+    RuleResultListEvidenceResponse,
+)
+```
+
+Methods:
+
+- <code title="get /rule-results/{ruleResultId}">client.governance.rule_results.<a href="./src/openlayer/resources/governance/rule_results.py">retrieve</a>(rule_result_id) -> <a href="./src/openlayer/types/governance/rule_result_retrieve_response.py">RuleResultRetrieveResponse</a></code>
+- <code title="patch /rule-results/{ruleResultId}">client.governance.rule_results.<a href="./src/openlayer/resources/governance/rule_results.py">update</a>(rule_result_id, \*\*<a href="src/openlayer/types/governance/rule_result_update_params.py">params</a>) -> <a href="./src/openlayer/types/governance/rule_result_update_response.py">RuleResultUpdateResponse</a></code>
+- <code title="get /workspaces/{workspaceId}/rule-results">client.governance.rule_results.<a href="./src/openlayer/resources/governance/rule_results.py">list</a>(workspace_id, \*\*<a href="src/openlayer/types/governance/rule_result_list_params.py">params</a>) -> <a href="./src/openlayer/types/governance/rule_result_list_response.py">RuleResultListResponse</a></code>
+- <code title="post /rule-results/{ruleResultId}/evidence">client.governance.rule_results.<a href="./src/openlayer/resources/governance/rule_results.py">create_evidence</a>(rule_result_id, \*\*<a href="src/openlayer/types/governance/rule_result_create_evidence_params.py">params</a>) -> <a href="./src/openlayer/types/governance/rule_result_create_evidence_response.py">RuleResultCreateEvidenceResponse</a></code>
+- <code title="get /rule-results/{ruleResultId}/evidence">client.governance.rule_results.<a href="./src/openlayer/resources/governance/rule_results.py">list_evidence</a>(rule_result_id, \*\*<a href="src/openlayer/types/governance/rule_result_list_evidence_params.py">params</a>) -> <a href="./src/openlayer/types/governance/rule_result_list_evidence_response.py">RuleResultListEvidenceResponse</a></code>
+
+## RuleStats
+
+Types:
+
+```python
+from openlayer.types.governance import RuleStatRetrieveResponse
+```
+
+Methods:
+
+- <code title="get /workspaces/{workspaceId}/rule-stats">client.governance.rule_stats.<a href="./src/openlayer/resources/governance/rule_stats.py">retrieve</a>(workspace_id, \*\*<a href="src/openlayer/types/governance/rule_stat_retrieve_params.py">params</a>) -> <a href="./src/openlayer/types/governance/rule_stat_retrieve_response.py">RuleStatRetrieveResponse</a></code>
+
+## RuleTags
+
+Types:
+
+```python
+from openlayer.types.governance import RuleTagListResponse
+```
+
+Methods:
+
+- <code title="get /workspaces/{workspaceId}/rule-tags">client.governance.rule_tags.<a href="./src/openlayer/resources/governance/rule_tags.py">list</a>(workspace_id, \*\*<a href="src/openlayer/types/governance/rule_tag_list_params.py">params</a>) -> <a href="./src/openlayer/types/governance/rule_tag_list_response.py">RuleTagListResponse</a></code>
