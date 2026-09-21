@@ -74,7 +74,7 @@ class ProjectCreateResponse(BaseModel):
     name: str
     """The project name."""
 
-    source: Optional[Literal["web", "api", "null"]] = None
+    source: Optional[Literal["web", "api"]] = None
     """The source of the project."""
 
     task_type: Literal["llm-base", "tabular-classification", "tabular-regression", "text-classification"] = FieldInfo(
