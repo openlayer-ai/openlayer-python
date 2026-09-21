@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.33.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.32.0...v0.33.0) (2026-09-21)
+
+
+### Features
+
+* **governance:** add the governance write endpoints and generate governance SDK methods ([cee38ac](https://github.com/openlayer-ai/openlayer-python/commit/cee38ac20e53320117d5fe3168b44bccaa908fe4))
+
+
+### Documentation
+
+* **closes OPEN-9410:** expose the governance framework endpoints ([c22edc1](https://github.com/openlayer-ai/openlayer-python/commit/c22edc11dbbd5fbbb8128b94d370d74607744ff5))
+
 ## [0.32.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.31.3...v0.32.0) (2026-09-09)
 
 ### Features
