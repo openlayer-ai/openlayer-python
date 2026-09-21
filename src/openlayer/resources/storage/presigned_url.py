@@ -15,8 +15,9 @@ from ..._response import (
     async_to_streamed_response_wrapper,
 )
 from ..._base_client import make_request_options
-from ...types.storage import presigned_url_create_params
+from ...types.storage import presigned_url_create_params, presigned_url_retrieve_params
 from ...types.storage.presigned_url_create_response import PresignedURLCreateResponse
+from ...types.storage.presigned_url_retrieve_response import PresignedURLRetrieveResponse
 
 __all__ = ["PresignedURLResource", "AsyncPresignedURLResource"]
 
@@ -80,6 +81,54 @@ class PresignedURLResource(SyncAPIResource):
             cast_to=PresignedURLCreateResponse,
         )
 
+    def retrieve(
+        self,
+        *,
+        storage_uri: str,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> PresignedURLRetrieveResponse:
+        """
+        Exchange a `storageUri` for a short-lived presigned url you can download the
+        object from.
+
+        Use it to collect anything the platform stored on your behalf -- for example the
+        archive a framework export leaves behind, whose `storageUri` comes back in the
+        background task's `outputs`.
+
+        The workspace is taken from the API key, so there is nothing else to send. The
+        url is only issued for objects your workspace owns, and `404` covers both "no
+        such object" and "not yours".
+
+        Args:
+          storage_uri: The object's storage uri.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        return self._get(
+            "/storage/presigned-url",
+            options=make_request_options(
+                extra_headers=extra_headers,
+                extra_query=extra_query,
+                extra_body=extra_body,
+                timeout=timeout,
+                query=maybe_transform(
+                    {"storage_uri": storage_uri}, presigned_url_retrieve_params.PresignedURLRetrieveParams
+                ),
+            ),
+            cast_to=PresignedURLRetrieveResponse,
+        )
+
 
 class AsyncPresignedURLResource(AsyncAPIResource):
     @cached_property
@@ -140,6 +189,54 @@ class AsyncPresignedURLResource(AsyncAPIResource):
             cast_to=PresignedURLCreateResponse,
         )
 
+    async def retrieve(
+        self,
+        *,
+        storage_uri: str,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> PresignedURLRetrieveResponse:
+        """
+        Exchange a `storageUri` for a short-lived presigned url you can download the
+        object from.
+
+        Use it to collect anything the platform stored on your behalf -- for example the
+        archive a framework export leaves behind, whose `storageUri` comes back in the
+        background task's `outputs`.
+
+        The workspace is taken from the API key, so there is nothing else to send. The
+        url is only issued for objects your workspace owns, and `404` covers both "no
+        such object" and "not yours".
+
+        Args:
+          storage_uri: The object's storage uri.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        return await self._get(
+            "/storage/presigned-url",
+            options=make_request_options(
+                extra_headers=extra_headers,
+                extra_query=extra_query,
+                extra_body=extra_body,
+                timeout=timeout,
+                query=await async_maybe_transform(
+                    {"storage_uri": storage_uri}, presigned_url_retrieve_params.PresignedURLRetrieveParams
+                ),
+            ),
+            cast_to=PresignedURLRetrieveResponse,
+        )
+
 
 class PresignedURLResourceWithRawResponse:
     def __init__(self, presigned_url: PresignedURLResource) -> None:
@@ -147,6 +244,9 @@ class PresignedURLResourceWithRawResponse:
 
         self.create = to_raw_response_wrapper(
             presigned_url.create,
+        )
+        self.retrieve = to_raw_response_wrapper(
+            presigned_url.retrieve,
         )
 
 
@@ -157,6 +257,9 @@ class AsyncPresignedURLResourceWithRawResponse:
         self.create = async_to_raw_response_wrapper(
             presigned_url.create,
         )
+        self.retrieve = async_to_raw_response_wrapper(
+            presigned_url.retrieve,
+        )
 
 
 class PresignedURLResourceWithStreamingResponse:
@@ -166,6 +269,9 @@ class PresignedURLResourceWithStreamingResponse:
         self.create = to_streamed_response_wrapper(
             presigned_url.create,
         )
+        self.retrieve = to_streamed_response_wrapper(
+            presigned_url.retrieve,
+        )
 
 
 class AsyncPresignedURLResourceWithStreamingResponse:
@@ -174,4 +280,7 @@ class AsyncPresignedURLResourceWithStreamingResponse:
 
         self.create = async_to_streamed_response_wrapper(
             presigned_url.create,
+        )
+        self.retrieve = async_to_streamed_response_wrapper(
+            presigned_url.retrieve,
         )

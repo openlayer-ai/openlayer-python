@@ -76,6 +76,8 @@ jobs:
 
       - name: Sync production to staging (fast-forward)
         if: steps.diff.outputs.behind == 'true'
+        env:
+          PUSH_TOKEN: ${{ secrets.PRODUCTION_REPO_TOKEN }}
         run: |
           # Refuse unless staging is an ancestor of production: otherwise the
           # trunks have forked and a fast-forward would be unsafe.
@@ -83,7 +85,17 @@ jobs:
             echo "::error title=Back-sync blocked::staging main is not an ancestor of production/main."
             exit 1
           fi
-          git push origin production/main:refs/heads/main
+          # Push as the automation identity (PRODUCTION_REPO_TOKEN), not GITHUB_TOKEN:
+          # staging main requires a pull request for humans and only the automation's
+          # repository role bypasses that rule. A token push (unlike GITHUB_TOKEN) also
+          # triggers seal-dispatch, so the config repo re-seals right away instead of
+          # at the next scheduled sync. Blank the persisted GITHUB_TOKEN header first.
+          if [ -n "${PUSH_TOKEN:-}" ]; then
+            git -c "http.https://github.com/.extraheader=" push \
+              "https://x-access-token:${PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" production/main:refs/heads/main
+          else
+            git push origin production/main:refs/heads/main
+          fi
           echo "Fast-forwarded staging/main to production/main."
 
       - name: Alert on failure

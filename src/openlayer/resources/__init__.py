@@ -32,6 +32,14 @@ from .projects import (
     ProjectsResourceWithStreamingResponse,
     AsyncProjectsResourceWithStreamingResponse,
 )
+from .governance import (
+    GovernanceResource,
+    AsyncGovernanceResource,
+    GovernanceResourceWithRawResponse,
+    AsyncGovernanceResourceWithRawResponse,
+    GovernanceResourceWithStreamingResponse,
+    AsyncGovernanceResourceWithStreamingResponse,
+)
 from .workspaces import (
     WorkspacesResource,
     AsyncWorkspacesResource,
@@ -39,6 +47,14 @@ from .workspaces import (
     AsyncWorkspacesResourceWithRawResponse,
     WorkspacesResourceWithStreamingResponse,
     AsyncWorkspacesResourceWithStreamingResponse,
+)
+from .background_tasks import (
+    BackgroundTasksResource,
+    AsyncBackgroundTasksResource,
+    BackgroundTasksResourceWithRawResponse,
+    AsyncBackgroundTasksResourceWithRawResponse,
+    BackgroundTasksResourceWithStreamingResponse,
+    AsyncBackgroundTasksResourceWithStreamingResponse,
 )
 from .inference_pipelines import (
     InferencePipelinesResource,
@@ -86,4 +102,16 @@ __all__ = [
     "AsyncTestsResourceWithRawResponse",
     "TestsResourceWithStreamingResponse",
     "AsyncTestsResourceWithStreamingResponse",
+    "BackgroundTasksResource",
+    "AsyncBackgroundTasksResource",
+    "BackgroundTasksResourceWithRawResponse",
+    "AsyncBackgroundTasksResourceWithRawResponse",
+    "BackgroundTasksResourceWithStreamingResponse",
+    "AsyncBackgroundTasksResourceWithStreamingResponse",
+    "GovernanceResource",
+    "AsyncGovernanceResource",
+    "GovernanceResourceWithRawResponse",
+    "AsyncGovernanceResourceWithRawResponse",
+    "GovernanceResourceWithStreamingResponse",
+    "AsyncGovernanceResourceWithStreamingResponse",
 ]
