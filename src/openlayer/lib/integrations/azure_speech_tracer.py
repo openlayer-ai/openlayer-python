@@ -35,7 +35,8 @@ from ..tracing.content import AudioContent
 
 logger = logging.getLogger(__name__)
 
-PROVIDER = "Azure Speech"
+# No space: cost lookup matches `provider` against an llm-costs slug exactly.
+PROVIDER = "Azure_Speech"
 
 # Speech SDK offsets and durations are expressed in 100-nanosecond ticks.
 _TICKS_PER_MS = 10_000

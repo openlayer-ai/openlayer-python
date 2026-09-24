@@ -282,6 +282,21 @@ class TestRecognition:
         assert calls[0]["kwargs"] == {}
         assert mock_add.call_args.kwargs["id"] == "abc-123"
 
+    def test_provider_has_no_spaces(self) -> None:
+        """Cost lookup matches provider against a slug exactly; spaces never match."""
+        assert " " not in ast.PROVIDER
+
+        recognizer = _make_recognizer()
+        _stub(recognizer, "recognize_once", _recognition_result())
+        ast.trace_azure_speech(recognizer)
+
+        from openlayer.lib.tracing import tracer as _tracer
+
+        with patch.object(_tracer, "add_chat_completion_step_to_trace") as mock_step:
+            recognizer.recognize_once()
+
+        assert mock_step.call_args.kwargs["provider"] == "Azure_Speech"
+
 
 # ------------------------------- synthesis ------------------------------- #
 class TestSynthesis:
