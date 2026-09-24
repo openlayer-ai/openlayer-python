@@ -17,6 +17,7 @@ import json
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 from datetime import timedelta
+from urllib.parse import quote
 from unittest.mock import patch
 
 import pytest
@@ -27,6 +28,8 @@ from openlayer.lib.integrations import azure_speech_tracer as ast
 from openlayer.lib.tracing.attachments import Attachment
 
 FAKE_KEY = "FAKE-AZURE-SPEECH-KEY-0123456789"
+# A minimal RIFF/WAVE header, as the SDK's default output format produces.
+RIFF_WAV = b"RIFF\x24\x00\x00\x00WAVEfmt fake-audio"
 
 
 # ------------------------------- fixtures ------------------------------- #
@@ -409,7 +412,7 @@ class TestAudioCapture:
 
     def test_output_audio_attached_when_uploads_enabled(self) -> None:
         synthesizer = _make_synthesizer()
-        _stub(synthesizer, "speak_text", _synthesis_result(audio=b"RIFF fake"))
+        _stub(synthesizer, "speak_text", _synthesis_result(audio=RIFF_WAV))
         ast.trace_azure_speech(synthesizer)
 
         with patch.object(ast, "_audio_upload_enabled", return_value=True), patch.object(
@@ -420,7 +423,7 @@ class TestAudioCapture:
         audio = mock_add.call_args.kwargs["output"]["audio"]
         assert isinstance(audio, Attachment)
         assert audio.media_type == "audio/wav"
-        assert audio.get_bytes() == b"RIFF fake"
+        assert audio.get_bytes() == RIFF_WAV
         # Never inlined into the trace JSON; the uploader sends it separately.
         assert audio.data_base64 is None
 
@@ -476,6 +479,157 @@ class TestAudioCapture:
 
 
 # ------------------------------- credential safety ------------------------------- #
+class TestAudioEncoding:
+    """Synthesized audio is labeled by its actual encoding (review finding)."""
+
+    @pytest.mark.parametrize(
+        "output_format,data,media_type,extension",
+        [
+            ("", RIFF_WAV, "audio/wav", "wav"),
+            ("audio-24khz-48kbitrate-mono-mp3", b"\xff\xf3\x44\xc4\x00", "audio/mpeg", "mp3"),
+            ("audio-24khz-48kbitrate-mono-mp3", b"ID3\x04rest", "audio/mpeg", "mp3"),
+            ("ogg-24khz-16bit-mono-opus", b"OggS\x00\x02", "audio/ogg", "ogg"),
+            ("webm-24khz-16bit-mono-opus", b"\x1a\x45\xdf\xa3\x01", "audio/webm", "webm"),
+            ("amr-wb-16000hz", b"#!AMR-WB\n\x04", "audio/amr-wb", "amr"),
+            ("amr-wb-16000hz", RIFF_WAV, "audio/wav", "wav"),  # the service actually returns RIFF here
+            ("raw-24khz-16bit-mono-truesilk", b"\x0e\x00\xa7\x54", "application/octet-stream", "bin"),
+            ("audio-24khz-16bit-48kbps-mono-opus", b"\x68\x0b\xeb", "application/octet-stream", "bin"),
+            ("g722-16khz-64kbps", b"\x7a\xde", "application/octet-stream", "bin"),
+            ("", b"\x01\x02\x03", "application/octet-stream", "bin"),  # unknown: not guessed as WAV
+        ],
+    )
+    def test_labels_by_actual_encoding(self, output_format: str, data: bytes, media_type: str, extension: str) -> None:
+        _, got_type, got_ext, _ = ast._describe_synthesis_audio(data, output_format)
+        assert (got_type, got_ext) == (media_type, extension)
+
+    @pytest.mark.parametrize(
+        "output_format,format_tag,sample_rate,bits,encoding",
+        [
+            ("raw-8khz-8bit-mono-mulaw", 7, 8000, 8, "mulaw"),
+            ("raw-8khz-8bit-mono-alaw", 6, 8000, 8, "alaw"),
+            ("raw-22050hz-16bit-mono-pcm", 1, 22050, 16, "pcm"),
+            ("raw-48khz-16bit-mono-pcm", 1, 48000, 16, "pcm"),
+        ],
+    )
+    def test_wraps_headerless_audio_in_wav(
+        self, output_format: str, format_tag: int, sample_rate: int, bits: int, encoding: str
+    ) -> None:
+        import struct
+
+        samples = b"\x01\x02\x03\x04"
+        data, media_type, _, metadata = ast._describe_synthesis_audio(samples, output_format)
+        assert media_type == "audio/wav"
+        assert data[:4] == b"RIFF" and data[8:16] == b"WAVEfmt " and data[36:40] == b"data"
+        assert struct.unpack("<H", data[20:22])[0] == format_tag
+        assert struct.unpack("<I", data[24:28])[0] == sample_rate
+        assert struct.unpack("<H", data[34:36])[0] == bits
+        assert data[44:] == samples
+        assert metadata == {
+            "outputFormat": output_format,
+            "encoding": encoding,
+            "sampleRateHz": sample_rate,
+            "wrappedInWav": True,
+        }
+
+    def test_wrapped_pcm_is_readable_by_wave(self, tmp_path: Any) -> None:
+        import wave
+
+        data, _, _, _ = ast._describe_synthesis_audio(b"\x00\x01" * 1600, "raw-16khz-16bit-mono-pcm")
+        path = tmp_path / "out.wav"
+        path.write_bytes(data)
+        with wave.open(str(path)) as wav:
+            assert (wav.getframerate(), wav.getsampwidth(), wav.getnchannels(), wav.getnframes()) == (16000, 2, 1, 1600)
+
+    def test_raw_pcm_that_starts_like_an_mpeg_frame_is_not_mp3(self) -> None:
+        # Real raw PCM from the service starts with bytes like ff ff fe ff.
+        _, media_type, _, metadata = ast._describe_synthesis_audio(b"\xff\xff\xfe\xff", "raw-16khz-16bit-mono-pcm")
+        assert media_type == "audio/wav"
+        assert metadata["wrappedInWav"] is True
+
+    def test_synthesis_step_carries_the_wrapped_audio(self) -> None:
+        config = _speech_config()
+        config.set_speech_synthesis_output_format(speechsdk.SpeechSynthesisOutputFormat.Raw8Khz8BitMonoMULaw)
+        synthesizer = speechsdk.SpeechSynthesizer(speech_config=config, audio_config=None)
+        _stub(synthesizer, "speak_text", _synthesis_result(audio=b"\xff\x7f\x80\x00"))
+        ast.trace_azure_speech(synthesizer)
+
+        with patch.object(ast, "_audio_upload_enabled", return_value=True), patch.object(
+            ast, "add_to_trace"
+        ) as mock_add:
+            synthesizer.speak_text("Hi")
+
+        audio = mock_add.call_args.kwargs["output"]["audio"]
+        assert (audio.name, audio.media_type) == ("synthesis.wav", "audio/wav")
+        assert audio.get_bytes()[:4] == b"RIFF"
+        assert audio.metadata["encoding"] == "mulaw"
+
+
+class TestErrorRedaction:
+    """The Speech SDK embeds the endpoint URL (with its query string) in connection
+    errors, so credentials in a custom endpoint must be redacted (review finding)."""
+
+    ENDPOINT_TOKEN = "SECRET-ENDPOINT-TOKEN"
+
+    def test_real_sdk_connection_failure_is_redacted(self) -> None:
+        """Offline: the SDK fails to connect to a refused local port and reports the full URL."""
+        from openlayer.lib.tracing import tracer as _tracer
+
+        config = speechsdk.SpeechConfig(
+            subscription=FAKE_KEY,
+            endpoint=f"ws://127.0.0.1:1/speech/recognition/v1?token={self.ENDPOINT_TOKEN}&sig=SIGSECRET99",
+        )
+        stream = speechsdk.audio.PushAudioInputStream()
+        stream.write(b"\x00" * 3200)
+        stream.close()
+        recognizer = speechsdk.SpeechRecognizer(
+            speech_config=config, audio_config=speechsdk.audio.AudioConfig(stream=stream), language="en-US"
+        )
+        ast.trace_azure_speech(recognizer)
+
+        with _tracer.create_step(name="turn") as root:
+            result = recognizer.recognize_once()
+
+        # The raw SDK text really does contain the token (the caller still gets it).
+        assert self.ENDPOINT_TOKEN in result.cancellation_details.error_details
+        serialized = json.dumps(root.to_dict())
+        assert self.ENDPOINT_TOKEN not in serialized
+        assert "SIGSECRET99" not in serialized
+        assert FAKE_KEY not in serialized
+        details = root.steps[0].metadata["cancellation"]["errorDetails"]
+        assert "token=[REDACTED]" in details
+        assert "Connection failed" in details
+
+    def test_js_style_unable_to_contact_server_message(self) -> None:
+        text = "Unable to contact server. StatusCode: 1006, wss://h.example.com/v1?token=abc123def&x=1 Reason: 401"
+        assert ast._redact_secrets(text) == (
+            "Unable to contact server. StatusCode: 1006, wss://h.example.com/v1?token=[REDACTED]&x=[REDACTED] Reason: 401"
+        )
+
+    def test_bearer_pairs_userinfo_and_known_secrets(self) -> None:
+        assert ast._redact_secrets("Authorization: Bearer eyJ.a.b") == "Authorization: Bearer [REDACTED]"
+        assert ast._redact_secrets("failed (subscription-key=abcdef123, sig: ZZZZZZ)") == (
+            "failed (subscription-key=[REDACTED], sig: [REDACTED])"
+        )
+        assert (
+            ast._redact_secrets("wss://user:pa55word@h.example.com/p") == "wss://[REDACTED]:[REDACTED]@h.example.com/p"
+        )
+        secret = "k3y/with+special=chars"
+        assert ast._redact_secrets(f"{secret} and {quote(secret, safe='')}", [secret]) == "[REDACTED] and [REDACTED]"
+
+    def test_ordinary_error_text_is_untouched(self) -> None:
+        text = "Unsupported voice xx-XX-NoSuchVoiceNeural. websocket error code: 1007"
+        assert ast._redact_secrets(text, ["short"]) == text
+
+    def test_collect_secrets_reads_key_and_endpoint_query(self) -> None:
+        config = speechsdk.SpeechConfig(
+            subscription=FAKE_KEY, endpoint="wss://h.example.com/p?token=endpoint-token-1&x=1"
+        )
+        recognizer = speechsdk.SpeechRecognizer(speech_config=config, audio_config=_push_stream_audio())
+        secrets = ast._collect_secrets(recognizer)
+        assert FAKE_KEY in secrets and "endpoint-token-1" in secrets
+        assert "1" not in secrets
+
+
 class TestCredentialSafety:
     def test_key_never_appears_in_serialized_trace(self) -> None:
         """Runs the real step path (no add_to_trace mock) and serializes the trace."""

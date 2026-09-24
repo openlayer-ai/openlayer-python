@@ -14,10 +14,13 @@ configuration, and it is uploaded separately rather than inlined into the trace.
 import contextvars
 import logging
 import mimetypes
+import re
+import struct
 import time
 from functools import wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence, Union
+from urllib.parse import quote, unquote, urlsplit, urlunsplit, parse_qsl
 
 try:
     import azure.cognitiveservices.speech as speechsdk
@@ -244,6 +247,7 @@ def _recognition_tracer(client: Any) -> Callable[..., None]:
         inference_id: Optional[str],
     ) -> None:
         config = get_model_parameters(client)
+        secrets = _collect_secrets(client)
         inputs: Dict[str, Any] = {"language": config.get("language")}
         if is_translation:
             inputs["targetLanguages"] = list(getattr(client, "target_languages", None) or [])
@@ -268,8 +272,8 @@ def _recognition_tracer(client: Any) -> Callable[..., None]:
                 output=output,
                 model=config.get("endpoint_id") or "speech-to-text",
                 model_parameters=config,
-                raw_output=getattr(result, "json", None) or None,
-                metadata=get_result_metadata(result),
+                raw_output=_redact_secrets(getattr(result, "json", None) or "", secrets) or None,
+                metadata=get_result_metadata(result, secrets),
                 id=inference_id,
             )
         )
@@ -296,11 +300,11 @@ def _synthesis_tracer(client: Any, input_key: str) -> Callable[..., None]:
             "audioSizeBytes": len(audio_data),
         }
         if audio_data and _audio_upload_enabled():
-            attachment = Attachment.from_bytes(
-                audio_data,
-                name=f"synthesis.{_extension(config.get('output_format'))}",
-                media_type=_synthesis_media_type(config.get("output_format")),
+            audio_bytes, media_type, extension, audio_metadata = _describe_synthesis_audio(
+                audio_data, config.get("output_format")
             )
+            attachment = Attachment.from_bytes(audio_bytes, name=f"synthesis.{extension}", media_type=media_type)
+            attachment.metadata.update(audio_metadata)
             output["audio"] = attachment
 
         add_to_trace(
@@ -314,7 +318,7 @@ def _synthesis_tracer(client: Any, input_key: str) -> Callable[..., None]:
                 model_parameters=config,
                 # The result carries the audio bytes; never copy it into the trace.
                 raw_output=None,
-                metadata=get_result_metadata(result),
+                metadata=get_result_metadata(result, _collect_secrets(client)),
                 id=inference_id,
             )
         )
@@ -356,8 +360,12 @@ def get_model_parameters(client: Any) -> Dict[str, Any]:
     return parameters
 
 
-def get_result_metadata(result: Any) -> Dict[str, Any]:
-    """Extract the result ID, reason, timings and failure details."""
+def get_result_metadata(result: Any, secrets: Sequence[str] = ()) -> Dict[str, Any]:
+    """Extract the result ID, reason, timings and failure details.
+
+    ``errorDetails`` is passed through ``_redact_secrets``: the Speech SDK can
+    embed the endpoint URL (and any credential in its query string) in it.
+    """
     metadata: Dict[str, Any] = {}
 
     result_id = getattr(result, "result_id", None)
@@ -388,7 +396,7 @@ def get_result_metadata(result: Any) -> Dict[str, Any]:
             metadata["cancellation"] = {
                 "reason": _enum_name(getattr(cancellation, "reason", None)),
                 "errorCode": _enum_name(code),
-                "errorDetails": getattr(cancellation, "error_details", None),
+                "errorDetails": _redact_secrets(getattr(cancellation, "error_details", None) or "", secrets) or None,
             }
 
     return metadata
@@ -451,28 +459,174 @@ def _audio_input_attachment(audio: Any) -> Optional[Attachment]:
     return None
 
 
-def _synthesis_media_type(output_format: Optional[str]) -> str:
-    """Map a Speech output format (e.g. ``audio-24khz-48kbitrate-mono-mp3``) to a
-    MIME type. The default format is RIFF (WAV)."""
-    fmt = (output_format or "").lower()
-    if "mp3" in fmt:
-        return "audio/mpeg"
-    if "ogg" in fmt:
-        return "audio/ogg"
-    if "webm" in fmt:
-        return "audio/webm"
-    if fmt.startswith("raw"):
-        return "audio/pcm"
-    return "audio/wav"
+# The WAVE format tags for headerless output that can be wrapped in a WAV container.
+_WAVE_FORMAT_TAGS = {"pcm": 1, "alaw": 6, "mulaw": 7}
 
 
-def _extension(output_format: Optional[str]) -> str:
-    return {
-        "audio/mpeg": "mp3",
-        "audio/ogg": "ogg",
-        "audio/webm": "webm",
-        "audio/pcm": "pcm",
-    }.get(_synthesis_media_type(output_format), "wav")
+def _sniff_container(data: bytes) -> Optional[tuple]:
+    """(media type, extension) from the audio's own header, if recognizable.
+
+    No bare MPEG frame-sync check: headerless PCM samples can start with 0xFFEx.
+    """
+    if data[:4] == b"RIFF" and data[8:12] == b"WAVE":
+        return "audio/wav", "wav"
+    if data[:4] == b"OggS":
+        return "audio/ogg", "ogg"
+    if data[:4] == b"\x1a\x45\xdf\xa3":
+        return "audio/webm", "webm"
+    if data[:9] == b"#!AMR-WB\n":
+        return "audio/amr-wb", "amr"
+    if data[:3] == b"ID3":
+        return "audio/mpeg", "mp3"
+    return None
+
+
+def _parse_raw_format(normalized: str) -> Optional[tuple]:
+    """(sample rate Hz, bits per sample) from e.g. ``raw22050hz16bitmonopcm``."""
+    khz = re.search(r"(\d+)khz", normalized)
+    hz = re.search(r"(\d+)hz", normalized)
+    bits = re.search(r"(\d+)bit", normalized)
+    sample_rate = int(khz.group(1)) * 1000 if khz else int(hz.group(1)) if hz else None
+    if sample_rate is None or bits is None:
+        return None
+    return sample_rate, int(bits.group(1))
+
+
+def _wrap_in_wav(samples: bytes, format_tag: int, sample_rate: int, bits_per_sample: int, channels: int = 1) -> bytes:
+    """Wrap headerless samples in a WAV (RIFF) container."""
+    block_align = channels * bits_per_sample // 8
+    header = b"RIFF" + struct.pack("<I", 36 + len(samples)) + b"WAVE"
+    header += b"fmt " + struct.pack(
+        "<IHHIIHH", 16, format_tag, channels, sample_rate, sample_rate * block_align, block_align, bits_per_sample
+    )
+    header += b"data" + struct.pack("<I", len(samples))
+    return header + samples
+
+
+def _describe_synthesis_audio(data: bytes, output_format: Optional[str]) -> tuple:
+    """Type the synthesized audio accurately: ``(bytes, media_type, extension, metadata)``.
+
+    The container is detected from the audio's own header (WAV, Ogg, WebM,
+    AMR-WB, ID3-tagged MP3); untagged MP3 is recognized by the format name.
+    Headerless PCM, mu-law and A-law (``raw-*`` formats) are wrapped in a WAV
+    container so they play, using the sample rate and bit depth in the format
+    name. Anything else (raw Opus frames, TrueSilk, Siren, G.722, unknown) is
+    labeled ``application/octet-stream`` rather than guessed.
+
+    ``output_format`` is the Python SDK's kebab-case name
+    (``raw-8khz-8bit-mono-mulaw``); the JS SDK's enum names normalize the same.
+    """
+    normalized = (output_format or "").lower().replace("-", "").replace("_", "")
+    metadata: Dict[str, Any] = {"outputFormat": output_format} if output_format else {}
+
+    container = _sniff_container(data)
+    if container:
+        return data, container[0], container[1], metadata
+    if normalized.endswith("mp3"):
+        # Azure's MP3 output is a bare frame stream (no ID3 tag).
+        return data, "audio/mpeg", "mp3", metadata
+
+    if normalized.startswith("raw"):
+        encoding = next((name for name in ("pcm", "mulaw", "alaw") if normalized.endswith(name)), None)
+        raw = _parse_raw_format(normalized)
+        if encoding and raw:
+            sample_rate, bits = raw
+            wav = _wrap_in_wav(data, _WAVE_FORMAT_TAGS[encoding], sample_rate, bits)
+            metadata.update({"encoding": encoding, "sampleRateHz": sample_rate, "wrappedInWav": True})
+            return wav, "audio/wav", "wav", metadata
+
+    return data, "application/octet-stream", "bin", metadata
+
+
+# ----------------------------- Redaction ----------------------------- #
+
+_REDACTED = "[REDACTED]"
+_SECRET_PROPERTY_NAMES = (
+    "SpeechServiceConnection_Key",
+    "SpeechServiceAuthorization_Token",
+    "SpeechServiceConnection_ProxyPassword",
+)
+_URL_PROPERTY_NAMES = ("SpeechServiceConnection_Endpoint", "SpeechServiceConnection_Host")
+# Values shorter than this are not scrubbed verbatim (too likely to collide with ordinary text).
+_MIN_SECRET_LENGTH = 6
+
+_URL_PATTERN = re.compile(r"\b(?:wss?|https?)://[^\s'\"<>`]+", re.IGNORECASE)
+_BEARER_PATTERN = re.compile(r"\b(Bearer|Basic)\s+[A-Za-z0-9\-._~+/]+=*", re.IGNORECASE)
+_SENSITIVE_PAIR_PATTERN = re.compile(
+    r"\b((?:ocp-apim-)?subscription[-_]?key|api[-_]?key|access[-_]?token|auth(?:orization)?|token|sig|signature"
+    r"|password|secret)(\s*[=:]\s*)(?!Bearer\b|Basic\b|\[REDACTED\])[^\s&,;'\")\]}>]+",
+    re.IGNORECASE,
+)
+
+
+def _collect_secrets(client: Any) -> List[str]:
+    """Secret values configured on a Speech client: the subscription key, auth
+    token and proxy password, plus every query value and userinfo credential in
+    its custom endpoint/host URL. Used only to scrub text; never recorded."""
+    properties = getattr(client, "properties", None)
+    if properties is None:
+        return []
+
+    def read(name: str) -> str:
+        try:
+            return properties.get_property(getattr(speechsdk.PropertyId, name)) or ""
+        # pylint: disable=broad-except
+        except Exception:
+            return ""
+
+    secrets = [read(name) for name in _SECRET_PROPERTY_NAMES]
+    for name in _URL_PROPERTY_NAMES:
+        raw = read(name)
+        if not raw:
+            continue
+        try:
+            parts = urlsplit(raw)
+            secrets.extend(value for _, value in parse_qsl(parts.query, keep_blank_values=True))
+            secrets.extend(unquote(part) for part in (parts.username or "", parts.password or ""))
+        except ValueError:
+            continue
+    return sorted({secret for secret in secrets if len(secret) >= _MIN_SECRET_LENGTH}, key=len, reverse=True)
+
+
+def _redact_url(match: "re.Match[str]") -> str:
+    url = match.group(0)
+    try:
+        parts = urlsplit(url)
+        netloc = parts.netloc
+        if "@" in netloc:
+            userinfo, host = netloc.rsplit("@", 1)
+            netloc = f"{_REDACTED}:{_REDACTED}@{host}" if ":" in userinfo else f"{_REDACTED}@{host}"
+        keys = list(dict.fromkeys(key for key, _ in parse_qsl(parts.query, keep_blank_values=True)))
+        query = "&".join(f"{quote(key)}={_REDACTED}" for key in keys)
+        return urlunsplit((parts.scheme, netloc, parts.path, query, ""))
+    except ValueError:
+        cut = min((i for i in (url.find("?"), url.find("#")) if i != -1), default=-1)
+        return url if cut == -1 else f"{url[:cut]}?{_REDACTED}"
+
+
+def _redact_secrets(text: Optional[str], secrets: Sequence[str] = ()) -> str:
+    """Remove credentials from free text the Speech SDK produces (error details).
+
+    The SDK can embed the full endpoint URL in connection errors, so a custom
+    endpoint carrying a token or signature in its query string would otherwise
+    be published. URLs keep scheme, host, path and parameter names (values and
+    userinfo are replaced); ``Bearer``/``Basic`` tokens and ``key=``/``token=``/
+    ``sig=``-style pairs are replaced; and every value in ``secrets`` (see
+    ``_collect_secrets``) is replaced wherever it appears, raw or URL-encoded.
+    """
+    if not text:
+        return ""
+    result = _URL_PATTERN.sub(_redact_url, text)
+    result = _BEARER_PATTERN.sub(lambda m: f"{m.group(1)} {_REDACTED}", result)
+    result = _SENSITIVE_PAIR_PATTERN.sub(lambda m: f"{m.group(1)}{m.group(2)}{_REDACTED}", result)
+    for secret in sorted(secrets, key=len, reverse=True):
+        if len(secret) < _MIN_SECRET_LENGTH:
+            continue
+        result = result.replace(secret, _REDACTED)
+        encoded = quote(secret, safe="")
+        if encoded != secret:
+            result = result.replace(encoded, _REDACTED)
+    return result
 
 
 # ----------------------------- Trace ----------------------------- #
