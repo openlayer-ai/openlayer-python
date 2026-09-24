@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.34.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.33.0...v0.34.0) (2026-09-24)
+
+
+### Features
+
+* **OPEN-12792:** add Azure AI Speech tracer ([44f048e](https://github.com/openlayer-ai/openlayer-python/commit/44f048eaf7271d19faeb10d3248ae1fee944a1d7))
+* **OPEN-12792:** add Azure AI Speech tracer ([01855ab](https://github.com/openlayer-ai/openlayer-python/commit/01855abd0ccc21828a97886ce2a4cf49f8b95721))
+
+
+### Bug Fixes
+
+* **OPEN-12792:** attach Speech audio in the shape the Openlayer UI renders ([33bbc5c](https://github.com/openlayer-ai/openlayer-python/commit/33bbc5cd0f33f8e7fb844a610ae66b98e5acc84a))
+* **OPEN-12792:** redact credentials from Azure Speech errors; label audio by its real encoding ([44acff9](https://github.com/openlayer-ai/openlayer-python/commit/44acff95e173be55defbda05e6199f43a2172f98))
+* **OPEN-12792:** redact credentials from Speech errors; label audio by its real encoding ([4e41a62](https://github.com/openlayer-ai/openlayer-python/commit/4e41a6279434ea26e3c05555ae382d26a6cbb2a0))
+* **OPEN-12792:** use a space-free provider name for Azure Speech steps ([f909d6c](https://github.com/openlayer-ai/openlayer-python/commit/f909d6c7245d10063d76477b6809dbd93798b751))
+
+
+### Documentation
+
+* **OPEN-12792:** list azure_speech in init() docs; drop prints from the example ([047275e](https://github.com/openlayer-ai/openlayer-python/commit/047275e707533bf401755f5770b1560328217888))
+
 ## [0.33.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.32.0...v0.33.0) (2026-09-21)
 
 
