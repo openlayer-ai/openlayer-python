@@ -16,6 +16,7 @@ __all__ = [
     "trace_async",
     "trace_bedrock",
     "trace_azure_content_understanding",
+    "trace_azure_speech",
     "trace_oci_genai",
     "trace_oci",  # Alias for backward compatibility
     "trace_litellm",
@@ -165,6 +166,22 @@ def trace_azure_content_understanding(client):
     if not isinstance(client, ContentUnderstandingClient):
         raise ValueError("Invalid client. Please provide a ContentUnderstandingClient.")
     return azure_content_understanding_tracer.trace_azure_content_understanding(client)
+
+
+def trace_azure_speech(client):
+    """Trace Azure AI Speech recognition, translation and synthesis calls."""
+    # pylint: disable=import-outside-toplevel
+    try:
+        import azure.cognitiveservices.speech  # noqa: F401
+    except ImportError:
+        raise ImportError(
+            "azure-cognitiveservices-speech is required for Azure Speech tracing. "
+            "Install with: pip install azure-cognitiveservices-speech"
+        )
+
+    from .integrations import azure_speech_tracer
+
+    return azure_speech_tracer.trace_azure_speech(client)
 
 
 def trace_oci_genai(client, estimate_tokens: bool = True):

@@ -223,8 +223,9 @@ def init(
             logged) instead of accumulating in memory. Defaults to 100.
         auto_instrument: When truthy (default ``True``), detects every installed
             supported LLM SDK (openai, anthropic, mistral, groq, gemini, oci,
-            azure_content_understanding, litellm, portkey, google_adk) and patches
-            it so newly-constructed clients are auto-traced. Pass ``False`` to skip
+            azure_content_understanding, azure_speech, litellm, portkey,
+            google_adk) and patches it so newly-constructed clients are
+            auto-traced. Pass ``False`` to skip
             patching, or a list of names (e.g. ``["openai", "anthropic"]``) to
             patch only that subset. This is a procedural argument — it is NOT
             persisted across calls, and ``False`` does not unpatch (use

@@ -170,6 +170,12 @@ REGISTRY: Tuple[IntegrationSpec, ...] = (
         _patch_via("azure_content_understanding_tracer", "_unpatch_acu"),
     ),
     IntegrationSpec(
+        "azure_speech",
+        "azure.cognitiveservices.speech",
+        _patch_via("azure_speech_tracer", "_patch_azure_speech"),
+        _patch_via("azure_speech_tracer", "_unpatch_azure_speech"),
+    ),
+    IntegrationSpec(
         "litellm",
         "litellm",
         _patch_via("litellm_tracer", "trace_litellm"),
