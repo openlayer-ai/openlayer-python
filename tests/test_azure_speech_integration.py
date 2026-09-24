@@ -24,7 +24,7 @@ import pytest
 speechsdk = pytest.importorskip("azure.cognitiveservices.speech")
 
 from openlayer.lib.integrations import azure_speech_tracer as ast
-from openlayer.lib.tracing.content import AudioContent
+from openlayer.lib.tracing.attachments import Attachment
 
 FAKE_KEY = "FAKE-AZURE-SPEECH-KEY-0123456789"
 
@@ -400,9 +400,12 @@ class TestAudioCapture:
             recognizer.recognize_once(openlayer_audio=str(wav))
 
         audio = mock_add.call_args.kwargs["inputs"]["audio"]
-        assert isinstance(audio, AudioContent)
-        assert audio.attachment.name == "caller.wav"
-        assert audio.attachment.media_type == "audio/x-wav" or audio.attachment.media_type == "audio/wav"
+        assert isinstance(audio, Attachment)
+        assert audio.name == "caller.wav"
+        assert audio.media_type in ("audio/wav", "audio/x-wav")
+        # Read as bytes: the local path must not be recorded in the trace.
+        assert audio.file_path is None
+        assert audio.get_bytes() == b"RIFF fake wav"
 
     def test_output_audio_attached_when_uploads_enabled(self) -> None:
         synthesizer = _make_synthesizer()
@@ -415,11 +418,54 @@ class TestAudioCapture:
             synthesizer.speak_text("Hi")
 
         audio = mock_add.call_args.kwargs["output"]["audio"]
-        assert isinstance(audio, AudioContent)
-        assert audio.attachment.media_type == "audio/wav"
-        assert audio.attachment.get_bytes() == b"RIFF fake"
+        assert isinstance(audio, Attachment)
+        assert audio.media_type == "audio/wav"
+        assert audio.get_bytes() == b"RIFF fake"
         # Never inlined into the trace JSON; the uploader sends it separately.
-        assert audio.attachment.data_base64 is None
+        assert audio.data_base64 is None
+
+    def test_audio_shape_is_renderable_by_the_frontend(self) -> None:
+        """Mirror of the frontend's ``parseMultimodalContent`` (lib/util/multimodal.ts):
+        it renders a value that IS an attachment ({storageUri, mediaType}) or an
+        object whose direct values are attachments. A typed ``{type, attachment}``
+        item nested inside a dict is NOT found, so audio must be a bare attachment
+        directly under the input/output value."""
+        from openlayer.lib.tracing import tracer as _tracer
+        from openlayer.lib.tracing.attachment_uploader import find_attachments
+
+        def is_attachment_like(value: Any) -> bool:
+            return isinstance(value, dict) and isinstance(value.get("storageUri"), str)
+
+        def renders_audio(value: Any) -> bool:
+            if is_attachment_like(value):
+                return True
+            return isinstance(value, dict) and any(
+                is_attachment_like(v) and str(v.get("mediaType", "")).startswith("audio/") for v in value.values()
+            )
+
+        recognizer = _make_recognizer()
+        _stub(recognizer, "recognize_once", _recognition_result())
+        synthesizer = _make_synthesizer()
+        _stub(synthesizer, "speak_text", _synthesis_result())
+        ast.trace_azure_speech(recognizer)
+        ast.trace_azure_speech(synthesizer)
+
+        with patch.object(ast, "_audio_upload_enabled", return_value=True):
+            with _tracer.create_step(name="voice turn") as root:
+                recognizer.recognize_once(openlayer_audio=b"RIFF in")
+                synthesizer.speak_text("Hi")
+
+        recognition, synthesis = root.steps
+        # The uploader must still find both attachments ...
+        for step in (recognition, synthesis):
+            found = find_attachments(step.inputs) + find_attachments(step.output)
+            assert len(found) == 1
+            found[0].storage_uri = "s3://bucket/attachments/x.wav"  # simulate upload
+
+        # ... and the serialized shape must be what the frontend parses.
+        recognition_dict, synthesis_dict = recognition.to_dict(), synthesis.to_dict()
+        assert renders_audio(recognition_dict["inputs"]["audio"])  # inputs render per key
+        assert renders_audio(synthesis_dict["output"])  # output renders as one value
 
     def test_audio_upload_setting_is_read_from_tracer_config(self) -> None:
         from openlayer.lib.tracing import tracer as _tracer

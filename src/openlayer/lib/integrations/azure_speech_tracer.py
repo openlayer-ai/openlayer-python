@@ -31,7 +31,6 @@ if TYPE_CHECKING:
 
 from ..tracing import tracer
 from ..tracing.attachments import Attachment
-from ..tracing.content import AudioContent
 
 logger = logging.getLogger(__name__)
 
@@ -248,9 +247,11 @@ def _recognition_tracer(client: Any) -> Callable[..., None]:
         inputs: Dict[str, Any] = {"language": config.get("language")}
         if is_translation:
             inputs["targetLanguages"] = list(getattr(client, "target_languages", None) or [])
-        audio_content = _audio_input_content(audio)
-        if audio_content is not None:
-            inputs["audio"] = audio_content
+        # A bare attachment (not an AudioContent item) directly under the value is
+        # the shape the Openlayer UI renders as an audio player.
+        audio_attachment = _audio_input_attachment(audio)
+        if audio_attachment is not None:
+            inputs["audio"] = audio_attachment
 
         text = getattr(result, "text", None)
         translations = getattr(result, "translations", None)
@@ -300,7 +301,7 @@ def _synthesis_tracer(client: Any, input_key: str) -> Callable[..., None]:
                 name=f"synthesis.{_extension(config.get('output_format'))}",
                 media_type=_synthesis_media_type(config.get("output_format")),
             )
-            output["audio"] = AudioContent(attachment=attachment)
+            output["audio"] = attachment
 
         add_to_trace(
             **create_trace_args(
@@ -415,8 +416,8 @@ def _audio_upload_enabled() -> bool:
     return bool(tracer._resolve("attachment_upload_enabled"))  # pylint: disable=protected-access
 
 
-def _audio_input_content(audio: Any) -> Optional[AudioContent]:
-    """Build an ``AudioContent`` for explicitly-passed input audio.
+def _audio_input_attachment(audio: Any) -> Optional[Attachment]:
+    """Build an ``Attachment`` for explicitly-passed input audio.
 
     Returns None (and warns once) when attachment uploads are disabled, so audio
     never reaches Openlayer unless the tracer is configured to upload it.
@@ -435,18 +436,16 @@ def _audio_input_content(audio: Any) -> Optional[AudioContent]:
             _warned_audio_dropped = True
         return None
 
-    if isinstance(audio, AudioContent):
-        return audio
     if isinstance(audio, Attachment):
-        return AudioContent(attachment=audio)
+        return audio
     if isinstance(audio, (bytes, bytearray)):
-        return AudioContent(attachment=Attachment.from_bytes(bytes(audio), name="audio.wav", media_type="audio/wav"))
+        return Attachment.from_bytes(bytes(audio), name="audio.wav", media_type="audio/wav")
     if isinstance(audio, (str, Path)):
         # Read the bytes instead of using Attachment.from_file(), which would
         # record the absolute local path in the trace.
         path = Path(audio).expanduser()
         media_type = mimetypes.guess_type(str(path))[0] or "audio/wav"
-        return AudioContent(attachment=Attachment.from_bytes(path.read_bytes(), name=path.name, media_type=media_type))
+        return Attachment.from_bytes(path.read_bytes(), name=path.name, media_type=media_type)
 
     logger.warning("Openlayer: unsupported `openlayer_audio` type %s; audio not attached.", type(audio).__name__)
     return None
