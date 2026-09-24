@@ -35,6 +35,7 @@ INTEGRATION_DEPENDENCIES = {
     "langchain_callback": ["langchain", "langchain_core", "langchain_community"],
     "litellm_tracer": ["litellm"],
     "portkey_tracer": ["portkey_ai"],
+    "azure_speech_tracer": ["azure"],
 }
 
 # Expected patterns for integration modules
