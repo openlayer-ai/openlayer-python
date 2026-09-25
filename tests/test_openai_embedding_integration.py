@@ -6,6 +6,8 @@
 
 from unittest.mock import Mock, MagicMock, patch
 
+import pytest
+
 
 class TestOpenAISyncEmbedding:
     """Sync OpenAI client.embeddings.create must be traced."""
@@ -112,7 +114,7 @@ class TestOpenAISyncEmbedding:
 
     def test_trace_openai_patches_embeddings_create(self) -> None:
         """After trace_openai, client.embeddings.create is replaced."""
-        import openai  # pyright: ignore[reportMissingImports]
+        openai = pytest.importorskip("openai")
 
         from openlayer.lib.integrations.openai_tracer import trace_openai
 

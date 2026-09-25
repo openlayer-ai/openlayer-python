@@ -52,6 +52,9 @@ def _disable_publish(monkeypatch: pytest.MonkeyPatch) -> None:
     from openlayer.lib.tracing import tracer as _tracer
 
     monkeypatch.setattr(_tracer, "_publish", False, raising=False)
+    # Process traces inline: a background upload outlives this fixture, runs
+    # after _publish is restored, and builds a real client for later tests.
+    monkeypatch.setitem(_tracer._tracer_config, "background_publish_enabled", False)
 
 
 def _tool_call(name: str, args: dict, call_id: str) -> dict:

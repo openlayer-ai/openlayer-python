@@ -7,6 +7,8 @@
 import asyncio
 from unittest.mock import Mock, AsyncMock, MagicMock, patch
 
+import pytest
+
 
 class TestOpenAIAsyncEmbedding:
     def _fake_response(self, embeddings, prompt_tokens=4, model="text-embedding-3-small"):
@@ -117,7 +119,7 @@ class TestOpenAIAsyncEmbedding:
         assert kwargs["provider"] == "Azure"
 
     def test_trace_async_openai_patches_embeddings_create(self) -> None:
-        import openai  # pyright: ignore[reportMissingImports]
+        openai = pytest.importorskip("openai")
 
         from openlayer.lib.integrations.async_openai_tracer import trace_async_openai
 
