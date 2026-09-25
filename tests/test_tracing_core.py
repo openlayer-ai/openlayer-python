@@ -8,8 +8,13 @@ pytest tests/test_tracing_core.py -v
 # pyright: reportUnknownMemberType=false
 # pyright: reportUnknownArgumentType=false
 
+import gc
+import sys
 import asyncio
-from typing import Any, Set, Dict, List, Generator
+import threading
+import contextlib
+import contextvars
+from typing import Any, Set, Dict, List, Generator, AsyncGenerator
 from unittest.mock import patch
 
 import pytest
@@ -65,6 +70,7 @@ class TestBasicTracing:
         gen = generator_function(3)
         results = list(gen)
         assert results == [0, 1, 2]
+        assert tracer.get_current_trace() is None
 
     @patch.object(tracer, "_publish", False)
     def test_nested_tracing(self) -> None:
@@ -914,3 +920,725 @@ class TestEmbeddingStep:
             step_type=enums.StepType.EMBEDDING,
             name="Embedding",
         )
+
+
+@pytest.fixture
+def published() -> Generator[List[Any], None, None]:
+    """Publish synchronously and capture (root step name, pipeline id) per trace."""
+    captured: List[Any] = []
+
+    def capture(trace: traces.Trace, pipeline_id: Any, *args: Any) -> None:
+        captured.append((trace.steps[0].name, pipeline_id))
+
+    with patch.object(tracer, "_publish", True), patch.object(
+        tracer, "_upload_and_publish_trace", side_effect=capture
+    ), patch.dict(tracer._tracer_config, {"background_publish_enabled": False}):
+        yield captured
+
+
+class TestGeneratorLifecycle:
+    """Traced generators publish at most once (abandoned streams never) and never leak context."""
+
+    def setup_method(self) -> None:
+        tracer._tracer_config.clear()
+        tracer._client = None
+        # A lifecycle regression leaks these; don't let it cascade into other tests.
+        tracer._current_step.set(None)
+        tracer._current_trace.set(None)
+
+    def teardown_method(self) -> None:
+        tracer._tracer_config.clear()
+        tracer._client = None
+        tracer._current_step.set(None)
+        tracer._current_trace.set(None)
+
+    def test_sync_early_break_releases_context(self, published: List[Any]) -> None:
+        """An abandoned stream's partial trace is dropped, but later calls publish."""
+        @tracer.trace()
+        def stream() -> Generator[int, None, None]:
+            yield from range(3)
+
+        @tracer.trace()
+        def after() -> int:
+            return 1
+
+        for _ in stream():
+            break
+        after()
+
+        assert published == [("after", None)]
+        assert tracer.get_current_trace() is None
+        assert tracer.get_current_step() is None
+
+    def test_sync_next_after_exhaustion_publishes_once(self, published: List[Any]) -> None:
+        @tracer.trace()
+        def stream() -> Generator[int, None, None]:
+            yield from range(2)
+
+        gen = stream()
+        assert list(gen) == [0, 1]
+        with pytest.raises(StopIteration):
+            next(gen)
+
+        assert published == [("stream", None)]
+
+    @pytest.mark.parametrize("finish", ["close", "exhaust"])
+    def test_sync_child_finished_after_parent_returns(self, published: List[Any], finish: str) -> None:
+        holder: Dict[str, Any] = {}
+
+        @tracer.trace()
+        def child() -> Generator[int, None, None]:
+            yield from range(3)
+
+        @tracer.trace()
+        def parent() -> None:
+            gen = child()
+            next(gen)
+            holder["gen"] = gen
+
+        @tracer.trace()
+        def after() -> int:
+            return 1
+
+        parent()
+        if finish == "close":
+            holder["gen"].close()
+        else:
+            list(holder["gen"])
+        after()
+
+        assert published == [("parent", None), ("after", None)]
+        assert tracer.get_current_step() is None
+
+    def test_async_early_break_releases_context(self, published: List[Any]) -> None:
+        @tracer.trace_async()
+        async def stream() -> AsyncGenerator[int, None]:
+            for i in range(3):
+                yield i
+
+        @tracer.trace_async()
+        async def after() -> int:
+            return 1
+
+        async def main() -> None:
+            async for _ in stream():
+                break
+            await after()
+            assert tracer.get_current_trace() is None
+
+        asyncio.run(main())
+
+        assert published == [("after", None)]
+
+    @pytest.mark.parametrize("finish", ["aclose", "exhaust"])
+    def test_async_child_finished_after_parent_returns(self, published: List[Any], finish: str) -> None:
+        holder: Dict[str, Any] = {}
+
+        @tracer.trace_async()
+        async def child() -> AsyncGenerator[int, None]:
+            for i in range(3):
+                yield i
+
+        @tracer.trace_async()
+        async def parent() -> None:
+            gen = child()
+            await gen.__anext__()
+            holder["gen"] = gen
+
+        @tracer.trace_async()
+        async def after() -> int:
+            return 1
+
+        async def main() -> None:
+            await parent()
+            if finish == "aclose":
+                await holder["gen"].aclose()
+            else:
+                async for _ in holder["gen"]:
+                    pass
+            await after()
+            assert tracer.get_current_step() is None
+
+        asyncio.run(main())
+
+        assert published == [("parent", None), ("after", None)]
+
+    def test_async_stream_finished_in_another_task_publishes_to_its_own_pipeline(
+        self, published: List[Any]
+    ) -> None:
+        holder: Dict[str, Any] = {}
+
+        @tracer.trace_async(inference_pipeline_id="pipeline-a")
+        async def stream() -> AsyncGenerator[int, None]:
+            for i in range(3):
+                yield i
+
+        @tracer.trace_async(inference_pipeline_id="pipeline-b")
+        async def request_b() -> None:
+            async for _ in holder["gen"]:
+                pass
+
+        async def start() -> None:
+            holder["gen"] = stream()
+            await holder["gen"].__anext__()
+
+        async def main() -> None:
+            await asyncio.ensure_future(start())
+            await asyncio.ensure_future(request_b())
+
+        asyncio.run(main())
+
+        assert published == [("stream", "pipeline-a"), ("request_b", "pipeline-b")]
+
+    def test_sync_close_releases_context_without_publishing(self, published: List[Any]) -> None:
+        """close() can come from CPython (a `yield from` delegate, even in GC), so it never publishes."""
+        finalized: List[bool] = []
+
+        @tracer.trace()
+        def stream() -> Generator[int, None, None]:
+            try:
+                yield from range(3)
+            finally:
+                finalized.append(True)
+
+        with contextlib.closing(stream()) as gen:
+            for _ in gen:
+                break
+
+        assert finalized == [True]
+        assert published == []
+        assert tracer.get_current_step() is None
+        assert tracer.get_current_trace() is None
+
+    def test_dropped_streams_never_publish(self) -> None:
+        """__del__ can run inside GC, on a thread holding executor or HTTP-pool locks."""
+
+        @tracer.trace()
+        def stream() -> Generator[int, None, None]:
+            yield from range(3)
+
+        @tracer.trace_async()
+        async def astream() -> AsyncGenerator[int, None]:
+            for i in range(3):
+                yield i
+
+        async def drop_async() -> None:
+            gen = astream()
+            await gen.__anext__()
+            del gen
+            gc.collect()
+            assert tracer.get_current_step() is None
+
+        gc.collect()  # leftover garbage from earlier tests must not hit the mock
+        with patch.object(tracer, "_handle_trace_completion") as completion:
+            gen = stream()
+            next(gen)
+            del gen
+            gc.collect()
+            asyncio.run(drop_async())
+
+        completion.assert_not_called()
+        assert tracer.get_current_step() is None
+        assert tracer.get_current_trace() is None
+
+    def test_root_stream_finishing_before_a_later_stream_releases_context(
+        self, published: List[Any]
+    ) -> None:
+        @tracer.trace()
+        def short() -> Generator[int, None, None]:
+            yield from range(2)
+
+        @tracer.trace()
+        def long() -> Generator[int, None, None]:
+            yield from range(5)
+
+        @tracer.trace()
+        def after() -> int:
+            return 1
+
+        for _ in zip(short(), long()):
+            pass
+        after()
+
+        assert published == [("short", None), ("after", None)]
+        assert tracer.get_current_step() is None
+
+    def test_async_cancelled_stream_publishes_and_releases_context(self) -> None:
+        published: List[Any] = []
+        in_task: List[Any] = []
+
+        def capture(trace: traces.Trace, *args: Any) -> None:
+            published.append((trace.steps[0].name, trace.steps[0].metadata.get("Exceptions")))
+
+        @tracer.trace_async()
+        async def stream() -> AsyncGenerator[int, None]:
+            for i in range(3):
+                await asyncio.sleep(0.05)
+                yield i
+
+        @tracer.trace_async()
+        async def after() -> int:
+            return 1
+
+        async def consume() -> None:
+            try:
+                async for _ in stream():
+                    pass
+            except asyncio.CancelledError:
+                in_task.append(tracer.get_current_step())
+                await after()
+                raise
+
+        async def main() -> None:
+            task = asyncio.ensure_future(consume())
+            await asyncio.sleep(0.08)
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+
+        with patch.object(tracer, "_publish", True), patch.object(
+            tracer, "_upload_and_publish_trace", side_effect=capture
+        ), patch.dict(tracer._tracer_config, {"background_publish_enabled": False}):
+            asyncio.run(main())
+
+        assert in_task == [None]
+        assert published == [("stream", "CancelledError"), ("after", None)]
+
+    def test_yield_from_delegate_collected_by_gc_never_publishes(self) -> None:
+        """CPython closes a `yield from` delegate during GC; publishing there can deadlock."""
+
+        @tracer.trace()
+        def stream() -> Generator[int, None, None]:
+            yield from range(3)
+
+        class Holder:
+            gen: Any = None
+
+            def generate(self) -> Generator[int, None, None]:
+                yield from stream()
+
+        gc.collect()  # leftover garbage from earlier tests must not hit the mock
+        with patch.object(tracer, "_handle_trace_completion") as completion:
+            holder = Holder()
+            holder.gen = holder.generate()  # holder -> generator frame -> holder: a cycle
+            next(holder.gen)
+            del holder
+            gc.collect()
+
+        completion.assert_not_called()
+        assert tracer.get_current_step() is None
+        assert tracer.get_current_trace() is None
+
+    def test_destroyed_pending_anext_never_publishes(self) -> None:
+        """A consumer coroutine destroyed mid-__anext__ is abandoned, not finished.
+
+        Only discriminating on Python 3.13+: earlier versions leave the inner generator
+        ag_running, so the concurrent-consumer branch also avoids publishing.
+        """
+
+        class Pending:
+            def __await__(self) -> Generator[str, None, None]:
+                yield "pending"
+
+        @tracer.trace_async()
+        async def stream() -> AsyncGenerator[int, None]:
+            yield 1
+            await Pending()
+            yield 2
+
+        async def consume() -> None:
+            async for _ in stream():
+                pass
+
+        with patch.object(tracer, "_handle_trace_completion") as completion:
+            coro = consume()
+            assert coro.send(None) == "pending"
+            del coro
+
+        completion.assert_not_called()
+        assert tracer.get_current_step() is None
+
+    def test_non_root_stream_finishing_first_keeps_later_steps_under_parent(self) -> None:
+        shapes: List[Any] = []
+
+        def shape(step: steps.Step) -> Any:
+            nested: List[steps.Step] = step.steps
+            return (step.name, tuple(shape(s) for s in nested))
+
+        def capture(trace: traces.Trace, *args: Any) -> None:
+            shapes.append(shape(trace.steps[0]))
+
+        @tracer.trace()
+        def short() -> Generator[int, None, None]:
+            yield from range(2)
+
+        @tracer.trace()
+        def long() -> Generator[int, None, None]:
+            yield from range(5)
+
+        @tracer.trace()
+        def after() -> int:
+            return 1
+
+        @tracer.trace()
+        def handler() -> None:
+            for _ in zip(short(), long()):
+                pass
+            after()
+
+        with patch.object(tracer, "_publish", True), patch.object(
+            tracer, "_upload_and_publish_trace", side_effect=capture
+        ), patch.dict(tracer._tracer_config, {"background_publish_enabled": False}):
+            handler()
+
+        assert shapes == [("handler", (("short", (("long", ()),)), ("after", ())))]
+        assert tracer.get_current_step() is None
+
+    def test_close_before_start_runs_nothing(self, published: List[Any]) -> None:
+        started: List[bool] = []
+
+        @tracer.trace()
+        def stream() -> Generator[int, None, None]:
+            started.append(True)
+            yield 1
+
+        gen = stream()
+        gen.close()
+
+        assert list(gen) == []
+        assert started == []
+        assert published == []
+
+    def test_concurrent_anext_from_another_task_does_not_end_the_stream(self, published: List[Any]) -> None:
+        holder: Dict[str, Any] = {}
+
+        @tracer.trace_async()
+        async def stream() -> AsyncGenerator[str, None]:
+            yield "a"
+            await holder["gate"].wait()
+            yield "b"
+
+        @tracer.trace_async()
+        async def after() -> int:
+            return 1
+
+        async def main() -> None:
+            holder["gate"] = asyncio.Event()
+            gen = stream()
+            assert await gen.__anext__() == "a"  # this task starts the stream
+            rest = asyncio.ensure_future(gen.__anext__())  # another task continues it
+            await asyncio.sleep(0)
+            with pytest.raises(RuntimeError, match="already running"):
+                await gen.__anext__()
+            assert tracer.get_current_step() is None
+            assert published == []
+            holder["gate"].set()
+            assert await rest == "b"
+            with pytest.raises(StopAsyncIteration):
+                await gen.__anext__()
+            await after()
+
+        asyncio.run(main())
+
+        assert published == [("stream", None), ("after", None)]
+
+    def test_close_while_running_keeps_the_stream_current(self, published: List[Any]) -> None:
+        holder: Dict[str, Any] = {}
+
+        @tracer.trace()
+        def stream() -> Generator[int, None, None]:
+            yield 1
+            with pytest.raises(ValueError, match="already executing"):
+                holder["gen"].close()
+            holder["current"] = tracer.get_current_step()
+            yield 2
+
+        holder["gen"] = stream()
+        assert list(holder["gen"]) == [1, 2]
+        assert holder["current"] is not None and holder["current"].name == "stream"
+        assert published == [("stream", None)]
+
+    def test_aclose_before_start_runs_nothing(self, published: List[Any]) -> None:
+        started: List[bool] = []
+
+        @tracer.trace_async()
+        async def stream() -> AsyncGenerator[int, None]:
+            started.append(True)
+            yield 1
+
+        async def main() -> List[int]:
+            gen = stream()
+            await gen.aclose()
+            return [chunk async for chunk in gen]
+
+        assert asyncio.run(main()) == []
+        assert started == []
+        assert published == []
+
+    def test_next_after_close_does_not_publish(self, published: List[Any]) -> None:
+        @tracer.trace()
+        def stream() -> Generator[int, None, None]:
+            yield from range(5)
+
+        gen = stream()
+        for i in gen:
+            if i == 1:
+                gen.close()
+
+        assert published == []
+        assert tracer.get_current_step() is None
+
+    def test_abandoned_stream_cleanup_stays_on_the_stream_step(self) -> None:
+        shapes: List[Any] = []
+
+        def shape(step: steps.Step) -> Any:
+            nested: List[steps.Step] = step.steps
+            return (step.name, tuple(shape(s) for s in nested))
+
+        def capture(trace: traces.Trace, *args: Any) -> None:
+            shapes.append(shape(trace.steps[0]))
+
+        @tracer.trace()
+        def cleanup() -> None:
+            return None
+
+        @tracer.trace()
+        def answer() -> Generator[int, None, None]:
+            try:
+                yield from range(3)
+            finally:
+                cleanup()
+
+        @tracer.trace()
+        def handler() -> None:
+            for _ in answer():
+                break
+
+        with patch.object(tracer, "_publish", True), patch.object(
+            tracer, "_upload_and_publish_trace", side_effect=capture
+        ), patch.dict(tracer._tracer_config, {"background_publish_enabled": False}):
+            handler()
+
+        assert shapes == [("handler", (("answer", (("cleanup", ()),)),))]
+
+    def test_aclose_publishes_partial_root_stream(self, published: List[Any]) -> None:
+        @tracer.trace_async()
+        async def stream() -> AsyncGenerator[int, None]:
+            for i in range(3):
+                yield i
+
+        async def main() -> None:
+            gen = stream()
+            await gen.__anext__()
+            await gen.aclose()
+            assert tracer.get_current_step() is None
+
+        asyncio.run(main())
+
+        assert published == [("stream", None)]
+
+    def test_aclose_during_coroutine_teardown_never_publishes(self) -> None:
+        """An aclosing() exit in a destroyed (e.g. garbage-collected) coroutine is abandonment."""
+
+        class Pending:
+            def __await__(self) -> Generator[str, None, None]:
+                yield "pending"
+
+        @tracer.trace_async()
+        async def stream() -> AsyncGenerator[int, None]:
+            for i in range(3):
+                yield i
+
+        holder: Dict[str, Any] = {}
+
+        async def consume() -> None:
+            holder["gen"] = gen = stream()
+            try:
+                await gen.__anext__()
+                await Pending()
+            finally:
+                await gen.aclose()
+
+        async def drain(gen: Any) -> List[int]:
+            return [chunk async for chunk in gen]
+
+        with patch.object(tracer, "_handle_trace_completion") as completion:
+            coro = consume()
+            assert coro.send(None) == "pending"
+            coro.close()
+            assert asyncio.run(drain(holder["gen"])) == []  # abandoned means ended
+
+        completion.assert_not_called()
+        assert tracer.get_current_step() is None
+
+    def test_aclose_while_running_raises_without_ending_the_stream(self, published: List[Any]) -> None:
+        holder: Dict[str, Any] = {}
+
+        @tracer.trace_async()
+        async def stream() -> AsyncGenerator[str, None]:
+            yield "a"
+            await holder["gate"].wait()
+            yield "b"
+
+        async def main() -> None:
+            holder["gate"] = asyncio.Event()
+            gen = stream()
+            await gen.__anext__()
+            rest = asyncio.ensure_future(gen.__anext__())
+            await asyncio.sleep(0)
+            with pytest.raises(RuntimeError, match="already running"):
+                await gen.aclose()
+            assert published == []
+            holder["gate"].set()
+            assert await rest == "b"
+            assert [chunk async for chunk in gen] == []
+
+        asyncio.run(main())
+
+        assert published == [("stream", None)]
+
+    def test_concurrent_next_from_another_thread_does_not_end_the_stream(
+        self, published: List[Any]
+    ) -> None:
+        started, go = threading.Event(), threading.Event()
+
+        @tracer.trace()
+        def stream() -> Generator[int, None, None]:
+            yield 1
+            started.set()
+            go.wait(5)
+            yield 2
+
+        gen = stream()
+        assert next(gen) == 1
+        got: List[int] = []
+        worker = threading.Thread(target=lambda: got.append(next(gen)))
+        worker.start()
+        try:
+            assert started.wait(5)
+            with pytest.raises(ValueError, match="already executing"):
+                next(gen)
+            assert tracer.get_current_step() is None
+            assert published == []
+        finally:
+            go.set()
+            worker.join(5)
+
+        assert got == [2]
+        assert list(gen) == []
+        assert published == [("stream", None)]
+
+    def test_open_function_step_keeps_children_after_draining_a_nested_stream(self) -> None:
+        shapes: List[Any] = []
+
+        def shape(step: steps.Step) -> Any:
+            nested: List[steps.Step] = step.steps
+            return (step.name, tuple(shape(s) for s in nested))
+
+        def capture(trace: traces.Trace, *args: Any) -> None:
+            shapes.append(shape(trace.steps[0]))
+
+        @tracer.trace()
+        def child() -> Generator[int, None, None]:
+            yield from range(2)
+
+        @tracer.trace()
+        def validate() -> int:
+            return 1
+
+        @tracer.trace()
+        def drain(stream: Any) -> None:
+            list(stream)
+            validate()
+
+        @tracer.trace()
+        def handler() -> None:
+            stream = child()
+            next(stream)
+            drain(stream)
+
+        with patch.object(tracer, "_publish", True), patch.object(
+            tracer, "_upload_and_publish_trace", side_effect=capture
+        ), patch.dict(tracer._tracer_config, {"background_publish_enabled": False}):
+            handler()
+
+        assert shapes == [("handler", (("child", (("drain", (("validate", ()),)),)),))]
+
+    def test_root_stream_finishing_inside_a_consumer_releases_its_trace(self, published: List[Any]) -> None:
+        @tracer.trace()
+        def stream() -> Generator[int, None, None]:
+            yield from range(2)
+
+        @tracer.trace()
+        def validate() -> int:
+            return 1
+
+        @tracer.trace()
+        def consumer(gen: Any) -> None:
+            list(gen)
+            validate()
+
+        gen = stream()
+        next(gen)
+        consumer(gen)
+
+        # validate() starts its own trace instead of vanishing into the finished one.
+        assert published == [("stream", None), ("validate", None)]
+
+    def test_abandoned_stream_body_is_finalized_once(self) -> None:
+        exits: List[bool] = []
+
+        def ignore_unraisable(unraisable: Any) -> None:
+            # pytest's hook would keep the reported exception, and with it the generator.
+            pass
+
+        @tracer.trace()
+        def stream() -> Generator[int, None, None]:
+            while True:  # a retry loop that swallows GeneratorExit
+                try:
+                    yield 1
+                except GeneratorExit:
+                    exits.append(True)
+                    if len(exits) > 2:
+                        return
+
+        with patch.object(sys, "unraisablehook", ignore_unraisable):
+            gen = stream()
+            next(gen)
+            del gen
+            gc.collect()
+
+        assert exits == [True]
+        assert tracer.get_current_step() is None
+
+    def test_stream_abandoned_in_another_context_releases_the_one_that_iterates_on(
+        self, published: List[Any]
+    ) -> None:
+        class Pending:
+            def __await__(self) -> Generator[str, None, None]:
+                yield "pending"
+
+        @tracer.trace_async()
+        async def stream() -> AsyncGenerator[int, None]:
+            yield 1
+            await Pending()
+            yield 2
+
+        @tracer.trace_async()
+        async def after() -> int:
+            return 1
+
+        async def main() -> None:
+            gen = stream()
+            assert await gen.__anext__() == 1  # this context starts the stream
+            other = contextvars.copy_context()  # e.g. another task's context
+            pending = gen.__anext__()
+            assert other.run(pending.send, None) == "pending"
+            other.run(pending.close)  # that coroutine is destroyed: the stream is abandoned
+            assert [chunk async for chunk in gen] == []
+            assert tracer.get_current_step() is None
+            await after()
+
+        asyncio.run(main())
+
+        assert published == [("after", None)]

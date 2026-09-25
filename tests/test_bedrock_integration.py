@@ -8,6 +8,10 @@ import io
 import json
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+pytest.importorskip("boto3")  # bedrock_tracer needs boto3 (and botocore, its dependency)
+
 
 class TestBedrockChatRegression:
     """Lock in existing chat-completion behaviour before refactoring."""

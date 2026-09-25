@@ -6,7 +6,8 @@
 # ruff: noqa: ARG001
 
 import asyncio
-from typing import Any, List
+import inspect
+from typing import Any, List, Generator
 from unittest.mock import patch
 
 import pytest
@@ -33,6 +34,27 @@ def _disable_publish(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENLAYER_DISABLE_PUBLISH", "true")
     monkeypatch.setenv("OPENLAYER_API_KEY", "fake")
     monkeypatch.setattr(ol_tracer, "_publish", False, raising=False)
+    # Publish inline so tests that capture the upload don't race the executor.
+    monkeypatch.setitem(ol_tracer._tracer_config, "background_publish_enabled", False)
+
+
+@pytest.fixture(autouse=True)
+def _undo_sdk_patches(monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
+    """trace_claude_agent_sdk() patches the SDK globally; undo it after each test."""
+    try:
+        import claude_agent_sdk as cas
+    except ImportError:
+        yield
+        return
+    monkeypatch.setattr(cas, "query", cas.query)
+    for name in ("__init__", "query", "receive_response"):
+        monkeypatch.setattr(
+            cas.ClaudeSDKClient, name, inspect.getattr_static(cas.ClaudeSDKClient, name)
+        )
+    yield
+    # Not via monkeypatch: some tests delete the flag themselves.
+    if "_openlayer_patched" in vars(cas.ClaudeSDKClient):
+        del cas.ClaudeSDKClient._openlayer_patched
 
 
 def _capture_trace_publish():
@@ -65,6 +87,7 @@ def test_traced_query_emits_root_agent_step_with_cost_and_tokens():
     The root AGENT step gets cost/tokens/session_id populated from the final
     ``ResultMessage``.
     """
+    pytest.importorskip("claude_agent_sdk")
     from openlayer.lib.integrations.claude_agent_sdk import traced_query
 
     messages = [
@@ -178,6 +201,7 @@ def test_options_metadata_captured_on_root_step():
 
 def test_assistant_message_emits_chat_completion_step():
     """Each AssistantMessage becomes a CHAT_COMPLETION child of the root step."""
+    pytest.importorskip("claude_agent_sdk")
     from openlayer.lib.integrations.claude_agent_sdk import traced_query
 
     messages = [
@@ -242,6 +266,7 @@ def _extract_hook_callbacks(options, event: str):
 
 def test_tool_call_creates_tool_step_with_input_and_output():
     """A tool call yields a TOOL step with input/output/latency/tool_use_id."""
+    pytest.importorskip("claude_agent_sdk")
     import claude_agent_sdk as cas
 
     from openlayer.lib.integrations.claude_agent_sdk import traced_query
@@ -311,6 +336,7 @@ def test_tool_call_creates_tool_step_with_input_and_output():
 
 def test_mcp_tool_name_is_parsed_into_metadata():
     """A tool named ``mcp__playwright__browser_click`` records the parsed metadata."""
+    pytest.importorskip("claude_agent_sdk")
     import claude_agent_sdk as cas
 
     from openlayer.lib.integrations.claude_agent_sdk import traced_query
@@ -375,6 +401,7 @@ def test_mcp_tool_name_is_parsed_into_metadata():
 
 def test_subagent_messages_nest_under_agent_tool_step():
     """A message with ``parent_tool_use_id`` nests under the spawning Agent ToolStep."""
+    pytest.importorskip("claude_agent_sdk")
     import claude_agent_sdk as cas
 
     from openlayer.lib.integrations.claude_agent_sdk import traced_query
@@ -481,6 +508,7 @@ def test_subagent_internal_tool_calls_nest_under_agent_step():
     message says ``[tool call: Grep]`` but the actual Grep TOOL step was being
     created as a child of root instead of the ``Agent: ...`` AGENT step.
     """
+    pytest.importorskip("claude_agent_sdk")
     import claude_agent_sdk as cas
 
     from openlayer.lib.integrations.claude_agent_sdk import traced_query
@@ -612,6 +640,7 @@ def test_subagent_internal_tool_calls_nest_under_agent_step():
 
 def test_result_message_error_subtype_marks_root_step():
     """An error ResultMessage subtype is reflected on the root step's metadata."""
+    pytest.importorskip("claude_agent_sdk")
     from openlayer.lib.integrations.claude_agent_sdk import traced_query
 
     messages = [
@@ -649,6 +678,7 @@ def test_result_message_error_subtype_marks_root_step():
 
 def test_post_tool_use_failure_marks_tool_step_as_error():
     """PostToolUseFailure fires instead of PostToolUse — the tool step is marked errored."""
+    pytest.importorskip("claude_agent_sdk")
     import claude_agent_sdk as cas
 
     from openlayer.lib.integrations.claude_agent_sdk import traced_query
@@ -708,6 +738,7 @@ def test_post_tool_use_failure_marks_tool_step_as_error():
 
 def test_user_hooks_compose_with_openlayer_hooks():
     """User-provided hooks run alongside ours; neither replaces the other."""
+    pytest.importorskip("claude_agent_sdk")
     import claude_agent_sdk as cas
 
     from openlayer.lib.integrations.claude_agent_sdk import traced_query
@@ -785,6 +816,7 @@ def test_user_hooks_compose_with_openlayer_hooks():
 
 def test_mcp_env_is_stripped_from_agent_config_metadata():
     """``env`` and ``headers`` of MCP server configs must be redacted."""
+    pytest.importorskip("claude_agent_sdk")
     from openlayer.lib.integrations.claude_agent_sdk import traced_query
 
     messages = [
@@ -833,6 +865,7 @@ def test_mcp_env_is_stripped_from_agent_config_metadata():
 
 def test_trace_claude_agent_sdk_patches_module_query():
     """``trace_claude_agent_sdk()`` monkey-patches ``claude_agent_sdk.query``."""
+    pytest.importorskip("claude_agent_sdk")
     import claude_agent_sdk
 
     from openlayer.lib.integrations.claude_agent_sdk import trace_claude_agent_sdk
@@ -854,6 +887,7 @@ def test_trace_claude_agent_sdk_patches_module_query():
 
 def test_trace_claude_agent_sdk_config_persists():
     """Init kwargs are persisted into the module-level config."""
+    pytest.importorskip("claude_agent_sdk")
     import claude_agent_sdk
 
     from openlayer.lib.integrations import claude_agent_sdk as integration
@@ -882,6 +916,7 @@ def test_trace_claude_agent_sdk_config_persists():
 
 def test_trace_claude_agent_sdk_patches_claude_sdk_client():
     """``trace_claude_agent_sdk()`` also patches ``ClaudeSDKClient.query`` / ``.receive_response``."""
+    pytest.importorskip("claude_agent_sdk")
     import claude_agent_sdk
 
     from openlayer.lib.integrations.claude_agent_sdk import trace_claude_agent_sdk
@@ -912,6 +947,7 @@ def test_trace_claude_agent_sdk_patches_claude_sdk_client():
 
 def test_wrapped_stream_yields_identical_messages_in_identical_order():
     """The wrapper is a pure observer — output must equal the underlying stream."""
+    pytest.importorskip("claude_agent_sdk")
     from openlayer.lib.integrations.claude_agent_sdk import traced_query
 
     original_messages = [
