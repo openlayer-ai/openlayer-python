@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.34.1](https://github.com/openlayer-ai/openlayer-python/compare/v0.34.0...v0.34.1) (2026-09-28)
+
+
+### Bug Fixes
+
+* **tracing:** finalize traced generators at most once, and run the test suite in CI ([7d613f9](https://github.com/openlayer-ai/openlayer-python/commit/7d613f9d5e40d23b6d08a2d053dcca210cee4392))
+
 ## [0.34.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.33.0...v0.34.0) (2026-09-24)
 
 
