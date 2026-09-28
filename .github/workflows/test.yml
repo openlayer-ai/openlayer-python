@@ -1,0 +1,83 @@
+# Separate from the generated ci.yml. stlc keeps workflow files across builds, but
+# `stlc build --rewrite-scaffold` would drop this one; re-add it after such a run.
+name: Tests
+on:
+  # No job-level `if:` (unlike ci.yml): a job skipped on pull_request counts as passing
+  # for required checks, and the PRs to gate (promote, release-please) are same-repo.
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: test-${{ github.ref }}
+  # Only PR runs: a cancelled run on main would fail the required check for a good commit.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    timeout-minutes: 10
+    name: full suite (py3.9)
+    runs-on: ${{ startsWith(github.repository, 'stainless-sdks/') && 'depot-ubuntu-24.04' || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install Rye
+        run: |
+          curl -sSf https://rye.astral.sh/get | bash
+          echo "$HOME/.rye/shims" >> $GITHUB_PATH
+        env:
+          RYE_VERSION: '0.44.0'
+          RYE_INSTALL_OPTION: '--yes'
+
+      - name: Bootstrap
+        run: ./scripts/bootstrap
+
+      - name: Run tests
+        run: ./scripts/test
+
+  test-integrations:
+    timeout-minutes: 10
+    name: integrations with optional SDKs (py3.12)
+    runs-on: ${{ startsWith(github.repository, 'stainless-sdks/') && 'depot-ubuntu-24.04' || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+
+      # The `test` job skips integration tests whose optional package isn't
+      # installed; this one installs them. Python 3.12 because claude-agent-sdk
+      # needs 3.10+, and requirements-dev.lock only resolves on 3.9, so only the
+      # test tools are pinned from it.
+      - name: Install dependencies
+        run: |
+          uv venv --python 3.12
+          grep -E '^(pytest|pytest-asyncio|pytest-xdist|respx|dirty-equals|time-machine)==' requirements-dev.lock > test-tools.txt
+          # Resolve as of a day ago: a release still uploading its wheels forces a
+          # source build that can fail (SQLAlchemy 2.1.0 did).
+          # google-adk<2: 2.x wraps callback exceptions and fails test_user_exception_propagates_without_chaining.
+          uv pip install --exclude-newer "$(date -u -d '1 day ago' +%Y-%m-%dT%H:%M:%SZ)" \
+            -e '.[aiohttp]' -r test-tools.txt \
+            openai boto3 claude-agent-sdk 'google-adk<2' google-genai langchain-core wrapt \
+            azure-cognitiveservices-speech
+
+      # Generated API tests need the mock server and already run in `test`.
+      - name: Run integration tests
+        run: .venv/bin/pytest --ignore=tests/api_resources
+
+  # The one check to require in rulesets, so jobs can be added or renamed freely.
+  # The integrations job stays advisory until its optional dependencies are pinned.
+  # always(), not !cancelled(): a skipped required check would count as passing.
+  required:
+    if: always()
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.test.result }}" = success

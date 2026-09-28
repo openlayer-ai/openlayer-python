@@ -8,6 +8,7 @@ import inspect
 import json
 import logging
 import os
+import sys
 import threading
 import time
 import traceback
@@ -834,9 +835,11 @@ def trace(
                         self._step = None
                         self._is_root_step = False
                         self._token = None
+                        self._trace = None
                         self._trace_token = None
                         self._output_chunks = []
                         self._trace_initialized = False
+                        self._finalized = False
                         self._unresolved_promote = {}
                         self._captured_context = (
                             None  # Capture context for ASGI compatibility
@@ -845,7 +848,92 @@ def trace(
                     def __iter__(self):
                         return self
 
+                    def __del__(self):
+                        # Drop the wrapped generator first, so CPython finalizes it exactly
+                        # once (running its finally, reporting what it raises) while the
+                        # stream's step is still current; then unwind.
+                        try:
+                            if self._trace_initialized and not self._finalized:
+                                gen, self._original_gen = self._original_gen, None
+                                del gen
+                                _release_abandoned_generator(self)
+                        except Exception:
+                            pass
+
+                    def close(self):
+                        # Closing abandons the stream: unwind, don't publish. CPython also
+                        # calls close() on a `yield from` delegate, including from GC,
+                        # where publishing can deadlock on a lock the thread holds.
+                        if not self._trace_initialized:
+                            self._finalized = True  # like a generator closed before it starts
+                            return
+                        if self._finalized:
+                            return
+                        if self._original_gen.gi_running:
+                            raise ValueError("generator already executing")
+                        try:
+                            self._original_gen.close()
+                        finally:
+                            # Another thread may have entered the body since the check.
+                            if self._original_gen.gi_frame is None:
+                                _release_abandoned_generator(self)
+
+                    def _finalize(self, output, promote_output=False):
+                        if self._finalized:
+                            return
+                        self._finalized = True
+                        finalize_kwargs = dict(
+                            step=self._step,
+                            token=self._token,
+                            trace=self._trace,
+                            trace_token=self._trace_token,
+                            is_root_step=self._is_root_step,
+                            step_name=step_name,
+                            inputs=self._inputs,
+                            output=output,
+                            inference_pipeline_id=inference_pipeline_id,
+                            on_flush_failure=on_flush_failure,
+                        )
+                        if self._captured_context is not None:
+                            # Run promote inside captured context so
+                            # update_current_trace can find the trace ContextVar
+                            if promote_output:
+                                self._captured_context.run(
+                                    _apply_promote_output,
+                                    output,
+                                    self._unresolved_promote,
+                                )
+                            self._captured_context.run(
+                                _finalize_generator_step, **finalize_kwargs
+                            )
+                            # Finalizing inside the captured copy can't reset the
+                            # caller's ContextVars; left set, the next @trace call
+                            # on this thread nests into this finished trace and is
+                            # never published.
+                            _release_generator_context(
+                                self._step,
+                                self._token,
+                                self._trace,
+                                self._trace_token,
+                                self._is_root_step,
+                            )
+                        else:
+                            if promote_output:
+                                _apply_promote_output(output, self._unresolved_promote)
+                            _finalize_generator_step(**finalize_kwargs)
+
                     def __next__(self):
+                        if self._finalized:  # finished, or closed (even before it started)
+                            if self._trace_initialized:
+                                # It may have ended in another context; unwind this one.
+                                _release_generator_context(
+                                    self._step,
+                                    self._token,
+                                    self._trace,
+                                    self._trace_token,
+                                    self._is_root_step,
+                                )
+                            raise StopIteration
                         # Initialize tracing on first iteration only
                         if not self._trace_initialized:
                             self._original_gen = func(*func_args, **func_kwargs)
@@ -873,6 +961,8 @@ def trace(
                             self._unresolved_promote = _apply_promote_kwargs(
                                 self._inputs, promote
                             )
+                            self._trace = get_current_trace()
+                            self._step._is_stream = True
                             self._trace_initialized = True
 
                         try:
@@ -883,74 +973,28 @@ def trace(
                             return chunk
                         except StopIteration:
                             # Finalize trace when generator is exhausted
-                            # Use captured context to ensure we have access to the trace
-                            output = _join_output_chunks(self._output_chunks)
-                            if self._captured_context:
-                                # Run promote inside captured context so
-                                # update_current_trace can find the trace ContextVar
-                                self._captured_context.run(
-                                    _apply_promote_output,
-                                    output,
-                                    self._unresolved_promote,
-                                )
-                                self._captured_context.run(
-                                    _finalize_sync_generator_step,
-                                    step=self._step,
-                                    token=self._token,
-                                    trace_token=self._trace_token,
-                                    is_root_step=self._is_root_step,
-                                    step_name=step_name,
-                                    inputs=self._inputs,
-                                    output=output,
-                                    inference_pipeline_id=inference_pipeline_id,
-                                    on_flush_failure=on_flush_failure,
-                                )
-                            else:
-                                _apply_promote_output(
-                                    output, self._unresolved_promote
-                                )
-                                _finalize_sync_generator_step(
-                                    step=self._step,
-                                    token=self._token,
-                                    trace_token=self._trace_token,
-                                    is_root_step=self._is_root_step,
-                                    step_name=step_name,
-                                    inputs=self._inputs,
-                                    output=output,
-                                    inference_pipeline_id=inference_pipeline_id,
-                                    on_flush_failure=on_flush_failure,
-                                )
+                            self._finalize(
+                                _join_output_chunks(self._output_chunks),
+                                promote_output=True,
+                            )
                             raise
-                        except Exception as exc:
-                            # Handle exceptions
-                            if self._step:
+                        except BaseException as exc:
+                            if self._original_gen.gi_frame is not None:
+                                # The body is still live, so this isn't its exception (e.g.
+                                # another consumer's concurrent next()): don't end the stream,
+                                # but unwind this context if it's the one that started it.
+                                _release_generator_context(
+                                    self._step,
+                                    self._token,
+                                    self._trace,
+                                    self._trace_token,
+                                    self._is_root_step,
+                                )
+                                raise
+                            # Handle exceptions, including KeyboardInterrupt
+                            if self._step and not self._finalized:
                                 _log_step_exception(self._step, exc)
-                                output = _join_output_chunks(self._output_chunks)
-                                if self._captured_context:
-                                    self._captured_context.run(
-                                        _finalize_sync_generator_step,
-                                        step=self._step,
-                                        token=self._token,
-                                        trace_token=self._trace_token,
-                                        is_root_step=self._is_root_step,
-                                        step_name=step_name,
-                                        inputs=self._inputs,
-                                        output=output,
-                                        inference_pipeline_id=inference_pipeline_id,
-                                        on_flush_failure=on_flush_failure,
-                                    )
-                                else:
-                                    _finalize_sync_generator_step(
-                                        step=self._step,
-                                        token=self._token,
-                                        trace_token=self._trace_token,
-                                        is_root_step=self._is_root_step,
-                                        step_name=step_name,
-                                        inputs=self._inputs,
-                                        output=output,
-                                        inference_pipeline_id=inference_pipeline_id,
-                                        on_flush_failure=on_flush_failure,
-                                    )
+                                self._finalize(_join_output_chunks(self._output_chunks))
                             raise
 
                 return TracedSyncGenerator()
@@ -1164,15 +1208,97 @@ def trace_async(
                             self._step = None
                             self._is_root_step = False
                             self._token = None
+                            self._trace = None
                             self._trace_token = None
                             self._output_chunks = []
                             self._trace_initialized = False
+                            self._finalized = False
                             self._unresolved_promote = {}
+                            self._captured_context = None
 
                         def __aiter__(self):
                             return self
 
+                        def __del__(self):
+                            _release_abandoned_generator(self)
+
+                        async def aclose(self):
+                            # Unlike sync close(), aclose() publishes: nothing calls it on
+                            # this wrapper implicitly. But it can be awaited while a coroutine
+                            # is torn down (an aclosing() exit in a task being garbage-
+                            # collected); treat that as abandonment and don't publish.
+                            # This also covers explicitly closing an enclosing generator whose
+                            # finally awaits this aclose(), like sync close() of a delegate.
+                            if _handling_generator_exit():
+                                _release_abandoned_generator(self)
+                                return
+                            if not self._trace_initialized:
+                                self._finalized = True  # like a generator closed before it starts
+                                return
+                            if self._finalized:
+                                return
+                            if self._original_gen.ag_running:
+                                raise RuntimeError(
+                                    "aclose(): asynchronous generator is already running"
+                                )
+                            try:
+                                await self._original_gen.aclose()
+                            except BaseException as exc:
+                                _log_step_exception(self._step, exc)
+                                raise
+                            finally:
+                                self._finalize(_join_output_chunks(self._output_chunks))
+
+                        def _finalize(self, output, promote_output=False):
+                            if self._finalized:
+                                return
+                            self._finalized = True
+                            # Trace completion publishes whatever trace is current, so
+                            # when this task isn't running the stream's trace (it was
+                            # started in another task, or its parent already finished),
+                            # finalize in the context the stream was traced in.
+                            if get_current_trace() is self._trace:
+                                self._complete(output, promote_output)
+                            else:
+                                self._captured_context.run(
+                                    self._complete, output, promote_output
+                                )
+                                _release_generator_context(
+                                    self._step,
+                                    self._token,
+                                    self._trace,
+                                    self._trace_token,
+                                    self._is_root_step,
+                                )
+
+                        def _complete(self, output, promote_output):
+                            if promote_output:
+                                _apply_promote_output(output, self._unresolved_promote)
+                            _finalize_generator_step(
+                                step=self._step,
+                                token=self._token,
+                                trace=self._trace,
+                                trace_token=self._trace_token,
+                                is_root_step=self._is_root_step,
+                                step_name=step_name,
+                                inputs=self._inputs,
+                                output=output,
+                                inference_pipeline_id=inference_pipeline_id,
+                                on_flush_failure=on_flush_failure,
+                            )
+
                         async def __anext__(self):
+                            if self._finalized:  # finished, abandoned, or closed early
+                                if self._trace_initialized:
+                                    # It may have ended in another context; unwind this one.
+                                    _release_generator_context(
+                                        self._step,
+                                        self._token,
+                                        self._trace,
+                                        self._trace_token,
+                                        self._is_root_step,
+                                    )
+                                raise StopAsyncIteration
                             # Initialize tracing on first iteration only
                             if not self._trace_initialized:
                                 self._original_gen = func(*func_args, **func_kwargs)
@@ -1200,6 +1326,9 @@ def trace_async(
                                 self._unresolved_promote = _apply_promote_kwargs(
                                     self._inputs, promote
                                 )
+                                self._trace = get_current_trace()
+                                self._step._is_stream = True
+                                self._captured_context = contextvars.copy_context()
                                 self._trace_initialized = True
 
                             try:
@@ -1208,38 +1337,34 @@ def trace_async(
                                 return chunk
                             except StopAsyncIteration:
                                 # Finalize trace when generator is exhausted
-                                output = _join_output_chunks(self._output_chunks)
-                                _apply_promote_output(
-                                    output, self._unresolved_promote
-                                )
-                                _finalize_async_generator_step(
-                                    step=self._step,
-                                    token=self._token,
-                                    trace_token=self._trace_token,
-                                    is_root_step=self._is_root_step,
-                                    step_name=step_name,
-                                    inputs=self._inputs,
-                                    output=output,
-                                    inference_pipeline_id=inference_pipeline_id,
-                                    on_flush_failure=on_flush_failure,
+                                self._finalize(
+                                    _join_output_chunks(self._output_chunks),
+                                    promote_output=True,
                                 )
                                 raise
-                            except Exception as exc:
-                                # Handle exceptions
-                                if self._step:
-                                    _log_step_exception(self._step, exc)
-                                    output = _join_output_chunks(self._output_chunks)
-                                    _finalize_async_generator_step(
-                                        step=self._step,
-                                        token=self._token,
-                                        trace_token=self._trace_token,
-                                        is_root_step=self._is_root_step,
-                                        step_name=step_name,
-                                        inputs=self._inputs,
-                                        output=output,
-                                        inference_pipeline_id=inference_pipeline_id,
-                                        on_flush_failure=on_flush_failure,
+                            except GeneratorExit:
+                                # The awaiting coroutine is being destroyed (e.g. its task
+                                # was garbage-collected): abandoned, so release only.
+                                _release_abandoned_generator(self)
+                                raise
+                            except BaseException as exc:
+                                if self._original_gen.ag_frame is not None:
+                                    # The body is still live, so this isn't its exception (e.g.
+                                    # another task's concurrent __anext__): don't end the stream,
+                                    # but unwind this context if it's the one that started it.
+                                    _release_generator_context(
+                                        self._step,
+                                        self._token,
+                                        self._trace,
+                                        self._trace_token,
+                                        self._is_root_step,
                                     )
+                                    raise
+                                # Handle exceptions, including CancelledError from a
+                                # timeout or client disconnect in this task
+                                if self._step and not self._finalized:
+                                    _log_step_exception(self._step, exc)
+                                    self._finalize(_join_output_chunks(self._output_chunks))
                                 raise
 
                     return TracedAsyncGenerator()
@@ -2119,9 +2244,10 @@ def _handle_streaming_failure(
 # ----------------------------- Helper functions for trace decorators ----------------------------- #
 
 
-def _log_step_exception(step: steps.Step, exception: Exception) -> None:
+def _log_step_exception(step: steps.Step, exception: BaseException) -> None:
     """Log exception metadata to a step."""
-    step.log(metadata={"Exceptions": str(exception)})
+    # str() is empty for CancelledError, KeyboardInterrupt and message-less raises.
+    step.log(metadata={"Exceptions": str(exception) or type(exception).__name__})
 
 
 def _process_wrapper_inputs_and_outputs(
@@ -2337,46 +2463,102 @@ def _finalize_step_logging(
 # ----------------------------- Generator specific functions ----------------------------- #
 
 
-def _finalize_sync_generator_step(
-    step: steps.Step,
-    token: Any,
-    trace_token: Any,
-    is_root_step: bool,
-    step_name: str,
-    inputs: dict,
-    output: Any,
-    inference_pipeline_id: Optional[str] = None,
-    on_flush_failure: Optional[OnFlushFailureCallback] = None,
-) -> None:
-    """Finalize sync generator step - called when generator is consumed."""
+def _owns_current_step(
+    step: steps.Step, trace: Optional["traces.Trace"], is_root_step: bool
+) -> bool:
+    """Whether a finishing generator should unwind the current step.
+
+    Generators can finish out of stack order (after their parent returned, or from
+    another task), so only unwind a step that is still ours; unconditionally resetting
+    would restore a parent that already finished. A finishing root also takes whatever
+    is still current under its finished trace (a stream started after it, a consumer).
+    """
+    current = get_current_step()
+    if current is step or (is_root_step and get_current_trace() is trace):
+        return True
+    # A stream started under this one and still current (e.g. zip of two streams)
+    # would otherwise stay current, or later bring this finished step back. For a
+    # non-root stream, open function steps are left alone: their create_step exit
+    # unwinds them.
+    return (
+        current is not None
+        and getattr(current, "_is_stream", False)
+        and _is_descendant(current, of=step)
+    )
+
+
+def _is_descendant(candidate: steps.Step, of: steps.Step) -> bool:
+    pending = list(of.steps)
+    while pending:
+        nested = pending.pop()
+        if nested is candidate:
+            return True
+        pending.extend(nested.steps)
+    return False
+
+
+def _reset_contextvar_quietly(var: "contextvars.ContextVar[Any]", token: Any) -> None:
+    # Generator tokens may belong to another context (finished in another task or
+    # thread) or be spent already (unwound by an earlier release); neither is an error.
+    if token is None:
+        return
     try:
-        _current_step.reset(token)
-    except ValueError:
-        # Context variable was created in a different context (e.g., different thread)
-        # This can happen in async/multi-threaded environments like FastAPI/OpenWebUI
-        # We can safely ignore this as the step finalization will still complete
-        logger.debug(
-            "Context variable reset failed - generator consumed in different context"
-        )
-
-    _finalize_step_logging(
-        step=step, inputs=inputs, output=output, start_time=step.start_time
-    )
-
-    _handle_trace_completion(
-        is_root_step=is_root_step,
-        step_name=step_name,
-        inference_pipeline_id=inference_pipeline_id,
-        on_flush_failure=on_flush_failure,
-    )
-
-    if is_root_step:
-        _safe_reset_contextvar(_current_trace, trace_token)
+        var.reset(token)
+    except (ValueError, RuntimeError):
+        pass
 
 
-def _finalize_async_generator_step(
+def _release_generator_context(
     step: steps.Step,
     token: Any,
+    trace: Optional["traces.Trace"],
+    trace_token: Any,
+    is_root_step: bool,
+) -> None:
+    """Unwind a traced generator's ContextVars in the current context, if still ours."""
+    if _owns_current_step(step, trace, is_root_step):
+        _reset_contextvar_quietly(_current_step, token)
+    if is_root_step and get_current_trace() is trace:
+        _reset_contextvar_quietly(_current_trace, trace_token)
+
+
+def _handling_generator_exit() -> bool:
+    """Whether a GeneratorExit is being handled, i.e. a coroutine or generator is closing."""
+    exc = sys.exc_info()[1]
+    for _ in range(32):  # __context__ chains are short; bound the walk anyway
+        if exc is None:
+            return False
+        if isinstance(exc, GeneratorExit):
+            return True
+        exc = exc.__context__
+    return False
+
+
+def _release_abandoned_generator(gen: Any) -> None:
+    """End an abandoned stream: unwind its ContextVars without publishing it.
+
+    Called from __del__, close(), aclose() during coroutine teardown, and when the
+    coroutine awaiting __anext__ is destroyed. These can run inside garbage collection, on
+    a thread that may already hold a non-reentrant lock (ThreadPoolExecutor.submit, an
+    HTTP pool), so this must not publish, log or take locks.
+    """
+    try:
+        if not gen._trace_initialized or gen._finalized:
+            return
+        gen._finalized = True
+        if sys.is_finalizing():
+            return
+        _release_generator_context(
+            gen._step, gen._token, gen._trace, gen._trace_token, gen._is_root_step
+        )
+    except Exception:
+        pass
+
+
+def _finalize_generator_step(
+    step: steps.Step,
+    token: Any,
+    trace: Optional["traces.Trace"],
     trace_token: Any,
     is_root_step: bool,
     step_name: str,
@@ -2385,11 +2567,14 @@ def _finalize_async_generator_step(
     inference_pipeline_id: Optional[str] = None,
     on_flush_failure: Optional[OnFlushFailureCallback] = None,
 ) -> None:
-    """Finalize async generator step - called when generator is consumed."""
-    _current_step.reset(token)
+    """Finish a traced generator's step and publish its trace if it is a root."""
+    if _owns_current_step(step, trace, is_root_step):
+        _reset_contextvar_quietly(_current_step, token)
+
     _finalize_step_logging(
         step=step, inputs=inputs, output=output, start_time=step.start_time
     )
+
     _handle_trace_completion(
         is_root_step=is_root_step,
         step_name=step_name,
@@ -2397,8 +2582,8 @@ def _finalize_async_generator_step(
         on_flush_failure=on_flush_failure,
     )
 
-    if is_root_step:
-        _safe_reset_contextvar(_current_trace, trace_token)
+    if is_root_step and get_current_trace() is trace:
+        _reset_contextvar_quietly(_current_trace, trace_token)
 
 
 def _join_output_chunks(output_chunks: List[Any]) -> str:

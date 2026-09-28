@@ -30,7 +30,7 @@ class TestLiteLLMIntegration:
             assert "pip install litellm" in str(exc_info.value)  # type: ignore
 
     @patch('openlayer.lib.integrations.litellm_tracer.HAVE_LITELLM', True)
-    @patch('openlayer.lib.integrations.litellm_tracer.litellm')
+    @patch('openlayer.lib.integrations.litellm_tracer.litellm', create=True)
     def test_trace_litellm_patches_completion(self, mock_litellm: Mock) -> None:
         """Test that trace_litellm successfully patches litellm.completion."""
         from openlayer.lib.integrations.litellm_tracer import trace_litellm
@@ -261,7 +261,7 @@ class TestLiteLLMIntegration:
         assert metadata == expected_metadata
 
     @patch('openlayer.lib.integrations.litellm_tracer.HAVE_LITELLM', True)
-    @patch('openlayer.lib.integrations.litellm_tracer.litellm')
+    @patch('openlayer.lib.integrations.litellm_tracer.litellm', create=True)
     def test_detect_provider_with_litellm_method(self, mock_litellm: Mock) -> None:
         """Test provider detection using LiteLLM's get_llm_provider method."""
         from openlayer.lib.integrations.litellm_tracer import detect_provider_from_response
@@ -281,7 +281,7 @@ class TestLiteLLMEmbedding:
     """Embedding calls must be traced via add_embedding_step_to_trace."""
 
     @patch("openlayer.lib.integrations.litellm_tracer.HAVE_LITELLM", True)
-    @patch("openlayer.lib.integrations.litellm_tracer.litellm")
+    @patch("openlayer.lib.integrations.litellm_tracer.litellm", create=True)
     def test_trace_litellm_patches_embedding(self, mock_litellm: Mock) -> None:
         from openlayer.lib.integrations import litellm_tracer
 
@@ -428,7 +428,7 @@ class TestLiteLLMEmbedding:
         assert result is fake_response
 
     @patch("openlayer.lib.integrations.litellm_tracer.HAVE_LITELLM", True)
-    @patch("openlayer.lib.integrations.litellm_tracer.litellm")
+    @patch("openlayer.lib.integrations.litellm_tracer.litellm", create=True)
     def test_completion_path_unchanged_after_embedding_patch(
         self, mock_litellm: Mock
     ) -> None:
