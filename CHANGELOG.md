@@ -10,7 +10,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Bug Fixes
 
-* **tracing:** finalize traced generators at most once, and run the test suite in CI ([6caf31b](https://github.com/openlayer-ai/openlayer-python/commit/6caf31bf6979c6dcaa0d0550422b5e1822dcaa83))
 * **tracing:** finalize traced generators at most once, and run the test suite in CI ([7d613f9](https://github.com/openlayer-ai/openlayer-python/commit/7d613f9d5e40d23b6d08a2d053dcca210cee4392))
 
 ## [0.34.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.33.0...v0.34.0) (2026-09-24)
