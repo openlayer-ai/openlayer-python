@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
-from typing import Union, Optional
+from typing import Union
 from datetime import datetime
-from typing_extensions import Annotated, TypedDict
+from typing_extensions import Required, Annotated, TypedDict
 
 from ..._utils import PropertyInfo
 
-__all__ = ["APIKeyCreateParams"]
+__all__ = ["APIKeyRotateParams"]
 
 
-class APIKeyCreateParams(TypedDict, total=False):
+class APIKeyRotateParams(TypedDict, total=False):
+    workspace_id: Required[Annotated[str, PropertyInfo(alias="workspaceId")]]
+
     expires_at: Annotated[Union[str, datetime, None], PropertyInfo(alias="expiresAt", format="iso8601")]
     """When the key stops authenticating.
 
@@ -20,5 +22,5 @@ class APIKeyCreateParams(TypedDict, total=False):
     expires, the result can't be later than that key's expiry.
     """
 
-    name: Optional[str]
-    """The API key name."""
+    grace_period_hours: Annotated[int, PropertyInfo(alias="gracePeriodHours")]
+    """Hours the previous secret keeps authenticating."""
