@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.35.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.34.1...v0.35.0) (2026-09-29)
+
+
+### Features
+
+* **api:** add API key CRUD, expiry, and rotation ([056b70f](https://github.com/openlayer-ai/openlayer-python/commit/056b70f61eb2117bb5dbcb0b6a86bb1e098bd108))
+
 ## [0.34.1](https://github.com/openlayer-ai/openlayer-python/compare/v0.34.0...v0.34.1) (2026-09-28)
 
 
