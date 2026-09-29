@@ -1,17 +1,17 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime
-from typing_extensions import Literal
+from typing_extensions import Literal, TypeAlias
 
 from pydantic import Field as FieldInfo
 
 from ..._models import BaseModel
 
-__all__ = ["APIKeyCreateResponse"]
+__all__ = ["APIKeyListResponse", "APIKeyListResponseItem"]
 
 
-class APIKeyCreateResponse(BaseModel):
+class APIKeyListResponseItem(BaseModel):
     id: str
     """The API key id."""
 
@@ -62,3 +62,6 @@ class APIKeyCreateResponse(BaseModel):
     Only present in the response that creates or rotates the key, and never shown
     again.
     """
+
+
+APIKeyListResponse: TypeAlias = List[APIKeyListResponseItem]

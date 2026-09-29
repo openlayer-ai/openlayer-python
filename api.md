@@ -84,12 +84,23 @@ Methods:
 Types:
 
 ```python
-from openlayer.types.workspaces import APIKeyCreateResponse
+from openlayer.types.workspaces import (
+    APIKeyCreateResponse,
+    APIKeyRetrieveResponse,
+    APIKeyUpdateResponse,
+    APIKeyListResponse,
+    APIKeyRotateResponse,
+)
 ```
 
 Methods:
 
 - <code title="post /workspaces/{workspaceId}/api-keys">client.workspaces.api_keys.<a href="./src/openlayer/resources/workspaces/api_keys.py">create</a>(workspace_id, \*\*<a href="src/openlayer/types/workspaces/api_key_create_params.py">params</a>) -> <a href="./src/openlayer/types/workspaces/api_key_create_response.py">APIKeyCreateResponse</a></code>
+- <code title="get /workspaces/{workspaceId}/api-keys/{apiKeyId}">client.workspaces.api_keys.<a href="./src/openlayer/resources/workspaces/api_keys.py">retrieve</a>(api_key_id, \*, workspace_id) -> <a href="./src/openlayer/types/workspaces/api_key_retrieve_response.py">APIKeyRetrieveResponse</a></code>
+- <code title="put /workspaces/{workspaceId}/api-keys/{apiKeyId}">client.workspaces.api_keys.<a href="./src/openlayer/resources/workspaces/api_keys.py">update</a>(api_key_id, \*, workspace_id, \*\*<a href="src/openlayer/types/workspaces/api_key_update_params.py">params</a>) -> <a href="./src/openlayer/types/workspaces/api_key_update_response.py">APIKeyUpdateResponse</a></code>
+- <code title="get /workspaces/{workspaceId}/api-keys">client.workspaces.api_keys.<a href="./src/openlayer/resources/workspaces/api_keys.py">list</a>(workspace_id) -> <a href="./src/openlayer/types/workspaces/api_key_list_response.py">APIKeyListResponse</a></code>
+- <code title="delete /workspaces/{workspaceId}/api-keys/{apiKeyId}">client.workspaces.api_keys.<a href="./src/openlayer/resources/workspaces/api_keys.py">delete</a>(api_key_id, \*, workspace_id) -> None</code>
+- <code title="post /workspaces/{workspaceId}/api-keys/{apiKeyId}/rotate">client.workspaces.api_keys.<a href="./src/openlayer/resources/workspaces/api_keys.py">rotate</a>(api_key_id, \*, workspace_id, \*\*<a href="src/openlayer/types/workspaces/api_key_rotate_params.py">params</a>) -> <a href="./src/openlayer/types/workspaces/api_key_rotate_response.py">APIKeyRotateResponse</a></code>
 
 # Commits
 

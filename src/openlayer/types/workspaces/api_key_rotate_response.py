@@ -8,10 +8,10 @@ from pydantic import Field as FieldInfo
 
 from ..._models import BaseModel
 
-__all__ = ["APIKeyCreateResponse"]
+__all__ = ["APIKeyRotateResponse"]
 
 
-class APIKeyCreateResponse(BaseModel):
+class APIKeyRotateResponse(BaseModel):
     id: str
     """The API key id."""
 
