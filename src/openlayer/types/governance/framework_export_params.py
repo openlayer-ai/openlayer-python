@@ -12,4 +12,8 @@ __all__ = ["FrameworkExportParams"]
 
 class FrameworkExportParams(TypedDict, total=False):
     project_id: Annotated[Optional[str], PropertyInfo(alias="projectId")]
-    """Scope the export to this project. It must belong to the framework."""
+    """Scope the export to this project.
+
+    It must belong to the framework. Omit it for the workspace-wide view across
+    every project in the framework, including workspace-scoped rules.
+    """

@@ -64,7 +64,7 @@ class CommitsResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> CommitRetrieveResponse:
         """
-        Retrieve a project version (commit) by its id.
+        Retrieve a project commit.
 
         Args:
           extra_headers: Send extra headers
@@ -122,7 +122,7 @@ class AsyncCommitsResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> CommitRetrieveResponse:
         """
-        Retrieve a project version (commit) by its id.
+        Retrieve a project commit.
 
         Args:
           extra_headers: Send extra headers

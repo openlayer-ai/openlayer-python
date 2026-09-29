@@ -28,23 +28,29 @@ class ItemSectionRule(BaseModel):
     scope: Literal["project", "workspace"]
     """
     Whether the rule is evaluated once for the whole workspace, or once per project
-    the rule's frameworks apply to.
+    the rule's frameworks apply to. Must be `project` for platform rules. Fixed once
+    the rule is created.
     """
 
     type: Literal["platform", "evidence"]
     """
     `platform` rules are evaluated automatically from the state of your Openlayer
-    workspace. `evidence` rules are satisfied by attaching evidence.
+    workspace. `evidence` rules are satisfied by attaching evidence. Fixed once the
+    rule is created.
     """
 
     automation_params: Optional[Dict[str, object]] = FieldInfo(alias="automationParams", default=None)
-    """Configuration for the platform check, when the automation takes parameters."""
+    """Configuration for the platform check, when the automation takes parameters.
+
+    Omit or `null` for evidence rules. Fixed once the rule is created.
+    """
 
     automation_type: Optional[str] = FieldInfo(alias="automationType", default=None)
     """
     Which workspace signal a platform rule checks, for example
-    `monitoring_mode_enabled`, `test_setup`, or `project_owner_set`. `null` for
-    evidence rules.
+    `monitoring_mode_enabled`, `test_setup`, or `project_owner_set`. Set it for
+    platform rules; omit or `null` for evidence rules. Fixed once the rule is
+    created.
     """
 
     date_created: Optional[datetime] = FieldInfo(alias="dateCreated", default=None)
@@ -62,16 +68,25 @@ class ItemSectionRule(BaseModel):
     evidence_type: Optional[Literal["document", "text", "url", "categoryValue"]] = FieldInfo(
         alias="evidenceType", default=None
     )
-    """The kind of evidence that satisfies the rule. `null` for platform rules."""
+    """The kind of evidence that satisfies the rule.
+
+    Set it for evidence rules; omit or `null` for platform rules. Fixed once the
+    rule is created.
+    """
 
     immutable: Optional[bool] = None
-    """Whether the rule is managed by Openlayer and cannot be edited."""
+    """Whether the rule is managed by Openlayer.
+
+    These rules can't be renamed or deleted; set `deactivated` to exclude one from
+    compliance instead.
+    """
 
     renewal_cadence_days: Optional[int] = FieldInfo(alias="renewalCadenceDays", default=None)
     """How often evidence must be renewed, in days.
 
     Once evidence is older than this, the rule result becomes `due_soon` and then
-    `failing`.
+    `failing`. The window restarts whenever evidence is attached. Omit or `null` for
+    platform rules.
     """
 
 
@@ -85,23 +100,29 @@ class ItemSectionSubsectionRule(BaseModel):
     scope: Literal["project", "workspace"]
     """
     Whether the rule is evaluated once for the whole workspace, or once per project
-    the rule's frameworks apply to.
+    the rule's frameworks apply to. Must be `project` for platform rules. Fixed once
+    the rule is created.
     """
 
     type: Literal["platform", "evidence"]
     """
     `platform` rules are evaluated automatically from the state of your Openlayer
-    workspace. `evidence` rules are satisfied by attaching evidence.
+    workspace. `evidence` rules are satisfied by attaching evidence. Fixed once the
+    rule is created.
     """
 
     automation_params: Optional[Dict[str, object]] = FieldInfo(alias="automationParams", default=None)
-    """Configuration for the platform check, when the automation takes parameters."""
+    """Configuration for the platform check, when the automation takes parameters.
+
+    Omit or `null` for evidence rules. Fixed once the rule is created.
+    """
 
     automation_type: Optional[str] = FieldInfo(alias="automationType", default=None)
     """
     Which workspace signal a platform rule checks, for example
-    `monitoring_mode_enabled`, `test_setup`, or `project_owner_set`. `null` for
-    evidence rules.
+    `monitoring_mode_enabled`, `test_setup`, or `project_owner_set`. Set it for
+    platform rules; omit or `null` for evidence rules. Fixed once the rule is
+    created.
     """
 
     date_created: Optional[datetime] = FieldInfo(alias="dateCreated", default=None)
@@ -119,20 +140,33 @@ class ItemSectionSubsectionRule(BaseModel):
     evidence_type: Optional[Literal["document", "text", "url", "categoryValue"]] = FieldInfo(
         alias="evidenceType", default=None
     )
-    """The kind of evidence that satisfies the rule. `null` for platform rules."""
+    """The kind of evidence that satisfies the rule.
+
+    Set it for evidence rules; omit or `null` for platform rules. Fixed once the
+    rule is created.
+    """
 
     immutable: Optional[bool] = None
-    """Whether the rule is managed by Openlayer and cannot be edited."""
+    """Whether the rule is managed by Openlayer.
+
+    These rules can't be renamed or deleted; set `deactivated` to exclude one from
+    compliance instead.
+    """
 
     renewal_cadence_days: Optional[int] = FieldInfo(alias="renewalCadenceDays", default=None)
     """How often evidence must be renewed, in days.
 
     Once evidence is older than this, the rule result becomes `due_soon` and then
-    `failing`.
+    `failing`. The window restarts whenever evidence is attached. Omit or `null` for
+    platform rules.
     """
 
 
 class ItemSectionSubsection(BaseModel):
+    """
+    A subsection usually states one individual requirement of the standard, so it is where you see which rules cover a specific clause.
+    """
+
     id: str
     """The subsection id."""
 
@@ -191,6 +225,10 @@ class ItemSection(BaseModel):
 
 
 class Item(BaseModel):
+    """
+    The text of the standard a framework is based on, split into sections and subsections, with the rules mapped to each part.
+    """
+
     id: str
     """The document id."""
 

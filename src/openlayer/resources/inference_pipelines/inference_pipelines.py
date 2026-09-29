@@ -101,7 +101,7 @@ class InferencePipelinesResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> InferencePipelineRetrieveResponse:
         """
-        Retrieve inference pipeline.
+        Retrieve an inference pipeline.
 
         Args:
           expand: Expand specific nested objects.
@@ -147,7 +147,7 @@ class InferencePipelinesResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> InferencePipelineUpdateResponse:
         """
-        Update inference pipeline.
+        Update an inference pipeline.
 
         Args:
           description: The inference pipeline description.
@@ -197,7 +197,7 @@ class InferencePipelinesResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> None:
         """
-        Delete inference pipeline.
+        Delete an inference pipeline.
 
         Args:
           extra_headers: Send extra headers
@@ -244,12 +244,7 @@ class InferencePipelinesResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> InferencePipelineRetrieveSessionsResponse:
         """
-        Get aggregated session data for an inference pipeline with pagination and
-        metadata.
-
-        Returns a list of sessions for the inference pipeline, including activity
-        statistics such as record counts, token usage, cost, latency, and the first and
-        last records.
+        List the sessions in an inference pipeline, with their stats.
 
         Args:
           asc: Whether or not to sort on the sortColumn in ascending order.
@@ -329,11 +324,7 @@ class InferencePipelinesResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> InferencePipelineRetrieveUsersResponse:
         """
-        Get aggregated user data for an inference pipeline with pagination and metadata.
-
-        Returns a list of users who have interacted with the inference pipeline,
-        including their activity statistics such as session counts, record counts, token
-        usage, and costs.
+        List the users of an inference pipeline, with their stats.
 
         Args:
           asc: Whether or not to sort on the sortColumn in ascending order.
@@ -436,7 +427,7 @@ class AsyncInferencePipelinesResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> InferencePipelineRetrieveResponse:
         """
-        Retrieve inference pipeline.
+        Retrieve an inference pipeline.
 
         Args:
           expand: Expand specific nested objects.
@@ -482,7 +473,7 @@ class AsyncInferencePipelinesResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> InferencePipelineUpdateResponse:
         """
-        Update inference pipeline.
+        Update an inference pipeline.
 
         Args:
           description: The inference pipeline description.
@@ -532,7 +523,7 @@ class AsyncInferencePipelinesResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> None:
         """
-        Delete inference pipeline.
+        Delete an inference pipeline.
 
         Args:
           extra_headers: Send extra headers
@@ -579,12 +570,7 @@ class AsyncInferencePipelinesResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> InferencePipelineRetrieveSessionsResponse:
         """
-        Get aggregated session data for an inference pipeline with pagination and
-        metadata.
-
-        Returns a list of sessions for the inference pipeline, including activity
-        statistics such as record counts, token usage, cost, latency, and the first and
-        last records.
+        List the sessions in an inference pipeline, with their stats.
 
         Args:
           asc: Whether or not to sort on the sortColumn in ascending order.
@@ -664,11 +650,7 @@ class AsyncInferencePipelinesResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> InferencePipelineRetrieveUsersResponse:
         """
-        Get aggregated user data for an inference pipeline with pagination and metadata.
-
-        Returns a list of users who have interacted with the inference pipeline,
-        including their activity statistics such as session counts, record counts, token
-        usage, and costs.
+        List the users of an inference pipeline, with their stats.
 
         Args:
           asc: Whether or not to sort on the sortColumn in ascending order.

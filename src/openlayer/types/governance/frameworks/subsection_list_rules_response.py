@@ -58,17 +58,27 @@ class ItemResultBlockedBy(BaseModel):
     id: Optional[str] = None
 
     status: Optional[Literal["running", "passing", "failing", "skipped", "error", "pending", "due_soon"]] = None
-    """The compliance status of the rule for this entity."""
+    """The compliance status of the rule for this entity.
+
+    Computed by Openlayer and can't be set directly.
+    """
 
 
 class ItemResultBlocking(BaseModel):
     id: Optional[str] = None
 
     status: Optional[Literal["running", "passing", "failing", "skipped", "error", "pending", "due_soon"]] = None
-    """The compliance status of the rule for this entity."""
+    """The compliance status of the rule for this entity.
+
+    Computed by Openlayer and can't be set directly.
+    """
 
 
 class ItemResult(BaseModel):
+    """
+    The compliance status of one rule for one entity: a project for project-scoped rules, or the workspace for workspace-scoped rules.
+    """
+
     id: str
     """The rule result id."""
 
@@ -79,13 +89,19 @@ class ItemResult(BaseModel):
     """The last update date."""
 
     deactivated: bool
-    """Whether this result is excluded from compliance calculations."""
+    """Whether this result is excluded from compliance calculations.
+
+    Excludes just this result, without deactivating the rule everywhere.
+    """
 
     rule_id: str = FieldInfo(alias="ruleId")
     """The rule this result belongs to."""
 
     status: Literal["running", "passing", "failing", "skipped", "error", "pending", "due_soon"]
-    """The compliance status of the rule for this entity."""
+    """The compliance status of the rule for this entity.
+
+    Computed by Openlayer and can't be set directly.
+    """
 
     workspace_id: str = FieldInfo(alias="workspaceId")
     """The id of the workspace the rule result belongs to."""
@@ -112,7 +128,7 @@ class ItemResult(BaseModel):
     """When the evidence must be renewed. Evidence rules with a renewal cadence only."""
 
     deactivated_reason: Optional[str] = FieldInfo(alias="deactivatedReason", default=None)
-    """Why the result was excluded."""
+    """Why the result was excluded. Required when setting `deactivated` to `true`."""
 
     project_id: Optional[str] = FieldInfo(alias="projectId", default=None)
     """The project this result was evaluated for. `null` for workspace-scoped rules."""
@@ -132,6 +148,10 @@ class ItemResultsSummary(BaseModel):
 
 
 class ItemTag(BaseModel):
+    """
+    A label that groups rules across frameworks, for example by team or control family.
+    """
+
     id: str
     """The rule tag id."""
 
@@ -145,7 +165,7 @@ class ItemTag(BaseModel):
     """The last update date."""
 
     immutable: bool
-    """Whether the tag is managed by Openlayer and cannot be edited or deleted."""
+    """Whether the tag is managed by Openlayer. These tags can't be deleted."""
 
     name: str
     """The tag name."""
@@ -158,6 +178,11 @@ class ItemTag(BaseModel):
 
 
 class Item(BaseModel):
+    """A single requirement Openlayer tracks.
+
+    `platform` rules are evaluated automatically from the state of your workspace, and `evidence` rules are satisfied by attaching evidence. A rule can belong to several frameworks, or to none.
+    """
+
     id: str
     """The rule id."""
 
@@ -173,13 +198,15 @@ class Item(BaseModel):
     scope: Literal["project", "workspace"]
     """
     Whether the rule is evaluated once for the whole workspace, or once per project
-    the rule's frameworks apply to.
+    the rule's frameworks apply to. Must be `project` for platform rules. Fixed once
+    the rule is created.
     """
 
     type: Literal["platform", "evidence"]
     """
     `platform` rules are evaluated automatically from the state of your Openlayer
-    workspace. `evidence` rules are satisfied by attaching evidence.
+    workspace. `evidence` rules are satisfied by attaching evidence. Fixed once the
+    rule is created.
     """
 
     workspace_id: str = FieldInfo(alias="workspaceId")
@@ -189,13 +216,17 @@ class Item(BaseModel):
     """The user responsible for satisfying the rule."""
 
     automation_params: Optional[Dict[str, object]] = FieldInfo(alias="automationParams", default=None)
-    """Configuration for the platform check, when the automation takes parameters."""
+    """Configuration for the platform check, when the automation takes parameters.
+
+    Omit or `null` for evidence rules. Fixed once the rule is created.
+    """
 
     automation_type: Optional[str] = FieldInfo(alias="automationType", default=None)
     """
     Which workspace signal a platform rule checks, for example
-    `monitoring_mode_enabled`, `test_setup`, or `project_owner_set`. `null` for
-    evidence rules.
+    `monitoring_mode_enabled`, `test_setup`, or `project_owner_set`. Set it for
+    platform rules; omit or `null` for evidence rules. Fixed once the rule is
+    created.
     """
 
     deactivated: Optional[bool] = None
@@ -207,19 +238,28 @@ class Item(BaseModel):
     evidence_type: Optional[Literal["document", "text", "url", "categoryValue"]] = FieldInfo(
         alias="evidenceType", default=None
     )
-    """The kind of evidence that satisfies the rule. `null` for platform rules."""
+    """The kind of evidence that satisfies the rule.
+
+    Set it for evidence rules; omit or `null` for platform rules. Fixed once the
+    rule is created.
+    """
 
     frameworks: Optional[List[ItemFramework]] = None
     """The frameworks that include this rule."""
 
     immutable: Optional[bool] = None
-    """Whether the rule is managed by Openlayer and cannot be edited."""
+    """Whether the rule is managed by Openlayer.
+
+    These rules can't be renamed or deleted; set `deactivated` to exclude one from
+    compliance instead.
+    """
 
     renewal_cadence_days: Optional[int] = FieldInfo(alias="renewalCadenceDays", default=None)
     """How often evidence must be renewed, in days.
 
     Once evidence is older than this, the rule result becomes `due_soon` and then
-    `failing`.
+    `failing`. The window restarts whenever evidence is attached. Omit or `null` for
+    platform rules.
     """
 
     results: Optional[List[ItemResult]] = None

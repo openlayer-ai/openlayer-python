@@ -65,11 +65,7 @@ class RuleResultsResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> RuleResultRetrieveResponse:
         """
-        Retrieve a rule result by its id.
-
-        Alongside the status, the response carries the evaluation and renewal dates that
-        explain it: `dateLastEvaluated` and `dateOfNextEvaluation` for platform rules,
-        `dateOfLatestEvidence` and `dateOfRenewal` for evidence rules.
+        Retrieve a rule result.
 
         Args:
           extra_headers: Send extra headers
@@ -106,15 +102,8 @@ class RuleResultsResource(SyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> RuleResultUpdateResponse:
-        """Update a rule result.
-
-        Only the fields you send are changed.
-
-        Use this to assign an owner, or to exclude a single result from compliance
-        without deactivating the rule everywhere. `deactivatedReason` is required when
-        setting `deactivated` to `true`.
-
-        A result's `status` is computed by Openlayer and cannot be set directly.
+        """
+        Update a rule result.
 
         Args:
           assignee_id: The user responsible for this result.
@@ -123,9 +112,10 @@ class RuleResultsResource(SyncAPIResource):
 
           blocking: Rule results that this one blocks.
 
-          deactivated: Whether this result is excluded from compliance calculations.
+          deactivated: Whether this result is excluded from compliance calculations. Excludes just this
+              result, without deactivating the rule everywhere.
 
-          deactivated_reason: Why the result was excluded.
+          deactivated_reason: Why the result was excluded. Required when setting `deactivated` to `true`.
 
           extra_headers: Send extra headers
 
@@ -178,12 +168,7 @@ class RuleResultsResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> RuleResultListResponse:
         """
-        List rule results across a workspace.
-
-        A rule result is the compliance status of one rule for one entity: a project for
-        project-scoped rules, or the workspace itself for workspace-scoped rules. This
-        is the endpoint to poll or export when you want your current compliance state,
-        filtered to a framework, a project, or a status.
+        List the rule results in a workspace.
 
         Args:
           enabled_framework_only: Only include items belonging to at least one enabled framework.
@@ -262,16 +247,7 @@ class RuleResultsResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> RuleResultCreateEvidenceResponse:
         """
-        Attach evidence to a rule result, satisfying an evidence rule.
-
-        Send the field that matches the rule's `evidenceType`: `storageUri` for an
-        uploaded document, `text` for a written statement, or `url` for a link.
-
-        For a document, upload the file first with `POST /storage/presigned-url` and
-        send the resulting storage URI as `storageUri`.
-
-        Attaching evidence re-evaluates the rule result. If the rule sets
-        `renewalCadenceDays`, the renewal window restarts from this evidence.
+        Attach evidence to a rule result.
 
         Args:
           description: A description of what the evidence shows.
@@ -279,7 +255,8 @@ class RuleResultsResource(SyncAPIResource):
           name: The evidence name.
 
           storage_uri: Where the uploaded file is stored. Set when the rule's `evidenceType` is
-              `document`.
+              `document`. Upload the file first with `POST /storage/presigned-url` and send
+              the storage URI it returns.
 
           text: The evidence text. Set when the rule's `evidenceType` is `text`.
 
@@ -328,10 +305,6 @@ class RuleResultsResource(SyncAPIResource):
     ) -> RuleResultListEvidenceResponse:
         """
         List the evidence attached to a rule result.
-
-        Which field carries the evidence depends on the rule's `evidenceType`:
-        `storageUri` for uploaded documents, `text` for written statements, and `url`
-        for links.
 
         Args:
           page: The page to return in a paginated query.
@@ -399,11 +372,7 @@ class AsyncRuleResultsResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> RuleResultRetrieveResponse:
         """
-        Retrieve a rule result by its id.
-
-        Alongside the status, the response carries the evaluation and renewal dates that
-        explain it: `dateLastEvaluated` and `dateOfNextEvaluation` for platform rules,
-        `dateOfLatestEvidence` and `dateOfRenewal` for evidence rules.
+        Retrieve a rule result.
 
         Args:
           extra_headers: Send extra headers
@@ -440,15 +409,8 @@ class AsyncRuleResultsResource(AsyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> RuleResultUpdateResponse:
-        """Update a rule result.
-
-        Only the fields you send are changed.
-
-        Use this to assign an owner, or to exclude a single result from compliance
-        without deactivating the rule everywhere. `deactivatedReason` is required when
-        setting `deactivated` to `true`.
-
-        A result's `status` is computed by Openlayer and cannot be set directly.
+        """
+        Update a rule result.
 
         Args:
           assignee_id: The user responsible for this result.
@@ -457,9 +419,10 @@ class AsyncRuleResultsResource(AsyncAPIResource):
 
           blocking: Rule results that this one blocks.
 
-          deactivated: Whether this result is excluded from compliance calculations.
+          deactivated: Whether this result is excluded from compliance calculations. Excludes just this
+              result, without deactivating the rule everywhere.
 
-          deactivated_reason: Why the result was excluded.
+          deactivated_reason: Why the result was excluded. Required when setting `deactivated` to `true`.
 
           extra_headers: Send extra headers
 
@@ -512,12 +475,7 @@ class AsyncRuleResultsResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> RuleResultListResponse:
         """
-        List rule results across a workspace.
-
-        A rule result is the compliance status of one rule for one entity: a project for
-        project-scoped rules, or the workspace itself for workspace-scoped rules. This
-        is the endpoint to poll or export when you want your current compliance state,
-        filtered to a framework, a project, or a status.
+        List the rule results in a workspace.
 
         Args:
           enabled_framework_only: Only include items belonging to at least one enabled framework.
@@ -596,16 +554,7 @@ class AsyncRuleResultsResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> RuleResultCreateEvidenceResponse:
         """
-        Attach evidence to a rule result, satisfying an evidence rule.
-
-        Send the field that matches the rule's `evidenceType`: `storageUri` for an
-        uploaded document, `text` for a written statement, or `url` for a link.
-
-        For a document, upload the file first with `POST /storage/presigned-url` and
-        send the resulting storage URI as `storageUri`.
-
-        Attaching evidence re-evaluates the rule result. If the rule sets
-        `renewalCadenceDays`, the renewal window restarts from this evidence.
+        Attach evidence to a rule result.
 
         Args:
           description: A description of what the evidence shows.
@@ -613,7 +562,8 @@ class AsyncRuleResultsResource(AsyncAPIResource):
           name: The evidence name.
 
           storage_uri: Where the uploaded file is stored. Set when the rule's `evidenceType` is
-              `document`.
+              `document`. Upload the file first with `POST /storage/presigned-url` and send
+              the storage URI it returns.
 
           text: The evidence text. Set when the rule's `evidenceType` is `text`.
 
@@ -662,10 +612,6 @@ class AsyncRuleResultsResource(AsyncAPIResource):
     ) -> RuleResultListEvidenceResponse:
         """
         List the evidence attached to a rule result.
-
-        Which field carries the evidence depends on the rule's `evidenceType`:
-        `storageUri` for uploaded documents, `text` for written statements, and `url`
-        for links.
 
         Args:
           page: The page to return in a paginated query.

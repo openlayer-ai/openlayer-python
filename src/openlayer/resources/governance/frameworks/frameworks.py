@@ -112,14 +112,7 @@ class FrameworksResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> FrameworkCreateResponse:
         """
-        Create a custom governance framework in a workspace.
-
-        Use this to track compliance against an internal policy, or against a standard
-        Openlayer does not ship as a built-in framework. A new framework starts with no
-        rules -- add them from the Openlayer app, or map an existing rule to it.
-
-        A framework is created disabled unless you pass `enabled: true`. While it is
-        disabled its rules are not evaluated and do not count towards compliance.
+        Create a custom framework in a workspace.
 
         Args:
           name: The framework name.
@@ -174,7 +167,7 @@ class FrameworksResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> FrameworkRetrieveResponse:
         """
-        Retrieve a governance framework by its id.
+        Retrieve a framework.
 
         Args:
           extra_headers: Send extra headers
@@ -215,17 +208,7 @@ class FrameworksResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> FrameworkUpdateResponse:
         """
-        Update a governance framework.
-
-        The most common use is activating or deactivating a framework for the workspace
-        by setting `enabled`. Rules of a disabled framework are not evaluated and do not
-        count towards compliance.
-
-        Frameworks that ship with Openlayer report `immutable: true`. For those, only
-        `enabled`, `tags`, and `projectSelector` can be changed -- their name and
-        definition are managed by Openlayer.
-
-        Only the fields you send are changed.
+        Update a framework.
 
         Args:
           avatar: The icon shown for the framework.
@@ -303,12 +286,7 @@ class FrameworksResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> FrameworkListResponse:
         """
-        List the governance frameworks in a workspace.
-
-        A framework is a set of rules -- drawn from a regulation, a standard, or your
-        own internal policy -- that Openlayer tracks compliance against. Use this
-        endpoint to find the framework you want to report on, then read its rules and
-        rule results.
+        List the frameworks in a workspace.
 
         Args:
           asc: Whether to sort in ascending order.
@@ -386,32 +364,12 @@ class FrameworksResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> FrameworkExportResponse:
         """
-        Export a framework's evidence and progress as an audit-ready zip archive.
-
-        The archive holds every evidence file uploaded against the framework's
-        evidence-based rules, a markdown report of the framework's progress and the
-        status of all its rules (broken down by documentation section when the framework
-        has documents), and CSV manifests of rules and evidence with SHA-256 checksums.
-
-        Send `projectId` to export one project's compliance with the framework. Omit it
-        for the workspace-wide view across every project in the framework, including
-        workspace-scoped rules.
-
-        The export runs as a background task, so this returns `202` immediately. To
-        collect the archive:
-
-        1. Poll `GET /background-tasks/{taskId}` with the returned `taskResultId` until
-           `complete` is `true`.
-        2. Read `outputs.storageUri` off that task.
-        3. Exchange it for a download link at
-           `GET /storage/presigned-url?storageUri=<uri>`.
-
-        Rate limited to 2 requests per minute per framework. Asking for an export while
-        an identical one is still queued returns that task rather than starting a second
-        one.
+        Export a framework as an audit-ready zip archive.
 
         Args:
-          project_id: Scope the export to this project. It must belong to the framework.
+          project_id: Scope the export to this project. It must belong to the framework. Omit it for
+              the workspace-wide view across every project in the framework, including
+              workspace-scoped rules.
 
           extra_headers: Send extra headers
 
@@ -460,11 +418,7 @@ class FrameworksResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> FrameworkListProjectRuleStatsResponse:
         """
-        Get a compliance roll-up for a framework, one row per project it applies to.
-
-        Each row counts the project's rule results by status, so you can report on where
-        a framework is complete and where it is not without fetching every individual
-        rule result.
+        List a framework's compliance stats per project.
 
         Args:
           asc: Whether to sort in ascending order.
@@ -521,9 +475,6 @@ class FrameworksResource(SyncAPIResource):
         """
         List the projects a framework applies to.
 
-        Which projects a framework covers is determined by its `projectSelector`. A
-        framework with an empty selector applies to every project in the workspace.
-
         Args:
           page: The page to return in a paginated query.
 
@@ -571,11 +522,7 @@ class FrameworksResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> FrameworkListRulesResponse:
         """
-        List the rules that belong to a framework.
-
-        To read the compliance status of these rules, use
-        [List rule results](/api-reference/rest/governance/list-rule-results) with the
-        `frameworkId` filter, or fetch the results of an individual rule.
+        List the rules in a framework.
 
         Args:
           page: The page to return in a paginated query.
@@ -660,14 +607,7 @@ class AsyncFrameworksResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> FrameworkCreateResponse:
         """
-        Create a custom governance framework in a workspace.
-
-        Use this to track compliance against an internal policy, or against a standard
-        Openlayer does not ship as a built-in framework. A new framework starts with no
-        rules -- add them from the Openlayer app, or map an existing rule to it.
-
-        A framework is created disabled unless you pass `enabled: true`. While it is
-        disabled its rules are not evaluated and do not count towards compliance.
+        Create a custom framework in a workspace.
 
         Args:
           name: The framework name.
@@ -722,7 +662,7 @@ class AsyncFrameworksResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> FrameworkRetrieveResponse:
         """
-        Retrieve a governance framework by its id.
+        Retrieve a framework.
 
         Args:
           extra_headers: Send extra headers
@@ -763,17 +703,7 @@ class AsyncFrameworksResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> FrameworkUpdateResponse:
         """
-        Update a governance framework.
-
-        The most common use is activating or deactivating a framework for the workspace
-        by setting `enabled`. Rules of a disabled framework are not evaluated and do not
-        count towards compliance.
-
-        Frameworks that ship with Openlayer report `immutable: true`. For those, only
-        `enabled`, `tags`, and `projectSelector` can be changed -- their name and
-        definition are managed by Openlayer.
-
-        Only the fields you send are changed.
+        Update a framework.
 
         Args:
           avatar: The icon shown for the framework.
@@ -851,12 +781,7 @@ class AsyncFrameworksResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> FrameworkListResponse:
         """
-        List the governance frameworks in a workspace.
-
-        A framework is a set of rules -- drawn from a regulation, a standard, or your
-        own internal policy -- that Openlayer tracks compliance against. Use this
-        endpoint to find the framework you want to report on, then read its rules and
-        rule results.
+        List the frameworks in a workspace.
 
         Args:
           asc: Whether to sort in ascending order.
@@ -934,32 +859,12 @@ class AsyncFrameworksResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> FrameworkExportResponse:
         """
-        Export a framework's evidence and progress as an audit-ready zip archive.
-
-        The archive holds every evidence file uploaded against the framework's
-        evidence-based rules, a markdown report of the framework's progress and the
-        status of all its rules (broken down by documentation section when the framework
-        has documents), and CSV manifests of rules and evidence with SHA-256 checksums.
-
-        Send `projectId` to export one project's compliance with the framework. Omit it
-        for the workspace-wide view across every project in the framework, including
-        workspace-scoped rules.
-
-        The export runs as a background task, so this returns `202` immediately. To
-        collect the archive:
-
-        1. Poll `GET /background-tasks/{taskId}` with the returned `taskResultId` until
-           `complete` is `true`.
-        2. Read `outputs.storageUri` off that task.
-        3. Exchange it for a download link at
-           `GET /storage/presigned-url?storageUri=<uri>`.
-
-        Rate limited to 2 requests per minute per framework. Asking for an export while
-        an identical one is still queued returns that task rather than starting a second
-        one.
+        Export a framework as an audit-ready zip archive.
 
         Args:
-          project_id: Scope the export to this project. It must belong to the framework.
+          project_id: Scope the export to this project. It must belong to the framework. Omit it for
+              the workspace-wide view across every project in the framework, including
+              workspace-scoped rules.
 
           extra_headers: Send extra headers
 
@@ -1008,11 +913,7 @@ class AsyncFrameworksResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> FrameworkListProjectRuleStatsResponse:
         """
-        Get a compliance roll-up for a framework, one row per project it applies to.
-
-        Each row counts the project's rule results by status, so you can report on where
-        a framework is complete and where it is not without fetching every individual
-        rule result.
+        List a framework's compliance stats per project.
 
         Args:
           asc: Whether to sort in ascending order.
@@ -1069,9 +970,6 @@ class AsyncFrameworksResource(AsyncAPIResource):
         """
         List the projects a framework applies to.
 
-        Which projects a framework covers is determined by its `projectSelector`. A
-        framework with an empty selector applies to every project in the workspace.
-
         Args:
           page: The page to return in a paginated query.
 
@@ -1119,11 +1017,7 @@ class AsyncFrameworksResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> FrameworkListRulesResponse:
         """
-        List the rules that belong to a framework.
-
-        To read the compliance status of these rules, use
-        [List rule results](/api-reference/rest/governance/list-rule-results) with the
-        `frameworkId` filter, or fetch the results of an individual rule.
+        List the rules in a framework.
 
         Args:
           page: The page to return in a paginated query.

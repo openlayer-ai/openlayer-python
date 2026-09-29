@@ -17,7 +17,9 @@ class APIKeyCreateParams(TypedDict, total=False):
 
     `null` means the key never expires. Set when the key is created or rotated, and
     must be in the future. When the request is authenticated with an API key that
-    expires, the result can't be later than that key's expiry.
+    expires, the result can't be later than that key's expiry. On create, omit it to
+    inherit that expiry. On rotate, omit it to keep the current one. It can't be
+    changed with an update; rotate the key instead.
     """
 
     name: Optional[str]

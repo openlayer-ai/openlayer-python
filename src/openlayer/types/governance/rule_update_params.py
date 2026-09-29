@@ -28,7 +28,8 @@ class RuleUpdateParams(TypedDict, total=False):
     """How often evidence must be renewed, in days.
 
     Once evidence is older than this, the rule result becomes `due_soon` and then
-    `failing`.
+    `failing`. The window restarts whenever evidence is attached. Omit or `null` for
+    platform rules.
     """
 
     tag_ids: Annotated[Optional[SequenceNotStr[str]], PropertyInfo(alias="tagIds")]

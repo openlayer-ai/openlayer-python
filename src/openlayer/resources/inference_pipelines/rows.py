@@ -58,7 +58,7 @@ class RowsResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> RowRetrieveResponse:
         """
-        Fetch a single inference pipeline row by inference ID, including OTel steps.
+        Retrieve a row by inference ID, including OTel steps.
 
         Args:
           extra_headers: Send extra headers
@@ -102,7 +102,7 @@ class RowsResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> RowUpdateResponse:
         """
-        Update an inference data point in an inference pipeline.
+        Update a row in an inference pipeline.
 
         Args:
           inference_id: Specify the inference id as a query param.
@@ -163,7 +163,7 @@ class RowsResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> RowListResponse:
         """
-        A list of rows for an inference pipeline.
+        List the rows in an inference pipeline.
 
         Args:
           asc: Whether or not to sort on the sortColumn in ascending order.
@@ -232,10 +232,8 @@ class RowsResource(SyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> None:
-        """Delete a single inference pipeline row by inference ID.
-
-        Only project admins can
-        perform this action.
+        """
+        Delete a row by inference ID.
 
         Args:
           extra_headers: Send extra headers
@@ -299,7 +297,7 @@ class AsyncRowsResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> RowRetrieveResponse:
         """
-        Fetch a single inference pipeline row by inference ID, including OTel steps.
+        Retrieve a row by inference ID, including OTel steps.
 
         Args:
           extra_headers: Send extra headers
@@ -343,7 +341,7 @@ class AsyncRowsResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> RowUpdateResponse:
         """
-        Update an inference data point in an inference pipeline.
+        Update a row in an inference pipeline.
 
         Args:
           inference_id: Specify the inference id as a query param.
@@ -404,7 +402,7 @@ class AsyncRowsResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> RowListResponse:
         """
-        A list of rows for an inference pipeline.
+        List the rows in an inference pipeline.
 
         Args:
           asc: Whether or not to sort on the sortColumn in ascending order.
@@ -473,10 +471,8 @@ class AsyncRowsResource(AsyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> None:
-        """Delete a single inference pipeline row by inference ID.
-
-        Only project admins can
-        perform this action.
+        """
+        Delete a row by inference ID.
 
         Args:
           extra_headers: Send extra headers

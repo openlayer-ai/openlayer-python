@@ -78,7 +78,7 @@ class WorkspacesResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> WorkspaceRetrieveResponse:
         """
-        Retrieve a workspace by its ID.
+        Retrieve a workspace.
 
         Args:
           extra_headers: Send extra headers
@@ -190,7 +190,7 @@ class AsyncWorkspacesResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> WorkspaceRetrieveResponse:
         """
-        Retrieve a workspace by its ID.
+        Retrieve a workspace.
 
         Args:
           extra_headers: Send extra headers

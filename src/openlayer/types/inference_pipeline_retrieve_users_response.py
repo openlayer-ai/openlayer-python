@@ -11,6 +11,10 @@ __all__ = ["InferencePipelineRetrieveUsersResponse", "Item"]
 
 
 class Item(BaseModel):
+    """
+    A user who has interacted with an inference pipeline, with their activity stats: session and record counts, token usage, and cost.
+    """
+
     id: str
     """The unique user identifier"""
 

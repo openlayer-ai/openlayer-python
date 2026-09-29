@@ -18,26 +18,32 @@ class RuleCreateParams(TypedDict, total=False):
     scope: Required[Literal["project", "workspace"]]
     """
     Whether the rule is evaluated once for the whole workspace, or once per project
-    the rule's frameworks apply to.
+    the rule's frameworks apply to. Must be `project` for platform rules. Fixed once
+    the rule is created.
     """
 
     type: Required[Literal["platform", "evidence"]]
     """
     `platform` rules are evaluated automatically from the state of your Openlayer
-    workspace. `evidence` rules are satisfied by attaching evidence.
+    workspace. `evidence` rules are satisfied by attaching evidence. Fixed once the
+    rule is created.
     """
 
     assignee_id: Annotated[Optional[str], PropertyInfo(alias="assigneeId")]
     """The user responsible for satisfying the rule."""
 
     automation_params: Annotated[Optional[Dict[str, object]], PropertyInfo(alias="automationParams")]
-    """Configuration for the platform check, when the automation takes parameters."""
+    """Configuration for the platform check, when the automation takes parameters.
+
+    Omit or `null` for evidence rules. Fixed once the rule is created.
+    """
 
     automation_type: Annotated[Optional[str], PropertyInfo(alias="automationType")]
     """
     Which workspace signal a platform rule checks, for example
-    `monitoring_mode_enabled`, `test_setup`, or `project_owner_set`. `null` for
-    evidence rules.
+    `monitoring_mode_enabled`, `test_setup`, or `project_owner_set`. Set it for
+    platform rules; omit or `null` for evidence rules. Fixed once the rule is
+    created.
     """
 
     deactivated: bool
@@ -49,13 +55,18 @@ class RuleCreateParams(TypedDict, total=False):
     evidence_type: Annotated[
         Optional[Literal["document", "text", "url", "categoryValue"]], PropertyInfo(alias="evidenceType")
     ]
-    """The kind of evidence that satisfies the rule. `null` for platform rules."""
+    """The kind of evidence that satisfies the rule.
+
+    Set it for evidence rules; omit or `null` for platform rules. Fixed once the
+    rule is created.
+    """
 
     renewal_cadence_days: Annotated[Optional[int], PropertyInfo(alias="renewalCadenceDays")]
     """How often evidence must be renewed, in days.
 
     Once evidence is older than this, the rule result becomes `due_soon` and then
-    `failing`.
+    `failing`. The window restarts whenever evidence is attached. Omit or `null` for
+    platform rules.
     """
 
     tag_ids: Annotated[Optional[SequenceNotStr[str]], PropertyInfo(alias="tagIds")]

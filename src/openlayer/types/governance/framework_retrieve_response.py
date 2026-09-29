@@ -130,6 +130,10 @@ class RuleStats(BaseModel):
 
 
 class FrameworkRetrieveResponse(BaseModel):
+    """
+    A set of rules, drawn from a regulation, a standard, or your own internal policy, that Openlayer tracks compliance against. Openlayer ships built-in frameworks, and you can create your own.
+    """
+
     id: str
     """The framework id."""
 
@@ -178,7 +182,11 @@ class FrameworkRetrieveResponse(BaseModel):
     """A link to the external standard or regulation the framework is based on."""
 
     immutable: Optional[bool] = None
-    """Whether the framework definition is managed by Openlayer and cannot be edited."""
+    """Whether the framework definition is managed by Openlayer.
+
+    For these frameworks only `enabled`, `tags`, and `projectSelector` can be
+    changed.
+    """
 
     project_selector: Optional[ProjectSelector] = FieldInfo(alias="projectSelector", default=None)
     """Determines which projects the framework applies to.

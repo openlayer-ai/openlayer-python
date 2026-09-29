@@ -54,7 +54,7 @@ class PresignedURLResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> PresignedURLCreateResponse:
         """
-        Retrieve a presigned url to post storage artifacts.
+        Get a presigned url to upload a file.
 
         Args:
           object_name: The name of the object.
@@ -93,19 +93,11 @@ class PresignedURLResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> PresignedURLRetrieveResponse:
         """
-        Exchange a `storageUri` for a short-lived presigned url you can download the
-        object from.
-
-        Use it to collect anything the platform stored on your behalf -- for example the
-        archive a framework export leaves behind, whose `storageUri` comes back in the
-        background task's `outputs`.
-
-        The workspace is taken from the API key, so there is nothing else to send. The
-        url is only issued for objects your workspace owns, and `404` covers both "no
-        such object" and "not yours".
+        Get a short-lived download url for a stored object.
 
         Args:
-          storage_uri: The object's storage uri.
+          storage_uri: The object's storage uri, for example `outputs.storageUri` from a framework
+              export's background task.
 
           extra_headers: Send extra headers
 
@@ -162,7 +154,7 @@ class AsyncPresignedURLResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> PresignedURLCreateResponse:
         """
-        Retrieve a presigned url to post storage artifacts.
+        Get a presigned url to upload a file.
 
         Args:
           object_name: The name of the object.
@@ -201,19 +193,11 @@ class AsyncPresignedURLResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> PresignedURLRetrieveResponse:
         """
-        Exchange a `storageUri` for a short-lived presigned url you can download the
-        object from.
-
-        Use it to collect anything the platform stored on your behalf -- for example the
-        archive a framework export leaves behind, whose `storageUri` comes back in the
-        background task's `outputs`.
-
-        The workspace is taken from the API key, so there is nothing else to send. The
-        url is only issued for objects your workspace owns, and `404` covers both "no
-        such object" and "not yours".
+        Get a short-lived download url for a stored object.
 
         Args:
-          storage_uri: The object's storage uri.
+          storage_uri: The object's storage uri, for example `outputs.storageUri` from a framework
+              export's background task.
 
           extra_headers: Send extra headers
 

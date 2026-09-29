@@ -11,6 +11,10 @@ __all__ = ["InferencePipelineRetrieveSessionsResponse", "Item"]
 
 
 class Item(BaseModel):
+    """
+    A session in an inference pipeline, with its activity stats: record counts, token usage, cost, latency, and its first and last records.
+    """
+
     id: str
     """The unique session identifier"""
 

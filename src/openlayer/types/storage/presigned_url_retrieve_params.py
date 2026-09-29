@@ -11,4 +11,7 @@ __all__ = ["PresignedURLRetrieveParams"]
 
 class PresignedURLRetrieveParams(TypedDict, total=False):
     storage_uri: Required[Annotated[str, PropertyInfo(alias="storageUri")]]
-    """The object's storage uri."""
+    """
+    The object's storage uri, for example `outputs.storageUri` from a framework
+    export's background task.
+    """
