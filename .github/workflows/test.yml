@@ -62,15 +62,23 @@ jobs:
           grep -E '^(pytest|pytest-asyncio|pytest-xdist|respx|dirty-equals|time-machine)==' requirements-dev.lock > test-tools.txt
           # Resolve as of a day ago: a release still uploading its wheels forces a
           # source build that can fail (SQLAlchemy 2.1.0 did).
-          # google-adk<2: 2.x wraps callback exceptions and fails test_user_exception_propagates_without_chaining.
           uv pip install --exclude-newer "$(date -u -d '1 day ago' +%Y-%m-%dT%H:%M:%SZ)" \
             -e '.[aiohttp]' -r test-tools.txt \
-            openai boto3 claude-agent-sdk 'google-adk<2' google-genai langchain-core wrapt \
+            openai boto3 claude-agent-sdk google-adk google-genai langchain-core wrapt \
             azure-cognitiveservices-speech
 
       # Generated API tests need the mock server and already run in `test`.
       - name: Run integration tests
         run: .venv/bin/pytest --ignore=tests/api_resources
+
+      # google-adk 2.x runs agents as workflow nodes and moved the patch targets,
+      # so the ADK tracer also has to keep working on 1.x. Runs even when the
+      # step above fails, and resolves as of a day ago for the same reason.
+      - name: Run Google ADK tests on google-adk 1.x
+        if: ${{ !cancelled() }}
+        run: |
+          uv pip install --exclude-newer "$(date -u -d '1 day ago' +%Y-%m-%dT%H:%M:%SZ)" 'google-adk<2'
+          .venv/bin/pytest tests/test_google_adk_handoffs.py tests/test_google_adk_integration.py tests/test_google_genai_adk_dedup.py
 
   # The one check to require in rulesets, so jobs can be added or renamed freely.
   # The integrations job stays advisory until its optional dependencies are pinned.

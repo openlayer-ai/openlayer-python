@@ -4,6 +4,13 @@ This module provides instrumentation for Google's Agent Development Kit (ADK),
 capturing agent execution, LLM calls, tool calls, callbacks, and other
 ADK-specific events.
 
+Each ``Runner.run_async`` call (one user turn) becomes a single trace rooted at an
+``Agent turn`` step. Every agent that runs during the turn is nested under it,
+including agents reached through a transfer, which ADK 2.x runs in separate
+asyncio tasks. Each transfer ADK makes is recorded as a Handoff step, and the
+turn records ``starting_agent``, ``final_agent``, ``handoff_count`` and
+``handoff_path`` as trace metadata.
+
 The following callbacks are traced as Function Call steps:
 - before_agent_callback: Called before the agent starts processing a request
 - after_agent_callback: Called after the agent finishes processing a request
@@ -18,11 +25,15 @@ Reference:
 
 import asyncio
 import contextvars
+import importlib
 import json
 import logging
+import math
 import sys
 import time
-from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
+import weakref
+from contextlib import asynccontextmanager
+from typing import Any, AsyncGenerator, AsyncIterator, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 try:
     import wrapt
@@ -45,9 +56,14 @@ try:
 except ImportError:
     HAVE_GOOGLE_ADK = False
 
-from ..tracing import tracer, steps, enums
+from ..tracing import tracer, steps, enums, traces
+from ..tracing.tracer import _rag_context as _tracer_rag_context
 from ..tracing.tracer import _current_step as _tracer_current_step
+from ..tracing.tracer import _current_trace as _tracer_current_trace
 from ..tracing.tracer import _safe_reset_contextvar
+from .google_genai_tracer import PROVIDER as GEMINI_PROVIDER
+from .google_genai_tracer import _extract_usage as _extract_gemini_usage
+from .google_genai_tracer import _normalize_model_name
 
 logger = logging.getLogger(__name__)
 
@@ -68,11 +84,85 @@ _current_user_query: contextvars.ContextVar[Optional[str]] = contextvars.Context
     "google_adk_user_query", default=None
 )
 
-# Context variable to track the parent step for agent transfers
-# When set, sub-agent steps will be created as children of this step instead of the current step
-_agent_transfer_parent_step: contextvars.ContextVar[Optional[Any]] = contextvars.ContextVar(
-    "google_adk_transfer_parent", default=None
-)
+# ADK's built-in agent-transfer tool. Handoffs are read from what ADK actually did
+# (``event.actions.transfer_to_agent``), which also covers custom tools and
+# callbacks that set that action. A call to this tool that did transfer is shown
+# as the Handoff step only, not also as a Tool step.
+ADK_TRANSFER_TOOL_NAME = "transfer_to_agent"
+
+# Where ADK defines the function that runs a single tool call. It moved twice in
+# google-adk 2.x; the first one that exists is patched.
+_TOOL_CALL_TARGETS: List[Tuple[str, str]] = [
+    ("google.adk.flows.llm_flows.tools._caller", "_call_tool_async"),  # google-adk >= 2.10
+    ("google.adk.flows.llm_flows._tool_caller", "_call_tool_async"),  # google-adk 2.9
+    ("google.adk.flows.llm_flows.functions", "__call_tool_async"),  # google-adk 1.x to 2.8
+]
+
+
+class _AdkTurn:
+    """State for one ``Runner.run_async`` call (one user turn).
+
+    ADK 2.x runs every agent node in its own asyncio task, so a ContextVar set
+    inside one agent is invisible to the next. The ContextVar only holds a
+    reference to this object, set before ADK creates any task, and every task
+    mutates the same instance.
+
+    A Runner started from inside a turn (AgentTool runs its agent that way) gets
+    a nested scope: its handoffs are kept apart from the outer turn's, and it
+    writes nothing to the turn step or the trace.
+    """
+
+    def __init__(
+        self,
+        step: Any,
+        trace: Optional[traces.Trace],
+        user_query: Optional[str] = None,
+        nested: bool = False,
+    ) -> None:
+        self.step = step
+        self.trace = trace
+        self.user_query = user_query
+        self.nested = nested
+        # First agent that emitted content. On a resume, ADK 1.x re-enters the
+        # root agent, which silently hands over to the paused sub-agent, so the
+        # first agent entered (the fallback) isn't necessarily who started.
+        self.starting_agent: Optional[str] = None
+        self.first_entered_agent: Optional[str] = None
+        self.final_agent: Optional[str] = None
+        self.handoffs: List[Tuple[str, str]] = []
+        # (agent, parent step) for agents a transfer handed control to that
+        # haven't started yet. The parent is the transferring agent's parent, so
+        # a transfer inside a workflow agent or an AgentTool stays nested there.
+        self.pending_transfers: List[Tuple[str, Any]] = []
+        self.root_attributes_set = False
+        # This turn's position in _trace_turn_summaries[trace].
+        self.trace_slot: Optional[int] = None
+
+    def path(self) -> List[str]:
+        starting_agent = self.starting_agent or self.first_entered_agent
+        path = [starting_agent] if starting_agent else []
+        path.extend(to_agent for _, to_agent in self.handoffs)
+        return path
+
+    def summary(self) -> Dict[str, Any]:
+        path = self.path()
+        return {
+            "starting_agent": path[0] if path else None,
+            # With no content event at all (e.g. an empty model reply), whoever
+            # last received control is the best guess.
+            "final_agent": self.final_agent or (path[-1] if path else None),
+            "handoff_count": len(self.handoffs),
+            "handoff_path": path,
+        }
+
+
+_current_turn: contextvars.ContextVar[Optional[_AdkTurn]] = contextvars.ContextVar("google_adk_turn", default=None)
+
+# Turn summaries per trace, in order. A trace can hold several turns when the
+# Runner is called more than once inside one @trace function; its columns then
+# describe all of them. Values hold no reference to the trace, so entries go
+# away with it.
+_trace_turn_summaries: "weakref.WeakKeyDictionary[traces.Trace, List[Dict[str, Any]]]" = weakref.WeakKeyDictionary()
 
 # Context variable to store the current LLM step for updating with response data
 _current_llm_step: contextvars.ContextVar[Optional[Any]] = contextvars.ContextVar("google_adk_llm_step", default=None)
@@ -87,6 +177,30 @@ _current_llm_request: contextvars.ContextVar[Optional[Any]] = contextvars.Contex
 _current_agent_step: contextvars.ContextVar[Optional[Any]] = contextvars.ContextVar(
     "google_adk_agent_step", default=None
 )
+
+# Everything a turn sets in the context. The Runner wrapper swaps these in for
+# each step of ADK's generator and back out before handing an event to the
+# caller, so the caller's context never holds turn state while the turn is
+# suspended (see _runner_run_async_wrapper).
+_TURN_CONTEXT_VARS: Tuple["contextvars.ContextVar[Any]", ...] = (
+    _tracer_current_step,
+    _tracer_current_trace,
+    _tracer_rag_context,
+    _current_turn,
+    _current_agent_step,
+    _current_llm_step,
+    _current_llm_request,
+    _current_user_query,
+)
+
+
+def _snapshot_context() -> List[Any]:
+    return [var.get(None) for var in _TURN_CONTEXT_VARS]
+
+
+def _apply_context(values: List[Any]) -> None:
+    for var, value in zip(_TURN_CONTEXT_VARS, values):
+        var.set(value)
 
 
 # Configuration for whether to disable ADK's built-in OpenTelemetry tracing
@@ -196,9 +310,17 @@ def trace_google_adk(disable_adk_otel: bool = False) -> None:
             Set to True only if you want Openlayer as your sole observability tool.
 
     Note:
-        Agent transfers (handoffs via ``transfer_to_agent``) do not create
-        separate tool steps to avoid excessive nesting. Sub-agent executions
-        are nested directly under the LLM call that initiates the transfer.
+        Each ``Runner.run_async`` call is one trace, rooted at an
+        ``Agent turn: <app_name>`` step. Every transfer ADK makes (through
+        ``transfer_to_agent``, or a tool or callback that sets
+        ``actions.transfer_to_agent``) becomes a ``Handoff: <from> → <to>``
+        step, and the agent that receives control follows the transferring
+        agent at the same level. ``starting_agent``, ``final_agent``,
+        ``handoff_count`` and ``handoff_path`` are added to the trace metadata,
+        so they can be used as columns in tests; when one ``@trace`` function
+        runs several turns, they cover all of them. Agents used as tools
+        (``AgentTool``) and workflow agents (``SequentialAgent``,
+        ``ParallelAgent``, ``LoopAgent``) are nested agent steps, not handoffs.
 
     Requirements:
         Make sure to install Google ADK with: ``pip install google-adk``
@@ -290,6 +412,93 @@ def _sort_steps_by_time(step: Any, recursive: bool = True) -> None:
             _sort_steps_by_time(child_step, recursive=True)
 
 
+@asynccontextmanager
+async def _aclosing(agen: AsyncGenerator[Any, None]) -> AsyncIterator[AsyncGenerator[Any, None]]:
+    """Close a wrapped ADK generator when our wrapper closes.
+
+    Re-yielding without this leaves ADK's generator to the event loop's
+    finalizer, which closes it from another task. ADK's OpenTelemetry spans then
+    fail to detach their context and log "Failed to detach context".
+    ``contextlib.aclosing`` needs Python 3.10.
+    """
+    try:
+        yield agen
+    finally:
+        await agen.aclose()
+
+
+def _content_text(content: Any) -> Optional[str]:
+    """Join the text parts of a ``types.Content``; None when it has no text.
+
+    Thought parts (the model's reasoning) are left out, as ADK does for
+    ``output_key`` and AgentTool results. Gemini can answer STOP with a Content
+    whose ``parts`` is None.
+    """
+    parts = getattr(content, "parts", None) or []
+    text = "\n".join(
+        part.text for part in parts if getattr(part, "text", None) and not getattr(part, "thought", None)
+    ).strip()
+    return text or None
+
+
+def _reply_text(content: Any) -> Optional[str]:
+    """The answer a final response carries, for agent and turn outputs.
+
+    A final response can carry only a tool result: on google-adk 1.x an AgentTool
+    with ``skip_summarization`` ends the turn on its function response.
+    """
+    text = _content_text(content)
+    if text:
+        return text
+    for part in getattr(content, "parts", None) or []:
+        function_response = getattr(part, "function_response", None)
+        response = getattr(function_response, "response", None)
+        if response is None:
+            continue
+        if isinstance(response, dict) and list(response) == ["result"]:
+            response = response["result"]
+        return response if isinstance(response, str) else json.dumps(response, default=str)
+    return None
+
+
+def _event_transfer_target(event: Any) -> Optional[str]:
+    """The agent ADK hands control to after this event, if any."""
+    target = getattr(getattr(event, "actions", None), "transfer_to_agent", None)
+    return str(target) if target else None
+
+
+def _response_json(response: Any) -> str:
+    """Serialize an LLM response for ``raw_output``.
+
+    ``inline_data`` bytes (generated images or audio) are left out, as on the
+    request side. mode="json" base64-encodes the remaining bytes, such as the
+    thought signatures on function calls.
+    """
+    content = getattr(response, "content", None)
+    parts = getattr(content, "parts", None)
+    if content is not None and parts and any(getattr(getattr(p, "inline_data", None), "data", None) for p in parts):
+        parts = [
+            part.model_copy(update={"inline_data": part.inline_data.model_copy(update={"data": None})})
+            if getattr(getattr(part, "inline_data", None), "data", None)
+            else part
+            for part in parts
+        ]
+        response = response.model_copy(update={"content": content.model_copy(update={"parts": parts})})
+    return json.dumps(response.model_dump(mode="json", exclude_none=True))
+
+
+def _llm_provider(model_name: Optional[str]) -> str:
+    """Return the cost-lookup provider slug for a model name.
+
+    ``BaseLlmFlow._call_llm_async`` is model-agnostic (LiteLlm and
+    Claude-on-Vertex agents reach it too), so only Gemini models get the
+    "gemini" slug the backend prices with. Other models keep the old label.
+    """
+    if _normalize_model_name(model_name).startswith("gemini"):
+        return GEMINI_PROVIDER
+    return "Google"
+
+
 def _record_step_error(step: Any, error: BaseException) -> None:
     """Record exception info on a step's metadata without overwriting output."""
     if step is None:
@@ -370,12 +579,11 @@ def _extract_messages_from_contents(contents: list) -> Dict[str, Any]:
     return {"messages": messages, "prompt": messages}
 
 
-def _extract_llm_attributes(llm_request_dict: Dict[str, Any], llm_response: Optional[Any] = None) -> Dict[str, Any]:
-    """Extract LLM attributes from request and response.
+def _extract_llm_attributes(llm_request_dict: Dict[str, Any]) -> Dict[str, Any]:
+    """Extract LLM attributes from a request.
 
     Args:
         llm_request_dict: Dictionary containing the LLM request data.
-        llm_response: Optional LLM response object.
 
     Returns:
         Dictionary containing extracted attributes for the step.
@@ -425,42 +633,6 @@ def _extract_llm_attributes(llm_request_dict: Dict[str, Any], llm_response: Opti
         else:
             # No system instruction, use messages as-is
             attributes["inputs"] = messages_data
-
-    # Extract response data
-    if llm_response:
-        try:
-            response_dict = json.loads(llm_response) if isinstance(llm_response, str) else llm_response
-
-            # Extract tokens from usage_metadata
-            if "usage_metadata" in response_dict:
-                usage = response_dict["usage_metadata"]
-                attributes["prompt_tokens"] = usage.get("prompt_token_count", 0)
-                attributes["completion_tokens"] = usage.get("candidates_token_count", 0)
-                attributes["total_tokens"] = usage.get("total_token_count", 0)
-
-            # Extract response content
-            if "content" in response_dict and "parts" in response_dict["content"]:
-                parts = response_dict["content"]["parts"]
-                text_parts = []
-
-                for part in parts:
-                    if "text" in part and part.get("text") is not None:
-                        text_parts.append(str(part["text"]))
-
-                if text_parts:
-                    attributes["output"] = "\n".join(text_parts)
-
-            # Store raw response
-            if isinstance(llm_response, str):
-                attributes["raw_output"] = llm_response
-            else:
-                try:
-                    attributes["raw_output"] = json.dumps(response_dict)
-                except (TypeError, ValueError):
-                    pass
-
-        except Exception as e:
-            logger.debug(f"Failed to extract response attributes: {e}")
 
     return attributes
 
@@ -569,6 +741,251 @@ def extract_agent_attributes(instance: Any) -> Dict[str, Any]:
 # ----------------------------- Wrapper Functions ---------------------------- #
 
 
+def _runner_run_async_wrapper() -> Any:
+    """Wrapper for Runner.run_async to make one trace per user turn.
+
+    The turn step is set as the current step before ADK creates any asyncio
+    task, so the tasks ADK 2.x spawns for each agent inherit it. It also holds
+    the turn-level output and the handoff summary.
+
+    The turn's context (current step and trace, the turn itself, ...) is only in
+    place while ADK's generator runs. Before each event goes to the caller, the
+    caller's own values are put back, and the turn's are put back in before
+    asking ADK for the next event. Otherwise a caller that stops iterating early
+    (``break`` on the final response) would keep the turn as its current step:
+    asyncio closes an abandoned generator from another task, so the turn could
+    never be unset, and every later turn or trace in that task would be nested
+    into it. Swapping on every step also makes the turn independent of which
+    task resumes it, e.g. one ``ensure_future(agen.__anext__())`` per event.
+
+    Returns:
+        Decorator function that wraps the original method.
+    """
+
+    def actual_decorator(wrapped: Any, instance: Any, args: tuple, kwargs: dict) -> Any:
+        async def new_function():
+            # A Runner started inside a turn (AgentTool runs its agent through
+            # one) is part of a tool call in the current turn, not a new turn.
+            if _current_turn.get() is not None:
+                async for event in _run_nested_runner(wrapped, args, kwargs):
+                    yield event
+                return
+
+            app_name = getattr(instance, "app_name", None) or "google_adk"
+            metadata: Dict[str, Any] = {"agent_type": "google_adk", "app_name": app_name}
+            if kwargs.get("session_id"):
+                metadata["session_id"] = kwargs["session_id"]
+            if kwargs.get("user_id"):
+                metadata["user_id"] = kwargs["user_id"]
+            user_query = _content_text(kwargs.get("new_message"))
+
+            caller = _snapshot_context()
+            try:
+                with tracer.create_step(
+                    name=f"Agent turn: {app_name}",
+                    step_type=enums.StepType.AGENT,
+                    inputs={"user_query": user_query or "No query provided"},
+                    metadata=metadata,
+                ) as step:
+                    turn = _AdkTurn(step, tracer.get_current_trace(), user_query=user_query)
+                    _current_turn.set(turn)
+                    inner = _snapshot_context()
+                    _apply_context(caller)
+
+                    async_gen = wrapped(*args, **kwargs)
+                    error: Optional[BaseException] = None
+                    try:
+                        while True:
+                            caller = _snapshot_context()
+                            _apply_context(inner)
+                            try:
+                                event = await async_gen.__anext__()
+                            except StopAsyncIteration:
+                                break
+                            finally:
+                                inner = _snapshot_context()
+                                _apply_context(caller)
+                            _record_turn_event(turn, event)
+                            yield event
+                    except BaseException as e:
+                        # GeneratorExit when the caller stops early; anything
+                        # else is a failure ADK or the caller raised.
+                        error = e
+                        raise
+                    finally:
+                        caller = _snapshot_context()
+                        _apply_context(inner)
+                        try:
+                            await async_gen.aclose()
+                        finally:
+                            _finish_turn(turn, error)
+                    # Leaving create_step with the turn's context in place
+                    # completes the trace (and publishes it when the turn is the
+                    # root step), whichever task or context this runs in.
+            finally:
+                _apply_context(caller)
+
+        return new_function()
+
+    return actual_decorator
+
+
+async def _run_nested_runner(wrapped: Any, args: tuple, kwargs: dict) -> AsyncGenerator[Any, None]:
+    """Run a Runner started inside a turn, with its own handoff scope.
+
+    Its agents nest under the current step (the AgentTool's Tool step), and
+    transfers between them aren't the outer turn's handoffs.
+    """
+    scope = _AdkTurn(
+        tracer.get_current_step(),
+        None,
+        user_query=_content_text(kwargs.get("new_message")),
+        nested=True,
+    )
+    token = _current_turn.set(scope)
+    try:
+        async with _aclosing(wrapped(*args, **kwargs)) as async_gen:
+            async for event in async_gen:
+                yield event
+    finally:
+        _safe_reset_contextvar(_current_turn, token)
+
+
+def _record_turn_event(turn: _AdkTurn, event: Any) -> None:
+    """Update the turn step from an event the Runner yields.
+
+    The summary and end time are refreshed on every event: a caller that returns
+    on the final response (e.g. a @trace handler) can publish its trace before
+    the turn's generator is closed.
+    """
+    try:
+        invocation_id = getattr(event, "invocation_id", None)
+        if invocation_id and "invocation_id" not in turn.step.metadata:
+            turn.step.metadata["invocation_id"] = invocation_id
+
+        author = getattr(event, "author", None)
+        if author and author != "user":
+            content = getattr(event, "content", None)
+            target = _event_transfer_target(event)
+            if target:
+                if turn.starting_agent is None:
+                    turn.starting_agent = author
+                # Control moved on, even if the target never says anything.
+                turn.final_agent = target
+            elif getattr(content, "parts", None):
+                # Events with no parts are skipped: ADK emits empty closing events
+                # from every agent on the way out (e.g. on resume), which don't
+                # say who answered.
+                if turn.starting_agent is None:
+                    turn.starting_agent = author
+                turn.final_agent = author
+                is_final = getattr(event, "is_final_response", None)
+                if callable(is_final) and is_final():
+                    text = _reply_text(content)
+                    if text:
+                        turn.step.output = text
+        _update_turn_step(turn)
+    except Exception:  # pragma: no cover - defensive: never break the user's loop
+        logger.debug("Failed to record a Google ADK turn event", exc_info=True)
+
+
+def _update_turn_step(turn: _AdkTurn) -> None:
+    """Write the handoff summary to the turn step and the trace's columns."""
+    summary = turn.summary()
+    step_summary = {**summary, "handoff_path": " > ".join(summary["handoff_path"])}
+    turn.step.metadata.update(step_summary)
+    now = time.time()
+    turn.step.end_time = now
+    turn.step.latency = (now - turn.step.start_time) * 1000
+
+    # The turn step's metadata only becomes columns when it is the root step;
+    # the trace metadata also covers turns run inside a user's @trace function.
+    trace = turn.trace
+    if trace is None:
+        return
+    summaries = _trace_turn_summaries.setdefault(trace, [])
+    if turn.trace_slot is None:
+        turn.trace_slot = len(summaries)
+        summaries.append(summary)
+    else:
+        summaries[turn.trace_slot] = summary
+    # Assigned directly: Trace.update_metadata skips None values, which would
+    # keep a previous turn's value next to this one's.
+    if trace.metadata is None:
+        trace.metadata = {}
+    trace.metadata.update(_combine_turn_summaries(summaries))
+
+
+def _combine_turn_summaries(summaries: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Columns for a trace that holds one or more turns, in order."""
+    path: List[str] = []
+    for summary in summaries:
+        for agent in summary["handoff_path"]:
+            if not path or path[-1] != agent:
+                path.append(agent)
+    starting_agents = [s["starting_agent"] for s in summaries if s["starting_agent"]]
+    final_agents = [s["final_agent"] for s in summaries if s["final_agent"]]
+    return {
+        "starting_agent": starting_agents[0] if starting_agents else None,
+        "final_agent": final_agents[-1] if final_agents else None,
+        "handoff_count": sum(s["handoff_count"] for s in summaries),
+        "handoff_path": " > ".join(path),
+    }
+
+
+def _finish_turn(turn: _AdkTurn, error: Optional[BaseException]) -> None:
+    """Close the turn step: output, error and the final summary."""
+    try:
+        if error is None or isinstance(error, GeneratorExit):
+            if not turn.step.output:
+                turn.step.output = "Agent execution completed"
+        else:
+            # Failed or cancelled: record why, and leave the output unset so the
+            # row doesn't look like a completed turn.
+            _record_step_error(turn.step, error)
+        _update_turn_step(turn)
+        _sort_steps_by_time(turn.step, recursive=True)
+    except Exception:  # pragma: no cover - defensive: never break unwinding
+        logger.debug("Failed to finish a Google ADK turn", exc_info=True)
+
+
+def _record_handoff(
+    turn: Optional[_AdkTurn],
+    agent_step: Any,
+    parent_step: Any,
+    from_agent: str,
+    to_agent: str,
+    event: Any,
+) -> None:
+    """Record a transfer ADK made: a Handoff step under the transferring agent.
+
+    Called for the event the transferring agent authors with
+    ``actions.transfer_to_agent`` set, which is what ADK acts on. It covers the
+    built-in ``transfer_to_agent`` tool, custom tools and callbacks that set the
+    action, and several transfer calls in one reply (ADK keeps the last one).
+    """
+    metadata: Dict[str, Any] = {"tool_system": "google_adk"}
+    invocation_id = getattr(event, "invocation_id", None)
+    if invocation_id:
+        metadata["invocation_id"] = invocation_id
+    handoff = steps.step_factory(
+        step_type=enums.StepType.HANDOFF,
+        name=f"Handoff: {from_agent} → {to_agent}",
+        inputs={"agent_name": to_agent},
+        output={"transferred_to": to_agent},
+        metadata=metadata,
+    )
+    handoff.start_time = handoff.end_time = time.time()
+    handoff.latency = 0
+    handoff.from_component = from_agent
+    handoff.to_component = to_agent
+    agent_step.add_nested_step(handoff)
+
+    if turn is not None:
+        turn.handoffs.append((from_agent, to_agent))
+        turn.pending_transfers.append((to_agent, parent_step))
+
+
 def _base_agent_run_async_wrapper() -> Any:
     """Wrapper for BaseAgent.run_async to create agent execution steps.
 
@@ -588,8 +1005,20 @@ def _base_agent_run_async_wrapper() -> Any:
             # Wrap agent callbacks for tracing (if not already wrapped)
             _wrap_agent_callbacks(instance)
 
-            # Check if this is a sub-agent being called via transfer
-            transfer_parent = _agent_transfer_parent_step.get()
+            # An agent that a transfer handed control to is nested under the
+            # transferring agent's parent, not under whatever step is current
+            # (on ADK 1.x that's still inside the transferring agent's step, on
+            # 2.x it's wherever ADK's scheduler task was created).
+            turn = _current_turn.get()
+            transfer_parent = None
+            if turn is not None:
+                if turn.first_entered_agent is None:
+                    turn.first_entered_agent = agent_name
+                for index, (pending_agent, pending_parent) in enumerate(turn.pending_transfers):
+                    if pending_agent == agent_name:
+                        del turn.pending_transfers[index]
+                        transfer_parent = pending_parent
+                        break
 
             # Reset the context variable for this agent execution (only for root agents)
             if transfer_parent is None:
@@ -629,135 +1058,153 @@ def _base_agent_run_async_wrapper() -> Any:
             # Extract agent attributes
             agent_attrs = extract_agent_attributes(instance)
 
-            # Placeholder for user query - will be updated by LLM wrapper
-            inputs = {**agent_attrs, "user_query": "Processing..."}
+            # The first agent of a turn describes it, as the root agent step did
+            # before turns had their own step: its attributes are the turn's
+            # input columns.
+            if turn is not None and not turn.nested and not turn.root_attributes_set:
+                turn.root_attributes_set = True
+                turn.step.inputs = {**agent_attrs, "user_query": turn.step.inputs.get("user_query")}
+                if has_callbacks:
+                    turn.step.metadata["callbacks"] = has_callbacks
 
-            # If we're in a transfer, create the step as a child of the transfer parent
-            # Otherwise, use normal context (child of current step)
+            # Every agent in a turn answers the message the Runner was given. The
+            # LLM wrapper's last user message is only a fallback: on ADK 2.x a
+            # transferred agent's is ADK's "For context: ..." transcript.
+            turn_query = turn.user_query if turn is not None else None
+            inputs = {**agent_attrs, "user_query": turn_query or "Processing..."}
+
+            # The parent this agent's step is created under, which is also where
+            # an agent it transfers to goes.
+            parent_step = transfer_parent if transfer_parent is not None else tracer.get_current_step()
+
             transfer_token = None
             if transfer_parent is not None:
-                logger.debug(f"Creating sub-agent step as sibling: {agent_name}")
-                # Temporarily set current step to transfer parent so new step becomes its child
+                logger.debug(f"Creating transferred agent step under its transferring agent's parent: {agent_name}")
                 transfer_token = _tracer_current_step.set(transfer_parent)
-                # Clear the transfer parent so nested steps work normally
-                _agent_transfer_parent_step.set(None)
 
-            step_cm = tracer.create_step(
-                name=f"Agent: {agent_name}", step_type=enums.StepType.AGENT, inputs=inputs, metadata=metadata
-            )
+            try:
+                with tracer.create_step(
+                    name=f"Agent: {agent_name}", step_type=enums.StepType.AGENT, inputs=inputs, metadata=metadata
+                ) as step:
+                    # Store the agent step so callbacks and tool calls can use it as
+                    # parent. This keeps them siblings of LLM calls, not children.
+                    agent_step_token = _current_agent_step.set(step)
 
-            # Use the step as a context manager and capture the actual step object
-            # Note: The step is created when entering the with block with the correct parent
-            with step_cm as step:
-                # Store the agent step so callbacks can use it as parent
-                # This ensures callbacks are siblings of LLM calls, not children
-                _current_agent_step.set(step)
+                    user_query_updated = turn_query is not None
+                    transferred = False
+                    failed = False
+                    try:
+                        async with _aclosing(wrapped(*args, **kwargs)) as async_gen:
+                            async for event in async_gen:
+                                # Update user_query as soon as it's available from LLM wrapper
+                                # This ensures it's captured even if generator is abandoned early
+                                if not user_query_updated:
+                                    captured_query = _current_user_query.get()
+                                    if captured_query:
+                                        step.inputs["user_query"] = captured_query
+                                        user_query_updated = True
 
-                try:
-                    # Execute the agent
-                    async_gen = wrapped(*args, **kwargs)
-                    final_response = None
-                    user_query_updated = False
+                                author = getattr(event, "author", None)
+                                target = _event_transfer_target(event)
+                                if target and author == agent_name:
+                                    _record_handoff(turn, step, parent_step, agent_name, target, event)
+                                    transferred = True
+                                elif hasattr(event, "is_final_response") and event.is_final_response():
+                                    # On ADK 1.x the agents this one transferred to
+                                    # run inside it and their replies pass through
+                                    # here; they aren't this agent's output. Replies
+                                    # from its own sub-agents before any transfer
+                                    # are (workflow and custom agents).
+                                    if turn is None or not transferred or author == agent_name:
+                                        final_response = _reply_text(getattr(event, "content", None))
+                                        if final_response:
+                                            step.output = final_response
 
-                    async for event in async_gen:
-                        # Update user_query as soon as it's available from LLM wrapper
-                        # This ensures it's captured even if generator is abandoned early
+                                yield event
+
+                    except BaseException as e:
+                        # GeneratorExit is ADK (or the caller) closing the
+                        # generator early, which ADK 2.x does after a transfer.
+                        if not isinstance(e, GeneratorExit):
+                            failed = True
+                            _record_step_error(step, e)
+                            logger.debug("Agent execution raised; propagating: %s", e)
+                        raise
+                    finally:
+                        # Fallbacks live here because ADK 2.x closes an agent's
+                        # generator early (e.g. after a transfer), which skips any
+                        # code after the loop.
                         if not user_query_updated:
                             captured_query = _current_user_query.get()
-                            if captured_query:
-                                step.inputs["user_query"] = captured_query
-                                user_query_updated = True
+                            step.inputs["user_query"] = captured_query or "No query provided"
+                        if not step.output and not failed:
+                            step.output = "Agent execution completed"
 
-                        # Extract final response from events
-                        if hasattr(event, "is_final_response") and event.is_final_response():
-                            if hasattr(event, "content") and event.content:
-                                try:
-                                    final_response = event.content.parts[0].text.strip()
-                                    # Update step output IMMEDIATELY when captured
-                                    # This ensures it's set even if generator is abandoned
-                                    if final_response:
-                                        step.output = final_response
-                                except (AttributeError, IndexError):
-                                    final_response = str(event.content)
-                                    if final_response:
-                                        step.output = final_response
+                        # Sort all nested steps recursively by start_time to ensure chronological order
+                        # This fixes the issue where callbacks appear after LLM calls/tools
+                        # even though they executed before/after them
+                        _sort_steps_by_time(step, recursive=True)
 
-                        yield event
-
-                    # Fallback: Update user_query if not already set
-                    if not user_query_updated:
-                        captured_query = _current_user_query.get()
-                        if captured_query:
-                            step.inputs["user_query"] = captured_query
-                        else:
-                            step.inputs["user_query"] = "No query provided"
-
-                    # Fallback: Set default output if none was captured
-                    if not step.output:
-                        step.output = "Agent execution completed"
-
-                except Exception as e:
-                    _record_step_error(step, e)
-                    logger.debug("Agent execution raised; propagating: %s", e)
-                    raise
-                finally:
-                    # Sort all nested steps recursively by start_time to ensure chronological order
-                    # This fixes the issue where callbacks appear after LLM calls/tools
-                    # even though they executed before/after them
-                    _sort_steps_by_time(step, recursive=True)
-                    logger.debug(f"Sorted nested steps by start_time (recursive)")
-
-                    # Clear the agent step context
-                    _current_agent_step.set(None)
-
-            # Restore the current step context if we changed it for transfer
-            # This must be done AFTER the with block exits
-            _safe_reset_contextvar(_tracer_current_step, transfer_token)
+                        # Restore the enclosing agent step (None for a root agent)
+                        _safe_reset_contextvar(_current_agent_step, agent_step_token)
+            finally:
+                # Restore the current step context if we changed it for transfer.
+                # This must be done AFTER the with block exits.
+                _safe_reset_contextvar(_tracer_current_step, transfer_token)
 
         return new_function()
 
     return actual_decorator
 
 
-def _extract_usage_from_response(response: Any) -> Dict[str, int]:
+def _extract_usage_from_response(response: Any) -> Dict[str, Any]:
     """Extract token usage from an LLM response object.
 
     Args:
         response: The LLM response object (can be various types).
 
+    Thinking tokens (``thoughts_token_count``) are counted as completion tokens,
+    because Gemini bills them as output. Same accounting as the Gen AI tracer.
+    Adapters for other APIs (LiteLlm, ApigeeLlm's chat-completions mode) already
+    include reasoning tokens in ``candidates_token_count``; the totals show it,
+    and then they aren't added again.
+
     Returns:
-        Dictionary with prompt_tokens, completion_tokens, total_tokens.
+        Dictionary with prompt_tokens, completion_tokens, total_tokens, and
+        "breakdown" (the raw token split, for step metadata).
     """
-    usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    usage: Dict[str, Any] = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "breakdown": {}}
 
     try:
-        # Check if response has usage_metadata attribute directly
         if hasattr(response, "usage_metadata"):
             usage_metadata = response.usage_metadata
-            if usage_metadata:
-                usage["prompt_tokens"] = getattr(usage_metadata, "prompt_token_count", 0) or 0
-                usage["completion_tokens"] = getattr(usage_metadata, "candidates_token_count", 0) or 0
-                usage["total_tokens"] = getattr(usage_metadata, "total_token_count", 0) or 0
-
-        # Check for dict-based response
         elif isinstance(response, dict):
-            if "usage_metadata" in response:
-                um = response["usage_metadata"]
-                usage["prompt_tokens"] = um.get("prompt_token_count", 0) or 0
-                usage["completion_tokens"] = um.get("candidates_token_count", 0) or 0
-                usage["total_tokens"] = um.get("total_token_count", 0) or 0
-
-        # Try to get from model_dump if available (Pydantic model)
+            usage_metadata = response.get("usage_metadata")
         elif hasattr(response, "model_dump"):
-            try:
-                resp_dict = response.model_dump()
-                if "usage_metadata" in resp_dict:
-                    um = resp_dict["usage_metadata"]
-                    usage["prompt_tokens"] = um.get("prompt_token_count", 0) or 0
-                    usage["completion_tokens"] = um.get("candidates_token_count", 0) or 0
-                    usage["total_tokens"] = um.get("total_token_count", 0) or 0
-            except Exception:
-                pass
+            usage_metadata = response.model_dump().get("usage_metadata")
+        else:
+            usage_metadata = None
+
+        if isinstance(usage_metadata, dict):
+            from google.genai import types
+
+            usage_metadata = types.GenerateContentResponseUsageMetadata.model_validate(usage_metadata)
+
+        if usage_metadata:
+            prompt_tokens, completion_tokens, total_tokens, breakdown = _extract_gemini_usage(usage_metadata)
+            candidates_tokens = getattr(usage_metadata, "candidates_token_count", None) or 0
+            tool_use_tokens = getattr(usage_metadata, "tool_use_prompt_token_count", None) or 0
+            reported_total = getattr(usage_metadata, "total_token_count", None)
+            if (
+                completion_tokens > candidates_tokens
+                and isinstance(reported_total, int)
+                and prompt_tokens + candidates_tokens + tool_use_tokens >= reported_total
+            ):
+                completion_tokens = candidates_tokens
+            usage["prompt_tokens"] = prompt_tokens
+            usage["completion_tokens"] = completion_tokens
+            usage["total_tokens"] = total_tokens
+            usage["breakdown"] = breakdown
     except Exception as e:
         logger.debug(f"Failed to extract usage metadata: {e}")
 
@@ -870,7 +1317,7 @@ def _base_llm_flow_call_llm_async_wrapper() -> Any:
             inputs = {}
             model_parameters = {}
             if llm_request_dict:
-                attrs = _extract_llm_attributes(llm_request_dict, None)
+                attrs = _extract_llm_attributes(llm_request_dict)
                 if "inputs" in attrs:
                     inputs = attrs["inputs"]
                 if "model_parameters" in attrs:
@@ -896,16 +1343,11 @@ def _base_llm_flow_call_llm_async_wrapper() -> Any:
                 inputs=inputs,
                 metadata=metadata,
             ) as step:
-                # Set ChatCompletionStep attributes
-                step.model = model_name
-                # NOTE: deliberately NOT the "gemini" cost slug used by the Gemini
-                # tracers. This wrapper is model-agnostic — BaseLlmFlow._call_llm_async
-                # resolves the LLM via __get_llm() and calls generate_content_async on
-                # whatever it gets, so LiteLlm and Claude-on-Vertex agents reach here
-                # too. Hardcoding "gemini" would pair it with e.g. a claude-* model and
-                # miss the cost lookup entirely. Fixing this properly means deriving the
-                # slug per-model; tracked separately.
-                step.provider = "Google"
+                # Set ChatCompletionStep attributes. The backend prices by an exact
+                # (provider, model) match, so Gemini models get the "gemini" slug
+                # and a bare model name (no Vertex resource path).
+                step.provider = _llm_provider(model_name)
+                step.model = _normalize_model_name(model_name) if step.provider == GEMINI_PROVIDER else model_name
                 step.model_parameters = model_parameters
 
                 # Store step in context for later updates (e.g., by callbacks)
@@ -913,14 +1355,12 @@ def _base_llm_flow_call_llm_async_wrapper() -> Any:
 
                 try:
                     # Execute LLM call
-                    async_gen = wrapped(*args, **kwargs)
-                    collected_responses = []
                     last_response = None
 
-                    async for item in async_gen:
-                        collected_responses.append(item)
-                        last_response = item
-                        yield item
+                    async with _aclosing(wrapped(*args, **kwargs)) as async_gen:
+                        async for item in async_gen:
+                            last_response = item
+                            yield item
 
                     # Extract usage metadata from the last response
                     if last_response is not None:
@@ -929,6 +1369,7 @@ def _base_llm_flow_call_llm_async_wrapper() -> Any:
                             step.prompt_tokens = usage["prompt_tokens"]
                             step.completion_tokens = usage["completion_tokens"]
                             step.tokens = usage["total_tokens"]
+                            step.metadata.update(usage["breakdown"])
                             logger.debug(
                                 f"Captured token usage: prompt={usage['prompt_tokens']}, "
                                 f"completion={usage['completion_tokens']}, "
@@ -943,7 +1384,7 @@ def _base_llm_flow_call_llm_async_wrapper() -> Any:
                         # Store raw response for debugging
                         try:
                             if hasattr(last_response, "model_dump"):
-                                step.raw_output = json.dumps(last_response.model_dump(exclude_none=True))
+                                step.raw_output = _response_json(last_response)
                             elif isinstance(last_response, dict):
                                 step.raw_output = json.dumps(last_response)
                         except Exception:
@@ -967,7 +1408,11 @@ def _base_llm_flow_call_llm_async_wrapper() -> Any:
 
 
 def _call_tool_async_wrapper() -> Any:
-    """Wrapper for __call_tool_async to create tool execution steps.
+    """Wrapper for ADK's tool-call function to create tool steps.
+
+    Tool steps are nested under the calling agent's step, as siblings of its LLM
+    calls. Handoffs are recorded from ADK's events instead (see
+    ``_record_handoff``).
 
     Returns:
         Decorator function that wraps the original method.
@@ -982,35 +1427,6 @@ def _call_tool_async_wrapper() -> Any:
 
             tool_name = getattr(tool, "name", "unknown_tool")
             tool_description = getattr(tool, "description", None)
-
-            # Check if this is an agent transfer (handoff)
-            is_agent_transfer = tool_name == "transfer_to_agent" or (
-                tool_description and "transfer" in tool_description.lower()
-            )
-
-            # For agent transfers, don't create a step - let the agent step handle it
-            # But set the transfer parent so the sub-agent becomes a sibling of the LLM call
-            if is_agent_transfer:
-                logger.debug(f"Handling agent transfer: {tool_name}")
-
-                # Get the current step's parent (should be the LLM call)
-                # We want the sub-agent to be a sibling of the LLM call, not a child
-                # So we need to get the grandparent (the main agent step)
-                current_step = tracer.get_current_step()
-                if current_step and hasattr(current_step, "parent_step") and current_step.parent_step:
-                    # Set the LLM call's parent as the transfer parent
-                    _agent_transfer_parent_step.set(current_step.parent_step)
-                    logger.debug(
-                        f"Set transfer parent to: {current_step.parent_step.name if hasattr(current_step.parent_step, 'name') else 'unknown'}"
-                    )
-
-                try:
-                    # Execute tool without creating a step
-                    result = await wrapped(*args, **kwargs)
-                    return result
-                finally:
-                    # Clear the transfer parent after execution
-                    _agent_transfer_parent_step.set(None)
 
             # Build metadata with session info from tool_context
             metadata = {"tool_system": "google_adk"}
@@ -1031,33 +1447,53 @@ def _call_tool_async_wrapper() -> Any:
                         if hasattr(inv_ctx.session, "user_id"):
                             metadata["user_id"] = inv_ctx.session.user_id
 
-            # Use tracer.create_step context manager
-            with tracer.create_step(
-                name=f"Tool: {tool_name}", step_type=enums.StepType.TOOL, inputs=tool_args, metadata=metadata
-            ) as step:
-                # Set ToolStep attributes
-                step.function_name = tool_name
-                step.arguments = tool_args
+            # Nest under the agent step rather than the LLM call that requested
+            # the tool. The platform doesn't store usage for an LLM step that has
+            # child steps.
+            parent_token = None
+            agent_step = _current_agent_step.get()
+            if agent_step is not None:
+                parent_token = _tracer_current_step.set(agent_step)
 
-                try:
-                    # Execute tool
-                    result = await wrapped(*args, **kwargs)
+            try:
+                # Use tracer.create_step context manager
+                with tracer.create_step(
+                    name=f"Tool: {tool_name}", step_type=enums.StepType.TOOL, inputs=tool_args, metadata=metadata
+                ) as step:
+                    # Set ToolStep attributes
+                    step.function_name = tool_name
+                    step.arguments = tool_args
 
-                    # Set output
-                    if isinstance(result, dict):
-                        step.output = result
-                    else:
-                        step.output = str(result)
+                    try:
+                        # Execute tool
+                        result = await wrapped(*args, **kwargs)
 
-                    return result
+                        # Set output
+                        if isinstance(result, dict):
+                            step.output = result
+                        else:
+                            step.output = str(result)
 
-                except Exception as e:
-                    _record_step_error(step, e)
-                    logger.debug("Tool execution raised; propagating: %s", e)
-                    raise
-                finally:
-                    # Sort nested steps by start_time for correct chronological order
-                    _sort_steps_by_time(step, recursive=True)
+                    except Exception as e:
+                        _record_step_error(step, e)
+                        logger.debug("Tool execution raised; propagating: %s", e)
+                        raise
+                    finally:
+                        # Sort nested steps by start_time for correct chronological order
+                        _sort_steps_by_time(step, recursive=True)
+            finally:
+                _safe_reset_contextvar(_tracer_current_step, parent_token)
+
+            # A transfer_to_agent call that did transfer is shown by the Handoff
+            # step the transferring agent records from ADK's event, so its Tool
+            # step is dropped. A call that failed (e.g. no agent_name) stays.
+            if tool_name == ADK_TRANSFER_TOOL_NAME and getattr(
+                getattr(tool_context, "actions", None), "transfer_to_agent", None
+            ):
+                parent = agent_step if agent_step is not None else tracer.get_current_step()
+                if parent is not None and step in parent.steps:
+                    parent.steps.remove(step)
+            return result
 
         return new_function()
 
@@ -1090,6 +1526,7 @@ def _finalize_model_response_event_wrapper() -> Any:
                     current_step.prompt_tokens = usage["prompt_tokens"]
                     current_step.completion_tokens = usage["completion_tokens"]
                     current_step.tokens = usage["total_tokens"]
+                    current_step.metadata.update(usage["breakdown"])
 
                 # Extract and update output if not already set
                 if not current_step.output:
@@ -1166,7 +1603,7 @@ def _extract_callback_inputs(callback_type: str, args: tuple, kwargs: dict) -> D
             # Extract usage from response
             usage = _extract_usage_from_response(llm_response)
             if usage["total_tokens"] > 0:
-                inputs["usage"] = usage
+                inputs["usage"] = {key: value for key, value in usage.items() if key != "breakdown"}
             # Extract output text
             output_text = _extract_output_from_response(llm_response)
             if output_text:
@@ -1223,12 +1660,11 @@ def _create_callback_wrapper(callback_name: str, callback_type: str) -> Callable
     This creates a wrapper that traces callback execution as a Function Call step.
 
     Callback hierarchy and timing:
-    - Model callbacks (before_model, after_model) are placed at the Agent level
-      as siblings of LLM calls
-    - Tool callbacks (before_tool, after_tool) are placed at the LLM level
-      as siblings of Tool steps
-    - "before_*" callbacks have their start_time adjusted to appear before
-      their associated operation when sorted
+    - All callbacks except the agent ones are placed at the Agent level, as
+      siblings of LLM calls and Tool steps
+    - before_model has its start_time moved just before the LLM call, because
+      ADK invokes it after the LLM step has started. Tool callbacks already
+      run before and after the tool step.
 
     Supported callback types:
     - before_agent: Called before the agent starts processing
@@ -1248,15 +1684,12 @@ def _create_callback_wrapper(callback_name: str, callback_type: str) -> Callable
     Returns:
         A wrapper function that traces the callback.
     """
-    # Determine the parent step for this callback:
-    # - Model callbacks (before_model, after_model) → Agent step (siblings of LLM calls)
-    # - Tool callbacks (before_tool, after_tool) → LLM step (siblings of Tool steps)
-    use_agent_parent = callback_type in ("before_model", "after_model")
-    use_llm_parent = callback_type in ("before_tool", "after_tool")
+    # Model and tool callbacks → Agent step (siblings of LLM calls and Tool steps)
+    use_agent_parent = callback_type in ("before_model", "after_model", "before_tool", "after_tool")
 
-    # "before_*" callbacks need their start_time adjusted to appear before
-    # their associated operation (since they're actually called after the operation starts)
-    is_before_callback = callback_type.startswith("before_")
+    # before_model runs after the LLM step has started, so its start_time is
+    # moved just before the LLM call's.
+    is_before_callback = callback_type == "before_model"
 
     def wrapper(original_callback: Callable) -> Callable:
         """Wrap the original callback with tracing."""
@@ -1275,18 +1708,11 @@ def _create_callback_wrapper(callback_name: str, callback_type: str) -> Callable
                 reference_step = None
 
                 if use_agent_parent:
-                    # Model callbacks → Agent step (siblings of LLM calls)
                     agent_step = _current_agent_step.get()
                     if agent_step is not None:
                         saved_token = _tracer_current_step.set(agent_step)
                     # Reference for timing is the current LLM step
                     reference_step = _current_llm_step.get()
-                elif use_llm_parent:
-                    # Tool callbacks → LLM step (siblings of Tool steps)
-                    llm_step = _current_llm_step.get()
-                    if llm_step is not None:
-                        saved_token = _tracer_current_step.set(llm_step)
-                        reference_step = llm_step
 
                 try:
                     # Create a step for the callback
@@ -1296,13 +1722,14 @@ def _create_callback_wrapper(callback_name: str, callback_type: str) -> Callable
                         inputs=inputs,
                         metadata={"callback_type": callback_type, "is_callback": True},
                     ) as step:
-                        # Adjust start_time for "before_*" callbacks to appear before
-                        # their associated operation when sorted by time
+                        # Move before_model just ahead of its LLM call when sorted
+                        # by time. The smallest possible step keeps it after
+                        # everything that really started earlier (e.g. the
+                        # previous tool's after_tool callback).
                         if is_before_callback and reference_step is not None:
                             ref_start = getattr(reference_step, "start_time", None)
                             if ref_start is not None:
-                                # Set start_time to be 1ms before the reference operation
-                                step.start_time = ref_start - 0.001
+                                step.start_time = math.nextafter(ref_start, -math.inf)
 
                         try:
                             result = await original_callback(*args, **kwargs)
@@ -1344,18 +1771,11 @@ def _create_callback_wrapper(callback_name: str, callback_type: str) -> Callable
                 reference_step = None
 
                 if use_agent_parent:
-                    # Model callbacks → Agent step (siblings of LLM calls)
                     agent_step = _current_agent_step.get()
                     if agent_step is not None:
                         saved_token = _tracer_current_step.set(agent_step)
                     # Reference for timing is the current LLM step
                     reference_step = _current_llm_step.get()
-                elif use_llm_parent:
-                    # Tool callbacks → LLM step (siblings of Tool steps)
-                    llm_step = _current_llm_step.get()
-                    if llm_step is not None:
-                        saved_token = _tracer_current_step.set(llm_step)
-                        reference_step = llm_step
 
                 try:
                     # Create a step for the callback
@@ -1365,13 +1785,14 @@ def _create_callback_wrapper(callback_name: str, callback_type: str) -> Callable
                         inputs=inputs,
                         metadata={"callback_type": callback_type, "is_callback": True},
                     ) as step:
-                        # Adjust start_time for "before_*" callbacks to appear before
-                        # their associated operation when sorted by time
+                        # Move before_model just ahead of its LLM call when sorted
+                        # by time. The smallest possible step keeps it after
+                        # everything that really started earlier (e.g. the
+                        # previous tool's after_tool callback).
                         if is_before_callback and reference_step is not None:
                             ref_start = getattr(reference_step, "start_time", None)
                             if ref_start is not None:
-                                # Set start_time to be 1ms before the reference operation
-                                step.start_time = ref_start - 0.001
+                                step.start_time = math.nextafter(ref_start, -math.inf)
 
                         try:
                             result = original_callback(*args, **kwargs)
@@ -1527,11 +1948,43 @@ def _patch_module_function(module_name: str, function_name: str, wrapper_functio
         logger.warning(f"Could not wrap {module_name}.{function_name}: {e}")
 
 
+def _patch_tool_execution() -> None:
+    """Patch the function ADK runs each tool call through.
+
+    It moved in google-adk 2.9 and 2.10 (see ``_TOOL_CALL_TARGETS``).
+    ``functions.py`` re-exports the moved function, but ADK calls it from the
+    module that defines it, so only that module can be patched. If it moves
+    again, the re-export's ``__module__`` still names the defining module.
+    """
+    for module_name, function_name in _TOOL_CALL_TARGETS:
+        try:
+            module = importlib.import_module(module_name)
+        except ImportError:
+            continue
+        if hasattr(module, function_name):
+            _patch_module_function(module_name, function_name, _call_tool_async_wrapper)
+            return
+    try:
+        functions = importlib.import_module("google.adk.flows.llm_flows.functions")
+    except ImportError:
+        functions = None
+    reexported = getattr(functions, "_call_tool_async", None)
+    defining_module = getattr(reexported, "__module__", None)
+    if defining_module and hasattr(sys.modules.get(defining_module), "_call_tool_async"):
+        _patch_module_function(defining_module, "_call_tool_async", _call_tool_async_wrapper)
+        return
+    logger.warning(
+        "Could not find Google ADK's tool-call function (tried %s); tool calls and handoffs won't be traced.",
+        ", ".join(f"{module}.{function}" for module, function in _TOOL_CALL_TARGETS),
+    )
+
+
 def _patch_google_adk() -> None:
     """Apply all patches to Google ADK modules.
 
     This function:
     - Optionally disables ADK's built-in OpenTelemetry tracing (if configured)
+    - Patches the runner (Runner.run_async), one trace per user turn
     - Patches agent execution (run_async)
     - Patches LLM calls (_call_llm_async)
     - Patches LLM response finalization
@@ -1590,6 +2043,9 @@ def _patch_google_adk() -> None:
             "Telemetry will be sent to both Google Cloud (if configured) and Openlayer."
         )
 
+    # Patch the runner (one trace per user turn)
+    _patch("google.adk.runners", "Runner", "run_async", _runner_run_async_wrapper)
+
     # Patch agent execution
     _patch("google.adk.agents.base_agent", "BaseAgent", "run_async", _base_agent_run_async_wrapper)
 
@@ -1609,8 +2065,8 @@ def _patch_google_adk() -> None:
         _finalize_model_response_event_wrapper,
     )
 
-    # Patch tool execution
-    _patch_module_function("google.adk.flows.llm_flows.functions", "__call_tool_async", _call_tool_async_wrapper)
+    # Patch tool execution (including transfer_to_agent handoffs)
+    _patch_tool_execution()
 
     _google_adk_patched = True
 
