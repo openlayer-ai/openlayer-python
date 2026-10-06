@@ -10,7 +10,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Features
 
-* **OPEN-12864:** record Google ADK agent handoffs and support google-adk 2.x ([da36f4e](https://github.com/openlayer-ai/openlayer-python/commit/da36f4e39058002bc4534190a0c931445cd7d249))
 * **OPEN-12864:** record Google ADK agent handoffs and support google-adk 2.x ([a8a6775](https://github.com/openlayer-ai/openlayer-python/commit/a8a6775334a036144d01f92287acc5a7db8df848))
 
 ## [0.35.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.34.1...v0.35.0) (2026-09-29)
