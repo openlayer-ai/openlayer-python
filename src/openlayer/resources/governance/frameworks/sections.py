@@ -62,11 +62,7 @@ class SectionsResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> SectionListRulesResponse:
         """
-        List the rules mapped to a section of a framework document.
-
-        Pass `includeSubsectionRules=true` to also return the rules mapped to the
-        section's subsections, which is how you get every rule covering a requirement
-        and everything under it.
+        List the rules mapped to a document section.
 
         Args:
           include_results: Whether to include each rule's results inline, in a `results` array.
@@ -159,11 +155,7 @@ class AsyncSectionsResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> SectionListRulesResponse:
         """
-        List the rules mapped to a section of a framework document.
-
-        Pass `includeSubsectionRules=true` to also return the rules mapped to the
-        section's subsections, which is how you get every rule covering a requirement
-        and everything under it.
+        List the rules mapped to a document section.
 
         Args:
           include_results: Whether to include each rule's results inline, in a `results` array.

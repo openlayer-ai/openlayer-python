@@ -20,7 +20,8 @@ class RuleResultCreateEvidenceParams(TypedDict, total=False):
     storage_uri: Annotated[Optional[str], PropertyInfo(alias="storageUri")]
     """Where the uploaded file is stored.
 
-    Set when the rule's `evidenceType` is `document`.
+    Set when the rule's `evidenceType` is `document`. Upload the file first with
+    `POST /storage/presigned-url` and send the storage URI it returns.
     """
 
     text: Optional[str]

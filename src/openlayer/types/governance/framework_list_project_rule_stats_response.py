@@ -76,6 +76,8 @@ class ItemByRuleType(BaseModel):
 
 
 class Item(BaseModel):
+    """One project's rule result counts by status, for a single framework."""
+
     project_id: str = FieldInfo(alias="projectId")
     """The project id."""
 

@@ -55,11 +55,7 @@ class DocumentsResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> DocumentRetrieveResponse:
         """
-        Retrieve a framework document, including its sections, subsections, and the
-        rules mapped to each.
-
-        Each section and subsection carries a `ruleCount`, so you can tell which
-        requirements have rules mapped to them before drilling in.
+        Retrieve a framework document with its sections and rules.
 
         Args:
           extra_headers: Send extra headers
@@ -99,10 +95,6 @@ class DocumentsResource(SyncAPIResource):
     ) -> DocumentListResponse:
         """
         List the documents attached to a framework.
-
-        A document holds the text of the standard the framework is based on, split into
-        sections and subsections. Retrieve a single document to get that structure,
-        along with the rules mapped to each part of it.
 
         Args:
           page: The page to return in a paginated query.
@@ -171,11 +163,7 @@ class AsyncDocumentsResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> DocumentRetrieveResponse:
         """
-        Retrieve a framework document, including its sections, subsections, and the
-        rules mapped to each.
-
-        Each section and subsection carries a `ruleCount`, so you can tell which
-        requirements have rules mapped to them before drilling in.
+        Retrieve a framework document with its sections and rules.
 
         Args:
           extra_headers: Send extra headers
@@ -215,10 +203,6 @@ class AsyncDocumentsResource(AsyncAPIResource):
     ) -> DocumentListResponse:
         """
         List the documents attached to a framework.
-
-        A document holds the text of the standard the framework is based on, split into
-        sections and subsections. Retrieve a single document to get that structure,
-        along with the rules mapped to each part of it.
 
         Args:
           page: The page to return in a paginated query.

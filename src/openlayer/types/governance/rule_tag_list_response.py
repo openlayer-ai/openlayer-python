@@ -11,6 +11,10 @@ __all__ = ["RuleTagListResponse", "Item"]
 
 
 class Item(BaseModel):
+    """
+    A label that groups rules across frameworks, for example by team or control family.
+    """
+
     id: str
     """The rule tag id."""
 
@@ -24,7 +28,7 @@ class Item(BaseModel):
     """The last update date."""
 
     immutable: bool
-    """Whether the tag is managed by Openlayer and cannot be edited or deleted."""
+    """Whether the tag is managed by Openlayer. These tags can't be deleted."""
 
     name: str
     """The tag name."""

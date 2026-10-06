@@ -61,11 +61,7 @@ class SubsectionsResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> SubsectionListRulesResponse:
         """
-        List the rules mapped to a subsection of a framework document.
-
-        A subsection is usually the level at which a standard states an individual
-        requirement, so this is the endpoint to use when you want to show which rules
-        cover a specific clause.
+        List the rules mapped to a document subsection.
 
         Args:
           include_results: Whether to include each rule's results inline, in a `results` array.
@@ -154,11 +150,7 @@ class AsyncSubsectionsResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> SubsectionListRulesResponse:
         """
-        List the rules mapped to a subsection of a framework document.
-
-        A subsection is usually the level at which a standard states an individual
-        requirement, so this is the endpoint to use when you want to show which rules
-        cover a specific clause.
+        List the rules mapped to a document subsection.
 
         Args:
           include_results: Whether to include each rule's results inline, in a `results` array.

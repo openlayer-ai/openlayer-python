@@ -61,18 +61,17 @@ class APIKeysResource(SyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> APIKeyCreateResponse:
-        """Create a new API key in a workspace.
-
-        The full secret is returned in `secret`,
-        only in this response. Optionally set `expiresAt`. When you authenticate with an
-        API key that expires, the new key can't outlive it: omit `expiresAt` to inherit
-        that expiry, and a later expiry (or `null`) is rejected with 400.
+        """Create a new API key.
 
         Args:
-          expires_at: When the key stops authenticating. `null` means the key never expires. Set when
+          expires_at: When the key stops authenticating.
+
+        `null` means the key never expires. Set when
               the key is created or rotated, and must be in the future. When the request is
               authenticated with an API key that expires, the result can't be later than that
-              key's expiry.
+              key's expiry. On create, omit it to inherit that expiry. On rotate, omit it to
+              keep the current one. It can't be changed with an update; rotate the key
+              instead.
 
           name: The API key name.
 
@@ -113,10 +112,8 @@ class APIKeysResource(SyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> APIKeyRetrieveResponse:
-        """Retrieve one of your API keys, with its lifecycle status.
-
-        The secret is never
-        returned; `secureKey` is an obfuscated hint.
+        """
+        Retrieve an API key.
 
         Args:
           extra_headers: Send extra headers
@@ -154,11 +151,8 @@ class APIKeysResource(SyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> APIKeyUpdateResponse:
-        """Rename one of your API keys.
-
-        A key's expiry can't be updated; rotate the key
-        with a new `expiresAt` instead, so extending a key's life always issues a new
-        secret.
+        """
+        Rename an API key.
 
         Args:
           name: The API key name.
@@ -197,10 +191,8 @@ class APIKeysResource(SyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> APIKeyListResponse:
-        """List the API keys you own in a workspace, with their lifecycle status.
-
-        Secrets
-        are never returned; `secureKey` is an obfuscated hint.
+        """
+        List your API keys in a workspace.
 
         Args:
           extra_headers: Send extra headers
@@ -233,10 +225,8 @@ class APIKeysResource(SyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> None:
-        """Delete one of your API keys.
-
-        Every secret for the key stops working immediately,
-        including a previous secret still in its rotation grace period.
+        """
+        Delete an API key.
 
         Args:
           extra_headers: Send extra headers
@@ -276,23 +266,20 @@ class APIKeysResource(SyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> APIKeyRotateResponse:
-        """Replace an API key's secret now.
-
-        The new secret is returned in `secret`, only in
-        this response. Send `expiresAt` to change the key's expiry (`null` for never);
-        omit it to keep the current one. The previous secret keeps authenticating for
-        `gracePeriodHours` (default 0, so it stops working immediately), and never past
-        `expiresAt`. The key keeps its id and name. Expired keys cannot be rotated. Only
-        one previous secret is kept, so rotating again during a grace period retires the
-        older one immediately.
+        """
+        Replace an API key's secret.
 
         Args:
           expires_at: When the key stops authenticating. `null` means the key never expires. Set when
               the key is created or rotated, and must be in the future. When the request is
               authenticated with an API key that expires, the result can't be later than that
-              key's expiry.
+              key's expiry. On create, omit it to inherit that expiry. On rotate, omit it to
+              keep the current one. It can't be changed with an update; rotate the key
+              instead.
 
-          grace_period_hours: Hours the previous secret keeps authenticating.
+          grace_period_hours: Hours the previous secret keeps authenticating. The default of 0 retires it
+              immediately. It never outlives `expiresAt`. Only one previous secret is kept, so
+              rotating again during a grace period retires the older one immediately.
 
           extra_headers: Send extra headers
 
@@ -359,18 +346,17 @@ class AsyncAPIKeysResource(AsyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> APIKeyCreateResponse:
-        """Create a new API key in a workspace.
-
-        The full secret is returned in `secret`,
-        only in this response. Optionally set `expiresAt`. When you authenticate with an
-        API key that expires, the new key can't outlive it: omit `expiresAt` to inherit
-        that expiry, and a later expiry (or `null`) is rejected with 400.
+        """Create a new API key.
 
         Args:
-          expires_at: When the key stops authenticating. `null` means the key never expires. Set when
+          expires_at: When the key stops authenticating.
+
+        `null` means the key never expires. Set when
               the key is created or rotated, and must be in the future. When the request is
               authenticated with an API key that expires, the result can't be later than that
-              key's expiry.
+              key's expiry. On create, omit it to inherit that expiry. On rotate, omit it to
+              keep the current one. It can't be changed with an update; rotate the key
+              instead.
 
           name: The API key name.
 
@@ -411,10 +397,8 @@ class AsyncAPIKeysResource(AsyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> APIKeyRetrieveResponse:
-        """Retrieve one of your API keys, with its lifecycle status.
-
-        The secret is never
-        returned; `secureKey` is an obfuscated hint.
+        """
+        Retrieve an API key.
 
         Args:
           extra_headers: Send extra headers
@@ -452,11 +436,8 @@ class AsyncAPIKeysResource(AsyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> APIKeyUpdateResponse:
-        """Rename one of your API keys.
-
-        A key's expiry can't be updated; rotate the key
-        with a new `expiresAt` instead, so extending a key's life always issues a new
-        secret.
+        """
+        Rename an API key.
 
         Args:
           name: The API key name.
@@ -495,10 +476,8 @@ class AsyncAPIKeysResource(AsyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> APIKeyListResponse:
-        """List the API keys you own in a workspace, with their lifecycle status.
-
-        Secrets
-        are never returned; `secureKey` is an obfuscated hint.
+        """
+        List your API keys in a workspace.
 
         Args:
           extra_headers: Send extra headers
@@ -531,10 +510,8 @@ class AsyncAPIKeysResource(AsyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> None:
-        """Delete one of your API keys.
-
-        Every secret for the key stops working immediately,
-        including a previous secret still in its rotation grace period.
+        """
+        Delete an API key.
 
         Args:
           extra_headers: Send extra headers
@@ -574,23 +551,20 @@ class AsyncAPIKeysResource(AsyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> APIKeyRotateResponse:
-        """Replace an API key's secret now.
-
-        The new secret is returned in `secret`, only in
-        this response. Send `expiresAt` to change the key's expiry (`null` for never);
-        omit it to keep the current one. The previous secret keeps authenticating for
-        `gracePeriodHours` (default 0, so it stops working immediately), and never past
-        `expiresAt`. The key keeps its id and name. Expired keys cannot be rotated. Only
-        one previous secret is kept, so rotating again during a grace period retires the
-        older one immediately.
+        """
+        Replace an API key's secret.
 
         Args:
           expires_at: When the key stops authenticating. `null` means the key never expires. Set when
               the key is created or rotated, and must be in the future. When the request is
               authenticated with an API key that expires, the result can't be later than that
-              key's expiry.
+              key's expiry. On create, omit it to inherit that expiry. On rotate, omit it to
+              keep the current one. It can't be changed with an update; rotate the key
+              instead.
 
-          grace_period_hours: Hours the previous secret keeps authenticating.
+          grace_period_hours: Hours the previous secret keeps authenticating. The default of 0 retires it
+              immediately. It never outlives `expiresAt`. Only one previous secret is kept, so
+              rotating again during a grace period retires the older one immediately.
 
           extra_headers: Send extra headers
 

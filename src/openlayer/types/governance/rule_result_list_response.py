@@ -15,17 +15,27 @@ class ItemBlockedBy(BaseModel):
     id: Optional[str] = None
 
     status: Optional[Literal["running", "passing", "failing", "skipped", "error", "pending", "due_soon"]] = None
-    """The compliance status of the rule for this entity."""
+    """The compliance status of the rule for this entity.
+
+    Computed by Openlayer and can't be set directly.
+    """
 
 
 class ItemBlocking(BaseModel):
     id: Optional[str] = None
 
     status: Optional[Literal["running", "passing", "failing", "skipped", "error", "pending", "due_soon"]] = None
-    """The compliance status of the rule for this entity."""
+    """The compliance status of the rule for this entity.
+
+    Computed by Openlayer and can't be set directly.
+    """
 
 
 class Item(BaseModel):
+    """
+    The compliance status of one rule for one entity: a project for project-scoped rules, or the workspace for workspace-scoped rules.
+    """
+
     id: str
     """The rule result id."""
 
@@ -36,13 +46,19 @@ class Item(BaseModel):
     """The last update date."""
 
     deactivated: bool
-    """Whether this result is excluded from compliance calculations."""
+    """Whether this result is excluded from compliance calculations.
+
+    Excludes just this result, without deactivating the rule everywhere.
+    """
 
     rule_id: str = FieldInfo(alias="ruleId")
     """The rule this result belongs to."""
 
     status: Literal["running", "passing", "failing", "skipped", "error", "pending", "due_soon"]
-    """The compliance status of the rule for this entity."""
+    """The compliance status of the rule for this entity.
+
+    Computed by Openlayer and can't be set directly.
+    """
 
     workspace_id: str = FieldInfo(alias="workspaceId")
     """The id of the workspace the rule result belongs to."""
@@ -69,7 +85,7 @@ class Item(BaseModel):
     """When the evidence must be renewed. Evidence rules with a renewal cadence only."""
 
     deactivated_reason: Optional[str] = FieldInfo(alias="deactivatedReason", default=None)
-    """Why the result was excluded."""
+    """Why the result was excluded. Required when setting `deactivated` to `true`."""
 
     project_id: Optional[str] = FieldInfo(alias="projectId", default=None)
     """The project this result was evaluated for. `null` for workspace-scoped rules."""

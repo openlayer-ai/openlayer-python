@@ -21,21 +21,30 @@ class RuleResultUpdateParams(TypedDict, total=False):
     """Rule results that this one blocks."""
 
     deactivated: bool
-    """Whether this result is excluded from compliance calculations."""
+    """Whether this result is excluded from compliance calculations.
+
+    Excludes just this result, without deactivating the rule everywhere.
+    """
 
     deactivated_reason: Annotated[Optional[str], PropertyInfo(alias="deactivatedReason")]
-    """Why the result was excluded."""
+    """Why the result was excluded. Required when setting `deactivated` to `true`."""
 
 
 class BlockedBy(TypedDict, total=False):
     id: str
 
     status: Literal["running", "passing", "failing", "skipped", "error", "pending", "due_soon"]
-    """The compliance status of the rule for this entity."""
+    """The compliance status of the rule for this entity.
+
+    Computed by Openlayer and can't be set directly.
+    """
 
 
 class Blocking(TypedDict, total=False):
     id: str
 
     status: Literal["running", "passing", "failing", "skipped", "error", "pending", "due_soon"]
-    """The compliance status of the rule for this entity."""
+    """The compliance status of the rule for this entity.
+
+    Computed by Openlayer and can't be set directly.
+    """

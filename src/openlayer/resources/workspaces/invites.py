@@ -102,7 +102,7 @@ class InvitesResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> InviteListResponse:
         """
-        Retrieve a list of invites in a workspace.
+        List the invites in a workspace.
 
         Args:
           page: The page to return in a paginated query.
@@ -216,7 +216,7 @@ class AsyncInvitesResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> InviteListResponse:
         """
-        Retrieve a list of invites in a workspace.
+        List the invites in a workspace.
 
         Args:
           page: The page to return in a paginated query.

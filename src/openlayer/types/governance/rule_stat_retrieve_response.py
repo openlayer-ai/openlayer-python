@@ -201,6 +201,11 @@ class Rules(BaseModel):
 
 
 class RuleStatRetrieveResponse(BaseModel):
+    """Counts of rules and their results by status.
+
+    Narrowed by the request's filters, so `frameworkId` gives one framework's compliance and `projectId` gives one project's.
+    """
+
     rule_results: RuleResults = FieldInfo(alias="ruleResults")
     """
     Counts of rule results, after any filters in the request, with breakdowns by the

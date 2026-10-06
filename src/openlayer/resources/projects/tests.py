@@ -119,7 +119,7 @@ class TestsResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> TestCreateResponse:
         """
-        Create a test.
+        Create a test in a project.
 
         Args:
           description: The test description.
@@ -212,7 +212,7 @@ class TestsResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> TestUpdateResponse:
         """
-        Update tests.
+        Update tests in a project.
 
         Args:
           extra_headers: Send extra headers
@@ -253,7 +253,7 @@ class TestsResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> TestListResponse:
         """
-        List tests under a project.
+        List the tests in a project.
 
         Args:
           include_archived: Filter for archived tests.
@@ -396,7 +396,7 @@ class AsyncTestsResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> TestCreateResponse:
         """
-        Create a test.
+        Create a test in a project.
 
         Args:
           description: The test description.
@@ -489,7 +489,7 @@ class AsyncTestsResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> TestUpdateResponse:
         """
-        Update tests.
+        Update tests in a project.
 
         Args:
           extra_headers: Send extra headers
@@ -530,7 +530,7 @@ class AsyncTestsResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> TestListResponse:
         """
-        List tests under a project.
+        List the tests in a project.
 
         Args:
           include_archived: Filter for archived tests.

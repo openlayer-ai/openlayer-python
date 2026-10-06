@@ -70,14 +70,15 @@ class TestGoogleADKCallbackExceptions:
     USER_ID = "u"
     SESSION_ID = "s"
 
-    def _build_runner_and_agent(self) -> Tuple[Any, Any]:
+    def _build_runner_and_agent(self, traced: bool = True) -> Tuple[Any, Any]:
         from google.adk.agents import LlmAgent
         from google.adk.runners import Runner
         from google.adk.sessions import InMemorySessionService
 
         from openlayer.lib.integrations import trace_google_adk
 
-        trace_google_adk()
+        if traced:
+            trace_google_adk()
 
         async def before_model(callback_context: Any, llm_request: Any, **_: Any) -> None:  # noqa: ARG001
             raise ErrorHandling("input blocked by guardrail (pi_and_jailbreak)")
@@ -106,7 +107,14 @@ class TestGoogleADKCallbackExceptions:
 
     @pytest.mark.filterwarnings("ignore::DeprecationWarning")
     def test_user_exception_propagates_without_chaining(self) -> None:
-        """The user's ``ErrorHandling`` must be the only exception surfaced."""
+        """The tracer must not add anything to the exception chain ADK raises."""
+        # ADK 2.x itself chains its DynamicNodeFailError onto the user's
+        # exception, so compare against the same run without the tracer.
+        runner, session_service = self._build_runner_and_agent(traced=False)
+        with pytest.raises(ErrorHandling) as baseline_info:
+            asyncio.run(self._drive_runner(runner, session_service))
+        baseline = [type(item) for item in _collect_exception_chain(baseline_info.value)]
+
         runner, session_service = self._build_runner_and_agent()
 
         with pytest.raises(ErrorHandling) as exc_info:
@@ -121,13 +129,11 @@ class TestGoogleADKCallbackExceptions:
             for item in chain
         ), f"chained ValueError appeared in exception chain: {chain}"
 
-        # Anything in the chain that isn't the user's exception would itself
-        # be a tracer-introduced failure — fail loudly.
-        for item in chain:
-            assert isinstance(item, ErrorHandling), (
-                "unexpected non-ErrorHandling exception in chain: "
-                f"{type(item).__name__}: {item}"
-            )
+        # Anything beyond what ADK raises untraced would be a tracer-introduced
+        # failure — fail loudly.
+        assert [type(item) for item in chain] == baseline, (
+            f"tracer changed the exception chain: {chain} (untraced: {baseline})"
+        )
 
     @pytest.mark.filterwarnings("ignore::DeprecationWarning")
     def test_callback_error_recorded_on_step_metadata(self) -> None:

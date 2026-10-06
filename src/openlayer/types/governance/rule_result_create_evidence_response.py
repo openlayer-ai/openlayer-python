@@ -11,6 +11,11 @@ __all__ = ["RuleResultCreateEvidenceResponse"]
 
 
 class RuleResultCreateEvidenceResponse(BaseModel):
+    """Evidence attached to a rule result to satisfy an evidence rule.
+
+    Which field holds it depends on the rule's `evidenceType`: `storageUri` for a document, `text` for a written statement, or `url` for a link.
+    """
+
     id: str
     """The evidence id."""
 
@@ -32,7 +37,8 @@ class RuleResultCreateEvidenceResponse(BaseModel):
     storage_uri: Optional[str] = FieldInfo(alias="storageUri", default=None)
     """Where the uploaded file is stored.
 
-    Set when the rule's `evidenceType` is `document`.
+    Set when the rule's `evidenceType` is `document`. Upload the file first with
+    `POST /storage/presigned-url` and send the storage URI it returns.
     """
 
     text: Optional[str] = None

@@ -69,47 +69,40 @@ class RulesResource(SyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> RuleCreateResponse:
-        """Create a governance rule in a workspace.
-
-        A rule is one requirement.
-
-        Its `type` decides how it is satisfied, and the two
-        types accept different fields:
-
-        - `platform` rules are evaluated automatically from the state of your workspace.
-          Set `automationType` to the signal to check. Their `scope` must be `project`,
-          and `evidenceType` and `renewalCadenceDays` must be omitted or `null`.
-        - `evidence` rules are satisfied by attaching evidence. Set `evidenceType` to
-          the kind of evidence that satisfies them. `automationType` and
-          `automationParams` must be omitted or `null`.
-
-        A new rule belongs to no framework. Map it to one from the Openlayer app.
+        """
+        Create a rule in a workspace.
 
         Args:
           name: The rule name.
 
           scope: Whether the rule is evaluated once for the whole workspace, or once per project
-              the rule's frameworks apply to.
+              the rule's frameworks apply to. Must be `project` for platform rules. Fixed once
+              the rule is created.
 
           type: `platform` rules are evaluated automatically from the state of your Openlayer
-              workspace. `evidence` rules are satisfied by attaching evidence.
+              workspace. `evidence` rules are satisfied by attaching evidence. Fixed once the
+              rule is created.
 
           assignee_id: The user responsible for satisfying the rule.
 
-          automation_params: Configuration for the platform check, when the automation takes parameters.
+          automation_params: Configuration for the platform check, when the automation takes parameters. Omit
+              or `null` for evidence rules. Fixed once the rule is created.
 
           automation_type: Which workspace signal a platform rule checks, for example
-              `monitoring_mode_enabled`, `test_setup`, or `project_owner_set`. `null` for
-              evidence rules.
+              `monitoring_mode_enabled`, `test_setup`, or `project_owner_set`. Set it for
+              platform rules; omit or `null` for evidence rules. Fixed once the rule is
+              created.
 
           deactivated: Whether the rule is excluded from compliance calculations.
 
           description: What the rule requires.
 
-          evidence_type: The kind of evidence that satisfies the rule. `null` for platform rules.
+          evidence_type: The kind of evidence that satisfies the rule. Set it for evidence rules; omit or
+              `null` for platform rules. Fixed once the rule is created.
 
           renewal_cadence_days: How often evidence must be renewed, in days. Once evidence is older than this,
-              the rule result becomes `due_soon` and then `failing`.
+              the rule result becomes `due_soon` and then `failing`. The window restarts
+              whenever evidence is attached. Omit or `null` for platform rules.
 
           tag_ids: The ids of the rule tags to associate with the rule. Replaces the rule's tags.
               Read them back from `tags`, and list the tags available in the workspace with
@@ -161,8 +154,7 @@ class RulesResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> RuleRetrieveResponse:
         """
-        Retrieve a governance rule by its id, including the frameworks it belongs to and
-        its tags.
+        Retrieve a rule with its frameworks and tags.
 
         Args:
           extra_headers: Send extra headers
@@ -200,14 +192,8 @@ class RulesResource(SyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> RuleUpdateResponse:
-        """Update a governance rule.
-
-        Only the fields you send are changed.
-
-        Rules that ship with Openlayer report `immutable: true` and cannot be edited.
-
-        A rule's `scope`, `type`, `evidenceType`, and automation are fixed once it
-        exists -- create a new rule instead of converting one.
+        """
+        Update a rule.
 
         Args:
           assignee_id: The user responsible for satisfying the rule.
@@ -219,7 +205,8 @@ class RulesResource(SyncAPIResource):
           name: The rule name.
 
           renewal_cadence_days: How often evidence must be renewed, in days. Once evidence is older than this,
-              the rule result becomes `due_soon` and then `failing`.
+              the rule result becomes `due_soon` and then `failing`. The window restarts
+              whenever evidence is attached. Omit or `null` for platform rules.
 
           tag_ids: The ids of the rule tags to associate with the rule. Replaces the rule's tags.
               Read them back from `tags`, and list the tags available in the workspace with
@@ -283,16 +270,7 @@ class RulesResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> RuleListResponse:
         """
-        List the governance rules in a workspace.
-
-        A rule is a single requirement Openlayer tracks. `platform` rules are evaluated
-        automatically from the state of your workspace; `evidence` rules are satisfied
-        by attaching evidence. A rule can belong to several frameworks at once, and
-        rules that belong to none are returned too unless you pass
-        `includeUnframed=false`.
-
-        Pass `includeResults=true` to get each rule's compliance results inline instead
-        of fetching them separately.
+        List the rules in a workspace.
 
         Args:
           asc: Whether to sort in ascending order.
@@ -387,11 +365,7 @@ class RulesResource(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> None:
         """
-        Delete a governance rule and its rule results.
-
-        Only rules you created can be deleted. Rules that ship with Openlayer report
-        `immutable: true` and cannot be deleted -- exclude one from compliance by
-        setting `deactivated` with `PUT /rules/{ruleId}` instead.
+        Delete a rule and its results.
 
         Args:
           extra_headers: Send extra headers
@@ -456,47 +430,40 @@ class AsyncRulesResource(AsyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> RuleCreateResponse:
-        """Create a governance rule in a workspace.
-
-        A rule is one requirement.
-
-        Its `type` decides how it is satisfied, and the two
-        types accept different fields:
-
-        - `platform` rules are evaluated automatically from the state of your workspace.
-          Set `automationType` to the signal to check. Their `scope` must be `project`,
-          and `evidenceType` and `renewalCadenceDays` must be omitted or `null`.
-        - `evidence` rules are satisfied by attaching evidence. Set `evidenceType` to
-          the kind of evidence that satisfies them. `automationType` and
-          `automationParams` must be omitted or `null`.
-
-        A new rule belongs to no framework. Map it to one from the Openlayer app.
+        """
+        Create a rule in a workspace.
 
         Args:
           name: The rule name.
 
           scope: Whether the rule is evaluated once for the whole workspace, or once per project
-              the rule's frameworks apply to.
+              the rule's frameworks apply to. Must be `project` for platform rules. Fixed once
+              the rule is created.
 
           type: `platform` rules are evaluated automatically from the state of your Openlayer
-              workspace. `evidence` rules are satisfied by attaching evidence.
+              workspace. `evidence` rules are satisfied by attaching evidence. Fixed once the
+              rule is created.
 
           assignee_id: The user responsible for satisfying the rule.
 
-          automation_params: Configuration for the platform check, when the automation takes parameters.
+          automation_params: Configuration for the platform check, when the automation takes parameters. Omit
+              or `null` for evidence rules. Fixed once the rule is created.
 
           automation_type: Which workspace signal a platform rule checks, for example
-              `monitoring_mode_enabled`, `test_setup`, or `project_owner_set`. `null` for
-              evidence rules.
+              `monitoring_mode_enabled`, `test_setup`, or `project_owner_set`. Set it for
+              platform rules; omit or `null` for evidence rules. Fixed once the rule is
+              created.
 
           deactivated: Whether the rule is excluded from compliance calculations.
 
           description: What the rule requires.
 
-          evidence_type: The kind of evidence that satisfies the rule. `null` for platform rules.
+          evidence_type: The kind of evidence that satisfies the rule. Set it for evidence rules; omit or
+              `null` for platform rules. Fixed once the rule is created.
 
           renewal_cadence_days: How often evidence must be renewed, in days. Once evidence is older than this,
-              the rule result becomes `due_soon` and then `failing`.
+              the rule result becomes `due_soon` and then `failing`. The window restarts
+              whenever evidence is attached. Omit or `null` for platform rules.
 
           tag_ids: The ids of the rule tags to associate with the rule. Replaces the rule's tags.
               Read them back from `tags`, and list the tags available in the workspace with
@@ -548,8 +515,7 @@ class AsyncRulesResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> RuleRetrieveResponse:
         """
-        Retrieve a governance rule by its id, including the frameworks it belongs to and
-        its tags.
+        Retrieve a rule with its frameworks and tags.
 
         Args:
           extra_headers: Send extra headers
@@ -587,14 +553,8 @@ class AsyncRulesResource(AsyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> RuleUpdateResponse:
-        """Update a governance rule.
-
-        Only the fields you send are changed.
-
-        Rules that ship with Openlayer report `immutable: true` and cannot be edited.
-
-        A rule's `scope`, `type`, `evidenceType`, and automation are fixed once it
-        exists -- create a new rule instead of converting one.
+        """
+        Update a rule.
 
         Args:
           assignee_id: The user responsible for satisfying the rule.
@@ -606,7 +566,8 @@ class AsyncRulesResource(AsyncAPIResource):
           name: The rule name.
 
           renewal_cadence_days: How often evidence must be renewed, in days. Once evidence is older than this,
-              the rule result becomes `due_soon` and then `failing`.
+              the rule result becomes `due_soon` and then `failing`. The window restarts
+              whenever evidence is attached. Omit or `null` for platform rules.
 
           tag_ids: The ids of the rule tags to associate with the rule. Replaces the rule's tags.
               Read them back from `tags`, and list the tags available in the workspace with
@@ -670,16 +631,7 @@ class AsyncRulesResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> RuleListResponse:
         """
-        List the governance rules in a workspace.
-
-        A rule is a single requirement Openlayer tracks. `platform` rules are evaluated
-        automatically from the state of your workspace; `evidence` rules are satisfied
-        by attaching evidence. A rule can belong to several frameworks at once, and
-        rules that belong to none are returned too unless you pass
-        `includeUnframed=false`.
-
-        Pass `includeResults=true` to get each rule's compliance results inline instead
-        of fetching them separately.
+        List the rules in a workspace.
 
         Args:
           asc: Whether to sort in ascending order.
@@ -774,11 +726,7 @@ class AsyncRulesResource(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> None:
         """
-        Delete a governance rule and its rule results.
-
-        Only rules you created can be deleted. Rules that ship with Openlayer report
-        `immutable: true` and cannot be deleted -- exclude one from compliance by
-        setting `deactivated` with `PUT /rules/{ruleId}` instead.
+        Delete a rule and its results.
 
         Args:
           extra_headers: Send extra headers

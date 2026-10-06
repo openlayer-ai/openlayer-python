@@ -11,6 +11,10 @@ __all__ = ["BackgroundTaskRetrieveResponse"]
 
 
 class BackgroundTaskRetrieveResponse(BaseModel):
+    """
+    A job queued by an endpoint that can't answer within one request, such as a framework export. Poll it until `complete` is `true`, then read what it produced from `outputs`.
+    """
+
     id: str
     """The background task id."""
 
