@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.36.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.35.0...v0.36.0) (2026-10-06)
+
+
+### Features
+
+* **OPEN-12864:** record Google ADK agent handoffs and support google-adk 2.x ([a8a6775](https://github.com/openlayer-ai/openlayer-python/commit/a8a6775334a036144d01f92287acc5a7db8df848))
+
 ## [0.35.0](https://github.com/openlayer-ai/openlayer-python/compare/v0.34.1...v0.35.0) (2026-09-29)
 
 
