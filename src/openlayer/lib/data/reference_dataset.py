@@ -48,11 +48,13 @@ def upload_reference_dataframe(
             tar.add(tmp_dir, arcname=os.path.basename("reference_dataset"))
 
         # Upload to storage
-        uploader.upload(
+        response = uploader.upload(
             file_path=tar_file_path,
             object_name=object_name,
             presigned_url_response=presigned_url_response,
         )
+        if response.status_code >= 300 or response.status_code < 200:
+            raise ValueError(f"Failed to upload file to storage: {response.text}")
 
     # Notify the backend
     client.inference_pipelines.update(
